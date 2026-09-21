@@ -29,6 +29,19 @@ from photutils.geometry.ellipse_overlap cimport ellipse_frac_from_rpix2
 from photutils.geometry.rectangle_overlap cimport (
     rectangle_overlap_single_subpixel)
 
+# The image dtypes read directly by the batch kernels. Pixel values are
+# converted to double as they are read, which is exact, so the float and
+# double specializations give identical results. Inputs with any other
+# dtype are converted to one of these by the Python callers (see
+# ``photutils.aperture._common.batch_image_dtype``).
+ctypedef fused real_t:
+    float
+    double
+
+ctypedef fused seg_t:
+    int
+    Py_ssize_t
+
 
 cdef extern from "math.h" nogil:
     double sqrt(double x)
@@ -110,7 +123,7 @@ cdef inline bint _seg_method_active(int seg_method,
     return seg_method != 0 and (label != 0 or seg_method == 3)
 
 
-cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
+cdef inline int _classify_seg_pixel(const seg_t *segmentation,
                                     const unsigned char *mask,
                                     Py_ssize_t nx_data, int seg_method,
                                     Py_ssize_t label,
@@ -134,7 +147,7 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
 
     Parameters
     ----------
-    segmentation : const Py_ssize_t *
+    segmentation : const seg_t *
         The C-contiguous segmentation array data.
 
     mask : const unsigned char *
@@ -219,7 +232,7 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
     return _SEG_SOURCE
 
 
-cdef inline bint _seg_pixel_contributes(const Py_ssize_t *segmentation,
+cdef inline bint _seg_pixel_contributes(const seg_t *segmentation,
                                         const unsigned char *mask,
                                         Py_ssize_t nx_data,
                                         int seg_method,
@@ -249,7 +262,7 @@ cdef inline bint _seg_pixel_contributes(const Py_ssize_t *segmentation,
     return code == _SEG_SOURCE or code == _SEG_CORRECTED
 
 
-cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
+cdef inline bint _resolve_seg_pixel(const seg_t *segmentation,
                                     const unsigned char *mask,
                                     Py_ssize_t nx_data, int seg_method,
                                     Py_ssize_t label,

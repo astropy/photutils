@@ -28,6 +28,14 @@ each run as a single GIL-free loop over the sources.
 The source loops run without the GIL and use no global mutable state,
 so this module is safe to use from multiple threads, including on
 free-threaded Python builds.
+
+The image arrays are declared with fused types, so the drivers read
+C-contiguous float32 or float64 images and int32 or intp segmentation
+images directly, without the caller making full-image copies. All of
+the images passed in one call must have the same dtype. Each pixel
+value is converted to double as it is read, which is exact, and all
+arithmetic is performed in double precision, so the results do not
+depend on the input dtype.
 """
 
 import numpy as np
@@ -37,7 +45,8 @@ from scipy.optimize.cython_optimize cimport brentq, zeros_full_output
 from photutils.segmentation._batch_results import BatchFluxRadiusArgs
 
 from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
-                                                _seg_pixel_contributes)
+                                                _seg_pixel_contributes, real_t,
+                                                seg_t)
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
            'batch_flux_radius_prepare', 'batch_flux_radius_solve',
@@ -127,9 +136,9 @@ cdef int _check_shape(Py_ssize_t ny, Py_ssize_t nx, Py_ssize_t ny_ref,
     return 0
 
 
-cdef void _centroid_win_source(const double *data, const double *error,
+cdef void _centroid_win_source(const real_t *data, const real_t *error,
                                const unsigned char *mask,
-                               const Py_ssize_t *segm,
+                               const seg_t *segm,
                                Py_ssize_t nx_data, Py_ssize_t ny_data,
                                Py_ssize_t label, double xcen0,
                                double ycen0, double sigma,
@@ -313,10 +322,10 @@ cdef void _centroid_win_source(const double *data, const double *error,
         out[9] = ecxy
 
 
-def batch_centroid_win(const double[:, ::1] data, *,
-                       const double[:, ::1] error,
+def batch_centroid_win(const real_t[:, ::1] data, *,
+                       const real_t[:, ::1] error,
                        const unsigned char[:, ::1] mask,
-                       const Py_ssize_t[:, ::1] segm,
+                       const seg_t[:, ::1] segm,
                        const Py_ssize_t[::1] labels,
                        const double[::1] xcen0,
                        const double[::1] ycen0,
@@ -336,10 +345,10 @@ def batch_centroid_win(const double[:, ::1] data, *,
 
     Parameters
     ----------
-    data : 2D ndarray of float64 (C-contiguous)
+    data : 2D ndarray of float32 or float64 (C-contiguous)
         The data array.
 
-    error : 2D ndarray of float64 (C-contiguous) or `None`
+    error : 2D ndarray of float32 or float64 (C-contiguous) or `None`
         The pixel-wise 1-sigma errors. Must have the same shape as
         ``data``. Required (not `None`) if ``compute_err`` is nonzero.
 
@@ -351,7 +360,7 @@ def batch_centroid_win(const double[:, ::1] data, *,
         value excludes the pixel and prevents it from being used as a
         mirror pixel.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``data``.
@@ -432,7 +441,7 @@ def batch_centroid_win(const double[:, ::1] data, *,
 
     results_arr = np.empty((n_src, 10))
     cdef double[:, ::1] results = results_arr
-    cdef const double *err_ptr = NULL
+    cdef const real_t *err_ptr = NULL
     if has_error:
         err_ptr = &error[0, 0]
 
@@ -459,9 +468,9 @@ def batch_centroid_win(const double[:, ::1] data, *,
     return results_arr
 
 
-cdef void _kron_radius_source(const double *data,
+cdef void _kron_radius_source(const real_t *data,
                               const unsigned char *mask,
-                              const Py_ssize_t *segm,
+                              const seg_t *segm,
                               Py_ssize_t nx_data, Py_ssize_t ny_data,
                               Py_ssize_t label, double xc, double yc,
                               double a, double b, double theta,
@@ -566,9 +575,9 @@ cdef void _kron_radius_source(const double *data,
     out[1] = denominator
 
 
-def batch_kron_radius(const double[:, ::1] data, *,
+def batch_kron_radius(const real_t[:, ::1] data, *,
                       const unsigned char[:, ::1] mask,
-                      const Py_ssize_t[:, ::1] segm,
+                      const seg_t[:, ::1] segm,
                       const Py_ssize_t[::1] labels,
                       const double[::1] xcen,
                       const double[::1] ycen,
@@ -597,7 +606,7 @@ def batch_kron_radius(const double[:, ::1] data, *,
 
     Parameters
     ----------
-    data : 2D ndarray of float64 (C-contiguous)
+    data : 2D ndarray of float32 or float64 (C-contiguous)
         The data array.
 
     mask : 2D ndarray of uint8 (C-contiguous)
@@ -608,7 +617,7 @@ def batch_kron_radius(const double[:, ::1] data, *,
         value excludes the pixel and prevents it from being used as a
         mirror pixel.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``data``.
@@ -717,9 +726,9 @@ def batch_kron_radius(const double[:, ::1] data, *,
     return results_arr
 
 
-cdef void _flux_radius_cutout(const double *data,
+cdef void _flux_radius_cutout(const real_t *data,
                               const unsigned char *mask,
-                              const Py_ssize_t *segm,
+                              const seg_t *segm,
                               Py_ssize_t nx_data, Py_ssize_t label,
                               Py_ssize_t x0, Py_ssize_t x1,
                               Py_ssize_t y0, Py_ssize_t y1,
@@ -755,9 +764,9 @@ cdef void _flux_radius_cutout(const double *data,
             out[(iy - y0) * nx + (ix - x0)] = value
 
 
-def batch_flux_radius_prepare(const double[:, ::1] data, *,
+def batch_flux_radius_prepare(const real_t[:, ::1] data, *,
                               const unsigned char[:, ::1] mask,
-                              const Py_ssize_t[:, ::1] segm,
+                              const seg_t[:, ::1] segm,
                               const Py_ssize_t[::1] labels,
                               const double[::1] xcen,
                               const double[::1] ycen,
@@ -781,7 +790,7 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
 
     Parameters
     ----------
-    data : 2D ndarray of float64 (C-contiguous)
+    data : 2D ndarray of float32 or float64 (C-contiguous)
         The data array.
 
     mask : 2D ndarray of uint8 (C-contiguous)
@@ -792,7 +801,7 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
         value zeroes the pixel and prevents it from being used as a
         mirror pixel.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``data``.
@@ -1341,7 +1350,7 @@ def batch_flux_radius_solve(const double[::1] values, *,
 
 
 cdef inline bint _is_source_pixel(const unsigned char *mask,
-                                  const Py_ssize_t *segm,
+                                  const seg_t *segm,
                                   Py_ssize_t nx_data, Py_ssize_t label,
                                   Py_ssize_t ix, Py_ssize_t iy,
                                   Py_ssize_t x0, Py_ssize_t x1,
@@ -1357,7 +1366,7 @@ cdef inline bint _is_source_pixel(const unsigned char *mask,
 
 
 cdef inline bint _is_border_pixel(const unsigned char *mask,
-                                  const Py_ssize_t *segm,
+                                  const seg_t *segm,
                                   Py_ssize_t nx_data, Py_ssize_t label,
                                   Py_ssize_t ix, Py_ssize_t iy,
                                   Py_ssize_t x0, Py_ssize_t x1,
@@ -1381,7 +1390,7 @@ cdef inline bint _is_border_pixel(const unsigned char *mask,
 
 
 def batch_perimeter(const unsigned char[:, ::1] mask, *,
-                    const Py_ssize_t[:, ::1] segm,
+                    const seg_t[:, ::1] segm,
                     const Py_ssize_t[::1] labels,
                     const Py_ssize_t[::1] bbox_iymin,
                     const Py_ssize_t[::1] bbox_iymax,
@@ -1408,7 +1417,7 @@ def batch_perimeter(const unsigned char[:, ::1] mask, *,
         (value 2) marks non-finite data pixels folded into the mask by
         the caller.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``mask``.
@@ -1448,7 +1457,7 @@ def batch_perimeter(const unsigned char[:, ::1] mask, *,
     hist_arr = np.zeros((n_src, 34), dtype=np.intp)
     cdef Py_ssize_t[:, ::1] hist = hist_arr
     cdef const unsigned char *mask_ptr = &mask[0, 0]
-    cdef const Py_ssize_t *segm_ptr = &segm[0, 0]
+    cdef const seg_t *segm_ptr = &segm[0, 0]
     cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl, value
     cdef Py_ssize_t dx, dy, weight
 
@@ -1479,10 +1488,10 @@ def batch_perimeter(const unsigned char[:, ::1] mask, *,
     return hist_arr
 
 
-def batch_quad_boxes(const double[:, ::1] data, *,
-                     const double[:, ::1] error,
+def batch_quad_boxes(const real_t[:, ::1] data, *,
+                     const real_t[:, ::1] error,
                      const unsigned char[:, ::1] mask,
-                     const Py_ssize_t[:, ::1] segm,
+                     const seg_t[:, ::1] segm,
                      const Py_ssize_t[::1] labels,
                      const Py_ssize_t[::1] bbox_iymin,
                      const Py_ssize_t[::1] bbox_iymax,
@@ -1502,10 +1511,10 @@ def batch_quad_boxes(const double[:, ::1] data, *,
 
     Parameters
     ----------
-    data : 2D ndarray of float64 (C-contiguous)
+    data : 2D ndarray of float32 or float64 (C-contiguous)
         The data array.
 
-    error : 2D ndarray of float64 (C-contiguous) or `None`
+    error : 2D ndarray of float32 or float64 (C-contiguous) or `None`
         The pixel-wise 1-sigma errors. Must have the same shape as
         ``data``. Required (not `None`) if ``compute_err`` is nonzero.
 
@@ -1515,7 +1524,7 @@ def batch_quad_boxes(const double[:, ::1] data, *,
         marks input-masked pixels and bit 2 (value 2) marks non-finite
         data pixels folded into the mask by the caller.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``data``.
@@ -1590,7 +1599,7 @@ def batch_quad_boxes(const double[:, ::1] data, *,
     cdef Py_ssize_t[:, ::1] peak = peak_arr
     cdef double[:, ::1] boxes = boxes_arr
     cdef double[:, ::1] box_var = box_var_arr
-    cdef const double *err_ptr = NULL
+    cdef const real_t *err_ptr = NULL
     if has_error:
         err_ptr = &error[0, 0]
 
@@ -1649,9 +1658,9 @@ def batch_quad_boxes(const double[:, ::1] data, *,
     return status_arr, peak_arr, boxes_arr, box_var_arr
 
 
-def batch_segment_gather(const double[:, ::1] values, *,
+def batch_segment_gather(const real_t[:, ::1] values, *,
                          const unsigned char[:, ::1] mask,
-                         const Py_ssize_t[:, ::1] segm,
+                         const seg_t[:, ::1] segm,
                          const Py_ssize_t[::1] labels,
                          const Py_ssize_t[::1] bbox_iymin,
                          const Py_ssize_t[::1] bbox_iymax,
@@ -1668,7 +1677,7 @@ def batch_segment_gather(const double[:, ::1] values, *,
 
     Parameters
     ----------
-    values : 2D ndarray of float64 (C-contiguous)
+    values : 2D ndarray of float32 or float64 (C-contiguous)
         The array to gather from (e.g., the data, error, or background
         array).
 
@@ -1678,7 +1687,7 @@ def batch_segment_gather(const double[:, ::1] values, *,
         1) marks input-masked pixels and bit 2 (value 2) marks
         non-finite data pixels folded into the mask by the caller.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``values``.
@@ -1771,9 +1780,9 @@ def batch_segment_gather(const double[:, ::1] values, *,
     return packed_arr, offsets_arr, counts_arr
 
 
-def batch_minmax_index(const double[:, ::1] values, *,
+def batch_minmax_index(const real_t[:, ::1] values, *,
                        const unsigned char[:, ::1] mask,
-                       const Py_ssize_t[:, ::1] segm,
+                       const seg_t[:, ::1] segm,
                        const Py_ssize_t[::1] labels,
                        const Py_ssize_t[::1] bbox_iymin,
                        const Py_ssize_t[::1] bbox_iymax,
@@ -1791,7 +1800,7 @@ def batch_minmax_index(const double[:, ::1] values, *,
 
     Parameters
     ----------
-    values : 2D ndarray of float64 (C-contiguous)
+    values : 2D ndarray of float32 or float64 (C-contiguous)
         The array to scan (e.g., the data array). Its unmasked segment
         values are assumed finite.
 
@@ -1801,7 +1810,7 @@ def batch_minmax_index(const double[:, ::1] values, *,
         1) marks input-masked pixels and bit 2 (value 2) marks
         non-finite data pixels folded into the mask by the caller.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``values``.
@@ -1883,9 +1892,9 @@ def batch_minmax_index(const double[:, ::1] values, *,
     return index_arr
 
 
-def batch_raw_moments(const double[:, ::1] convdata, *,
+def batch_raw_moments(const real_t[:, ::1] convdata, *,
                       const unsigned char[:, ::1] mask,
-                      const Py_ssize_t[:, ::1] segm,
+                      const seg_t[:, ::1] segm,
                       const Py_ssize_t[::1] labels,
                       const Py_ssize_t[::1] bbox_iymin,
                       const Py_ssize_t[::1] bbox_iymax,
@@ -1902,7 +1911,7 @@ def batch_raw_moments(const double[:, ::1] convdata, *,
 
     Parameters
     ----------
-    convdata : 2D ndarray of float64 (C-contiguous)
+    convdata : 2D ndarray of float32 or float64 (C-contiguous)
         The convolved data array (or the data array itself if no
         convolved data was input).
 
@@ -1913,7 +1922,7 @@ def batch_raw_moments(const double[:, ::1] convdata, *,
         Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same
         shape as ``convdata``.
@@ -1996,9 +2005,9 @@ def batch_raw_moments(const double[:, ::1] convdata, *,
     return result_arr
 
 
-def batch_central_moments(const double[:, ::1] convdata, *,
+def batch_central_moments(const real_t[:, ::1] convdata, *,
                           const unsigned char[:, ::1] mask,
-                          const Py_ssize_t[:, ::1] segm,
+                          const seg_t[:, ::1] segm,
                           const Py_ssize_t[::1] labels,
                           const Py_ssize_t[::1] bbox_iymin,
                           const Py_ssize_t[::1] bbox_iymax,
@@ -2017,7 +2026,7 @@ def batch_central_moments(const double[:, ::1] convdata, *,
 
     Parameters
     ----------
-    convdata : 2D ndarray of float64 (C-contiguous)
+    convdata : 2D ndarray of float32 or float64 (C-contiguous)
         The convolved data array (or the data array itself if no
         convolved data was input).
 
@@ -2028,7 +2037,7 @@ def batch_central_moments(const double[:, ::1] convdata, *,
         Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same
         shape as ``convdata``.
@@ -2131,10 +2140,10 @@ def batch_central_moments(const double[:, ::1] convdata, *,
     return result_arr
 
 
-def batch_moment_err(const double[:, ::1] error, *,
-                     const double[:, ::1] convdata,
+def batch_moment_err(const real_t[:, ::1] error, *,
+                     const real_t[:, ::1] convdata,
                      const unsigned char[:, ::1] mask,
-                     const Py_ssize_t[:, ::1] segm,
+                     const seg_t[:, ::1] segm,
                      const Py_ssize_t[::1] labels,
                      const Py_ssize_t[::1] bbox_iymin,
                      const Py_ssize_t[::1] bbox_iymax,
@@ -2154,11 +2163,11 @@ def batch_moment_err(const double[:, ::1] error, *,
 
     Parameters
     ----------
-    error : 2D ndarray of float64 (C-contiguous)
+    error : 2D ndarray of float32 or float64 (C-contiguous)
         The pixel-wise 1-sigma errors. Must have the same shape as
         ``convdata``.
 
-    convdata : 2D ndarray of float64 (C-contiguous)
+    convdata : 2D ndarray of float32 or float64 (C-contiguous)
         The convolved data array (or the data array itself if no
         convolved data was input).
 
@@ -2168,7 +2177,7 @@ def batch_moment_err(const double[:, ::1] error, *,
         the mask by the caller. Any nonzero value excludes the pixel.
         Must have the same shape as ``convdata``.
 
-    segm : 2D ndarray of intp (C-contiguous)
+    segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same
         shape as ``convdata``.

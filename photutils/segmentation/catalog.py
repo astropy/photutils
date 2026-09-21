@@ -31,7 +31,9 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   SHAPE_ELLIPSE,
                                                   batch_aperture_sums)
 from photutils.aperture._batch_results import BatchApertureSums
-from photutils.aperture._segmentation import SEG_METHOD_CODES
+from photutils.aperture._common import batch_image_dtype
+from photutils.aperture._segmentation import (SEG_METHOD_CODES,
+                                              batch_segmentation_image)
 from photutils.background import SExtractorBackground
 from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_centroid_win,
@@ -634,19 +636,22 @@ class SourceCatalog:
     the shape properties.
 
     Most properties are computed for all sources at once in compiled
-    code that reads C-contiguous float64 copies of the ``data``,
-    ``error``, ``convolved_data``, and ``background`` arrays, a
-    uint8 mask plane, and an intp copy of the segmentation array.
-    These are built on first use and kept for the lifetime of the
-    catalog (they are shared with sliced catalogs). Inputs that
-    are already C-contiguous float64 (or intp) arrays are used
-    without a copy, so for other input types (e.g., float32 or
-    int32 arrays) the catalog holds roughly twice the memory of its
-    inputs. All calculations are performed in float64 regardless
-    of the input dtype, so float32 inputs give the same results as
-    the same values input as float64. If memory is a concern, call
+    code that reads the ``data``, ``error``, ``convolved_data``, and
+    ``background`` arrays, the segmentation array, and a uint8 mask
+    plane. C-contiguous image arrays that are all float32 or all
+    float64 are read directly, as is a C-contiguous int32 or intp
+    segmentation array, so no copies of them are made. Image arrays
+    with different dtypes from each other (e.g., float32 ``data`` with
+    a float64 ``error`` array) are converted to float64 working copies,
+    and a segmentation array with another integer dtype is converted
+    to intp. Any working copies are built on first use and kept for the
+    lifetime of the catalog (they are shared with sliced catalogs).
+    All calculations are performed in float64 regardless of the input
+    dtype, so float32 inputs give the same results as the same values
+    input as float64. If memory is a concern, input all of the image
+    arrays with the same dtype. Otherwise, call
     `~photutils.segmentation.SourceCatalog.release_cache` after
-    calculating the desired properties to free these working arrays.
+    calculating the desired properties to free the working copies.
 
     The input ``error`` array is assumed to include *all* sources
     of error, including the Poisson error of the sources.
@@ -1147,9 +1152,12 @@ class SourceCatalog:
         Return the cached C-contiguous full-image arrays used by the
         batch Cython drivers.
 
-        The dict holds float64 ``data`` and ``error`` arrays, a uint8
-        ``mask`` plane (bit 1 = input mask, bit 2 = non-finite data),
-        and an intp ``segm`` array. The dict itself is created in
+        The dict holds the ``data`` and ``error`` arrays in the common
+        image dtype (float32 or float64, see `batch_image_dtype`), a
+        uint8 ``mask`` plane (bit 1 = input mask, bit 2 = non-finite
+        data), and an int32 or intp ``segm`` array (see
+        `batch_segmentation_image`). Inputs already in the required
+        form are stored without a copy. The dict itself is created in
         ``__init__`` and shared by reference with sliced catalogs (see
         ``__getitem__``), so the arrays are built once no matter which
         of the parent or sliced catalogs first needs them.
@@ -1157,48 +1165,55 @@ class SourceCatalog:
         Returns
         -------
         result : dict
-            A dict with keys ``'data'``, ``'error'``, ``'mask'``, and
-            ``'segm'``. The ``'error'`` value is `None` if no error
-            array was input. The ``'convdata'`` and ``'background'``
-            keys are added lazily by ``_get_batch_convdata`` and
+            A dict with keys ``'data'``, ``'error'``, ``'mask'``,
+            ``'segm'``, and ``'dtype'`` (the common image dtype). The
+            ``'error'`` value is `None` if no error array was input.
+            The ``'convdata'`` and ``'background'`` keys are added
+            lazily by ``_get_batch_convdata`` and
             ``_get_batch_background``.
         """
         arrays = self._batch_arrays_cache
         if 'data' not in arrays:
-            data = np.ascontiguousarray(self._data, dtype=np.float64)
+            # The kernels need all of the images in a common dtype.
+            dtype = batch_image_dtype(self._data, self._error,
+                                      self._convolved_data,
+                                      self._background)
+            data = np.ascontiguousarray(self._data, dtype=dtype)
             error = None
             if self._error is not None:
-                error = np.ascontiguousarray(self._error, dtype=np.float64)
+                error = np.ascontiguousarray(self._error, dtype=dtype)
             mask_plane = np.zeros(data.shape, dtype=np.uint8)
             if self._mask is not None:
                 mask_plane[self._mask] |= 1
             mask_plane[~np.isfinite(data)] |= 2
-            segm = np.ascontiguousarray(
-                self._segmentation_image.data, dtype=np.intp)
+            segm = batch_segmentation_image(self._segmentation_image.data)
             arrays.update(data=data, error=error, mask=mask_plane,
-                          segm=segm)
+                          segm=segm, dtype=dtype)
         return arrays
 
     def _get_batch_convdata(self):
         """
-        Return the cached C-contiguous float64 convolved-data array
-        used by the batch moment kernels.
+        Return the cached C-contiguous convolved-data array, in the
+        common image dtype, used by the batch moment kernels.
         """
         arrays = self._get_batch_arrays()
         if 'convdata' not in arrays:
-            arrays['convdata'] = np.ascontiguousarray(
-                self._convolved_data, dtype=np.float64)
+            if self._convolved_data is self._data:
+                arrays['convdata'] = arrays['data']
+            else:
+                arrays['convdata'] = np.ascontiguousarray(
+                    self._convolved_data, dtype=arrays['dtype'])
         return arrays['convdata']
 
     def _get_batch_background(self):
         """
-        Return the cached C-contiguous float64 background array used by
-        the batch segment gather.
+        Return the cached C-contiguous background array, in the common
+        image dtype, used by the batch segment gather.
         """
         arrays = self._get_batch_arrays()
         if 'background' not in arrays:
             arrays['background'] = np.ascontiguousarray(
-                self._background, dtype=np.float64)
+                self._background, dtype=arrays['dtype'])
         return arrays['background']
 
     def _batch_labels(self):
@@ -1355,14 +1370,15 @@ class SourceCatalog:
         Release the cached full-image working arrays.
 
         The compiled routines that calculate the source properties
-        operate on C-contiguous ``float64`` copies of the input
-        ``data``, ``error``, ``background``, and ``convolved_data``
-        arrays and an integer copy of the segmentation image. The copies
-        are created the first time they are needed and are then cached
+        read the input ``data``, ``error``, ``background``, and
+        ``convolved_data`` arrays and the segmentation image directly
+        when they are C-contiguous, the image arrays are all
+        ``float32`` or all ``float64``, and the segmentation array is
+        ``int32`` or `numpy.intp`. Otherwise, working copies are
+        created the first time they are needed and are then cached
         for the lifetime of the catalog, so that they are shared by
-        all of the source properties. For inputs that are not already
-        C-contiguous ``float64`` arrays (e.g., ``float32`` data), the
-        cache can hold several times the memory of the input data.
+        all of the source properties. A 1 byte per pixel mask array is
+        always cached.
 
         Call this method after calculating the desired properties to
         free that memory. Source properties that were already calculated
@@ -1376,21 +1392,26 @@ class SourceCatalog:
 
         Notes
         -----
-        The working arrays need 8 bytes per pixel for each of the
-        ``data``, ``error``, ``background``, and ``convolved_data``
-        inputs that is not already a C-contiguous ``float64`` array,
-        8 bytes per pixel for the segmentation image (unless its data
-        array has the platform integer dtype, `numpy.intp`), and 1 byte
-        per pixel for the mask. For example, a 4096 x 4096 ``float32``
-        image input with ``error`` and ``convolved_data`` arrays caches
-        about 550 MB.
+        No copies are needed, and only the mask array is cached, when
+        the image arrays are C-contiguous and have a common
+        ``float32`` or ``float64`` dtype. The image arrays are
+        converted to ``float64`` copies, which need 8 bytes per pixel
+        each, when their dtypes differ from each other (e.g.,
+        ``float32`` data with a ``float64`` error array) or when any of
+        them has another dtype (e.g., an integer dtype). For example,
+        a 4096 x 4096 ``float32`` image input with ``float64``
+        ``error`` and ``float32`` ``convolved_data`` arrays caches
+        about 285 MB. Floating-point arrays of at most 4 bytes per
+        value that are not native C-contiguous ``float32`` arrays
+        (e.g., big-endian ``float32`` data read from a FITS file, or
+        ``float16`` arrays) are converted to ``float32`` copies, which
+        need 4 bytes per pixel each.
 
         Calling this method is worthwhile when all of the following are
         true:
 
-        * The image is large and the inputs are not C-contiguous
-          ``float64`` arrays, so the cache is a significant amount of
-          memory.
+        * The image is large and working copies are needed (see above),
+          so the cache is a significant amount of memory.
 
         * All of the desired properties have been calculated, e.g.,
           after calling
@@ -1408,11 +1429,11 @@ class SourceCatalog:
         which costs a full-image copy of each input and does not lower
         the peak memory.
 
-        Inputting C-contiguous ``float64`` arrays avoids the copies
-        (the inputs are then used directly), but this reduces the total
-        memory only if the caller does not also keep the original
-        lower-precision arrays. The results do not depend on the input
-        dtype, because all calculations are performed in ``float64``.
+        The simplest way to avoid the working copies is to input all
+        of the image arrays as C-contiguous arrays with the same
+        ``float32`` or ``float64`` dtype. The results do not depend on
+        the input dtype, because all calculations are performed in
+        ``float64``.
 
         Examples
         --------
@@ -2036,11 +2057,12 @@ class SourceCatalog:
             pixel_flags[~np.isfinite(arrays['error'])] |= 4
 
         # Gather the pixel flags of every segment pixel (the all-zero
-        # mask excludes nothing) and reduce them per source
+        # mask excludes nothing) and reduce them per source. The flag
+        # values are exact in float32, which halves the temporary image.
         packed, offsets, counts = self._threaded_batch(
             batch_segment_gather, self._batch_bbox_args(),
             merge=_concatenate_segment_gathers,
-            values=pixel_flags.astype(np.float64),
+            values=pixel_flags.astype(np.float32),
             mask=np.zeros(pixel_flags.shape, dtype=np.uint8),
             segm=arrays['segm'])
 
@@ -3855,7 +3877,8 @@ class SourceCatalog:
         else:
             xcen = np.atleast_1d(self.x_centroid)
             ycen = np.atleast_1d(self.y_centroid)
-            bkg = map_coordinates(self._background, (ycen, xcen), order=1,
+            bkg = map_coordinates(self._background, (ycen, xcen),
+                                  output=np.float64, order=1,
                                   mode='nearest')
 
             mask = np.isfinite(xcen) & np.isfinite(ycen)

@@ -17,6 +17,14 @@ creating per-source mask arrays or making per-source Python calls.
 The main source loop runs without the GIL and uses no global mutable
 state, so this module is safe to use from multiple threads, including on
 free-threaded Python builds.
+
+The image arrays are declared with fused types, so the drivers read
+C-contiguous float32 or float64 images and int32 or intp segmentation
+images directly, without the caller making full-image copies. All of
+the images passed in one call must have the same dtype. Each pixel
+value is converted to double as it is read, which is exact, and all
+arithmetic is performed in double precision, so the results do not
+depend on the input dtype.
 """
 
 import numpy as np
@@ -30,7 +38,7 @@ from photutils.aperture._batch_overlap cimport (
     _classify_seg_pixel, _ellipse_pixel_frac, _elliptical_annulus_pixel_frac,
     _polygon_pixel_frac, _presize_packed_offsets, _rect_pixel_frac,
     _rectangular_annulus_pixel_frac, _resolve_seg_pixel, _round_half_away,
-    _seg_method_active, _source_grid_setup)
+    _seg_method_active, _source_grid_setup, real_t, seg_t)
 from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
                                                   polygon_work_partition,
                                                   polygon_work_size)
@@ -483,13 +491,13 @@ cdef inline void _sigma_clip_bounds(double *s, Py_ssize_t n,
     out_max[0] = maxv
 
 
-def batch_aperture_gather(const double[:, ::1] data,
+def batch_aperture_gather(const real_t[:, ::1] data,
                           const unsigned char[:, ::1] mask,
                           const double[:, ::1] positions, int shape_code,
                           const double[::1] params, double ext_x,
                           double ext_y, double off_x, double off_y,
                           const double[::1] local_bkg=None,
-                          const Py_ssize_t[:, ::1] segmentation=None,
+                          const seg_t[:, ::1] segmentation=None,
                           const Py_ssize_t[::1] labels=None,
                           int seg_method=0):
     """
@@ -516,7 +524,7 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     Parameters
     ----------
-    data : 2D ndarray of float64 (C-contiguous)
+    data : 2D ndarray of float32 or float64 (C-contiguous)
         The data array (background not yet subtracted).
 
     mask : 2D ndarray of uint8 (C-contiguous) or `None`
@@ -546,7 +554,7 @@ def batch_aperture_gather(const double[:, ::1] data,
         The per-source local background to subtract. If `None`, no
         background is subtracted.
 
-    segmentation : 2D ndarray of intp (C-contiguous) or `None`
+    segmentation : 2D ndarray of int32 or intp (C-contiguous) or `None`
         The segmentation image for segmentation-based masking.
 
     labels : 1D ndarray of intp (C-contiguous) or `None`
@@ -618,7 +626,7 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     # Base pointers for the C-contiguous segmentation and mask planes,
     # used by the shared per-pixel segmentation helper
-    cdef const Py_ssize_t *seg_ptr = NULL
+    cdef const seg_t *seg_ptr = NULL
     cdef const unsigned char *mask_ptr = NULL
     if has_seg:
         seg_ptr = &segmentation[0, 0]

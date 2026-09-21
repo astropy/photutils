@@ -900,22 +900,31 @@ Memory Usage
 ------------
 
 Most `~photutils.segmentation.SourceCatalog` properties are calculated
-for all sources at once in compiled code. That code reads C-contiguous
-``float64`` copies of the input ``data``, ``error``, ``background``, and
-``convolved_data`` arrays and an integer copy of the segmentation image.
-The copies are created the first time they are needed and are cached
-for the lifetime of the catalog, so that they are shared by all of the
-source properties. Inputs that are already C-contiguous ``float64``
-arrays are used directly, without a copy.
+for all sources at once in compiled code. That code reads the input
+``data``, ``error``, ``background``, and ``convolved_data`` arrays and
+the segmentation image directly, without making copies, when:
+
+* the image arrays are C-contiguous and are all ``float32`` or all
+  ``float64``, and
+
+* the segmentation array is C-contiguous ``int32`` or `numpy.intp`
+  (e.g., as returned by :func:`~photutils.segmentation.detect_sources`).
 
 All calculations are performed in ``float64`` regardless of the input
 dtype, so ``float32`` inputs give the same results as the same values
-input as ``float64``. However, each cached copy of a ``float32`` array
-is twice the size of the input. For example, a 4096 x 4096 ``float32``
-image input with ``error`` and ``convolved_data`` arrays caches about
-550 MB.
+input as ``float64``, while using half the memory. For a 4088 x 4088
+``float32`` image with ``error`` and ``convolved_data`` arrays and about
+4600 sources, the catalog then holds about 50 MB of working memory (a 1
+byte per pixel mask and the per-source results).
 
-If memory is a concern, call the
+If the image arrays have different dtypes from each other (e.g.,
+``float32`` data with a ``float64`` error array), or another dtype
+such as an integer dtype, they are converted to ``float64`` working
+copies that need 8 bytes per pixel each. The copies are created the
+first time they are needed and are cached for the lifetime of the
+catalog, so that they are shared by all of the source properties.
+The simplest way to avoid them is to input all of the image arrays
+with the same dtype. Otherwise, if memory is a concern, call the
 :meth:`~photutils.segmentation.SourceCatalog.release_cache` method after
 calculating the properties that you need::
 

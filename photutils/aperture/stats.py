@@ -35,6 +35,7 @@ from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_sigma_clip_sum,
                                              batch_sort_values)
 from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
+                                        batch_image_arrays,
                                         batch_inputs_supported,
                                         batch_mask_plane,
                                         batch_segmentation_arrays,
@@ -380,11 +381,12 @@ class ApertureStats:
     The calculated statistics are always float64, regardless of the
     input ``data`` dtype (`~astropy.units.Quantity` values with float64
     dtype if the input ``data`` has units). The compiled code reads
-    C-contiguous float64 ``data`` and ``error`` arrays. Inputs that are
-    already C-contiguous float64 arrays are used without a copy. Other
-    inputs (e.g., float32 arrays) are copied, and the copies are kept
-    for the lifetime of the `ApertureStats` object. They are freed when
-    the object is deleted or goes out of scope.
+    C-contiguous ``data`` and ``error`` arrays directly, without a
+    copy, when they are both float32 or both float64 (or when ``data``
+    is float32 or float64 and no ``error`` is input). Otherwise they
+    are converted to float64 copies, which are kept for the lifetime of
+    the `ApertureStats` object. The results do not depend on the input
+    dtype, because all calculations are performed in float64.
 
     The pixel values within the apertures are gathered into temporary
     buffers. When the input contains many or large apertures, the
@@ -1010,10 +1012,9 @@ class ApertureStats:
         ext_x, ext_y = aper._xy_extents
         off_x, off_y = aper._xy_bbox_offset
 
-        if error is not None:
-            error = np.ascontiguousarray(error, dtype=np.float64)
+        data, error = batch_image_arrays(data, error)
 
-        return (np.ascontiguousarray(data, dtype=np.float64), error, mask,
+        return (data, error, mask,
                 np.ascontiguousarray(aper._positions, dtype=np.float64),
                 shape_code, np.array(params, dtype=np.float64),
                 float(ext_x), float(ext_y), float(off_x), float(off_y),
@@ -1884,8 +1885,10 @@ class ApertureStats:
                     user_mask = None
                     data_mask = nonfinite_mask
 
+                # The variance is calculated in float64, as it is in
+                # the compiled code
                 error_cutout = (None if self._error is None
-                                else self._error[slc_large])
+                                else self._error[slc_large].astype(float))
 
                 # Apply segmentation-based masking and/or symmetric
                 # neighbor correction
@@ -2124,7 +2127,8 @@ class ApertureStats:
                 # including NaN for masked non-finite error values. The
                 # center-method weights are 0 or 1, so squaring them is
                 # not needed.
-                variance_cutout = error[slc] ** 2 * weight_cutout
+                variance_cutout = (error[slc].astype(float) ** 2
+                                   * weight_cutout)
 
             data_cutouts.append(data_cutout)
             variance_cutouts.append(variance_cutout)
