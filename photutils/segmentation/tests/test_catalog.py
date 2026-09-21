@@ -4,6 +4,7 @@ Tests for the catalog module.
 """
 
 import threading
+import tracemalloc
 from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 from unittest.mock import patch
@@ -2630,6 +2631,77 @@ def test_centroid_win_nan_when_flux_radius_nan(gauss_101_data):
 
         cwin = cat.centroid_win
         assert np.all(np.isnan(cwin))
+
+
+@pytest.fixture
+def float32_catalog_inputs():
+    """
+    Float32 data, error, and convolved data with three sources on a
+    256x256 grid.
+
+    Returns ``(data, segm, error, convolved_data)``.
+    """
+    yy, xx = np.mgrid[0:256, 0:256]
+    data = (Gaussian2D(100, 60, 60, 4, 4)(xx, yy)
+            + Gaussian2D(80, 180, 90, 5, 3)(xx, yy)
+            + Gaussian2D(60, 120, 200, 3, 3)(xx, yy)).astype(np.float32)
+    error = np.full(data.shape, 0.5, dtype=np.float32)
+    kernel = make_2dgaussian_kernel(2.0, size=5)
+    convolved_data = convolve(data, kernel).astype(np.float32)
+    segm = detect_sources(convolved_data, 5.0, n_pixels=5)
+    return data, segm, error, convolved_data
+
+
+def test_release_cache_frees_memory(float32_catalog_inputs):
+    """
+    Test that release_cache frees the full-image working arrays,
+    including when a sliced catalog is still alive.
+    """
+    data, segm, error, convolved_data = float32_catalog_inputs
+    cat = SourceCatalog(data, segm, error=error,
+                        convolved_data=convolved_data)
+
+    tracemalloc.start()
+    try:
+        # The float64 data, error, and convolved data working copies
+        # plus the segmentation copy are built on first use
+        _ = cat.centroid
+        _ = cat.segment_flux_err
+        sub = cat[0:2]
+        _ = sub.kron_flux
+        used = tracemalloc.get_traced_memory()[0]
+        cat.release_cache()
+        freed = used - tracemalloc.get_traced_memory()[0]
+    finally:
+        tracemalloc.stop()
+
+    assert freed >= 3 * data.size * 8
+    assert sub.n_labels == 2
+
+
+def test_release_cache_results_unchanged(float32_catalog_inputs):
+    """
+    Test that properties computed before and after release_cache match
+    those of a catalog whose cache was never released.
+    """
+    data, segm, error, convolved_data = float32_catalog_inputs
+    kwargs = {'error': error, 'convolved_data': convolved_data}
+    cat_ref = SourceCatalog(data, segm, **kwargs)
+    cat = SourceCatalog(data, segm, **kwargs)
+
+    centroid = cat.centroid
+    assert cat.release_cache() is None
+    assert_equal(cat.centroid, centroid)
+
+    # New properties rebuild the working arrays on demand
+    assert_equal(cat.centroid, cat_ref.centroid)
+    assert_equal(cat.segment_flux_err, cat_ref.segment_flux_err)
+    assert_equal(cat.kron_flux, cat_ref.kron_flux)
+
+    # Releasing a catalog that has nothing cached is allowed
+    cat.release_cache()
+    cat.release_cache()
+    assert_equal(cat.kron_flux_err, cat_ref.kron_flux_err)
 
 
 def test_centroid_win_oom_guard(gauss_101_catalog):

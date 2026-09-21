@@ -1345,6 +1345,32 @@ class SourceCatalog:
         """
         return deepcopy(self)
 
+    def release_cache(self):
+        """
+        Release the cached full-image working arrays.
+
+        The compiled routines that calculate the source properties
+        operate on C-contiguous ``float64`` copies of the input
+        ``data``, ``error``, ``background``, and ``convolved_data``
+        arrays and an integer copy of the segmentation image. The copies
+        are created the first time they are needed and are then cached
+        for the lifetime of the catalog, so that they are shared by
+        all of the source properties. For inputs that are not already
+        C-contiguous ``float64`` arrays (e.g., ``float32`` data), the
+        cache can hold several times the memory of the input data.
+
+        Call this method after calculating the desired properties to
+        free that memory. Source properties that were already calculated
+        are unaffected. The working arrays are recreated on demand if
+        another property is later requested.
+
+        The cache is shared with catalogs created by slicing this
+        catalog, so it is also released for them. A catalog input as the
+        ``detection_catalog`` has its own cache, which is not released
+        by this method.
+        """
+        self._batch_arrays_cache.clear()
+
     @property
     def custom_properties(self):
         """

@@ -373,6 +373,12 @@ New Features
     holds above the saddle level where it separates from its neighbors.
     [#2411]
 
+  - Added a ``release_cache`` method to ``SourceCatalog`` to free the
+    cached full-image working arrays used by the compiled code. For
+    input arrays that are not C-contiguous ``float64`` arrays (e.g.,
+    ``float32`` data), the cache can hold several times the memory of
+    the input data. [#2446]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
