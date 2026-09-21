@@ -61,7 +61,7 @@ New Features
 
   - Significantly improved the performance of aperture photometry,
     typically by factors of ~2-25 depending on the aperture shape and
-    overlap method, by computing all sources in a single call into
+    overlap method by computing all sources in a single call into
     compiled code. The computation also releases the GIL and uses no
     global state, so aperture photometry can now be parallelized across
     threads, including on free-threaded Python builds. [#2292]
@@ -85,7 +85,7 @@ New Features
 
   - Significantly improved the performance of ``ApertureStats``,
     typically by factors of ~5-15 depending on the requested
-    properties, by computing all sources in a single call into compiled
+    properties by computing all sources in a single call into compiled
     code. Sigma-clipped statistics are also computed in compiled code
     for the common ``SigmaClip`` configurations. [#2314]
 
@@ -172,7 +172,7 @@ New Features
 
   - Improved the performance of the background and background RMS
     estimator classes when called with ``axis=None`` (the default)
-    and a supported ``sigma_clip``, by routing the sigma clipping
+    and a supported ``sigma_clip`` by routing the sigma clipping
     through astropy's fast C implementation. [#2364]
 
   - Significantly improved the performance of ``LocalBackground``
@@ -331,7 +331,7 @@ New Features
     ``segment_flux``, ``segment_area``, ``area``, and ``min_value``),
     and the positions of the minimum and maximum pixel values (e.g.,
     ``min_value_index`` and ``max_value_xindex``),
-    typically by factors of ~3-20 depending on the property, by
+    typically by factors of ~3-20 depending on the property by
     computing all sources in a single call into compiled code. The
     ``flags`` attribute and the default ``to_table()`` output are about
     5 times faster for large catalogs. No property displays a progress
