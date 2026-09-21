@@ -7,6 +7,7 @@ import inspect
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy, deepcopy
 from functools import cached_property
+from itertools import pairwise
 from typing import NamedTuple
 
 import astropy.units as u
@@ -72,6 +73,62 @@ __all__ = ['ApertureStats']
 # This must match ``astropy.stats.mad_std`` and the value in
 # ``photutils.aperture._batch_stats``.
 _MAD_STD_SCALE = 1.482602218505602
+
+# The maximum total number of aperture bounding-box pixels whose packed
+# pixel buffers are held in memory at once by the fast batch path. The
+# packed buffers are sized by the bounding-box areas and need up to 40
+# bytes per pixel (while sigma clipping), so this budget corresponds to
+# about 40 MB. When the input apertures exceed this budget, the sources
+# are processed in blocks and only the per-source results are kept (see
+# `ApertureStats._block_edges`).
+_BLOCK_MAX_PIXELS = 2**20
+
+# The packed-buffer reduction kernels available to
+# `ApertureStats._block_reduce`, as ``name: (kernel, buffers)``.
+# The kernel operates on the packed ``'values'``, the per-source
+# ``'sorted'`` values, or the ``'xy'`` values and cutout coordinates.
+# The order satisfies ``_BLOCK_DEPENDENCIES``.
+_BLOCK_REDUCTIONS = {
+    'minmax': (batch_minmax, 'values'),
+    'mean_var': (batch_mean_var, 'values'),
+    'gini': (batch_gini, 'values'),
+    'order_stats': (batch_order_stats, 'sorted'),
+    'mad': (batch_mad, 'sorted'),
+    'biweight': (batch_biweight, 'sorted'),
+    'moments': (batch_moments, 'xy'),
+    'moments_central': (batch_moments, 'xy'),
+}
+
+# The reductions whose per-source results are inputs to another
+# reduction. The biweight kernel needs the median and MAD, and the
+# central moments need the centroid from the raw moments.
+_BLOCK_DEPENDENCIES = {
+    'biweight': ('order_stats', 'mad'),
+    'moments_central': ('moments',),
+}
+
+# The reductions needed by the `ApertureStats` properties, used by
+# `ApertureStats.to_table` to calculate all of its columns in a single
+# pass over the blocks. A property missing from this mapping is still
+# calculated correctly, in its own pass.
+_MOMENTS_COLUMNS = ('moments', 'cutout_centroid', 'centroid', 'x_centroid',
+                    'y_centroid', 'sky_centroid', 'sky_centroid_icrs')
+_MOMENTS_CENTRAL_COLUMNS = (
+    'moments_central', 'covariance', 'covariance_eigvals', 'covariance_xx',
+    'covariance_xy', 'covariance_yy', 'eccentricity', 'ellipse_cxx',
+    'ellipse_cxy', 'ellipse_cyy', 'ellipticity', 'elongation', 'flags',
+    'fwhm', 'inertia_tensor', 'orientation', 'sky_orientation',
+    'semimajor_axis', 'semiminor_axis')
+_BLOCK_COLUMN_REDUCTIONS = {
+    'median': 'order_stats',
+    'mode': 'order_stats',
+    'mad_std': 'mad',
+    'biweight_location': 'biweight',
+    'biweight_midvariance': 'biweight',
+    'gini': 'gini',
+    **dict.fromkeys(_MOMENTS_COLUMNS, 'moments'),
+    **dict.fromkeys(_MOMENTS_CENTRAL_COLUMNS, 'moments_central'),
+}
 
 
 # Remove in 4.0
@@ -375,7 +432,8 @@ class ApertureStats:
     _NON_SLICEABLE_CACHES = frozenset({
         '_batch_inputs', '_fast_gather', '_fast_sum', '_sorted_values',
         '_order_stats', '_minmax', '_mean_var', '_mad', '_biweight',
-        '_gini', '_fast_cutouts_center'})
+        '_gini', '_fast_cutouts_center', '_block_edges', '_block_cache',
+        '_center_gather_meta'})
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
@@ -434,6 +492,7 @@ class ApertureStats:
             msg = 'n_threads must be a positive integer'
             raise ValueError(msg)
         self.n_threads = int(n_threads)
+        self._block_max_pixels = _BLOCK_MAX_PIXELS
 
         self._local_bkg = np.zeros(self.n_positions)  # no local bkg
         if local_bkg is not None:
@@ -539,8 +598,9 @@ class ApertureStats:
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
                      'sigma_clip', 'sum_method', 'subpixels', 'ddof',
-                     'n_threads', 'default_columns', 'meta',
-                     '_segmentation', 'segmentation_image', 'mask_method')
+                     'n_threads', '_block_max_pixels', 'default_columns',
+                     'meta', '_segmentation', 'segmentation_image',
+                     'mask_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -834,6 +894,13 @@ class ApertureStats:
 
         tbl.meta.update(self.meta)  # keep tbl.meta type
 
+        if self._block_edges is not None:
+            # Calculate the reductions needed by all of the columns in a
+            # single pass over the blocks.
+            self._block_reduce(_BLOCK_COLUMN_REDUCTIONS[column]
+                               for column in table_columns
+                               if column in _BLOCK_COLUMN_REDUCTIONS)
+
         for column in table_columns:
             values = getattr(self, column)
 
@@ -973,12 +1040,22 @@ class ApertureStats:
         that are gathered (and sigma clipped) concurrently and then
         merged (see `_merge_center_gathers`).
         """
-        inputs = self._batch_inputs
-        if inputs is None:
+        if self._batch_inputs is None:
             return None
+        return self._gather_center(slice(None))
+
+    def _gather_center(self, index):
+        """
+        Gather (and sigma clip) the packed "center"-method buffers for
+        the sources selected by the slice ``index``.
+
+        See `_fast_gather` for the returned `_BatchGather`.
+        """
         (data, _error, mask, positions, shape_code, params, ext_x, ext_y,
          off_x, off_y, _sum_use_exact, _sum_subpixels, local_bkg, seg_arr,
-         labels_arr, seg_code, clip_spec) = inputs
+         labels_arr, seg_code, clip_spec) = self._batch_inputs
+        positions, local_bkg, labels_arr = self._index_sources(
+            index, positions, local_bkg, labels_arr)
 
         def gather_chunk(pos, bkg, labels):
             (values, lx, ly, starts, counts, overlap,
@@ -1030,12 +1107,27 @@ class ApertureStats:
         merged. The merged result keeps only the flat per-source outputs
         (see `_merge_sum_gathers`).
         """
-        inputs = self._batch_inputs
-        if inputs is None:
+        if self._batch_inputs is None:
             return None
+        edges = self._block_edges
+        if edges is None:
+            return self._gather_sum(slice(None))
+        # Only the flat per-source outputs are kept from each block
+        return self._merge_sum_gathers(
+            [self._gather_sum(slice(i0, i1)) for i0, i1 in pairwise(edges)])
+
+    def _gather_sum(self, index):
+        """
+        Gather (and sigma clip) the ``sum_method`` aperture sums for the
+        sources selected by the slice ``index``.
+
+        See `_fast_sum` for the returned `_BatchGather`.
+        """
         (data, error, mask, positions, shape_code, params, ext_x, ext_y,
          off_x, off_y, sum_use_exact, sum_subpixels, local_bkg, seg_arr,
-         labels_arr, seg_code, clip_spec) = inputs
+         labels_arr, seg_code, clip_spec) = self._batch_inputs
+        positions, local_bkg, labels_arr = self._index_sources(
+            index, positions, local_bkg, labels_arr)
 
         emit_sum = 1 if clip_spec is not None else 0
 
@@ -1069,6 +1161,200 @@ class ApertureStats:
         with ThreadPoolExecutor(max_workers=len(chunks[0])) as executor:
             gathers = list(executor.map(sum_chunk, *chunks))
         return self._merge_sum_gathers(gathers)
+
+    @staticmethod
+    def _index_sources(index, positions, local_bkg, labels_arr):
+        """
+        Apply the slice ``index`` to the per-source batch-driver inputs.
+
+        Row slices of the C-contiguous input arrays are themselves
+        C-contiguous, so they can be passed directly to the Cython
+        drivers.
+        """
+        if labels_arr is not None:
+            labels_arr = labels_arr[index]
+        return positions[index], local_bkg[index], labels_arr
+
+    @cached_property
+    def _block_edges(self):
+        """
+        The source-index edges of the blocks used to bound the memory of
+        the fast batch path, or `None`.
+
+        The packed gather buffers hold every pixel of every aperture,
+        so their size grows with the number of sources. When the total
+        aperture bounding-box area (clipped to the data) exceeds the
+        ``_BLOCK_MAX_PIXELS`` budget, the sources are divided into
+        consecutive blocks that each fit the budget (a single source
+        larger than the budget gets its own block). The blocks are then
+        gathered, reduced to per-source results, and discarded one at a
+        time (see `_block_reduce`), so the packed buffers for all of the
+        sources are never held at once.
+
+        `None` is returned when the fast batch driver is unavailable
+        (see `_batch_inputs`) or when all of the sources fit in a single
+        block, in which case the packed buffers are gathered once and
+        cached (see `_fast_gather`).
+        """
+        if self._batch_inputs is None:
+            return None
+
+        bounds = self._pixel_aperture._bbox_bounds
+        ny, nx = self._data.shape
+        width = np.minimum(bounds[:, 1], nx) - np.maximum(bounds[:, 0], 0)
+        height = np.minimum(bounds[:, 3], ny) - np.maximum(bounds[:, 2], 0)
+        n_pixels = np.cumsum(np.clip(width, 0, None).astype(np.intp)
+                             * np.clip(height, 0, None))
+        n_sources = len(n_pixels)
+
+        edges = [0]
+        while edges[-1] < n_sources:
+            start = edges[-1]
+            offset = n_pixels[start - 1] if start > 0 else 0
+            end = np.searchsorted(n_pixels,
+                                  offset + self._block_max_pixels,
+                                  side='right')
+            edges.append(max(int(end), start + 1))
+
+        if len(edges) <= 2:
+            return None
+        return edges
+
+    @cached_property
+    def _block_cache(self):
+        """
+        The per-source results calculated by `_block_reduce`, keyed by
+        reduction name.
+        """
+        return {}
+
+    def _block_reduce(self, names):
+        """
+        Calculate the per-source reductions ``names`` of the
+        packed center buffers, block by block, and store them in
+        `_block_cache`.
+
+        This is used in place of the cached `_fast_gather` buffers when
+        `_block_edges` is not `None`. For each block of sources, the
+        packed buffers are gathered (and sigma clipped), reduced, and
+        then discarded, so the peak memory is set by the block size
+        instead of by the number of sources.
+
+        Gathering is the expensive step, so each pass calculates all
+        of the requested reductions together with the inexpensive ones
+        that are commonly requested later. These are the mean and
+        variance, the pixel counts and flags, and either the order
+        statistics (when the sorted values are available) or the minimum
+        and maximum. Reductions that depend on other reductions (see
+        ``_BLOCK_DEPENDENCIES``) are calculated from the values of the
+        same block.
+
+        Parameters
+        ----------
+        names : iterable of str
+            Keys of ``_BLOCK_REDUCTIONS``. The ``'meta'`` result, the
+            ``(counts, overlap, flag_counts)`` tuple, is always
+            calculated.
+        """
+        cache = self._block_cache
+        names = set(names) | {'mean_var'}
+        for key in _BLOCK_REDUCTIONS:  # in dependency order
+            if key in names:
+                names.update(_BLOCK_DEPENDENCIES.get(key, ()))
+
+        # Sigma clipping returns the sorted surviving values.
+        clipped = self._batch_inputs[-1] is not None
+        need_sorted = any(_BLOCK_REDUCTIONS[key][1] == 'sorted'
+                          for key in names - cache.keys())
+        names.add('order_stats' if clipped or need_sorted else 'minmax')
+        names = [key for key in _BLOCK_REDUCTIONS
+                 if key in names and key not in cache]
+
+        parts = {key: [] for key in names}
+        meta_parts = []
+        for i0, i1 in pairwise(self._block_edges):
+            gather = self._gather_center(slice(i0, i1))
+            starts, counts = gather.starts, gather.counts
+            meta_parts.append((counts, gather.overlap, gather.flag_counts))
+
+            sorted_values = gather.sorted_values
+            if sorted_values is None and need_sorted:
+                sorted_values = self._threaded_reduction(
+                    batch_sort_values, (gather.values,), starts, counts)
+            buffers = {
+                'values': (gather.values,),
+                'sorted': (sorted_values,),
+                'xy': (gather.values, gather.local_x, gather.local_y)}
+
+            block = {}
+
+            def block_value(key, i0=i0, i1=i1, block=block):
+                # A dependency is either calculated in this pass or was
+                # cached for all of the sources by an earlier pass.
+                if key in block:
+                    return block[key]
+                value = cache[key]
+                if isinstance(value, tuple):
+                    return tuple(arr[i0:i1] for arr in value)
+                return value[i0:i1]
+
+            for key in names:
+                func, kind = _BLOCK_REDUCTIONS[key]
+                per_source = ()
+                if key == 'biweight':
+                    per_source = (block_value('order_stats')[2],
+                                  block_value('mad'))
+                elif key == 'moments':
+                    zeros = np.zeros(i1 - i0)
+                    per_source = (zeros, zeros)
+                elif key == 'moments_central':
+                    # No-overlap sources have NaN moments and centroids
+                    # (see the moments property)
+                    moments = block_value('moments').copy()
+                    moments[~np.asarray(gather.overlap, dtype=bool)] = np.nan
+                    centroid = centroid_from_moments(moments)
+                    per_source = (np.ascontiguousarray(centroid[:, 0]),
+                                  np.ascontiguousarray(centroid[:, 1]))
+                block[key] = self._threaded_reduction(
+                    func, buffers[kind], starts, counts,
+                    per_source=per_source)
+                parts[key].append(block[key])
+
+            # Free this block's packed buffers before gathering the next
+            del gather, sorted_values, buffers, block
+
+        parts['meta'] = meta_parts
+        for key, results in parts.items():
+            if isinstance(results[0], tuple):
+                cache[key] = tuple(np.concatenate(arrays)
+                                   for arrays in zip(*results, strict=True))
+            else:
+                cache[key] = np.concatenate(results)
+
+    def _block_result(self, name):
+        """
+        Return the per-source reduction ``name`` (a key of
+        ``_BLOCK_REDUCTIONS`` or ``'meta'``), calculating it block by
+        block if needed (see `_block_reduce`).
+        """
+        cache = self._block_cache
+        if name not in cache:
+            self._block_reduce(() if name == 'meta' else (name,))
+        return cache[name]
+
+    @cached_property
+    def _center_gather_meta(self):
+        """
+        The per-source ``(counts, overlap, flag_counts)`` arrays of the
+        center-value gather, or `None` when the fast path is
+        unavailable.
+        """
+        if self._block_edges is not None:
+            return self._block_result('meta')
+        gather = self._fast_gather
+        if gather is None:
+            return None
+        return gather.counts, gather.overlap, gather.flag_counts
 
     def _batch_chunks(self, positions, local_bkg, labels_arr):
         """
@@ -1318,6 +1604,8 @@ class ApertureStats:
         Reduced from the cached sorted buffer (see `_sorted_values`).
         `None` when the fast path is unavailable.
         """
+        if self._block_edges is not None:
+            return self._block_result('order_stats')
         sorted_values = self._sorted_values
         if sorted_values is None:
             return None
@@ -1336,6 +1624,11 @@ class ApertureStats:
         values define the extremes, so the order statistics are used
         instead. `None` when the fast path is unavailable.
         """
+        if self._block_edges is not None:
+            if self._batch_inputs[-1] is not None:  # sigma clipped
+                vmin, vmax, _ = self._order_stats
+                return vmin, vmax
+            return self._block_result('minmax')
         gather = self._fast_gather
         if gather is None:
             return None
@@ -1354,6 +1647,8 @@ class ApertureStats:
         directly from the packed center buffer (no sort required).
         `None` when the fast path is unavailable.
         """
+        if self._block_edges is not None:
+            return self._block_result('mean_var')
         gather = self._fast_gather
         if gather is None:
             return None
@@ -1368,6 +1663,8 @@ class ApertureStats:
         Reduced from the cached sorted buffer (see `_sorted_values`).
         `None` when the fast path is unavailable.
         """
+        if self._block_edges is not None:
+            return self._block_result('mad')
         sorted_values = self._sorted_values
         if sorted_values is None:
             return None
@@ -1384,6 +1681,8 @@ class ApertureStats:
         and unscaled MAD (`_mad`). `None` when the fast path is
         unavailable.
         """
+        if self._block_edges is not None:
+            return self._block_result('biweight')
         sorted_values = self._sorted_values
         if sorted_values is None:
             return None
@@ -1401,6 +1700,8 @@ class ApertureStats:
         Computed from the packed center buffer (the absolute values are
         sorted internally). `None` when the fast path is unavailable.
         """
+        if self._block_edges is not None:
+            return self._block_result('gini')
         gather = self._fast_gather
         if gather is None:
             return None
@@ -2045,10 +2346,10 @@ class ApertureStats:
             footprint.
         """
         if footprint == 'center':
-            gather = self._fast_gather
-            if gather is not None:
-                return (gather.flag_counts, np.asarray(gather.overlap),
-                        np.asarray(gather.counts))
+            meta = self._center_gather_meta
+            if meta is not None:
+                counts, overlap, flag_counts = meta
+                return flag_counts, np.asarray(overlap), np.asarray(counts)
             cutouts = self._aperture_cutouts_center
         else:
             gather = self._fast_sum
@@ -2312,14 +2613,18 @@ class ApertureStats:
         """
         Spatial moments up to 3rd order of the source.
         """
-        gather = self._fast_gather
-        if gather is not None:
-            overlap = gather.overlap
-            zeros = np.zeros(self.n_positions)
-            mom = self._threaded_reduction(
-                batch_moments,
-                (gather.values, gather.local_x, gather.local_y),
-                gather.starts, gather.counts, per_source=(zeros, zeros))
+        meta = self._center_gather_meta
+        if meta is not None:
+            overlap = meta[1]
+            if self._block_edges is not None:
+                mom = self._block_result('moments').copy()
+            else:
+                zeros = np.zeros(self.n_positions)
+                gather = self._fast_gather
+                mom = self._threaded_reduction(
+                    batch_moments,
+                    (gather.values, gather.local_x, gather.local_y),
+                    gather.starts, gather.counts, per_source=(zeros, zeros))
             # No-overlap sources have NaN moments (the mask-based path
             # uses an all-NaN cutout). All-masked overlapping sources
             # have zero moments (an all-zero cutout).
@@ -2335,25 +2640,30 @@ class ApertureStats:
         Central moments (translation invariant) of the source up to 3rd
         order.
         """
-        cutout_centroid = self._array('cutout_centroid')
-
-        gather = self._fast_gather
-        if gather is not None:
-            cen_x = np.ascontiguousarray(cutout_centroid[:, 0])
-            cen_y = np.ascontiguousarray(cutout_centroid[:, 1])
-            mom = self._threaded_reduction(
-                batch_moments,
-                (gather.values, gather.local_x, gather.local_y),
-                gather.starts, gather.counts, per_source=(cen_x, cen_y))
+        meta = self._center_gather_meta
+        if meta is not None:
+            if self._block_edges is not None:
+                mom = self._block_result('moments_central').copy()
+            else:
+                cutout_centroid = self._array('cutout_centroid')
+                cen_x = np.ascontiguousarray(cutout_centroid[:, 0])
+                cen_y = np.ascontiguousarray(cutout_centroid[:, 1])
+                gather = self._fast_gather
+                mom = self._threaded_reduction(
+                    batch_moments,
+                    (gather.values, gather.local_x, gather.local_y),
+                    gather.starts, gather.counts, per_source=(cen_x, cen_y))
             # Empty sources (no overlap or fully masked) have a NaN
             # centroid, so their central moments are NaN (matching the
             # mask-based path). The zeroth central moment does not
             # depend on the centroid, so it equals the zeroth raw
             # moment (zero for a fully masked source).
-            empty = gather.counts == 0
+            empty = meta[0] == 0
             mom[empty] = np.nan
             mom[empty, 0, 0] = self._array('moments')[empty, 0, 0]
             return mom
+
+        cutout_centroid = self._array('cutout_centroid')
 
         return np.array([image_moments(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
@@ -2518,9 +2828,9 @@ class ApertureStats:
         The result is a `~numpy.ndarray` of per-source pixel counts.
         Sources with no unmasked pixels are set to NaN.
         """
-        gather = self._fast_gather
-        if gather is not None:
-            counts = gather.counts
+        meta = self._center_gather_meta
+        if meta is not None:
+            counts = meta[0]
             n_pixels = counts.astype(float)
             n_pixels[counts == 0] = np.nan
             return n_pixels

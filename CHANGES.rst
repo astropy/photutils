@@ -88,7 +88,7 @@ New Features
     typically by factors of ~5-15 depending on the requested
     properties by computing all sources in a single call into compiled
     code. Sigma-clipped statistics are also computed in compiled code
-    for the common ``SigmaClip`` configurations. [#2314]
+    for the common ``SigmaClip`` configurations. [#2314, #2446]
 
   - Added ``mean_err`` and ``median_err`` properties to
     ``ApertureStats`` providing the standard error of the mean and the
