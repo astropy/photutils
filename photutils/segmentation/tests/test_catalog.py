@@ -2750,7 +2750,8 @@ class TestInputDtypes:
                 results[name] = value
         return results
 
-    @pytest.mark.parametrize('segm_dtype', [np.int16, np.int32, np.intp])
+    @pytest.mark.parametrize('segm_dtype',
+                             [np.int16, np.int32, '>i4', np.intp])
     @pytest.mark.parametrize('dtype', [np.float32, np.float64])
     def test_identical_results(self, dtype, segm_dtype):
         """
@@ -2852,6 +2853,30 @@ class TestInputDtypes:
         # images used for the flags need about 7 bytes per pixel.
         assert current - start < 2 * data.size
         assert peak - start < 8 * data.size
+
+    def test_big_endian_segmentation_image(self):
+        """
+        Test that a big-endian int32 segmentation image (e.g., read from
+        a FITS file) is converted to a native int32 copy, not an intp
+        copy.
+        """
+        data, _, _, _, segm = self.make_inputs(size=512)
+        data = data.astype(np.float32)
+        segm = SegmentationImage(segm.data.astype('>i4'))
+        cat = SourceCatalog(data, segm)
+
+        tracemalloc.start()
+        try:
+            start = tracemalloc.get_traced_memory()[0]
+            _ = cat.segment_flux
+            current = tracemalloc.get_traced_memory()[0]
+        finally:
+            tracemalloc.stop()
+
+        # The native int32 copy needs 4 bytes per pixel and the mask
+        # plane 1 byte per pixel. An intp copy would need 8 bytes per
+        # pixel.
+        assert current - start < 6 * data.size
 
 
 def test_centroid_win_oom_guard(gauss_101_catalog):

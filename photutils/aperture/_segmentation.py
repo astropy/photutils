@@ -39,10 +39,12 @@ def batch_segmentation_image(segmentation):
     result : `~numpy.ndarray`
         The C-contiguous array. The drivers read 32-bit (C ``int``) and
         `numpy.intp` arrays directly, so those are returned without a
-        copy if they are already C-contiguous. Any other dtype is
-        converted to `numpy.intp`.
+        copy if they are already C-contiguous. Non-native byte-order
+        arrays of those dtypes (e.g., big-endian int32 data read from a
+        FITS file) are converted to native byte order. Any other dtype
+        is converted to `numpy.intp`.
     """
-    dtype = segmentation.dtype
+    dtype = segmentation.dtype.newbyteorder('=')
     if dtype not in (np.dtype(np.intc), np.dtype(np.intp)):
         dtype = np.intp
     return np.ascontiguousarray(segmentation, dtype=dtype)
