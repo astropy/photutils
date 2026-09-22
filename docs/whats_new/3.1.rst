@@ -60,16 +60,8 @@ angular quantity.
 The following classes can be serialized to and deserialized from
 ASDF files:
 
-* `~photutils.psf.AiryDiskPSF`
-* `~photutils.psf.CircularGaussianPRF`
-* `~photutils.psf.CircularGaussianPSF`
-* `~photutils.psf.CircularGaussianSigmaPRF`
-* `~photutils.psf.GaussianPRF`
-* `~photutils.psf.GaussianPSF`
-* `~photutils.psf.MoffatPSF`
-* `~photutils.psf.GriddedPSFModel`
-* `~photutils.psf.ImagePSF`
-* `~photutils.psf.STDPSFGrid`
+Apertures
+
 * `~photutils.aperture.CircularAnnulus`
 * `~photutils.aperture.CircularAperture`
 * `~photutils.aperture.EllipticalAnnulus`
@@ -84,6 +76,19 @@ ASDF files:
 * `~photutils.aperture.SkyPolygonAperture`
 * `~photutils.aperture.SkyRectangularAnnulus`
 * `~photutils.aperture.SkyRectangularAperture`
+
+PSF Models
+
+* `~photutils.psf.AiryDiskPSF`
+* `~photutils.psf.CircularGaussianPRF`
+* `~photutils.psf.CircularGaussianPSF`
+* `~photutils.psf.CircularGaussianSigmaPRF`
+* `~photutils.psf.GaussianPRF`
+* `~photutils.psf.GaussianPSF`
+* `~photutils.psf.MoffatPSF`
+* `~photutils.psf.GriddedPSFModel`
+* `~photutils.psf.ImagePSF`
+* `~photutils.psf.STDPSFGrid`
 
 See :ref:`asdf` for more details.
 
@@ -349,6 +354,15 @@ during PSF photometry, removing the need for finite-difference
 approximations of the parameter derivatives. This eliminates roughly
 60% of the model evaluations performed during fitting, speeding up PSF
 photometry with these models with no change in the fitted results.
+
+
+``GriddedPSFModel`` Performance Improvements
+============================================
+
+`~photutils.psf.GriddedPSFModel` evaluations are now significantly
+faster, with typical performance improvements of approximately 20–25%.
+The optimizations reduce the overhead of PSF interpolation, improving
+the runtime of PSF photometry workflows.
 
 
 Scalable Source Grouping
@@ -703,28 +717,18 @@ small sources.
 
 A new ``contrast_method`` keyword selects the flux used by the
 deblending contrast criterion. The ``'basin'`` method preserves the
-existing behavior where the contrast fraction is the total flux in
-the source's watershed basin, and below-contrast basins are removed
-iteratively. The new ``'saddle'`` method instead measures the flux
-a source holds above the saddle level where it separates from its
-neighbors, the significance criterion that SourceExtractor applies
-with its ``DEBLEND_MINCONT`` parameter (the threshold levels and the
-assignment of the remaining pixels differ between the two codes). It
-measures the significance of the peak itself, independently of how much
-envelope territory the source would inherit from the watershed, and
-requires only a single watershed pass, so it is never slower and is
-substantially faster when many below-contrast basins would otherwise
-be removed iteratively. The default of `None` currently resolves to
-``'basin'``. The default may change to ``'saddle'`` in version 4.0.
+existing behavior where the contrast fraction is the total flux
+in the source's watershed basin, and below-contrast basins are
+removed iteratively. The new ``'saddle'`` method instead measures
+the flux a source holds above the saddle level where it separates
+from its neighbors. It measures the significance of the peak itself,
+independently of how much envelope territory the source would inherit
+from the watershed, and requires only a single watershed pass, so it is
+never slower and is substantially faster when many below-contrast basins
+would otherwise be removed iteratively. The default of `None` currently
+resolves to ``'basin'``. The default may change to ``'saddle'`` in
+version 4.0.
 
-
-``GriddedPSFModel`` Performance Improvements
-============================================
-
-``GriddedPSFModel`` evaluations are now significantly faster, with
-typical performance improvements of approximately 20–25%. The
-optimizations reduce the overhead of PSF interpolation, improving the
-runtime of PSF photometry workflows.
 
 Photutils Deprecation Warning Class
 ===================================
@@ -738,11 +742,12 @@ within a larger pipeline. Because it is a subclass, existing warning
 filters and ``pytest.warns`` checks for ``AstropyDeprecationWarning``
 continue to work unchanged.
 
+
 More Robust ePSF Building
 =========================
 
-~photutils.psf.EPSFBuilder no longer produces a checkerboard pattern in
-the ePSF when the input stars are heterogeneous. This includes stars
+`~photutils.psf.EPSFBuilder` no longer produces a checkerboard pattern
+in the ePSF when the input stars are heterogeneous. This includes stars
 from exposures with different PSFs, saturated or contaminated cutouts,
 spurious detections, and low signal-to-noise stars. The issue occurred
 when the oversampling factor was greater than one.
@@ -901,8 +906,8 @@ New Deprecations
 ``PixelAperture.do_photometry`` Deprecated
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``PixelAperture.do_photometry`` method is now deprecated
-and will be removed in a future version. Use the new
+The ``PixelAperture.do_photometry`` method is now
+deprecated and will be removed in version 4.0. Use the new
 `~photutils.aperture.AperturePhotometry` class instead.
 
 Deblending ``progress_bar`` and ``n_processes`` Deprecated
@@ -923,8 +928,8 @@ multithreaded deblending instead.
 
 The ``EPSFBuildResult`` class returned by `~photutils.psf.EPSFBuilder`
 has been renamed to `~photutils.psf.EPSFBuildResults`. The old
-``EPSFBuildResult`` name is deprecated and will be removed in a future
-version.
+``EPSFBuildResult`` name is deprecated and will be removed in version
+4.0.
 
 ``ShepardIDWInterpolator.ncoords`` Renamed
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -981,16 +986,16 @@ previous behavior.
 PSF ``decode_flags`` Methods Return a Dictionary
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The :meth:`~photutils.psf.PSFPhotometry.decode_flags` and
-:meth:`~photutils.psf.IterativePSFPhotometry.decode_flags` methods
-now return a dictionary mapping each source id from the results
+The :meth:`photutils.psf.PSFPhotometry.decode_flags` and
+:meth:`photutils.psf.IterativePSFPhotometry.decode_flags` methods
+now return a dictionary mapping each source ID from the results
 table to its list of active flag names (or bit values), instead of a
 positional list of lists. Decoded flags can now be looked up directly
-by source id, which may not be sequential when custom ids are input via
+by source ID, which may not be sequential when custom ids are input via
 ``init_params``, and the result is consistent with the new aperture
 and segmentation ``decode_flags`` methods. Code that iterated over
 the previous list should iterate over the dictionary's ``.values()``
-(or ``.items()`` to also get the source ids). The module-level
+(or ``.items()`` to also get the source IDs). The module-level
 :func:`~photutils.psf.decode_psf_flags` function is unchanged and still
 returns lists.
 
