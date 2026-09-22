@@ -1121,7 +1121,7 @@ class ApertureStats:
         if self._batch_inputs is None:
             return None
         edges = self._block_edges
-        if edges is None:
+        if len(edges) == 2:
             return self._gather_sum(slice(None))
         # Only the flat per-source outputs are kept from each block
         return self._merge_sum_gathers(
@@ -1190,7 +1190,8 @@ class ApertureStats:
     def _block_edges(self):
         """
         The source-index edges of the blocks used to bound the memory of
-        the fast batch path, or `None`.
+        the fast batch path, or `None` when the fast batch driver is
+        unavailable (see `_batch_inputs`).
 
         The packed gather buffers hold every pixel of every aperture,
         so their size grows with the number of sources. When the total
@@ -1202,9 +1203,8 @@ class ApertureStats:
         time (see `_block_reduce`), so the packed buffers for all of the
         sources are never held at once.
 
-        `None` is returned when the fast batch driver is unavailable
-        (see `_batch_inputs`) or when all of the sources fit in a single
-        block, in which case the packed buffers are gathered once and
+        When all of the sources fit in a single block, the edges are
+        ``[0, n_sources]`` and the packed buffers are gathered once and
         cached (see `_fast_gather`).
         """
         if self._batch_inputs is None:
@@ -1226,9 +1226,8 @@ class ApertureStats:
                                   offset + self._block_max_pixels,
                                   side='right')
             edges.append(max(int(end), start + 1))
-
-        if len(edges) <= 2:
-            return None
+        if n_sources == 0:
+            edges.append(0)  # a single empty block
         return edges
 
     @cached_property
@@ -1245,20 +1244,25 @@ class ApertureStats:
         packed center buffers, block by block, and store them in
         `_block_cache`.
 
-        This is used in place of the cached `_fast_gather` buffers when
-        `_block_edges` is not `None`. For each block of sources, the
-        packed buffers are gathered (and sigma clipped), reduced, and
-        then discarded, so the peak memory is set by the block size
-        instead of by the number of sources.
+        When there is more than one block (see `_block_edges`), the
+        packed buffers of each block of sources are gathered (and
+        sigma clipped), reduced, and then discarded, so the peak memory
+        is set by the block size instead of by the number of sources.
+        A later request for another reduction must then gather all
+        of the blocks again, so each pass also calculates the
+        inexpensive reductions that are commonly requested later.
+        These are the mean and variance, and either the order
+        statistics (when the sorted values are available) or the
+        minimum and maximum.
 
-        Gathering is the expensive step, so each pass calculates all
-        of the requested reductions together with the inexpensive ones
-        that are commonly requested later. These are the mean and
-        variance, the pixel counts and flags, and either the order
-        statistics (when the sorted values are available) or the minimum
-        and maximum. Reductions that depend on other reductions (see
+        When there is a single block, the reductions are calculated
+        from the cached `_fast_gather` and `_sorted_values` buffers, so
+        only the requested reductions are calculated.
+
+        Reductions that depend on other reductions (see
         ``_BLOCK_DEPENDENCIES``) are calculated from the values of the
-        same block.
+        same block. The pixel counts, overlap, and flag counts are
+        always kept.
 
         Parameters
         ----------
@@ -1268,7 +1272,11 @@ class ApertureStats:
             calculated.
         """
         cache = self._block_cache
-        names = set(names) | {'mean_var'}
+        edges = self._block_edges
+        single_block = len(edges) == 2
+        names = set(names)
+        if not single_block:
+            names.add('mean_var')
         for key in _BLOCK_REDUCTIONS:  # in dependency order
             if key in names:
                 names.update(_BLOCK_DEPENDENCIES.get(key, ()))
@@ -1277,21 +1285,28 @@ class ApertureStats:
         clipped = self._batch_inputs[-1] is not None
         need_sorted = any(_BLOCK_REDUCTIONS[key][1] == 'sorted'
                           for key in names - cache.keys())
-        names.add('order_stats' if clipped or need_sorted else 'minmax')
+        if not single_block:
+            names.add('order_stats' if clipped or need_sorted else 'minmax')
         names = [key for key in _BLOCK_REDUCTIONS
                  if key in names and key not in cache]
 
         parts = {key: [] for key in names}
         meta_parts = []
-        for i0, i1 in pairwise(self._block_edges):
-            gather = self._gather_center(slice(i0, i1))
+        for i0, i1 in pairwise(edges):
+            if single_block:
+                gather = self._fast_gather
+                sorted_values = (self._sorted_values[0] if need_sorted
+                                 else None)
+            else:
+                gather = self._gather_center(slice(i0, i1))
+                sorted_values = gather.sorted_values
+                if sorted_values is None and need_sorted:
+                    sorted_values = self._threaded_reduction(
+                        batch_sort_values, (gather.values,),
+                        gather.starts, gather.counts)
             starts, counts = gather.starts, gather.counts
             meta_parts.append((counts, gather.overlap, gather.flag_counts))
 
-            sorted_values = gather.sorted_values
-            if sorted_values is None and need_sorted:
-                sorted_values = self._threaded_reduction(
-                    batch_sort_values, (gather.values,), starts, counts)
             buffers = {
                 'values': (gather.values,),
                 'sorted': (sorted_values,),
@@ -1336,7 +1351,9 @@ class ApertureStats:
 
         parts['meta'] = meta_parts
         for key, results in parts.items():
-            if isinstance(results[0], tuple):
+            if single_block:
+                cache[key] = results[0]
+            elif isinstance(results[0], tuple):
                 cache[key] = tuple(np.concatenate(arrays)
                                    for arrays in zip(*results, strict=True))
             else:
@@ -1360,12 +1377,9 @@ class ApertureStats:
         center-value gather, or `None` when the fast path is
         unavailable.
         """
-        if self._block_edges is not None:
-            return self._block_result('meta')
-        gather = self._fast_gather
-        if gather is None:
+        if self._batch_inputs is None:
             return None
-        return gather.counts, gather.overlap, gather.flag_counts
+        return self._block_result('meta')
 
     def _batch_chunks(self, positions, local_bkg, labels_arr):
         """
@@ -1615,14 +1629,9 @@ class ApertureStats:
         Reduced from the cached sorted buffer (see `_sorted_values`).
         `None` when the fast path is unavailable.
         """
-        if self._block_edges is not None:
-            return self._block_result('order_stats')
-        sorted_values = self._sorted_values
-        if sorted_values is None:
+        if self._batch_inputs is None:
             return None
-        values, starts, counts = sorted_values
-        return self._threaded_reduction(batch_order_stats, (values,),
-                                        starts, counts)
+        return self._block_result('order_stats')
 
     @cached_property
     def _minmax(self):
@@ -1635,19 +1644,12 @@ class ApertureStats:
         values define the extremes, so the order statistics are used
         instead. `None` when the fast path is unavailable.
         """
-        if self._block_edges is not None:
-            if self._batch_inputs[-1] is not None:  # sigma clipped
-                vmin, vmax, _ = self._order_stats
-                return vmin, vmax
-            return self._block_result('minmax')
-        gather = self._fast_gather
-        if gather is None:
+        if self._batch_inputs is None:
             return None
-        if gather.sorted_values is not None:
+        if self._batch_inputs[-1] is not None:  # sigma clipped
             vmin, vmax, _ = self._order_stats
             return vmin, vmax
-        return self._threaded_reduction(batch_minmax, (gather.values,),
-                                        gather.starts, gather.counts)
+        return self._block_result('minmax')
 
     @cached_property
     def _mean_var(self):
@@ -1658,13 +1660,9 @@ class ApertureStats:
         directly from the packed center buffer (no sort required).
         `None` when the fast path is unavailable.
         """
-        if self._block_edges is not None:
-            return self._block_result('mean_var')
-        gather = self._fast_gather
-        if gather is None:
+        if self._batch_inputs is None:
             return None
-        return self._threaded_reduction(batch_mean_var, (gather.values,),
-                                        gather.starts, gather.counts)
+        return self._block_result('mean_var')
 
     @cached_property
     def _mad(self):
@@ -1674,13 +1672,9 @@ class ApertureStats:
         Reduced from the cached sorted buffer (see `_sorted_values`).
         `None` when the fast path is unavailable.
         """
-        if self._block_edges is not None:
-            return self._block_result('mad')
-        sorted_values = self._sorted_values
-        if sorted_values is None:
+        if self._batch_inputs is None:
             return None
-        values, starts, counts = sorted_values
-        return self._threaded_reduction(batch_mad, (values,), starts, counts)
+        return self._block_result('mad')
 
     @cached_property
     def _biweight(self):
@@ -1692,16 +1686,9 @@ class ApertureStats:
         and unscaled MAD (`_mad`). `None` when the fast path is
         unavailable.
         """
-        if self._block_edges is not None:
-            return self._block_result('biweight')
-        sorted_values = self._sorted_values
-        if sorted_values is None:
+        if self._batch_inputs is None:
             return None
-        _, _, median = self._order_stats
-        values, starts, counts = sorted_values
-        return self._threaded_reduction(batch_biweight, (values,),
-                                        starts, counts,
-                                        per_source=(median, self._mad))
+        return self._block_result('biweight')
 
     @cached_property
     def _gini(self):
@@ -1711,13 +1698,9 @@ class ApertureStats:
         Computed from the packed center buffer (the absolute values are
         sorted internally). `None` when the fast path is unavailable.
         """
-        if self._block_edges is not None:
-            return self._block_result('gini')
-        gather = self._fast_gather
-        if gather is None:
+        if self._batch_inputs is None:
             return None
-        return self._threaded_reduction(batch_gini, (gather.values,),
-                                        gather.starts, gather.counts)
+        return self._block_result('gini')
 
     def _finalize_value_stat(self, fast_result, stat_func, *,
                              square_unit=False, apply_unit=True):
@@ -2630,15 +2613,7 @@ class ApertureStats:
         meta = self._center_gather_meta
         if meta is not None:
             overlap = meta[1]
-            if self._block_edges is not None:
-                mom = self._block_result('moments').copy()
-            else:
-                zeros = np.zeros(self.n_positions)
-                gather = self._fast_gather
-                mom = self._threaded_reduction(
-                    batch_moments,
-                    (gather.values, gather.local_x, gather.local_y),
-                    gather.starts, gather.counts, per_source=(zeros, zeros))
+            mom = self._block_result('moments').copy()
             # No-overlap sources have NaN moments (the mask-based path
             # uses an all-NaN cutout). All-masked overlapping sources
             # have zero moments (an all-zero cutout).
@@ -2656,17 +2631,7 @@ class ApertureStats:
         """
         meta = self._center_gather_meta
         if meta is not None:
-            if self._block_edges is not None:
-                mom = self._block_result('moments_central').copy()
-            else:
-                cutout_centroid = self._array('cutout_centroid')
-                cen_x = np.ascontiguousarray(cutout_centroid[:, 0])
-                cen_y = np.ascontiguousarray(cutout_centroid[:, 1])
-                gather = self._fast_gather
-                mom = self._threaded_reduction(
-                    batch_moments,
-                    (gather.values, gather.local_x, gather.local_y),
-                    gather.starts, gather.counts, per_source=(cen_x, cen_y))
+            mom = self._block_result('moments_central').copy()
             # Empty sources (no overlap or fully masked) have a NaN
             # centroid, so their central moments are NaN (matching the
             # mask-based path). The zeroth central moment does not
