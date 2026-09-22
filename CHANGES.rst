@@ -1240,6 +1240,16 @@ API Changes
     ``n_neighbors > 1`` case. Previously it returned a Python float.
     [#2375]
 
+  - ``calc_total_error`` now returns an array whose dtype follows the
+    NumPy type promotion of its floating-point ``data``, ``bkg_error``,
+    and (array) ``effective_gain`` inputs, with a minimum of
+    ``float32``. Previously the result was always ``float64``. For
+    example, ``float32`` inputs now give a ``float32`` total error.
+    Integer inputs still give a ``float64`` result, and the results
+    for ``float64`` inputs are unchanged. A scalar ``effective_gain``
+    is also no longer expanded to a full-size array, which reduces the
+    memory used. [#2438]
+
 
 3.0.0 (2026-04-17)
 ------------------
