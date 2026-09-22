@@ -152,7 +152,8 @@ class _ApertureFlags(FlagRegistry):
         FlagDefinition(
             bit_value=4096,
             name='undefined_shape',
-            description='non-positive net flux (shape properties undefined)',
+            description=('non-positive net flux or invalid covariance '
+                         '(shape properties undefined)'),
             detailed_description=('The net flux within the aperture '
                                   '(the zeroth image moment of the '
                                   'unmasked "center"-method pixels) is '
@@ -160,7 +161,20 @@ class _ApertureFlags(FlagRegistry):
                                   'the covariance-derived shape '
                                   'properties (e.g., ``centroid``, '
                                   '``semimajor_axis``, ``orientation``)'
-                                  ' are undefined or unreliable.'),
+                                  ' are undefined or unreliable. The '
+                                  'flag is also set when the '
+                                  'second-order moments are not '
+                                  'positive semidefinite (e.g., from '
+                                  'negative pixel values), in which '
+                                  'case the covariance-derived shape '
+                                  'properties are NaN. '
+                                  'Fully masked sources have a zero '
+                                  'net flux, so they are also '
+                                  'flagged. Sources with no overlap '
+                                  'and fully sigma-clipped sources '
+                                  'are not flagged here. They are '
+                                  'reported by the overlap and '
+                                  'clipping flags.'),
         ),
         FlagDefinition(
             bit_value=8192,
@@ -174,8 +188,21 @@ class _ApertureFlags(FlagRegistry):
                                   'so covariance-derived shape '
                                   'properties (e.g., ``semimajor_axis``, '
                                   '``orientation``, ``eccentricity``) are '
-                                  'ill-defined and have been regularized '
-                                  'or set to NaN.'),
+                                  'ill-defined and have been '
+                                  'regularized.'),
+        ),
+        FlagDefinition(
+            bit_value=16384,
+            name='centroid_outside',
+            description='centroid is outside the aperture bounding box',
+            detailed_description=('The ``centroid`` lies outside the '
+                                  'bounding box of the aperture. The '
+                                  'image moments include negative '
+                                  'pixel values, so the centroid is '
+                                  'not bounded by the aperture when '
+                                  'the net flux is small compared to '
+                                  'the noise. The centroid and the '
+                                  'shape properties are unreliable.'),
         ),
     ]
 

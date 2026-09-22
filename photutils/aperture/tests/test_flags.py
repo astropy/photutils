@@ -25,6 +25,7 @@ EXPECTED_FLAGS = {
     'too_few_pixels': 2048,
     'undefined_shape': 4096,
     'singular_covariance': 8192,
+    'centroid_outside': 16384,
 }
 
 

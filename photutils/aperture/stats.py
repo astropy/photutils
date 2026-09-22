@@ -55,6 +55,7 @@ from photutils.utils._moments import (centroid_from_moments,
                                       covariance_from_moments,
                                       eigvals_from_covariance, image_moments,
                                       inertia_tensor_from_moments,
+                                      is_invalid_covariance,
                                       is_singular_covariance,
                                       orientation_from_covariance,
                                       pixel_to_sky_covariance,
@@ -2088,8 +2089,8 @@ class ApertureStats:
 
         These are the "center"-method footprint bits plus the sigma-clip
         and ``ddof`` bits. The `flags` property combines them with the
-        ``sum_method`` footprint bits and the ``undefined_shape`` and
-        ``singular_covariance`` bits.
+        ``sum_method`` footprint bits and the ``undefined_shape``,
+        ``singular_covariance``, and ``centroid_outside`` bits.
         """
         # The gather kernel and the center-method cutouts do not
         # evaluate error values, so the non-finite-error bit is stripped
@@ -2117,20 +2118,37 @@ class ApertureStats:
     def _undefined_shape_mask(self):
         """
         Boolean mask (1D) marking sources whose net flux is not
-        positive.
+        positive or whose covariance matrix is not positive
+        semidefinite.
 
         The net flux is the zeroth image moment of the unmasked
         "center"-method pixels. When it is zero or negative, the
         centroid and the covariance-derived shape properties are
-        undefined or unreliable. Sources with no valid pixels (no
-        overlap, fully masked, or fully sigma clipped) are not flagged
-        here. They are already reported by the overlap, masking, and
-        clipping bits.
+        undefined or unreliable. A source with a positive net flux
+        can still have second-order moments that are not positive
+        semidefinite (e.g., from negative pixel values), which
+        do not describe a shape. Its covariance-derived shape
+        properties are NaN. A fully masked source has a zero net
+        flux, so it is also flagged, which matches the equivalent
+        `~photutils.segmentation.SourceCatalog` flag. Sources with no
+        overlap and fully sigma-clipped sources are not flagged here.
+        They are already reported by the overlap and clipping bits.
         """
         m00 = self._array('moments')[:, 0, 0]
         # NaN where a source has no valid pixels
         n_pixels = self._center_n_pixels
-        return np.isfinite(m00) & (m00 <= 0) & np.isfinite(n_pixels)
+        non_positive = (np.isfinite(m00) & (m00 <= 0)
+                        & np.isfinite(n_pixels))
+
+        # The same definition as the ``'all_masked'`` flag on the
+        # "center"-method footprint
+        flag_counts, _, _ = self._footprint_flag_inputs('center')
+        all_masked = ((flag_counts[:, FLAG_COL_N_PIXELS] > 0)
+                      & (flag_counts[:, FLAG_COL_VALID] == 0))
+
+        invalid = is_invalid_covariance(
+            self._raw_covariance, determinant=self._raw_covariance_det)
+        return non_positive | all_masked | invalid
 
     @cached_property
     def _singular_covariance_mask(self):
@@ -2149,10 +2167,39 @@ class ApertureStats:
         with undefined moments (no overlap or fully masked) have a NaN
         determinant and are not flagged here. They are already reported
         by the overlap and masking bits.
+
+        These sources get the ``'singular_covariance'`` flag, and they
+        are exactly the ones whose covariance is regularized. A source
+        whose covariance is not positive semidefinite is not flagged
+        here. Its covariance is NaN and it gets the
+        ``'undefined_shape'`` flag instead.
         """
         return is_singular_covariance(self._raw_covariance,
-                                      determinant=self._raw_covariance_det,
-                                      include_degenerate=True)
+                                      determinant=self._raw_covariance_det)
+
+    @cached_property
+    def _centroid_outside_mask(self):
+        """
+        Boolean mask (1D) marking sources whose centroid lies outside
+        the aperture bounding box.
+
+        The image moments include negative pixel values, so the
+        centroid is not bounded by the aperture when the net flux
+        is small compared to the noise. Sources with a NaN centroid
+        are not flagged here. They are already reported by the
+        ``'undefined_shape'`` and overlap bits. An infinite centroid
+        (a zero net flux with a non-zero first moment) is flagged.
+        """
+        centroid = self._array('centroid')
+        # The inclusive integer pixel bounds span half a pixel beyond
+        # the first and last pixel centers.
+        xmin, xmax, ymin, ymax = np.transpose(self._bbox_bounds)
+        # A NaN centroid compares false
+        with np.errstate(invalid='ignore'):
+            return ((centroid[:, 0] < xmin - 0.5)
+                    | (centroid[:, 0] > xmax + 0.5)
+                    | (centroid[:, 1] < ymin - 0.5)
+                    | (centroid[:, 1] > ymax + 0.5))
 
     @cached_property
     @_update_method_subpixels_docstring
@@ -2168,8 +2215,9 @@ class ApertureStats:
         sum properties. The ``'non_finite_error'`` flag is evaluated
         on the ``sum_method`` footprint. The ``'sigma_clipped'``,
         ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
-        on the value-statistics footprint. The ``'undefined_shape'`` and
-        ``'singular_covariance'`` flags are always evaluated. Accessing
+        on the value-statistics footprint. The ``'undefined_shape'``,
+        ``'singular_covariance'``, and ``'centroid_outside'`` flags are
+        always evaluated. Accessing
         ``flags`` computes the moment and covariance properties if they
         have not already been computed (the results are cached and
         shared with the corresponding shape properties).
@@ -2186,6 +2234,8 @@ class ApertureStats:
             APERTURE_FLAGS.UNDEFINED_SHAPE)
         flags[self._singular_covariance_mask] |= (
             APERTURE_FLAGS.SINGULAR_COVARIANCE)
+        flags[self._centroid_outside_mask] |= (
+            APERTURE_FLAGS.CENTROID_OUTSIDE)
         return flags
 
     def decode_flags(self, *, return_bit_values=False):
@@ -2297,8 +2347,12 @@ class ApertureStats:
                 gather.starts, gather.counts, per_source=(cen_x, cen_y))
             # Empty sources (no overlap or fully masked) have a NaN
             # centroid, so their central moments are NaN (matching the
-            # mask-based path).
-            mom[gather.counts == 0] = np.nan
+            # mask-based path). The zeroth central moment does not
+            # depend on the centroid, so it equals the zeroth raw
+            # moment (zero for a fully masked source).
+            empty = gather.counts == 0
+            mom[empty] = np.nan
+            mom[empty, 0, 0] = self._array('moments')[empty, 0, 0]
             return mom
 
         return np.array([image_moments(arr, center=(xcen_, ycen_), order=3)
@@ -2822,8 +2876,8 @@ class ApertureStats:
         """
         The determinant of the raw ``(N, 2, 2)`` covariance matrix.
 
-        It is computed once and shared by `_covariance` and
-        `_singular_covariance_mask`.
+        It is computed once and shared by `_covariance`,
+        `_singular_covariance_mask`, and `_undefined_shape_mask`.
         """
         return covariance_determinant(self._raw_covariance)
 
@@ -2835,9 +2889,10 @@ class ApertureStats:
         the source, before any regularization.
 
         This unregularized matrix is shared by `_covariance` (which
-        regularizes a copy) and `_singular_covariance_mask` (which tests
-        it for singularity). Callers that modify the matrix in place
-        must operate on a copy so the cached value is not corrupted.
+        regularizes a copy) and by `_singular_covariance_mask` and
+        `_undefined_shape_mask` (which test it for singularity and
+        validity). Callers that modify the matrix in place must operate
+        on a copy so the cached value is not corrupted.
         """
         return covariance_from_moments(self._array('moments_central'))
 
@@ -2855,6 +2910,16 @@ class ApertureStats:
         """
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source.
+
+        The variance along each principal axis is at least ``1/12``
+        pixel**2 (to within floating-point rounding), the variance of a
+        uniform distribution across a single pixel. For a source that
+        is unresolved along an axis (e.g., a point-like or a very thin
+        source), the variance along that axis is raised to ``1/12``
+        while the orientation and the variance along a resolved axis
+        are unchanged. A source that is unresolved along both axes is
+        isotropic, with an orientation of zero. The covariance is NaN if
+        the second-order moments are not positive semidefinite.
         """
         return self._covariance * (u.pix**2)
 

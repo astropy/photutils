@@ -8,9 +8,10 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.aperture import APERTURE_FLAGS, ApertureStats, CircularAperture
+from photutils.aperture import (APERTURE_FLAGS, ApertureStats, CircularAnnulus,
+                                CircularAperture)
 from photutils.aperture.tests.conftest import UNIT_SHAPE
 
 
@@ -123,7 +124,8 @@ class TestMaskedAndNonFiniteFlags:
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_masked_pixels(self, unit_data):
         """
-        Test the masked_pixels and all_masked flags.
+        Test the masked_pixels and all_masked flags. A fully masked
+        aperture also has an undefined shape.
         """
         data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
@@ -142,7 +144,8 @@ class TestMaskedAndNonFiniteFlags:
         mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[8:17, 8:17] = True
         assert _stats_flags(data, aper, mask=mask) == (
-            APERTURE_FLAGS.MASKED_PIXELS | APERTURE_FLAGS.ALL_MASKED)
+            APERTURE_FLAGS.MASKED_PIXELS | APERTURE_FLAGS.ALL_MASKED
+            | APERTURE_FLAGS.UNDEFINED_SHAPE)
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_sum_footprint_masked(self, unit_data, unit_mask):
@@ -178,7 +181,8 @@ class TestMaskedAndNonFiniteFlags:
         # All-NaN aperture: auto-masked, so also all_masked
         data = np.full(UNIT_SHAPE, np.nan)
         assert _stats_flags(data, aper) == (APERTURE_FLAGS.NON_FINITE_DATA
-                                            | APERTURE_FLAGS.ALL_MASKED)
+                                            | APERTURE_FLAGS.ALL_MASKED
+                                            | APERTURE_FLAGS.UNDEFINED_SHAPE)
 
         # A pixel that is both input-masked and non-finite counts only as
         # masked
@@ -580,16 +584,167 @@ class TestSingularCovariance:
         assert stats._singular_covariance_mask[0]
         assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
 
+    def test_single_pixel_regularization(self):
+        """
+        Test that a single-pixel source has a variance of ``1/12`` along
+        both axes.
+        """
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(_single_pixel_data(), aper)
+        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_array_equal(stats.covariance.value, np.eye(2) / 12)
+        assert stats.orientation.value == 0.0
+
+    def test_tilted_line_regularization(self):
+        """
+        Test a tilted line that is one pixel wide.
+
+        Its covariance matrix has rank 1, so its determinant is zero
+        apart from rounding, which can make it slightly negative. The
+        shape must be regularized and not set to NaN.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        for i in range(7):
+            data[9 + i, 9 + i] = 1.0 + i
+        aper = CircularAperture((12.0, 12.0), r=6.0)
+        stats = ApertureStats(data, aper)
+        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_allclose(stats.semiminor_axis.value, np.sqrt(1.0 / 12))
+        assert stats.semimajor_axis.value > 1.0
+        assert_allclose(stats.orientation.value, 45.0)
+
+    def test_isotropic_regularization(self):
+        """
+        Test that a tilted source that is unresolved along both axes
+        becomes exactly isotropic with a zero orientation.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[12, 12] = 97.0
+        data[13, 13] = 3.0
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_array_equal(stats.covariance.value, np.eye(2) / 12)
+        assert stats.orientation.value == 0.0
+
+    def test_rank1_regularization(self):
+        """
+        Test that only the unresolved axis of a rank-1 degenerate source
+        is raised to the ``1/12`` floor.
+        """
+        stats = _stats_with_injected_covariance(cov_xx=0.5, cov_yy=0.05,
+                                                cov_xy=0.0)
+        assert_allclose(stats.covariance_eigvals.value[0], [0.5, 1.0 / 12])
+        assert_allclose(stats.semimajor_axis.value[0], np.sqrt(0.5))
+        assert_allclose(stats.semiminor_axis.value[0], np.sqrt(1.0 / 12))
+
     def test_not_positive_semidefinite(self):
         """
-        Test that a covariance matrix that is not positive semidefinite is
-        flagged as singular.
+        Test that a covariance matrix that is not positive semidefinite
+        is flagged as an undefined shape, not as singular, and gives NaN
+        shape properties.
         """
         stats = _stats_with_injected_covariance(cov_xx=1.0, cov_yy=1.0,
                                                 cov_xy=2.0)
         assert (1.0 * 1.0 - 2.0**2) < 0  # negative determinant
-        assert stats._singular_covariance_mask[0]
-        assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert not stats._singular_covariance_mask[0]
+        assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
+        assert (stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+        assert np.all(np.isnan(stats.covariance))
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_not_positive_semidefinite_from_data(self):
+        """
+        Test a source with a positive net flux whose negative pixel
+        values make the x variance negative.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[12, 12] = 100.0
+        data[12, 8] = -20.0
+        data[12, 16] = -20.0
+        aper = CircularAperture((12.0, 12.0), r=6.0)
+        stats = ApertureStats(data, aper)
+        assert stats.moments[0, 0] > 0
+        assert stats._raw_covariance[0, 0, 0] < 0
+        assert stats.flags == APERTURE_FLAGS.UNDEFINED_SHAPE
+        assert np.isnan(stats.fwhm)
+        assert_allclose(stats.centroid, (12.0, 12.0))
+
+
+class TestCentroidOutside:
+    """
+    Tests for the centroid_outside flag, which marks sources whose
+    centroid lies outside the aperture bounding box.
+    """
+
+    @staticmethod
+    def _make_data():
+        """
+        Make data with a small positive net flux from two pixels of
+        opposite sign, which puts the centroid far from both.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[12, 16] = 10.0
+        data[12, 8] = -9.9
+        return data
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_outside(self):
+        """
+        Test that a centroid far outside the aperture is flagged.
+        """
+        aper = CircularAperture((12.0, 12.0), r=6.0)
+        stats = ApertureStats(self._make_data(), aper)
+        assert stats.moments[0, 0] > 0
+        assert stats.centroid[0] > 100.0
+        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+        assert 'centroid_outside' in stats.decode_flags()[1]
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_array_and_guards(self):
+        """
+        Test an array of sources. A source with a centroid inside the
+        aperture and sources with a NaN centroid (zero flux or no
+        overlap) are not flagged.
+        """
+        data = self._make_data()
+        data[4, 20] = 50.0  # positive-flux source
+        aper = CircularAperture([(12.0, 12.0), (20.0, 4.0), (3.0, 21.0),
+                                 (-50.0, 12.0)], r=2.0)
+        aper0 = CircularAperture((12.0, 12.0), r=6.0)
+        assert (ApertureStats(data, aper0).flags
+                & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+
+        stats = ApertureStats(data, aper)
+        outside = (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+        assert_array_equal(outside, [False, False, False, False])
+        assert np.all(np.isnan(stats.centroid[[0, 2, 3]]))
+        assert_allclose(stats.centroid[1], (20.0, 4.0))
+
+    def test_bounding_box_edge(self):
+        """
+        Test that the bounding box includes the full extent of its edge
+        pixels.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        aper = CircularAperture([(12.0, 12.0)], r=3.0)
+        stats = ApertureStats(data, aper)
+        xmax = stats.bbox_xmax[0]
+        for xcen, expected in ((xmax + 0.49, False), (xmax + 0.51, True)):
+            stats = ApertureStats(data, aper)
+            stats.centroid = np.array([[xcen, 12.0]])
+            outside = (stats.flags[0] & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+            assert outside == expected
+
+    def test_annulus_hole(self):
+        """
+        Test that a centroid in the hole of an annulus is not flagged.
+        """
+        data = np.ones(UNIT_SHAPE)
+        aper = CircularAnnulus((12.0, 12.0), r_in=4.0, r_out=8.0)
+        stats = ApertureStats(data, aper)
+        assert_allclose(stats.centroid, (12.0, 12.0))
+        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) == 0
 
 
 class TestUndefinedShape:
@@ -636,10 +791,9 @@ class TestUndefinedShape:
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_array_and_guards(self):
         """
-        Test the undefined_shape bit for an array of sources, and that
-        sources with no valid pixels (no overlap or fully masked) are
-        not flagged (they are reported by the overlap and masking
-        bits).
+        Test the undefined_shape bit for an array of sources. A fully
+        masked source is flagged, and a source with no overlap is not
+        (it is reported by the overlap bits).
         """
         data = np.zeros(UNIT_SHAPE)
         data[16:21, 16:21] = 50.0  # positive-flux source at (18, 18)
@@ -652,10 +806,36 @@ class TestUndefinedShape:
         shape_flag = APERTURE_FLAGS.UNDEFINED_SHAPE
         assert (flags[0] & shape_flag) != 0  # zero-flux source
         assert (flags[1] & shape_flag) == 0  # positive-flux source
-        assert (flags[2] & shape_flag) == 0  # fully masked: not flagged
+        assert (flags[2] & shape_flag) != 0  # fully masked
         assert (flags[2] & APERTURE_FLAGS.ALL_MASKED) != 0
         assert (flags[3] & shape_flag) == 0  # no overlap: not flagged
         assert (flags[3] & APERTURE_FLAGS.NO_OVERLAP) != 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_empty_source_central_moments(self):
+        """
+        Test the central moments of sources with no valid pixels.
+
+        The zeroth central moment does not depend on the centroid, so it
+        equals the zeroth raw moment (zero for a fully masked source and
+        NaN for a source with no overlap). The other central moments are
+        NaN because the centroid is undefined.
+        """
+        data = np.ones(UNIT_SHAPE)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
+        mask[0:12, 0:12] = True  # fully mask the first aperture
+        aper = CircularAperture([(6.0, 6.0), (-50.0, 12.0), (18.0, 18.0)],
+                                r=4.0)
+        stats = ApertureStats(data, aper, mask=mask)
+        raw = stats.moments
+        central = stats.moments_central
+        assert_array_equal(central[:, 0, 0], raw[:, 0, 0])
+        assert central[0, 0, 0] == 0.0
+        assert np.isnan(central[1, 0, 0])
+        assert central[2, 0, 0] > 0
+        for i in (0, 1):
+            assert np.all(np.isnan(central[i].ravel()[1:]))
+        assert np.all(np.isfinite(central[2]))
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_in_default_table(self):

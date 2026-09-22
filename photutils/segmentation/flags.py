@@ -123,17 +123,24 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=256,
             name='undefined_shape',
-            description=('non-positive net flux (shape properties '
-                         'undefined)'),
+            description=('non-positive net flux or invalid covariance '
+                         '(shape properties undefined)'),
             detailed_description=('The net source flux (the zeroth '
                                   'image moment over the source '
                                   'segment) is not positive, so the '
                                   'centroid and the '
                                   'covariance-derived shape '
                                   'properties (e.g., ``centroid``, '
-                                  '``semimajor_sigma``, '
+                                  '``semimajor_axis``, '
                                   '``orientation``) are undefined or '
-                                  'unreliable.'),
+                                  'unreliable. The flag is also set '
+                                  'when the second-order moments are '
+                                  'not positive semidefinite, in '
+                                  'which case the covariance-derived '
+                                  'shape properties are NaN. '
+                                  'Fully masked sources '
+                                  'have a zero net flux, so they are '
+                                  'also flagged.'),
         ),
         FlagDefinition(
             bit_value=512,
@@ -148,10 +155,11 @@ class _SegmentationFlags(FlagRegistry):
                                   'single pixel), so '
                                   'covariance-derived shape '
                                   'properties (e.g., '
-                                  '``semimajor_sigma``, '
+                                  '``semimajor_axis``, '
                                   '``orientation``, '
                                   '``eccentricity``) are '
-                                  'ill-defined.'),
+                                  'ill-defined and have been '
+                                  'regularized.'),
         ),
         FlagDefinition(
             bit_value=1024,

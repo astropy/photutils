@@ -30,6 +30,8 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
 from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
 from photutils.aperture.tests.conftest import NoBatchCircularAperture
 from photutils.datasets import make_100gaussians_image, make_wcs
+from photutils.segmentation import (SEGMENTATION_FLAGS, SegmentationImage,
+                                    SourceCatalog)
 from photutils.utils._optional_deps import HAS_REGIONS
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -324,7 +326,8 @@ class TestMasking(BaseApertureStatsData):
         # id=2 has masked pixels and id=3 is completely masked
         assert apstats[1].flags == APERTURE_FLAGS.MASKED_PIXELS
         assert apstats[2].flags == (APERTURE_FLAGS.MASKED_PIXELS
-                                    | APERTURE_FLAGS.ALL_MASKED)
+                                    | APERTURE_FLAGS.ALL_MASKED
+                                    | APERTURE_FLAGS.UNDEFINED_SHAPE)
 
         # Test that mask=None is the same as mask=np.ma.nomask
         apstats1 = ApertureStats(self.data, self.aperture, mask=None)
@@ -1934,3 +1937,208 @@ class TestSkyOrientation:
         assert tbl.colnames == columns
         assert tbl['sky_orientation'].unit == u.deg
         assert_allclose(tbl['sky_orientation'], apstats.sky_orientation)
+
+
+# The aperture radii give resolved sources (6.0), sources of a few
+# pixels (1.2), and single-pixel sources (0.6).
+AGREEMENT_RADII = (6.0, 1.2, 0.6)
+
+
+@pytest.fixture(scope='class')
+def agreement_inputs(request):
+    """
+    Build the shared data, mask, WCS, apertures, and segmentation image
+    on the test class.
+
+    There is one multi-position aperture per radius. The segments are
+    the "center"-method aperture footprints, labeled in aperture order,
+    then position order.
+    """
+    cls = request.cls
+    rng = np.random.default_rng(0)
+    shape = (120, 160)
+    yy, xx = np.mgrid[:shape[0], :shape[1]]
+    data = rng.normal(0.0, 1.0, shape)
+    apertures = []
+    for i, radius in enumerate(AGREEMENT_RADII):
+        xypos = []
+        for xcen in range(20, 160, 20):
+            # The offsets keep a pixel center within the smallest
+            # aperture.
+            xpos = xcen + rng.uniform(-0.3, 0.3)
+            ypos = 20.0 + 40.0 * i + rng.uniform(-0.3, 0.3)
+            model = Gaussian2D(rng.uniform(20.0, 200.0), xpos, ypos,
+                               rng.uniform(1.0, 4.0), rng.uniform(1.0, 4.0),
+                               rng.uniform(0.0, np.pi))
+            data += model(xx, yy)
+            xypos.append((xpos, ypos))
+        apertures.append(CircularAperture(xypos, radius))
+
+    # The first source of each aperture is fully masked, the second is
+    # partially masked, and the third has a NaN pixel.
+    mask = np.zeros(shape, dtype=bool)
+    for aperture in apertures:
+        xpos, ypos = np.round(aperture.positions).astype(int).T
+        mask[ypos[0] - 8:ypos[0] + 9, xpos[0] - 8:xpos[0] + 9] = True
+        mask[ypos[1], xpos[1] + 1] = True
+        data[ypos[2], xpos[2] + 1] = np.nan
+
+    segm = np.zeros(shape, dtype=int)
+    label = 0
+    for aperture in apertures:
+        for aperture_mask in aperture.to_mask(method='center'):
+            label += 1
+            segm[aperture_mask.to_image(shape) > 0] = label
+
+    cls.data = data
+    cls.mask = mask
+    cls.wcs = make_wcs(shape)
+    cls.apertures = apertures
+    cls.segm = SegmentationImage(segm)
+
+
+@pytest.mark.usefixtures('agreement_inputs')
+class TestSourceCatalogAgreement:
+    """
+    Tests that ApertureStats and SourceCatalog give the same centroid
+    and shape properties for sources that cover the same pixels.
+
+    The segments are the "center"-method aperture footprints. The two
+    classes differ only in that SourceCatalog sets negative data values
+    to zero.
+    """
+
+    # The image moments are excluded because each class measures them
+    # from the origin of its own cutout.
+    PROPERTIES = ('centroid', 'inertia_tensor', 'covariance',
+                  'covariance_eigvals', 'semimajor_axis', 'semiminor_axis',
+                  'fwhm', 'orientation', 'sky_orientation', 'eccentricity',
+                  'elongation', 'ellipticity', 'covariance_xx',
+                  'covariance_yy', 'covariance_xy', 'ellipse_cxx',
+                  'ellipse_cyy', 'ellipse_cxy')
+
+    def _compare(self, aperture_data, catalog_data):
+        """
+        Compare the properties of the two classes and return them.
+        """
+        catalog = SourceCatalog(catalog_data, self.segm, mask=self.mask,
+                                wcs=self.wcs)
+        n_positions = len(self.apertures[0])
+        all_stats = []
+        for i, aperture in enumerate(self.apertures):
+            stats = ApertureStats(aperture_data, aperture, mask=self.mask,
+                                  wcs=self.wcs)
+            cat = catalog[i * n_positions:(i + 1) * n_positions]
+            for name in self.PROPERTIES:
+                value = u.Quantity(getattr(stats, name)).value
+                expected = u.Quantity(getattr(cat, name)).value
+                assert_equal(np.isnan(value), np.isnan(expected))
+                assert_allclose(value, expected, rtol=1e-10, atol=1e-10,
+                                err_msg=name)
+            assert_equal(
+                (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0,
+                (cat.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE) != 0)
+            all_stats.append((stats, cat))
+        return all_stats
+
+    def test_non_negative_data(self):
+        """
+        Test that the properties agree for non-negative data, where the
+        SourceCatalog zeroing does nothing.
+        """
+        data = np.where(self.data < 0, 0.0, self.data)
+        all_stats = self._compare(data, data)
+
+        # The single-pixel sources exercise the regularization.
+        stats, _ = all_stats[2]
+        assert np.all(stats.flags[1:] & APERTURE_FLAGS.SINGULAR_COVARIANCE)
+
+    @staticmethod
+    def _regularized_mask(obj):
+        """
+        Return a mask of the sources whose covariance is finite and
+        differs from the raw covariance computed from the public central
+        moments.
+        """
+        mu = np.asarray(obj.moments_central)
+        raw = np.stack((mu[:, 0, 2], mu[:, 1, 1], mu[:, 1, 1], mu[:, 2, 0]),
+                       axis=1).reshape(-1, 2, 2)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            raw = raw / mu[:, 0, 0][:, np.newaxis, np.newaxis]
+        cov = u.Quantity(obj.covariance).value
+        finite = np.all(np.isfinite(cov), axis=(1, 2))
+        return finite & np.any(cov != raw, axis=(1, 2))
+
+    def test_singular_flag_marks_regularized_sources(self):
+        """
+        Test that the singular_covariance flag marks exactly the sources
+        whose covariance was regularized and is finite, in each class.
+
+        The fixture apertures give resolved, unresolved, and fully
+        masked sources. A row of apertures on pure noise, where the
+        negative values are kept, adds sources with a positive net flux
+        whose covariance is invalid (NaN). Those must not be flagged.
+        """
+        cat = SourceCatalog(self.data, self.segm, mask=self.mask,
+                            wcs=self.wcs)
+        singular = (cat.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_equal(singular, self._regularized_mask(cat))
+        assert np.any(singular)
+        assert not np.all(singular)
+
+        noise_aperture = CircularAperture([(x, 110.0)
+                                           for x in range(10, 160, 5)], 1.2)
+        for aperture in (*self.apertures, noise_aperture):
+            stats = ApertureStats(self.data, aperture, mask=self.mask,
+                                  wcs=self.wcs)
+            singular = (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+            assert_equal(singular, self._regularized_mask(stats))
+
+        # The noise apertures have no unresolved sources, but several
+        # have a positive net flux and a NaN covariance
+        assert not np.any(singular)
+        undefined = (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+        nan_cov = np.any(np.isnan(stats.covariance.value), axis=(1, 2))
+        invalid = (stats.moments[:, 0, 0] > 0) & nan_cov
+        assert np.any(invalid)
+        assert np.all(undefined[invalid])
+
+    def test_negative_data_zeroing(self):
+        """
+        Test that zeroing the negative data values is the only numerical
+        difference between the two classes.
+        """
+        data = self.data
+        assert np.any(data < 0)
+        clipped = np.where(data < 0, 0.0, data)
+        self._compare(clipped, data)
+
+        # The properties differ without the zeroing.
+        stats = ApertureStats(data, self.apertures[0], mask=self.mask,
+                              wcs=self.wcs)
+        cat = SourceCatalog(data, self.segm, mask=self.mask,
+                            wcs=self.wcs)[:len(stats)]
+        diff = np.abs(stats.fwhm[1:] - cat.fwhm[1:])
+        assert np.any(diff > 1e-3 * u.pix)
+
+    def test_fully_masked_source(self):
+        """
+        Test a fully masked source.
+
+        The shape properties are NaN and the undefined-shape flag is
+        set in both classes. The zeroth central moment equals the zeroth
+        raw moment, which is zero. The other central moments are NaN
+        because the centroid is undefined.
+        """
+        data = np.where(self.data < 0, 0.0, self.data)
+        for stats, cat in self._compare(data, data):
+            assert np.all(np.isnan(stats.covariance[0]))
+            assert np.all(np.isnan(cat.covariance[0]))
+            assert_equal(stats.moments_central[0], cat.moments_central[0])
+            assert stats.moments_central[0, 0, 0] == 0.0
+            assert np.all(np.isnan(stats.moments_central[0].ravel()[1:]))
+
+            assert stats.flags[0] & APERTURE_FLAGS.ALL_MASKED
+            assert stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE
+            assert cat.flags[0] & SEGMENTATION_FLAGS.ALL_MASKED
+            assert cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE
