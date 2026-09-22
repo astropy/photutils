@@ -2053,6 +2053,56 @@ class TestSourceCatalogAgreement:
         stats, _ = all_stats[2]
         assert np.all(stats.flags[1:] & APERTURE_FLAGS.SINGULAR_COVARIANCE)
 
+    @staticmethod
+    def _regularized_mask(obj):
+        """
+        Return a mask of the sources whose covariance is finite and
+        differs from the raw covariance computed from the public central
+        moments.
+        """
+        mu = np.asarray(obj.moments_central)
+        raw = np.stack((mu[:, 0, 2], mu[:, 1, 1], mu[:, 1, 1], mu[:, 2, 0]),
+                       axis=1).reshape(-1, 2, 2)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            raw = raw / mu[:, 0, 0][:, np.newaxis, np.newaxis]
+        cov = u.Quantity(obj.covariance).value
+        finite = np.all(np.isfinite(cov), axis=(1, 2))
+        return finite & np.any(cov != raw, axis=(1, 2))
+
+    def test_singular_flag_marks_regularized_sources(self):
+        """
+        Test that the singular_covariance flag marks exactly the sources
+        whose covariance was regularized and is finite, in each class.
+
+        The fixture apertures give resolved, unresolved, and fully
+        masked sources. A row of apertures on pure noise, where the
+        negative values are kept, adds sources with a positive net flux
+        whose covariance is invalid (NaN). Those must not be flagged.
+        """
+        cat = SourceCatalog(self.data, self.segm, mask=self.mask,
+                            wcs=self.wcs)
+        singular = (cat.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_equal(singular, self._regularized_mask(cat))
+        assert np.any(singular)
+        assert not np.all(singular)
+
+        noise_aperture = CircularAperture([(x, 110.0)
+                                           for x in range(10, 160, 5)], 1.2)
+        for aperture in (*self.apertures, noise_aperture):
+            stats = ApertureStats(self.data, aperture, mask=self.mask,
+                                  wcs=self.wcs)
+            singular = (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+            assert_equal(singular, self._regularized_mask(stats))
+
+        # The noise apertures have no unresolved sources, but several
+        # have a positive net flux and a NaN covariance
+        assert not np.any(singular)
+        undefined = (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+        nan_cov = np.any(np.isnan(stats.covariance.value), axis=(1, 2))
+        invalid = (stats.moments[:, 0, 0] > 0) & nan_cov
+        assert np.any(invalid)
+        assert np.all(undefined[invalid])
+
     def test_negative_data_zeroing(self):
         """
         Test that zeroing the negative data values is the only numerical
