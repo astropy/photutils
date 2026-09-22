@@ -3536,7 +3536,8 @@ def test_sky_centroid_err_columns():
     assert single.sky_centroid_ra_err == sky_err[0]
 
 
-def _make_rotated_tan_wcs(parity, rotation_deg, *, scale=0.25):
+def _make_rotated_tan_wcs(parity, rotation_deg, *, scale=0.25,
+                          crpix=(15.0, 15.0), crval=(150.0, 20.0)):
     """
     Make a TAN WCS whose CD matrix is a rotation of an axis-aligned
     frame with the given parity.
@@ -3547,8 +3548,8 @@ def _make_rotated_tan_wcs(parity, rotation_deg, *, scale=0.25):
     """
     wcs = WCS(naxis=2)
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-    wcs.wcs.crpix = [15.0, 15.0]
-    wcs.wcs.crval = [150.0, 20.0]
+    wcs.wcs.crpix = crpix
+    wcs.wcs.crval = crval
     phi = np.deg2rad(rotation_deg)
     rotation = np.array([[np.cos(phi), -np.sin(phi)],
                          [np.sin(phi), np.cos(phi)]])
@@ -3631,6 +3632,58 @@ def test_sky_orientation_north_up_east_left():
                                   - cat_flip.orientation.to_value(u.deg))
     assert_allclose(cat_flip.sky_orientation.to_value(u.deg), expected_flip,
                     atol=1e-4)
+
+
+@pytest.mark.parametrize('dec_pole', [90.0, -90.0])
+@pytest.mark.parametrize('ra_ref', [0.0, 37.0, 270.0])
+@pytest.mark.parametrize(('parity', 'rotation_deg'),
+                         [(-1, 0.0), (1, 0.0), (-1, 30.0), (1, 120.0)])
+def test_sky_orientation_at_pole(dec_pole, ra_ref, parity, rotation_deg):
+    """
+    Test the sky orientation of a source whose centroid lies on a
+    celestial pole.
+
+    North is geometrically undefined at the pole. The position angle
+    is measured from the meridian of the right ascension that the WCS
+    reports for the centroid, so it must be finite and consistent with
+    ``sky_centroid``. That right ascension is arbitrary because any
+    roundoff in the centroid changes it, so the expected value is built
+    from the reported one.
+    """
+    # The zero-indexed pixel (15, 15) is the center of the 31 x 31
+    # array and maps exactly to the pole.
+    wcs = _make_rotated_tan_wcs(parity, rotation_deg, crpix=(16.0, 16.0),
+                                crval=(ra_ref, dec_pole))
+    yy, xx = np.mgrid[0:31, 0:31]
+    theta = np.deg2rad(25.0)
+    data = Gaussian2D(500.0, 15.0, 15.0, 3.0, 1.5, theta)(xx, yy)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    cat = SourceCatalog(data, segment_map, convolved_data=data, wcs=wcs,
+                        aperture_mask_method='none')
+    assert_allclose(cat.centroid, [[15.0, 15.0]], atol=1e-10)
+    sky_centroid = cat.sky_centroid[0]
+    assert_allclose(sky_centroid.dec.deg, dec_pole, atol=1e-10)
+
+    sky_orient = cat.sky_orientation.to_value(u.deg)[0]
+    assert np.isfinite(sky_orient)
+    assert -90.0 < sky_orient <= 90.0
+
+    # The meridians through the pole of a TAN projection centered on the
+    # pole are straight lines in the pixel plane. The pixel direction of
+    # North along the reported meridian is the offset to a point on that
+    # meridian one arcsec from the pole.
+    dec_offset = dec_pole - np.sign(dec_pole) / 3600.0
+    x_north, y_north = wcs.world_to_pixel_values(sky_centroid.ra.deg,
+                                                 dec_offset)
+    north_angle = np.arctan2(15.0 - y_north, 15.0 - x_north)
+
+    # East is 90 degrees counterclockwise from North in the pixel plane
+    # for the standard parity and clockwise for the flipped parity.
+    pix_orient = np.deg2rad(cat.orientation.to_value(u.deg)[0])
+    expected = _wrap_m90_p90(np.rad2deg(-parity
+                                        * (pix_orient - north_angle)))
+    diff = _wrap_m90_p90(sky_orient - expected)
+    assert_allclose(diff, 0.0, atol=1e-4)
 
 
 def test_sky_orientation_nan():
