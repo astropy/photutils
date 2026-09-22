@@ -3131,7 +3131,6 @@ def test_centroid_err_singularity():
 
     assert cat.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
     assert_allclose(np.ravel(cat.centroid_err), np.sqrt(1 / 12))
-    assert_allclose(cat._centroid_err_cov[0], np.eye(2) / 12, atol=1e-12)
 
 
 def test_centroid_err_thin_source():

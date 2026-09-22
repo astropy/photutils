@@ -733,7 +733,8 @@ class TestCentroidOutside:
         for xcen, expected in ((xmax + 0.49, False), (xmax + 0.51, True)):
             stats = ApertureStats(data, aper)
             stats.centroid = np.array([[xcen, 12.0]])
-            assert stats._centroid_outside_mask[0] == expected
+            outside = (stats.flags[0] & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+            assert outside == expected
 
     def test_annulus_hole(self):
         """

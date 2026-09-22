@@ -3898,8 +3898,9 @@ class SourceCatalog:
         """
         The determinant of the raw ``(N, 2, 2)`` covariance matrix.
 
-        It is computed once and shared by `_covariance` and
-        `_singular_covariance_mask`.
+        It is computed once and shared by `_covariance`,
+        `_singular_covariance_mask`, and the invalid-covariance test in
+        `flags`.
         """
         return covariance_determinant(self._raw_covariance)
 
@@ -3911,10 +3912,10 @@ class SourceCatalog:
         the source, before any regularization.
 
         This unregularized matrix is shared by `_covariance` (which
-        regularizes a copy) and by ``_singular_covariance_mask`` (which
-        tests it for singularity). Callers that modify the matrix
-        in place must operate on a copy so the cached value is not
-        corrupted.
+        regularizes a copy), by ``_singular_covariance_mask`` (which
+        tests it for singularity), and by the invalid-covariance test
+        in `flags`. Callers that modify the matrix in place must
+        operate on a copy so the cached value is not corrupted.
         """
         return covariance_from_moments(self._array('moments_central'))
 

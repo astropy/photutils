@@ -2185,9 +2185,10 @@ class ApertureStats:
 
         The image moments include negative pixel values, so the
         centroid is not bounded by the aperture when the net flux
-        is small compared to the noise. Sources with a non-finite
-        centroid are not flagged here. They are already reported by the
-        ``'undefined_shape'`` and overlap bits.
+        is small compared to the noise. Sources with a NaN centroid
+        are not flagged here. They are already reported by the
+        ``'undefined_shape'`` and overlap bits. An infinite centroid
+        (a zero net flux with a non-zero first moment) is flagged.
         """
         centroid = self._array('centroid')
         # The inclusive integer pixel bounds span half a pixel beyond
@@ -2875,8 +2876,8 @@ class ApertureStats:
         """
         The determinant of the raw ``(N, 2, 2)`` covariance matrix.
 
-        It is computed once and shared by `_covariance` and
-        `_singular_covariance_mask`.
+        It is computed once and shared by `_covariance`,
+        `_singular_covariance_mask`, and `_undefined_shape_mask`.
         """
         return covariance_determinant(self._raw_covariance)
 
@@ -2888,9 +2889,10 @@ class ApertureStats:
         the source, before any regularization.
 
         This unregularized matrix is shared by `_covariance` (which
-        regularizes a copy) and `_singular_covariance_mask` (which tests
-        it for singularity). Callers that modify the matrix in place
-        must operate on a copy so the cached value is not corrupted.
+        regularizes a copy) and by `_singular_covariance_mask` and
+        `_undefined_shape_mask` (which test it for singularity and
+        validity). Callers that modify the matrix in place must operate
+        on a copy so the cached value is not corrupted.
         """
         return covariance_from_moments(self._array('moments_central'))
 
