@@ -259,37 +259,46 @@ cdef double circle_overlap_core(double xmin, double ymin, double xmax,
     area : double
         The area of overlap between the circle and the rectangle.
     """
-    cdef double area, d1, d2, x1, x2, y1, y2
+    cdef double area, x1, x2, y1, y2
+    cdef double r2 = r * r
+    cdef double xmin2 = xmin * xmin
+    cdef double ymin2 = ymin * ymin
+    cdef double xmax2 = xmax * xmax
+    cdef double ymax2 = ymax * ymax
+    cdef double d1, d2
 
-    if xmin * xmin + ymin * ymin > r * r:
+    if xmin2 + ymin2 > r2:
         area = 0.0
-    elif xmax * xmax + ymax * ymax < r * r:
+    elif xmax2 + ymax2 < r2:
         area = (xmax - xmin) * (ymax - ymin)
     else:
         area = 0.0
-        d1 = floor_sqrt(xmax * xmax + ymin * ymin)
-        d2 = floor_sqrt(xmin * xmin + ymax * ymax)
-        if d1 < r and d2 < r:
-            x1, y1 = floor_sqrt(r * r - ymax * ymax), ymax
-            x2, y2 = xmax, floor_sqrt(r * r - xmax * xmax)
+        # Squared distances of the other two corners, compared with the
+        # squared radius so that no square root is needed to classify
+        # the pixel
+        d1 = xmax2 + ymin2
+        d2 = xmin2 + ymax2
+        if d1 < r2 and d2 < r2:
+            x1, y1 = floor_sqrt(r2 - ymax2), ymax
+            x2, y2 = xmax, floor_sqrt(r2 - xmax2)
             area = ((xmax - xmin) * (ymax - ymin) -
                     area_triangle(x1, y1, x2, y2, xmax, ymax) +
                     area_arc(x1, y1, x2, y2, r))
-        elif d1 < r:
-            x1, y1 = xmin, floor_sqrt(r * r - xmin * xmin)
-            x2, y2 = xmax, floor_sqrt(r * r - xmax * xmax)
+        elif d1 < r2:
+            x1, y1 = xmin, floor_sqrt(r2 - xmin2)
+            x2, y2 = xmax, floor_sqrt(r2 - xmax2)
             area = (area_arc(x1, y1, x2, y2, r) +
                     area_triangle(x1, y1, x1, ymin, xmax, ymin) +
                     area_triangle(x1, y1, x2, ymin, x2, y2))
-        elif d2 < r:
-            x1, y1 = floor_sqrt(r * r - ymin * ymin), ymin
-            x2, y2 = floor_sqrt(r * r - ymax * ymax), ymax
+        elif d2 < r2:
+            x1, y1 = floor_sqrt(r2 - ymin2), ymin
+            x2, y2 = floor_sqrt(r2 - ymax2), ymax
             area = (area_arc(x1, y1, x2, y2, r) +
                     area_triangle(x1, y1, xmin, y1, xmin, ymax) +
                     area_triangle(x1, y1, xmin, y2, x2, y2))
         else:
-            x1, y1 = floor_sqrt(r * r - ymin * ymin), ymin
-            x2, y2 = xmin, floor_sqrt(r * r - xmin * xmin)
+            x1, y1 = floor_sqrt(r2 - ymin2), ymin
+            x2, y2 = xmin, floor_sqrt(r2 - xmin2)
             area = (area_arc(x1, y1, x2, y2, r) +
                     area_triangle(x1, y1, x2, y2, xmin, ymin))
 

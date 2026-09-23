@@ -65,7 +65,7 @@ New Features
     overlap method by computing all sources in a single call into
     compiled code. The computation also releases the GIL and uses no
     global state, so aperture photometry can now be parallelized across
-    threads, including on free-threaded Python builds. [#2292]
+    threads, including on free-threaded Python builds. [#2292, #2441]
 
   - Added new ``PolygonAperture`` and ``SkyPolygonAperture`` classes
     for polygon apertures defined by a fixed shape applied at one or
