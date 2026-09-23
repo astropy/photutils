@@ -85,6 +85,31 @@ cdef enum:
     _SEG_UNCORRECTED = 4
 
 
+cdef inline bint _seg_method_active(int seg_method,
+                                    Py_ssize_t label) noexcept nogil:
+    """
+    Whether the segmentation masking method applies to a source.
+
+    A label of 0 disables the masking for that source, except for
+    method 4 ('background_only'), which does not use the label.
+
+    Parameters
+    ----------
+    seg_method : int
+        The segmentation masking method code (0 disables masking).
+
+    label : Py_ssize_t
+        The target source label.
+
+    Returns
+    -------
+    active : bint
+        `True` if the per-pixel segmentation helpers must be called for
+        this source.
+    """
+    return seg_method != 0 and (label != 0 or seg_method == 4)
+
+
 cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
                                     const unsigned char *mask,
                                     Py_ssize_t nx_data, int seg_method,
@@ -101,10 +126,11 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
     This is the segmentation-masking query shared by the per-pixel
     loops of the aperture and segmentation batch drivers. It has no
     side effects other than writing the mirror pixel coordinates of a
-    corrected pixel, so a caller counts or uses the outcome as it
-    needs (see the ``_resolve_seg_pixel`` and
-    ``_seg_pixel_contributes`` wrappers). The caller must invoke it
-    only when a segmentation array is present and ``label`` is nonzero.
+    corrected pixel, so a caller counts or uses the outcome as it needs
+    (see the ``_resolve_seg_pixel`` and ``_seg_pixel_contributes``
+    wrappers). The caller must invoke it only when a segmentation
+    array is present and the method is active for the source (see
+    ``_seg_method_active``).
 
     Parameters
     ----------
@@ -122,11 +148,13 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
     seg_method : int
         The segmentation masking method code: 1 excludes neighbor-source
         pixels, 2 excludes all pixels not assigned to the target source,
-        and 3 replaces neighbor-source pixels with the values mirrored
-        across the aperture center (see ``batch_aperture_sums``).
+        3 replaces neighbor-source pixels with the values mirrored
+        across the aperture center, and 4 excludes all labeled pixels
+        (see ``batch_aperture_sums``).
 
     label : Py_ssize_t
-        The target source label (nonzero).
+        The target source label (nonzero, except for method 4, which
+        ignores it).
 
     ix, iy : Py_ssize_t
         The pixel coordinates.
@@ -152,7 +180,7 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
         * ``_SEG_EXCLUDED``: a background pixel excluded by method 2
           (not a neighbor-source pixel)
         * ``_SEG_NEIGHBOR``: a neighbor-source pixel excluded by method
-          1 or 2
+          1, 2, or 4 (for method 4, every labeled pixel)
         * ``_SEG_CORRECTED``: a neighbor-source pixel replaced by the
           mirror pixel written to ``(siy[0], six[0])`` (method 3)
         * ``_SEG_UNCORRECTED``: a neighbor-source pixel whose mirror
@@ -185,6 +213,9 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
             six[0] = xm
             siy[0] = ym
             return _SEG_CORRECTED
+    elif seg_method == 4:
+        if seg_val != 0:
+            return _SEG_NEIGHBOR
     return _SEG_SOURCE
 
 

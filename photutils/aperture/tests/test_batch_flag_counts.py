@@ -281,6 +281,17 @@ class TestSegmentationCounts:
                            labels=labels, seg_method=2)[0]
         assert fc[FLAG_COL_SEG] == 1
 
+        # Method 4 ('background_only'): every labeled pixel is excluded
+        # and counted as a neighbor pixel
+        fc = _sums_fcounts(data, (12.0, 12.0), 3.0, segmentation=segm,
+                           labels=labels, seg_method=4)[0]
+        fc_ref = _sums_fcounts(data, (12.0, 12.0), 3.0,
+                               mask=(segm > 0).astype(np.uint8))[0]
+        assert fc[FLAG_COL_SEG] == fc_ref[FLAG_COL_MASKED]
+        assert fc[FLAG_COL_SEG] > 1
+        assert fc[FLAG_COL_UNCORRECTED] == 0
+        assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS] - fc[FLAG_COL_SEG]
+
         # Method 3 ('correct'): the neighbor pixel is corrected (mirror
         # pixel is valid)
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, segmentation=segm,
