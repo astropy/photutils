@@ -654,7 +654,7 @@ background pixels have a value of 0 and sources are labeled with
 positive integers.
 
 The behavior is controlled by the ``mask_method`` keyword, which accepts
-one of four values:
+one of five values:
 
 * ``'none'`` (default):
   The segmentation image is ignored and all pixels within the aperture
@@ -665,15 +665,22 @@ one of four values:
 * ``'source_only'``:
   Only pixels belonging to the target source are included. Both
   neighboring sources and background pixels are excluded.
+* ``'background_only'``:
+  Only background pixels are included. Pixels belonging to any source
+  are excluded, including the source at the aperture position (if
+  any). This method is intended for estimating the local background,
+  e.g., within an annulus aperture.
 * ``'correct'``:
   Pixels belonging to neighboring sources are replaced by the values of
   the pixels mirrored across the aperture center. If a mirror pixel is
   unavailable, the pixel is excluded.
 
 The ``labels`` keyword is required whenever ``segmentation_image`` is
-provided and ``mask_method`` is not ``'none'``. It specifies the
-target source label associated with each aperture position, and it
-must have the same length as the number of aperture positions.
+provided and ``mask_method`` is ``'mask'``, ``'source_only'``, or
+``'correct'``. It specifies the target source label associated with
+each aperture position, and it must have the same length as the number
+of aperture positions. The ``'background_only'`` method has no target
+source, so it does not use the ``labels`` keyword.
 
 In this example, a circular aperture centered on the target source
 (label 1) also overlaps a bright neighboring source (label 2)::
@@ -711,7 +718,19 @@ the obscured flux::
     131.26548245743663
 
 These keywords are also available in
-:class:`~photutils.aperture.ApertureStats`.
+:class:`~photutils.aperture.ApertureStats`. For example, the
+``'background_only'`` method excludes the pixels of every source from
+a local background estimate in an annulus around the target source::
+
+    >>> from photutils.aperture import ApertureStats, CircularAnnulus
+    >>> annulus = CircularAnnulus((5, 5), r_in=2, r_out=5)
+    >>> stats1 = ApertureStats(data, annulus)
+    >>> print(stats1.mean)
+    8.35
+    >>> stats2 = ApertureStats(data, annulus, segmentation_image=segm,
+    ...                        mask_method='background_only')
+    >>> print(stats2.mean)
+    1.0
 
 
 .. _aperture_flags:

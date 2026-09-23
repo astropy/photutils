@@ -469,18 +469,21 @@ the ``mask_method`` keyword selects how neighboring sources are handled:
 * ``'mask'``: pixels belonging to neighboring sources are excluded.
 * ``'source_only'``: only pixels belonging to the target source are
   included.
+* ``'background_only'``: pixels belonging to any source are excluded,
+  e.g., to estimate the local background within an annulus aperture.
 * ``'correct'``: neighboring-source pixels are replaced by the values
   mirrored across the aperture center (excluded if the mirror pixel is
   unavailable).
 
-It is required to explicitly provide the source ``labels`` for each
-aperture when a ``segmentation_image`` is input and ``mask_method`` is
-not ``'none'``. The ``labels`` keyword must have the same length as
-the number of aperture positions and identifies the target source for
-each aperture. Requiring explicit labels ensures the correct target
-source is used for each aperture, which is especially important for
-irregularly shaped source segmentation footprints or for apertures
-that are not centered on a source.
+It is required to explicitly provide the source ``labels``
+for each aperture when a ``segmentation_image`` is input and
+``mask_method`` is ``'mask'``, ``'source_only'``, or ``'correct'`` (the
+``'background_only'`` method does not use the labels). The ``labels``
+keyword must have the same length as the number of aperture positions
+and identifies the target source for each aperture. Requiring explicit
+labels ensures the correct target source is used for each aperture,
+which is especially important for irregularly shaped source segmentation
+footprints or for apertures that are not centered on a source.
 
 Example of using the new segmentation-based masking::
 
