@@ -57,9 +57,8 @@ class _BkgZoomInterpolator:
     -----
     When resizing the mesh to the full image size, the samples are
     considered as the centers of regularly-spaced grid elements (i.e.,
-    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes
-    zoom's behavior consistent with `scipy.ndimage.map_coordinates` and
-    `skimage.transform.resize`
+    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes zoom's
+    behavior consistent with `scipy.ndimage.map_coordinates`.
 
     When called with an ``n_threads`` keyword larger than 1 (e.g., by
     `~photutils.background.Background2D`), the ``mode`` is 'reflect'
@@ -240,9 +239,8 @@ class BkgZoomInterpolator(_BkgZoomInterpolator):
     -----
     When resizing the mesh to the full image size, the samples are
     considered as the centers of regularly-spaced grid elements (i.e.,
-    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes
-    zoom's behavior consistent with `scipy.ndimage.map_coordinates` and
-    `skimage.transform.resize`
+    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes zoom's
+    behavior consistent with `scipy.ndimage.map_coordinates`.
     """
 
     def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True):

@@ -64,7 +64,6 @@ test = [
     'pytest-asdf-plugin',
     'pytest-astropy >= 0.12',
     'pytest-xdist >= 3.7',
-    'scikit-image >= 0.25',
     'tox >= 4.18',
 ]
 docs = [
