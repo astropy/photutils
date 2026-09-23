@@ -1631,7 +1631,8 @@ class TestCenterCutoutParity:
             self.assert_cutout_lists_equal(fast_cutouts[key],
                                            slow_cutouts[key])
 
-    @pytest.mark.parametrize('mask_method', ['mask', 'source_only'])
+    @pytest.mark.parametrize('mask_method', ['mask', 'source_only',
+                                             'background_only'])
     def test_segmentation_masking(self, mask_method):
         """
         Test that segmentation-excluded pixels land in the cutout mask

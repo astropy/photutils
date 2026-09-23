@@ -329,6 +329,25 @@ class TestSegmentationFlags:
                        mask_method=mask_method)
         assert flags == 0
 
+    def test_background_only_neighbor_pixels(self, unit_data):
+        """
+        Test the neighbor_pixels flag with mask_method='background_only',
+        where every labeled pixel counts as a neighbor pixel.
+        """
+        data = unit_data
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
+        segm[11:14, 11:14] = 1  # a source inside the aperture
+        aper = CircularAperture((12, 12), r=3.0)
+        flags = _flags(aper, data, segmentation_image=segm,
+                       mask_method='background_only')
+        assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
+
+        # An aperture on pure background is not flagged
+        aper = CircularAperture((4, 4), r=3.0)
+        flags = _flags(aper, data, segmentation_image=segm,
+                       mask_method='background_only')
+        assert flags == 0
+
     def test_uncorrected_pixels(self, unit_data):
         """
         Test the uncorrected_pixels flag with mask_method='correct'.
@@ -398,7 +417,8 @@ class TestMaskPathParity:
         xy = [(12.0, 12.0), (5.0, 5.0)]
         labels = [1, 3]
 
-        for mask_method in ('mask', 'source_only', 'correct'):
+        for mask_method in ('mask', 'source_only', 'background_only',
+                            'correct'):
             flags_batch = CircularAperture(xy, r=3.0)._photometry(
                 data, segmentation_image=segm, labels=labels,
                 mask_method=mask_method).flags
@@ -440,6 +460,40 @@ class TestMaskPathParity:
 
         # The NaN pixel is excluded as non_finite_data in both paths
         assert result_batch.flags & APERTURE_FLAGS.NON_FINITE_DATA
+        stats = ApertureStats(data, batch_aper, **kwargs)
+        assert result_batch.flags == stats.flags
+        assert_allclose(result_batch.flux, stats.sum, rtol=1e-12)
+
+    @pytest.mark.parametrize('nan_pixel', [(12, 13), (12, 10)],
+                             ids=['nan_source', 'nan_background'])
+    def test_nonfinite_background_only(self, unit_data, nan_pixel):
+        """
+        Test batch/mask-path parity when non-finite masking combines
+        with mask_method='background_only'.
+
+        A NaN source pixel is excluded as non-finite (not counted as a
+        neighbor pixel) and a NaN background pixel is excluded as
+        non-finite, matching the batch kernel and ApertureStats.
+        """
+        data = unit_data
+        data[nan_pixel] = np.nan
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
+        segm[11:14, 11:14] = 1  # a source inside the aperture
+
+        kwargs = {'segmentation_image': segm,
+                  'mask_method': 'background_only'}
+        batch_aper = CircularAperture((12.0, 12.0), r=3.0)
+        nobatch_aper = NoBatchCircularAperture((12.0, 12.0), r=3.0)
+        result_batch = AperturePhotometry(data, batch_aper, **kwargs)
+        result_nobatch = AperturePhotometry(data, nobatch_aper, **kwargs)
+        assert_array_equal(result_batch.flags, result_nobatch.flags)
+        assert_allclose(result_batch.flux, result_nobatch.flux, rtol=1e-12)
+        assert_allclose(result_batch.area.value, result_nobatch.area.value,
+                        rtol=1e-12)
+
+        expected = (APERTURE_FLAGS.NON_FINITE_DATA
+                    | APERTURE_FLAGS.NEIGHBOR_PIXELS)
+        assert result_batch.flags == expected
         stats = ApertureStats(data, batch_aper, **kwargs)
         assert result_batch.flags == stats.flags
         assert_allclose(result_batch.flux, stats.sum, rtol=1e-12)

@@ -311,6 +311,26 @@ class TestSegmentationFlags:
         assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
     @pytest.mark.usefixtures('maybe_mask_path')
+    def test_background_only_neighbor_pixels(self, unit_data):
+        """
+        Test the neighbor_pixels flag with mask_method='background_only',
+        where every labeled pixel counts as a neighbor pixel.
+        """
+        data = unit_data
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
+        segm[11:14, 11:14] = 1  # a source inside the aperture
+        aper = CircularAperture((12, 12), r=3.0)
+        flags = _stats_flags(data, aper, segmentation_image=segm,
+                             mask_method='background_only')
+        assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
+
+        # An aperture on pure background is not flagged
+        aper = CircularAperture((4, 4), r=3.0)
+        flags = _stats_flags(data, aper, segmentation_image=segm,
+                             mask_method='background_only')
+        assert flags == 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
     def test_uncorrected_pixels(self, unit_data):
         """
         Test the uncorrected_pixels flag with mask_method='correct'.

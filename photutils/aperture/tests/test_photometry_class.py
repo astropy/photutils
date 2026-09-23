@@ -244,6 +244,15 @@ class TestSegmentationMasking:
         ref = AperturePhotometry(data, aper, mask=manual_mask)
         assert_allclose(phot.flux, ref.flux)
 
+    def test_background_only_matches_manual(self):
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21)], r=8)
+        phot = AperturePhotometry(data, aper, segmentation_image=segm,
+                                  mask_method='background_only')
+        ref = AperturePhotometry(data, aper, mask=segm > 0)
+        assert_allclose(phot.flux, ref.flux)
+        assert phot.labels is None
+
     def test_none_method_ignores_segmentation(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=8)
@@ -795,7 +804,7 @@ class TestReadOnlyInputs:
     @pytest.mark.parametrize('aper_cls', [CircularAperture,
                                           NoBatchCircularAperture])
     @pytest.mark.parametrize('mask_method', ['none', 'mask', 'source_only',
-                                             'correct'])
+                                             'background_only', 'correct'])
     def test_aperture_photometry(self, aper_cls, mask_method):
         arrays = self._make_readonly_inputs()
         originals = {key: arr.copy() for key, arr in arrays.items()}

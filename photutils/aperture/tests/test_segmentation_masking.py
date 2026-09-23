@@ -15,7 +15,8 @@ from photutils.aperture._segmentation import (make_segmentation_exclusion,
 from photutils.aperture.circle import CircularAperture
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.stats import ApertureStats
-from photutils.aperture.tests.conftest import make_scene
+from photutils.aperture.tests.conftest import (NoBatchCircularAperture,
+                                               make_scene)
 from photutils.segmentation import SegmentationImage
 
 
@@ -93,6 +94,22 @@ class TestProcessSegmentationInputs:
             process_segmentation_inputs(segm, None, 'mask',
                                         [(21, 21), (28, 22)], data.shape)
 
+    def test_background_only_labels_optional(self):
+        data, segm = make_scene()
+        out_segm, out_labels = process_segmentation_inputs(
+            segm, None, 'background_only', [(21, 21), (28, 22)],
+            data.shape)
+        assert out_segm.dtype == np.intp
+        assert out_labels.dtype == np.intp
+        assert_array_equal(out_labels, [0, 0])
+
+    def test_background_only_ignores_labels(self):
+        # The labels are not used, so they are not validated
+        data, segm = make_scene()
+        _, out_labels = process_segmentation_inputs(
+            segm, [1, 2, 3], 'background_only', [(21, 21)], data.shape)
+        assert_array_equal(out_labels, [0])
+
 
 class TestAperturePhotometry:
     def test_batch_matches_mask_path(self):
@@ -112,10 +129,45 @@ class TestAperturePhotometry:
                 mask=manual_mask)
             assert_allclose(result.flux[idx], ref.flux)
 
+    def test_background_only_matches_manual(self):
+        """
+        Test that 'background_only' excludes every labeled pixel,
+        regardless of the (optional) labels.
+        """
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21), (28, 22)], r=6)
+        ref = AperturePhotometry(data, aper, mask=segm > 0)
+        for labels in (None, [1, 2], [0, 0]):
+            result = AperturePhotometry(data, aper, segmentation_image=segm,
+                                        labels=labels,
+                                        mask_method='background_only')
+            assert_allclose(result.flux, ref.flux)
+            assert_allclose(result.area, ref.area)
+
+    def test_background_only_mask_path_parity(self):
+        """
+        Test that the batch driver and the Python mask path agree for
+        'background_only', including the flags.
+        """
+        data, segm = make_scene()
+        error = np.full(data.shape, 0.5)
+        positions = [(21, 21), (28, 22), (5, 5)]
+        kwargs = {'error': error, 'segmentation_image': segm,
+                  'mask_method': 'background_only'}
+        batch = AperturePhotometry(data, CircularAperture(positions, r=6),
+                                   **kwargs)
+        nobatch = AperturePhotometry(
+            data, NoBatchCircularAperture(positions, r=6), **kwargs)
+        assert_allclose(batch.flux, nobatch.flux, rtol=1e-12)
+        assert_allclose(batch.flux_err, nobatch.flux_err, rtol=1e-12)
+        assert_allclose(batch.area, nobatch.area, rtol=1e-12)
+        assert_array_equal(batch.flags, nobatch.flags)
+
 
 class TestApertureStats:
     @pytest.mark.parametrize('method',
-                             ['none', 'mask', 'source_only', 'correct'])
+                             ['none', 'mask', 'source_only',
+                              'background_only', 'correct'])
     def test_matches_aperture_photometry(self, method):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
@@ -150,6 +202,20 @@ class TestApertureStats:
         sub = stats[0]
         assert sub._seg_labels is None
 
+    def test_background_only_without_labels(self):
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21), (28, 22)], r=6)
+        stats = ApertureStats(data, aper, segmentation_image=segm,
+                              mask_method='background_only')
+        ref = ApertureStats(data, aper, mask=segm > 0)
+        assert stats.labels is None
+        assert_allclose(stats.sum, ref.sum)
+        assert_allclose(stats.median, ref.median)
+
+        sub = stats[1]
+        assert sub.labels is None
+        assert_allclose(sub.sum, stats.sum[1])
+
 
 class TestMakeSegmentationExclusion:
     def test_none_method(self):
@@ -180,6 +246,17 @@ class TestMakeSegmentationExclusion:
         # Background exclusions are not marked as affected
         expected_affected = np.array([[False, False], [True, False]])
         assert_array_equal(affected, expected_affected)
+
+    @pytest.mark.parametrize('label', [0, 1])
+    def test_background_only_method(self, label):
+        # Every labeled pixel is excluded and marked as affected. The
+        # label is ignored, so label 0 does not disable the masking.
+        segm = np.array([[0, 1], [2, 1]])
+        _, _, exclude, affected = make_segmentation_exclusion(
+            'background_only', segm, label)
+        expected = np.array([[False, True], [True, True]])
+        assert_array_equal(exclude, expected)
+        assert_array_equal(affected, expected)
 
     def test_correct_replaces_neighbor(self):
         # 5x5 cutout, center (2, 2). A neighbor pixel at (1, 2) [x=1, y=2]
@@ -287,6 +364,32 @@ class TestBatchDriverSegmentation:
             0.0, 0.0, 1, 8, segm, labels, 2)[0]
 
         manual_mask = (segm != 1).astype(np.uint8)
+        ref = batch_aperture_sums(
+            data, error, manual_mask, positions, SHAPE_CIRCLE, params,
+            8.0, 8.0, 0.0, 0.0, 1, 8)[0]
+        assert_allclose(sums, ref)
+
+    @pytest.mark.parametrize('label', [0, 1])
+    def test_background_only_method(self, label):
+        # Method 4 excludes every labeled pixel. The label is ignored,
+        # so label 0 does not disable the masking.
+        rng = np.random.default_rng(4)
+        data = rng.random((40, 40))
+        error = rng.random((40, 40)) + 0.1
+        mask = np.zeros((40, 40), dtype=np.uint8)
+        positions = np.array([[20.0, 20.0]])
+        params = np.array([8.0])
+
+        segm = np.zeros((40, 40), dtype=np.intp)
+        segm[18:23, 18:23] = 1
+        segm[18:23, 23:28] = 2
+        labels = np.array([label], dtype=np.intp)
+
+        sums = batch_aperture_sums(
+            data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
+            0.0, 0.0, 1, 8, segm, labels, 4)[0]
+
+        manual_mask = (segm > 0).astype(np.uint8)
         ref = batch_aperture_sums(
             data, error, manual_mask, positions, SHAPE_CIRCLE, params,
             8.0, 8.0, 0.0, 0.0, 1, 8)[0]
