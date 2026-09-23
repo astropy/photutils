@@ -69,6 +69,7 @@ from photutils.aperture import (AperturePhotometry, ApertureStats,
                                 EllipticalAnnulus, EllipticalAperture,
                                 PolygonAperture, RectangularAnnulus,
                                 RectangularAperture, aperture_photometry)
+from photutils.segmentation import SegmentationImage
 
 try:
     import sep
@@ -336,8 +337,8 @@ def _phot_kwargs(scenario, method, segm, labels, maskarr):
     method : str
         The segmentation ``mask_method``.
 
-    segm : 2D `~numpy.ndarray`
-        The segmentation map.
+    segm : `~photutils.segmentation.SegmentationImage`
+        The segmentation image.
 
     labels : 1D `~numpy.ndarray`
         The per-source segmentation labels.
@@ -382,8 +383,8 @@ def run_legacy_photometry(data, aper, error, scenario, method, segm,
     method : str
         The segmentation ``mask_method``.
 
-    segm : 2D `~numpy.ndarray`
-        The segmentation map.
+    segm : `~photutils.segmentation.SegmentationImage`
+        The segmentation image.
 
     labels : 1D `~numpy.ndarray`
         The per-source segmentation labels.
@@ -425,8 +426,8 @@ def run_aperture_photometry(data, aper, error, scenario, method, segm,
     method : str
         The segmentation ``mask_method``.
 
-    segm : 2D `~numpy.ndarray`
-        The segmentation map.
+    segm : `~photutils.segmentation.SegmentationImage`
+        The segmentation image.
 
     labels : 1D `~numpy.ndarray`
         The per-source segmentation labels.
@@ -470,8 +471,8 @@ def run_aperture_stats(data, aper, error, scenario, method, segm,
     method : str
         The segmentation ``mask_method``.
 
-    segm : 2D `~numpy.ndarray`
-        The segmentation map.
+    segm : `~photutils.segmentation.SegmentationImage`
+        The segmentation image.
 
     labels : 1D `~numpy.ndarray`
         The per-source segmentation labels.
@@ -647,6 +648,7 @@ def validate(data, positions, labels, segm, maskarr, error, shapes,
         The number of failed checks.
     """
     segm32 = np.ascontiguousarray(segm, dtype=np.int32)
+    segm_img = SegmentationImage(segm)
     n_fail = 0
     print('\n== Validation ==')
 
@@ -658,10 +660,10 @@ def validate(data, positions, labels, segm, maskarr, error, shapes,
             aper = shape['aperture'](positions)
             for method in scenario['methods']:
                 ap_s, ap_e = run_aperture_photometry(
-                    data, aper, error, scenario, method, segm, labels,
+                    data, aper, error, scenario, method, segm_img, labels,
                     maskarr)
                 st_s, st_e = run_aperture_stats(
-                    data, aper, error, scenario, method, segm, labels,
+                    data, aper, error, scenario, method, segm_img, labels,
                     maskarr)
 
                 internal_ok = True
@@ -761,6 +763,7 @@ def benchmark(data, positions, labels, segm, maskarr, error, shapes,
         The number of threads for the class-based entry points.
     """
     segm32 = np.ascontiguousarray(segm, dtype=np.int32)
+    segm_img = SegmentationImage(segm)
     n_src = positions.shape[0]
     print(f'\n== Benchmark (best of {repeats}, {n_src} sources, '
           f'{data.shape[0]}x{data.shape[1]} image, '
@@ -782,7 +785,7 @@ def benchmark(data, positions, labels, segm, maskarr, error, shapes,
                 t_ap = time_best(
                     lambda a=aper, sc=scenario, m=method:
                     run_aperture_photometry(
-                        data, a, error, sc, m, segm, labels,
+                        data, a, error, sc, m, segm_img, labels,
                         maskarr, n_threads=n_threads), repeats=repeats)
                 if scenario['use_segm']:
                     # The legacy function does not support
@@ -792,13 +795,13 @@ def benchmark(data, positions, labels, segm, maskarr, error, shapes,
                     t_lg = time_best(
                         lambda a=aper, sc=scenario, m=method:
                         run_legacy_photometry(
-                            data, a, error, sc, m, segm, labels,
+                            data, a, error, sc, m, segm_img, labels,
                             maskarr), repeats=repeats)
                     lg_ms = f'{t_lg * 1e3:9.2f}'
                 t_st = time_best(
                     lambda a=aper, sc=scenario, m=method:
                     run_aperture_stats(
-                        data, a, error, sc, m, segm, labels,
+                        data, a, error, sc, m, segm_img, labels,
                         maskarr, n_threads=n_threads), repeats=repeats)
 
                 if _sep_supported(shape, scenario, method):
