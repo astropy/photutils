@@ -9,7 +9,8 @@ matching segmentation map) and, for a range of aperture shapes:
 1. Validates that the photutils aperture-photometry entry points
    (``aperture_photometry``, ``AperturePhotometry``, and
    ``ApertureStats``) agree with each other for every ``mask_method``
-   value ('none', 'mask', 'source_only', and 'correct'). The legacy
+   value ('none', 'mask', 'source_only', 'background_only', and
+   'correct'). The legacy
    ``aperture_photometry`` function does not support segmentation
    masking, so it is validated and benchmarked only for the
    scenarios without it.
@@ -30,8 +31,9 @@ matching segmentation map) and, for a range of aperture shapes:
 SEP segmentation masking maps to photutils as follows:
 ``mask_method='mask'`` corresponds to a positive SEP ``seg_id`` and
 ``mask_method='source_only'`` to a negative SEP ``seg_id``. The
-photutils ``'correct'`` mask method has no SEP analogue and is only
-cross-checked internally. SEP ``sum_ellipann`` has no ``segmap``
+photutils ``'background_only'`` and ``'correct'`` mask methods have no
+SEP analogue and are only cross-checked internally. SEP
+``sum_ellipann`` has no ``segmap``
 support, so segmentation scenarios are skipped for the elliptical
 annulus when comparing to SEP.
 
@@ -314,9 +316,11 @@ def build_scenarios():
         {'name': 'mask keyword only', 'use_mask': True,
          'use_segm': False, 'methods': ['none']},
         {'name': 'segmentation only', 'use_mask': False,
-         'use_segm': True, 'methods': ['mask', 'source_only', 'correct']},
+         'use_segm': True,
+         'methods': ['mask', 'source_only', 'background_only', 'correct']},
         {'name': 'mask + segmentation', 'use_mask': True,
-         'use_segm': True, 'methods': ['mask', 'source_only', 'correct']},
+         'use_segm': True,
+         'methods': ['mask', 'source_only', 'background_only', 'correct']},
     ]
 
 
@@ -707,7 +711,7 @@ def validate(data, positions, labels, segm, maskarr, error, shapes,
                         sep_str = '  SEP n/a (no analogue)'
 
                 status = 'PASS' if internal_ok else 'FAIL'
-                print(f'  {shape["name"]:16s} {method:12s} '
+                print(f'  {shape["name"]:16s} {method:16s} '
                       f'internal {status}{sep_str}')
 
     result = 'ALL PASS' if n_fail == 0 else f'{n_fail} FAILURE(S)'
@@ -762,7 +766,7 @@ def benchmark(data, positions, labels, segm, maskarr, error, shapes,
           f'{data.shape[0]}x{data.shape[1]} image, '
           f'n_threads={n_threads}) ==')
 
-    header = (f'{"shape":16s} {"scenario":20s} {"method":12s} '
+    header = (f'{"shape":16s} {"scenario":20s} {"method":16s} '
               f'{"ApPhot":>9s} {"legacy":>9s} {"ApStats":>9s} '
               f'{"SEP":>9s} {"ApPhot/SEP":>11s}')
     for scenario in scenarios:
@@ -809,7 +813,7 @@ def benchmark(data, positions, labels, segm, maskarr, error, shapes,
                     ratio = f'{"--":>11s}'
 
                 print(f'{shape["name"]:16s} {scenario["name"]:20s} '
-                      f'{method:12s} {t_ap * 1e3:9.2f} '
+                      f'{method:16s} {t_ap * 1e3:9.2f} '
                       f'{lg_ms} {t_st * 1e3:9.2f} '
                       f'{sep_ms} {ratio}')
 
