@@ -105,10 +105,14 @@ def make_gaussian_scene(n_sources, shape, *, seed=0):
 
     positions : 2D `~numpy.ndarray`
         The ``(x, y)`` source center positions, shape
-        ``(n_sources, 2)``.
+        ``(n_kept, 2)``. A source that owns no pixels in the
+        segmentation map (it is entirely overtaken by a brighter
+        neighbor) is dropped, so ``n_kept`` can be less than
+        ``n_sources``.
 
     labels : 1D `~numpy.ndarray`
-        The per-source integer labels (``1 .. n_sources``).
+        The per-source integer labels (a subset of
+        ``1 .. n_sources``). Every label is present in ``segm``.
     """
     rng = np.random.default_rng(seed)
     ny, nx = shape
@@ -141,6 +145,16 @@ def make_gaussian_scene(n_sources, shape, *, seed=0):
         sub_best[sel] = g[sel]
         seg_sub = segm[y0:y1, x0:x1]
         seg_sub[sel] = label
+
+    # The photutils segmentation masking requires every label to be
+    # present in the segmentation map
+    owned = np.isin(labels, segm)
+    n_dropped = np.count_nonzero(~owned)
+    if n_dropped:
+        print(f'Dropped {n_dropped} of {n_sources} sources that own no '
+              'pixels in the segmentation map')
+    positions = positions[owned]
+    labels = labels[owned]
 
     return np.ascontiguousarray(data), segm, positions, labels
 
