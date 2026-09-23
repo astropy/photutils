@@ -81,9 +81,9 @@ _METHOD_SUBPIXELS_DOC = (
     + _SUBPIXELS_DOC)
 
 _SEGMENTATION_DOC = """\
-segmentation_image : `~photutils.segmentation.SegmentationImage`, 2D \
-array_like, or `None`, optional
-    A 2D segmentation image with the same shape as ``data``, where
+segmentation_image : `~photutils.segmentation.SegmentationImage` or \
+`None`, optional
+    A segmentation image with the same shape as ``data``, where
     background pixels have a value of 0 and sources are labeled with
     positive integers. If input, neighboring sources can be masked or
     corrected within each aperture according to the ``mask_method``

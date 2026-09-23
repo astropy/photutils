@@ -24,7 +24,8 @@ class TestProcessSegmentationInputs:
     def test_method_none_returns_none(self):
         data, segm = make_scene()
         positions = [(21, 21)]
-        result = process_segmentation_inputs(segm, None, 'none', positions,
+        result = process_segmentation_inputs(SegmentationImage(segm),
+                                             None, 'none', positions,
                                              data.shape)
         assert result == (None, None)
 
@@ -32,7 +33,8 @@ class TestProcessSegmentationInputs:
         data, segm = make_scene()
         match = 'mask_method must be one of'
         with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(segm, None, 'invalid', [(21, 21)],
+            process_segmentation_inputs(SegmentationImage(segm),
+                                        None, 'invalid', [(21, 21)],
                                         data.shape)
 
     def test_missing_segmentation(self):
@@ -49,55 +51,46 @@ class TestProcessSegmentationInputs:
         assert out_segm.dtype == np.intp
         assert_allclose(out_labels, [1])
 
-    def test_ndarray_input(self):
+    def test_array_input_rejected(self):
         data, segm = make_scene()
-        out_segm, _ = process_segmentation_inputs(
-            segm, [1], 'mask', [(21, 21)], data.shape)
-        assert out_segm.dtype == np.intp
-
-    def test_not_2d(self):
-        match = 'segmentation_image must be a 2D array'
-        with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(np.zeros((3, 3, 3), dtype=int), [1],
-                                        'mask', [(1, 1)], (3, 3))
+        match = 'segmentation_image must be a SegmentationImage'
+        with pytest.raises(TypeError, match=match):
+            process_segmentation_inputs(segm, [1], 'mask', [(21, 21)],
+                                        data.shape)
 
     def test_wrong_shape(self):
+        segm = SegmentationImage(np.zeros((10, 10), dtype=int))
         match = 'same shape as the data'
         with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(np.zeros((10, 10), dtype=int), [1],
-                                        'mask', [(1, 1)], (50, 50))
-
-    def test_non_integer_dtype(self):
-        match = 'integer data type'
-        with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(np.zeros((50, 50), dtype=float), [1],
-                                        'mask', [(21, 21)], (50, 50))
+            process_segmentation_inputs(segm, [1], 'mask', [(1, 1)],
+                                        (50, 50))
 
     def test_labels_length_mismatch(self):
         data, segm = make_scene()
         match = 'labels must have the same length'
         with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(segm, [1, 2], 'mask', [(21, 21)],
+            process_segmentation_inputs(SegmentationImage(segm),
+                                        [1, 2], 'mask', [(21, 21)],
                                         data.shape)
 
     def test_labels_not_1d(self):
         data, segm = make_scene()
         match = 'labels must be a 1D array'
         with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(segm, [[1, 2]], 'mask', [(21, 21)],
+            process_segmentation_inputs(SegmentationImage(segm),
+                                        [[1, 2]], 'mask', [(21, 21)],
                                         data.shape)
 
     def test_labels_required(self):
         data, segm = make_scene()
         match = 'labels must be input when segmentation_image is input'
         with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(segm, None, 'mask',
+            process_segmentation_inputs(SegmentationImage(segm), None, 'mask',
                                         [(21, 21), (28, 22)], data.shape)
 
-    @pytest.mark.parametrize('use_segm_obj', [True, False])
-    def test_label_not_in_image(self, use_segm_obj):
+    def test_label_not_in_image(self):
         data, segm = make_scene()
-        segm_in = SegmentationImage(segm) if use_segm_obj else segm
+        segm_in = SegmentationImage(segm)
         match = r'labels \[3\] are not present in the segmentation_image'
         with pytest.raises(ValueError, match=match):
             process_segmentation_inputs(segm_in, [1, 3], 'mask',
@@ -107,7 +100,8 @@ class TestProcessSegmentationInputs:
         data, segm = make_scene()
         match = r'labels \[-1, 5\] are not present'
         with pytest.raises(ValueError, match=match):
-            process_segmentation_inputs(segm, [5, 1, -1, 5], 'mask',
+            process_segmentation_inputs(SegmentationImage(segm),
+                                        [5, 1, -1, 5], 'mask',
                                         [(21, 21)] * 4, data.shape)
 
     @pytest.mark.parametrize('method', ['mask', 'source_only', 'correct'])
@@ -116,14 +110,15 @@ class TestProcessSegmentationInputs:
         # required to be present in the image.
         data, segm = make_scene()
         _, out_labels = process_segmentation_inputs(
-            segm, [0, 1], method, [(21, 21), (28, 22)], data.shape)
+            SegmentationImage(segm), [0, 1], method, [(21, 21), (28, 22)],
+            data.shape)
         assert_array_equal(out_labels, [0, 1])
 
     def test_background_only_labels_optional(self):
         data, segm = make_scene()
         out_segm, out_labels = process_segmentation_inputs(
-            segm, None, 'background_only', [(21, 21), (28, 22)],
-            data.shape)
+            SegmentationImage(segm), None, 'background_only',
+            [(21, 21), (28, 22)], data.shape)
         assert out_segm.dtype == np.intp
         assert out_labels.dtype == np.intp
         assert_array_equal(out_labels, [0, 0])
@@ -160,7 +155,8 @@ class TestAperturePhotometry:
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         labels = [1, 2]
-        result = AperturePhotometry(data, aper, segmentation_image=segm,
+        result = AperturePhotometry(data, aper,
+                                    segmentation_image=SegmentationImage(segm),
                                     labels=labels, mask_method='mask')
         for idx, label in enumerate(labels):
             manual_mask = (segm > 0) & (segm != label)
@@ -174,7 +170,8 @@ class TestAperturePhotometry:
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         match = 'not present in the segmentation_image'
         with pytest.raises(ValueError, match=match):
-            AperturePhotometry(data, aper, segmentation_image=segm,
+            AperturePhotometry(data, aper,
+                               segmentation_image=SegmentationImage(segm),
                                labels=[1, 3], mask_method='mask')
 
     def test_background_only_matches_manual(self):
@@ -185,6 +182,7 @@ class TestAperturePhotometry:
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         ref = AperturePhotometry(data, aper, mask=segm > 0)
+        segm = SegmentationImage(segm)
         for labels in (None, [1, 2], [0, 0]):
             result = AperturePhotometry(data, aper, segmentation_image=segm,
                                         labels=labels,
@@ -200,7 +198,8 @@ class TestAperturePhotometry:
         data, segm = make_scene()
         error = np.full(data.shape, 0.5)
         positions = [(21, 21), (28, 22), (5, 5)]
-        kwargs = {'error': error, 'segmentation_image': segm,
+        kwargs = {'error': error,
+                  'segmentation_image': SegmentationImage(segm),
                   'mask_method': 'background_only'}
         batch = AperturePhotometry(data, CircularAperture(positions, r=6),
                                    **kwargs)
@@ -221,7 +220,8 @@ class TestApertureStats:
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         kwargs = {}
         if method != 'none':
-            kwargs = {'segmentation_image': segm, 'labels': [1, 2],
+            kwargs = {'segmentation_image': SegmentationImage(segm),
+                      'labels': [1, 2],
                       'mask_method': method}
         phot = AperturePhotometry(data, aper, **kwargs)
         stats = ApertureStats(data, aper, **kwargs)
@@ -230,7 +230,8 @@ class TestApertureStats:
     def test_slicing_preserves_labels(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
-        stats = ApertureStats(data, aper, segmentation_image=segm,
+        stats = ApertureStats(data, aper,
+                              segmentation_image=SegmentationImage(segm),
                               labels=[1, 2], mask_method='mask')
         sub = stats[1]
         assert_allclose(sub.sum, stats.sum[1])
@@ -238,7 +239,8 @@ class TestApertureStats:
     def test_copy_preserves_masking(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=6)
-        stats = ApertureStats(data, aper, segmentation_image=segm,
+        stats = ApertureStats(data, aper,
+                              segmentation_image=SegmentationImage(segm),
                               labels=[1], mask_method='mask')
         copied = stats.copy()
         assert_allclose(copied.sum, stats.sum)
@@ -255,13 +257,15 @@ class TestApertureStats:
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         match = 'not present in the segmentation_image'
         with pytest.raises(ValueError, match=match):
-            ApertureStats(data, aper, segmentation_image=segm,
+            ApertureStats(data, aper,
+                          segmentation_image=SegmentationImage(segm),
                           labels=[1, 3], mask_method='mask')
 
     def test_background_only_without_labels(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
-        stats = ApertureStats(data, aper, segmentation_image=segm,
+        stats = ApertureStats(data, aper,
+                              segmentation_image=SegmentationImage(segm),
                               mask_method='background_only')
         ref = ApertureStats(data, aper, mask=segm > 0)
         assert stats.labels is None
@@ -509,7 +513,8 @@ class TestBatchDriverSegmentation:
         labels = np.array([1], dtype=np.intp)
 
         batch = aper._photometry(
-            data, error=error, mask=mask, segmentation_image=segm,
+            data, error=error, mask=mask,
+            segmentation_image=SegmentationImage(segm),
             labels=labels, mask_method='correct')
         mask_sum, mask_err, _area, *_ = aper._mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,

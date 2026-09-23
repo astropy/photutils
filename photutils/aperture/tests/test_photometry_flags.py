@@ -16,6 +16,7 @@ from photutils.aperture import (APERTURE_FLAGS, AperturePhotometry,
 from photutils.aperture.flags import _counts_to_flag_bits
 from photutils.aperture.tests.conftest import (UNIT_SHAPE,
                                                NoBatchCircularAperture)
+from photutils.segmentation import SegmentationImage
 
 APERTURE_FACTORIES = [
     lambda xy: CircularAperture(xy, r=3.0),
@@ -318,14 +319,16 @@ class TestSegmentationFlags:
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture
         aper = CircularAperture((12, 12), r=3.0)
-        flags = _flags(aper, data, segmentation_image=segm, labels=1,
+        flags = _flags(aper, data,
+                       segmentation_image=SegmentationImage(segm), labels=1,
                        mask_method=mask_method)
         assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
         # Without any neighbor pixels inside the aperture, no flag is set
         segm2 = np.zeros(UNIT_SHAPE, dtype=int)
         segm2[10:15, 10:15] = 1
-        flags = _flags(aper, data, segmentation_image=segm2, labels=1,
+        flags = _flags(aper, data,
+                       segmentation_image=SegmentationImage(segm2), labels=1,
                        mask_method=mask_method)
         assert flags == 0
 
@@ -338,13 +341,13 @@ class TestSegmentationFlags:
         segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[11:14, 11:14] = 1  # a source inside the aperture
         aper = CircularAperture((12, 12), r=3.0)
-        flags = _flags(aper, data, segmentation_image=segm,
+        flags = _flags(aper, data, segmentation_image=SegmentationImage(segm),
                        mask_method='background_only')
         assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
         # An aperture on pure background is not flagged
         aper = CircularAperture((4, 4), r=3.0)
-        flags = _flags(aper, data, segmentation_image=segm,
+        flags = _flags(aper, data, segmentation_image=SegmentationImage(segm),
                        mask_method='background_only')
         assert flags == 0
 
@@ -358,14 +361,16 @@ class TestSegmentationFlags:
         segm[12, 14] = 2  # neighbor whose mirror (12, 10) is a source pixel
         segm[12, 10] = 2  # make the mirror a neighbor too: uncorrectable
         aper = CircularAperture((12, 12), r=3.0)
-        flags = _flags(aper, data, segmentation_image=segm, labels=1,
+        flags = _flags(aper, data,
+                       segmentation_image=SegmentationImage(segm), labels=1,
                        mask_method='correct')
         assert flags == (APERTURE_FLAGS.NEIGHBOR_PIXELS
                          | APERTURE_FLAGS.UNCORRECTED_PIXELS)
 
         # A correctable neighbor does not set uncorrected_pixels
         segm[12, 10] = 0
-        flags = _flags(aper, data, segmentation_image=segm, labels=1,
+        flags = _flags(aper, data,
+                       segmentation_image=SegmentationImage(segm), labels=1,
                        mask_method='correct')
         assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
@@ -416,6 +421,7 @@ class TestMaskPathParity:
         segm[3:7, 3:7] = 3
         xy = [(12.0, 12.0), (5.0, 5.0)]
         labels = [1, 3]
+        segm = SegmentationImage(segm)
 
         for mask_method in ('mask', 'source_only', 'background_only',
                             'correct'):
@@ -447,7 +453,7 @@ class TestMaskPathParity:
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel whose mirror is (12, 10)
 
-        kwargs = {'segmentation_image': segm, 'labels': [1],
+        kwargs = {'segmentation_image': SegmentationImage(segm), 'labels': [1],
                   'mask_method': mask_method}
         batch_aper = CircularAperture((12.0, 12.0), r=3.0)
         nobatch_aper = NoBatchCircularAperture((12.0, 12.0), r=3.0)
@@ -480,7 +486,7 @@ class TestMaskPathParity:
         segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[11:14, 11:14] = 1  # a source inside the aperture
 
-        kwargs = {'segmentation_image': segm,
+        kwargs = {'segmentation_image': SegmentationImage(segm),
                   'mask_method': 'background_only'}
         batch_aper = CircularAperture((12.0, 12.0), r=3.0)
         nobatch_aper = NoBatchCircularAperture((12.0, 12.0), r=3.0)

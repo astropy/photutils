@@ -32,10 +32,13 @@ def process_segmentation_inputs(segmentation_image, labels,
 
     Parameters
     ----------
-    segmentation_image : `~photutils.segmentation.SegmentationImage`, \
-            2D `~numpy.ndarray`, or `None`
+    segmentation_image : `~photutils.segmentation.SegmentationImage` \
+            or `None`
         The segmentation image, where background pixels are zero and
-        sources have positive integer labels.
+        sources have positive integer labels. A
+        `~photutils.segmentation.SegmentationImage` is required (rather
+        than a plain array) because its cached labels make the
+        per-call validation of ``labels`` inexpensive.
 
     labels : int, 1D array_like, or `None`
         The source label(s) associated with the aperture
@@ -84,21 +87,13 @@ def process_segmentation_inputs(segmentation_image, labels,
     # Local import to avoid a circular import with photutils.segmentation
     from photutils.segmentation import SegmentationImage
 
-    if isinstance(segmentation_image, SegmentationImage):
-        segm = segmentation_image.data
-    else:
-        segm = np.asarray(segmentation_image)
+    if not isinstance(segmentation_image, SegmentationImage):
+        msg = 'segmentation_image must be a SegmentationImage'
+        raise TypeError(msg)
 
-    if segm.ndim != 2:
-        msg = 'segmentation_image must be a 2D array'
-        raise ValueError(msg)
-
+    segm = segmentation_image.data
     if segm.shape != tuple(data_shape):
         msg = 'segmentation_image must have the same shape as the data'
-        raise ValueError(msg)
-
-    if segm.dtype.kind not in ('i', 'u'):
-        msg = 'segmentation_image must have an integer data type'
         raise ValueError(msg)
 
     segm = np.ascontiguousarray(segm, dtype=np.intp)
@@ -134,13 +129,9 @@ def process_segmentation_inputs(segmentation_image, labels,
     # Each nonzero label must be present in the segmentation image.
     # Otherwise, every labeled pixel would silently be treated as a
     # neighbor of the target source. The SegmentationImage labels are
-    # cached, so use them when available. For an array input, np.isin
-    # with a small set of labels uses its linear-time table method.
+    # cached, so this check is inexpensive.
     nonzero = labels[labels != 0]
-    if isinstance(segmentation_image, SegmentationImage):
-        present = np.isin(nonzero, segmentation_image.labels)
-    else:
-        present = np.isin(nonzero, segm)
+    present = np.isin(nonzero, segmentation_image.labels)
     bad_labels = np.unique(nonzero[~present])
     if bad_labels.size > 0:
         msg = (f'labels {bad_labels.tolist()} are not present in the '

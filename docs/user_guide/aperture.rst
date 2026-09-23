@@ -689,12 +689,14 @@ In this example, a circular aperture centered on the target source
 
     >>> import numpy as np
     >>> from photutils.aperture import AperturePhotometry, CircularAperture
+    >>> from photutils.segmentation import SegmentationImage
     >>> data = np.ones((11, 11))
     >>> data[4:7, 4:7] = 10.0  # target source
     >>> data[4:7, 7:10] = 50.0  # bright neighbor
     >>> segm = np.zeros((11, 11), dtype=int)
     >>> segm[4:7, 4:7] = 1
     >>> segm[4:7, 7:10] = 2
+    >>> segm = SegmentationImage(segm)
     >>> aperture = CircularAperture((5, 5), r=4)
 
 Without masking, the aperture sum includes the neighbor's flux::
