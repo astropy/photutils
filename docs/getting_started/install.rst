@@ -23,9 +23,6 @@ Photutils also optionally depends on other packages for some features:
 * `Regions <https://astropy-regions.readthedocs.io/>`_ 0.10 or
   later: Required to perform aperture photometry using region objects.
 
-* `scikit-image <https://scikit-image.org/>`_ 0.25 or later: Required
-  to deblend segmented sources.
-
 * `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.22 or later:
   Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.

@@ -126,7 +126,6 @@ jobs:
                                   python3-pytest-astropy \
                                   python3-setuptools-scm \
                                   python3-scipy \
-                                  python3-skimage \
                                   python3-sklearn \
                                   python3-venv \
                                   python3-wheel \

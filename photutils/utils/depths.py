@@ -22,8 +22,6 @@ from photutils.utils.footprints import circular_footprint
 
 __all__ = ['ImageDepth']
 
-__doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['skimage']}
-
 SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
 # Remove in 4.0

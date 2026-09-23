@@ -27,7 +27,6 @@ from photutils.segmentation.deblend import (_ChunkResult, _compute_thresholds,
                                             _DeblendParams)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
-from photutils.utils._optional_deps import HAS_SKIMAGE
 from photutils.utils.exceptions import (DeblendWarning,
                                         PhotutilsDeprecationWarning)
 
@@ -423,11 +422,10 @@ class TestDeblendSources:
 
     def test_watershed(self):
         """
-        Test that the watershed input mask is a bool array.
+        Test deblending a segment whose label exceeds 255.
 
-        With scikit-image >= 0.13, the mask must be a bool array. In
-        particular, if the mask array contains label 512, the watershed
-        algorithm fails.
+        The watershed input mask must be a bool array rather than the
+        label array, otherwise a label such as 512 breaks the watershed.
         """
         segm = self.segm.copy()
         segm.reassign_label(1, 512)
@@ -610,7 +608,6 @@ def test_make_markers_matches_legacy(kind, mode, connectivity):
     assert n_seen >= 1
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 @pytest.mark.parametrize('connectivity', [8, 4])
 def test_watershed_matches_skimage(connectivity):
     """
@@ -619,7 +616,8 @@ def test_watershed_matches_skimage(connectivity):
     integer-valued and constant images whose plateaus exercise the
     queue-age tie-breaking.
     """
-    from skimage.segmentation import watershed
+    skimage_segmentation = pytest.importorskip('skimage.segmentation')
+    watershed = skimage_segmentation.watershed
 
     footprint = _make_binary_structure(2, connectivity)
     rng = np.random.default_rng(987)

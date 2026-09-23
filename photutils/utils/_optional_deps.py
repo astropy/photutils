@@ -2,7 +2,7 @@
 """
 Tools for optional dependencies.
 
-Attributes ``HAS_<PKG>`` (e.g., ``HAS_MATPLOTLIB``, ``HAS_SKIMAGE``)
+Attributes ``HAS_<PKG>`` (e.g., ``HAS_MATPLOTLIB``, ``HAS_REGIONS``)
 are booleans that indicate whether the corresponding package can be
 imported. The actual import is performed lazily on first attribute
 access via :pep:`562`.
@@ -26,7 +26,6 @@ from packaging.requirements import Requirement
 # add a single entry below.
 _DIST_TO_IMPORT = {
     'asdf-astropy': 'asdf_astropy',
-    'scikit-image': 'skimage',
 }
 
 
@@ -60,7 +59,7 @@ def _dist_to_has_key(dist_name):
     """
     Convert a distribution name to the corresponding ``HAS_*`` key.
 
-    For example, ``'scikit-image'`` -> ``'SKIMAGE'`` and
+    For example, ``'asdf-astropy'`` -> ``'ASDF_ASTROPY'`` and
     ``'matplotlib'`` -> ``'MATPLOTLIB'``.
     """
     import_name = _DIST_TO_IMPORT.get(dist_name, dist_name)
