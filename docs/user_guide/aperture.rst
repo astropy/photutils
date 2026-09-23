@@ -675,12 +675,14 @@ one of five values:
   the pixels mirrored across the aperture center. If a mirror pixel is
   unavailable, the pixel is excluded.
 
-The ``labels`` keyword is required whenever ``segmentation_image`` is
-provided and ``mask_method`` is ``'mask'``, ``'source_only'``, or
-``'correct'``. It specifies the target source label associated with
-each aperture position, and it must have the same length as the number
-of aperture positions. The ``'background_only'`` method has no target
-source, so it does not use the ``labels`` keyword.
+The ``labels`` keyword is required whenever ``segmentation_image``
+is provided and ``mask_method`` is ``'mask'``, ``'source_only'``,
+or ``'correct'``. It specifies the target source label associated
+with each aperture position, and it must have the same length as the
+number of aperture positions. Each nonzero label must be present in the
+segmentation image. A label of 0 disables the segmentation masking for
+that aperture. The ``'background_only'`` method has no target source, so
+it does not use the ``labels`` keyword.
 
 In this example, a circular aperture centered on the target source
 (label 1) also overlaps a bright neighboring source (label 2)::

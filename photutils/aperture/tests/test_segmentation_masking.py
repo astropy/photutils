@@ -94,6 +94,31 @@ class TestProcessSegmentationInputs:
             process_segmentation_inputs(segm, None, 'mask',
                                         [(21, 21), (28, 22)], data.shape)
 
+    @pytest.mark.parametrize('use_segm_obj', [True, False])
+    def test_label_not_in_image(self, use_segm_obj):
+        data, segm = make_scene()
+        segm_in = SegmentationImage(segm) if use_segm_obj else segm
+        match = r'labels \[3\] are not present in the segmentation_image'
+        with pytest.raises(ValueError, match=match):
+            process_segmentation_inputs(segm_in, [1, 3], 'mask',
+                                        [(21, 21), (28, 22)], data.shape)
+
+    def test_invalid_labels_reported_once_and_sorted(self):
+        data, segm = make_scene()
+        match = r'labels \[-1, 5\] are not present'
+        with pytest.raises(ValueError, match=match):
+            process_segmentation_inputs(segm, [5, 1, -1, 5], 'mask',
+                                        [(21, 21)] * 4, data.shape)
+
+    @pytest.mark.parametrize('method', ['mask', 'source_only', 'correct'])
+    def test_label_zero_allowed(self, method):
+        # Label 0 disables the masking for that aperture and is not
+        # required to be present in the image.
+        data, segm = make_scene()
+        _, out_labels = process_segmentation_inputs(
+            segm, [0, 1], method, [(21, 21), (28, 22)], data.shape)
+        assert_array_equal(out_labels, [0, 1])
+
     def test_background_only_labels_optional(self):
         data, segm = make_scene()
         out_segm, out_labels = process_segmentation_inputs(
@@ -104,11 +129,26 @@ class TestProcessSegmentationInputs:
         assert_array_equal(out_labels, [0, 0])
 
     def test_background_only_ignores_labels(self):
-        # The labels are not used, so they are not validated
+        # The labels are not used, so they need not be present in the
+        # segmentation image.
         data, segm = make_scene()
         _, out_labels = process_segmentation_inputs(
-            segm, [1, 2, 3], 'background_only', [(21, 21)], data.shape)
+            SegmentationImage(segm), [3], 'background_only', [(21, 21)],
+            data.shape)
         assert_array_equal(out_labels, [0])
+
+    @pytest.mark.parametrize(
+        ('labels', 'match'),
+        [([[1, 2]], 'labels must be a 1D array'),
+         ([1, 2, 3], 'labels must have the same length')])
+    def test_background_only_labels_shape_validated(self, labels, match):
+        # The labels are not used, but their shape is still validated
+        # because they are stored and sliced per aperture.
+        data, segm = make_scene()
+        with pytest.raises(ValueError, match=match):
+            process_segmentation_inputs(SegmentationImage(segm), labels,
+                                        'background_only', [(21, 21)],
+                                        data.shape)
 
 
 class TestAperturePhotometry:
@@ -128,6 +168,14 @@ class TestAperturePhotometry:
                 data, CircularAperture(aper.positions[idx], r=6),
                 mask=manual_mask)
             assert_allclose(result.flux[idx], ref.flux)
+
+    def test_label_not_in_image(self):
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21), (28, 22)], r=6)
+        match = 'not present in the segmentation_image'
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, aper, segmentation_image=segm,
+                               labels=[1, 3], mask_method='mask')
 
     def test_background_only_matches_manual(self):
         """
@@ -202,6 +250,14 @@ class TestApertureStats:
         sub = stats[0]
         assert sub._seg_labels is None
 
+    def test_label_not_in_image(self):
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21), (28, 22)], r=6)
+        match = 'not present in the segmentation_image'
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, aper, segmentation_image=segm,
+                          labels=[1, 3], mask_method='mask')
+
     def test_background_only_without_labels(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
@@ -215,6 +271,26 @@ class TestApertureStats:
         sub = stats[1]
         assert sub.labels is None
         assert_allclose(sub.sum, stats.sum[1])
+
+    def test_background_only_with_labels(self):
+        # Input labels are echoed and sliced even though the method
+        # does not use them.
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21), (28, 22)], r=6)
+        stats = ApertureStats(data, aper,
+                              segmentation_image=SegmentationImage(segm),
+                              labels=[1, 2], mask_method='background_only')
+        ref = ApertureStats(data, aper, mask=segm > 0)
+        assert_allclose(stats.sum, ref.sum)
+        sub = stats[1]
+        assert sub.labels == 2
+        assert_allclose(sub.sum, stats.sum[1])
+
+        match = 'labels must have the same length'
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, aper,
+                          segmentation_image=SegmentationImage(segm),
+                          labels=[1, 2, 3], mask_method='background_only')
 
 
 class TestMakeSegmentationExclusion:

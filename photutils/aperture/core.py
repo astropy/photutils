@@ -97,10 +97,13 @@ array_like, or `None`, optional
 labels : int, 1D array_like, or `None`, optional
     The source label(s) in ``segmentation_image`` associated
     with the aperture position(s). ``labels`` is required if
-    ``segmentation_image`` is input and ``mask_method`` is ``'mask'``,
-    ``'source_only'``, or ``'correct'``. It is ignored if
-    ``mask_method`` is ``'background_only'``. ``labels`` must have the
-    same length as the number of aperture positions.
+    ``segmentation_image`` is input and ``mask_method`` is
+    ``'mask'``, ``'source_only'``, or ``'correct'``. It is not used
+    if ``mask_method`` is ``'background_only'``. ``labels`` must have
+    the same length as the number of aperture positions, and each
+    nonzero label must be present in the ``segmentation_image`` (unless
+    ``mask_method`` is ``'background_only'``). A label of 0 disables the
+    segmentation masking for that aperture.
 
 mask_method : {'none', 'mask', 'source_only', 'background_only', \
         'correct'}, optional

@@ -38,12 +38,15 @@ def process_segmentation_inputs(segmentation_image, labels,
         sources have positive integer labels.
 
     labels : int, 1D array_like, or `None`
-        The source label(s) associated with the aperture ``positions``.
-        ``labels`` is required (must not be `None`) when
-        ``segmentation_image`` is input and ``mask_method`` is
-        ``'mask'``, ``'source_only'``, or ``'correct'``. It is ignored
-        (and not validated) when ``mask_method`` is
-        ``'background_only'``.
+        The source label(s) associated with the aperture
+        ``positions``. ``labels`` is required (must not be `None`)
+        when ``segmentation_image`` is input and ``mask_method`` is
+        ``'mask'``, ``'source_only'``, or ``'correct'``. Each nonzero
+        label must be present in the ``segmentation_image``. A label of
+        0 disables the masking for that aperture. ``labels`` is not used
+        when ``mask_method`` is ``'background_only'``. In that case the
+        labels need not be present in the ``segmentation_image``, but if
+        input they must still have one entry per aperture position.
 
     mask_method : {'none', 'mask', 'source_only', 'background_only', \
             'correct'}
@@ -103,12 +106,11 @@ def process_segmentation_inputs(segmentation_image, labels,
     positions = np.atleast_2d(positions)
     n_positions = positions.shape[0]
 
-    if mask_method == 'background_only':
-        # The labels are not used, but the batch kernels require a
-        # per-source labels array
-        return segm, np.zeros(n_positions, dtype=np.intp)
-
     if labels is None:
+        if mask_method == 'background_only':
+            # The labels are not used, but the batch kernels require a
+            # per-source labels array.
+            return segm, np.zeros(n_positions, dtype=np.intp)
         msg = ('labels must be input when segmentation_image is input '
                "and mask_method is not 'none'")
         raise ValueError(msg)
@@ -122,6 +124,28 @@ def process_segmentation_inputs(segmentation_image, labels,
                'aperture positions')
         raise ValueError(msg)
     labels = np.ascontiguousarray(labels, dtype=np.intp)
+
+    if mask_method == 'background_only':
+        # The labels are not used, so they need not be present in the
+        # segmentation image. Their shape is still validated above
+        # because the input labels are stored and sliced per aperture.
+        return segm, np.zeros(n_positions, dtype=np.intp)
+
+    # Each nonzero label must be present in the segmentation image.
+    # Otherwise, every labeled pixel would silently be treated as a
+    # neighbor of the target source. The SegmentationImage labels are
+    # cached, so use them when available. For an array input, np.isin
+    # with a small set of labels uses its linear-time table method.
+    nonzero = labels[labels != 0]
+    if isinstance(segmentation_image, SegmentationImage):
+        present = np.isin(nonzero, segmentation_image.labels)
+    else:
+        present = np.isin(nonzero, segm)
+    bad_labels = np.unique(nonzero[~present])
+    if bad_labels.size > 0:
+        msg = (f'labels {bad_labels.tolist()} are not present in the '
+               'segmentation_image')
+        raise ValueError(msg)
 
     return segm, labels
 
