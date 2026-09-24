@@ -224,7 +224,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     labels : 1D ndarray of intp (C-contiguous) or `None`
         The target source label for each position with shape
         ``(n_sources,)``. A label of 0 disables segmentation masking for
-        that source, except for method 4, which does not use the label.
+        that source, except for method 3, which does not use the label.
         Required (not `None`) if ``segmentation`` is input.
 
     seg_method : int
@@ -235,13 +235,13 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
              (``(seg > 0) & (seg != label)``)
         * 2: excludes all pixels not assigned to the target source
              (``seg != label``).
-        * 3: replaces neighbor-source pixels with the values mirrored
+        * 3: excludes all labeled pixels (``seg > 0``), the
+             ``'background_only'`` method. The labels are ignored.
+        * 4: replaces neighbor-source pixels with the values mirrored
              across the (rounded) aperture center (the symmetric
-             ``'correct'`` method). For method 3, a neighbor pixel whose
+             ``'correct'`` method). For method 4, a neighbor pixel whose
              mirror falls outside the aperture bounding box, is itself a
              neighbor, or is masked is excluded instead of replaced.
-        * 4: excludes all labeled pixels (``seg > 0``), the
-             ``'background_only'`` method. The labels are ignored.
 
     local_bkg : 1D ndarray of float64 (C-contiguous) or `None`
         The per-source local background to subtract from each pixel
@@ -618,7 +618,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             if has_seg:
                 lbl = labels[k]
                 seg_active = _seg_method_active(seg_method, lbl)
-                if seg_method == 3:
+                if seg_method == 4:
                     # Center pixel for the symmetric 'correct' mirror
                     ccx = _round_half_away(cx)
                     ccy = _round_half_away(cy)

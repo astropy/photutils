@@ -731,7 +731,7 @@ def batch_aperture_gather(const double[:, ::1] data,
             if has_seg:
                 lbl = labels[k]
                 seg_active = _seg_method_active(seg_method, lbl)
-                if seg_method == 3:
+                if seg_method == 4:
                     # Center pixel for the symmetric 'correct' mirror
                     ccx = _round_half_away(cx)
                     ccy = _round_half_away(cy)

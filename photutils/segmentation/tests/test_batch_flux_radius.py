@@ -451,7 +451,7 @@ def _prepare_inputs(cat):
             'kronflux': np.ones(n_src),
             'max_radius': np.full(n_src, 5.0),
             'skip': np.zeros(n_src, dtype=np.uint8),
-            'seg_method': 3, 'use_exact': 1, 'subpixels': 1,
+            'seg_method': 4, 'use_exact': 1, 'subpixels': 1,
             'max_aper_size': 1_000_000}
 
 

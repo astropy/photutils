@@ -20,8 +20,8 @@ __all__ = []
 # by the batch Cython driver (see ``_batch_photometry.pyx``).
 MASK_METHODS = ('none', 'mask', 'source_only', 'background_only',
                 'correct')
-SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'source_only': 2, 'correct': 3,
-                    'background_only': 4}
+SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'source_only': 2,
+                    'background_only': 3, 'correct': 4}
 
 
 def process_segmentation_inputs(segmentation_image, labels,

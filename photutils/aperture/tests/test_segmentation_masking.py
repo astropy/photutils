@@ -451,7 +451,7 @@ class TestBatchDriverSegmentation:
 
     @pytest.mark.parametrize('label', [0, 1])
     def test_background_only_method(self, label):
-        # Method 4 excludes every labeled pixel. The label is ignored,
+        # Method 3 excludes every labeled pixel. The label is ignored,
         # so label 0 does not disable the masking.
         rng = np.random.default_rng(4)
         data = rng.random((40, 40))
@@ -467,7 +467,7 @@ class TestBatchDriverSegmentation:
 
         sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            0.0, 0.0, 1, 8, segm, labels, 4)[0]
+            0.0, 0.0, 1, 8, segm, labels, 3)[0]
 
         manual_mask = (segm > 0).astype(np.uint8)
         ref = batch_aperture_sums(
@@ -497,7 +497,7 @@ class TestBatchDriverSegmentation:
         assert_allclose(sums, ref)
 
     def test_correct_method_matches_mask_path(self):
-        # The batch 'correct' kernel (seg_method=3) must exactly match
+        # The batch 'correct' kernel (seg_method=4) must exactly match
         # the Python mask-path 'correct' implementation.
         rng = np.random.default_rng(3)
         data = rng.normal(10.0, 1.0, (60, 60))
