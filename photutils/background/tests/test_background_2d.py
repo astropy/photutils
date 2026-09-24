@@ -1230,6 +1230,42 @@ class TestFastBoxStatistics:
         """
         self._compare_paths(monkeypatch, sigma_clip=sigma_clip)
 
+    @pytest.mark.parametrize('box_size', [(5, 5), (4, 4), (5, 4)])
+    @pytest.mark.parametrize('sigma_clip', [
+        SigmaClip(sigma=2.0, maxiters=None, stdfunc='mad_std'),
+        _make_sigma_clip_biweight(sigma=2.0, maxiters=5)])
+    def test_mad_boxes_match_generic(self, box_size, sigma_clip,
+                                     monkeypatch):
+        """
+        Test that the MAD-based sigma clipping and the MAD standard
+        deviation RMS estimator match the generic path for boxes with
+        odd and even numbers of surviving pixels.
+
+        The data are skewed and rounded so that the absolute deviations
+        about the box medians contain many ties and the numbers of
+        pixels below and above the median are very unequal. A random
+        mask varies the pixel count from box to box.
+        """
+        rng = np.random.default_rng(1)
+        data = np.round(rng.exponential(2.0, (40, 60)), 1)
+        mask = rng.random(data.shape) < 0.2
+        kwargs = {'filter_size': (1, 1), 'exclude_percentile': 100.0,
+                  'mask': mask, 'sigma_clip': sigma_clip,
+                  'bkg_estimator': MedianBackground(),
+                  'bkg_rms_estimator': MADStdBackgroundRMS()}
+        bkg_fast = Background2D(data, box_size, **kwargs)
+        assert bkg_fast._box_stats_spec is not None
+        bkg_generic = _make_generic_background2d(monkeypatch, data,
+                                                 box_size, **kwargs)
+        n_pixels = bkg_fast.n_pixels_mesh
+        assert np.any(n_pixels % 2 == 0)
+        assert np.any(n_pixels % 2 == 1)
+        assert_equal(n_pixels, bkg_generic.n_pixels_mesh)
+        assert_allclose(bkg_fast.background_mesh,
+                        bkg_generic.background_mesh, rtol=1e-10)
+        assert_allclose(bkg_fast.background_rms_mesh,
+                        bkg_generic.background_rms_mesh, rtol=1e-10)
+
     def test_fast_path_used_by_default(self, test_data):
         """
         Test that the fast path is used with the default inputs.

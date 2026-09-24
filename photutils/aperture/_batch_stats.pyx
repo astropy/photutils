@@ -283,6 +283,60 @@ cdef inline double _median_sorted(double *s, Py_ssize_t n) noexcept nogil:
     return 0.5 * (s[n // 2 - 1] + s[n // 2])
 
 
+cdef inline double _mad_sorted(double *s, Py_ssize_t n) noexcept nogil:
+    """
+    Unscaled median absolute deviation of an ascending-sorted buffer
+    about its median.
+
+    The absolute deviations of the values below the median decrease
+    toward the median and those of the values at or above it increase
+    away from it, so the sorted deviations are the merge of two
+    ascending runs that start at the middle of the buffer. Walking the
+    merge to its middle element gives exactly the median that sorting
+    the deviations would give, in linear time and without a scratch
+    buffer.
+
+    Parameters
+    ----------
+    s : double *
+        The ascending-sorted buffer.
+
+    n : Py_ssize_t
+        The number of elements in ``s``. Must be positive.
+
+    Returns
+    -------
+    result : double
+        The unscaled median absolute deviation. Multiply by
+        ``_MAD_STD_SCALE`` to obtain `astropy.stats.mad_std`.
+    """
+    cdef double center = _median_sorted(s, n)
+    cdef Py_ssize_t half = n // 2
+    cdef Py_ssize_t lo = half - 1  # next element of the lower run
+    cdef Py_ssize_t hi = half  # next element of the upper run
+    cdef Py_ssize_t count = 0
+    cdef double dev_lo = 0.0, dev_hi = 0.0, prev = 0.0, cur = 0.0
+
+    # Emit the half + 1 smallest deviations, keeping the last two.
+    while count <= half:
+        if lo >= 0:
+            dev_lo = fabs(s[lo] - center)
+        if hi < n:
+            dev_hi = fabs(s[hi] - center)
+        prev = cur
+        if lo < 0 or (hi < n and dev_hi < dev_lo):
+            cur = dev_hi
+            hi += 1
+        else:
+            cur = dev_lo
+            lo -= 1
+        count += 1
+
+    if n % 2 == 1:
+        return cur
+    return 0.5 * (prev + cur)
+
+
 # Sigma-clip center/scale function codes (must match the ``cenfunc`` and
 # ``stdfunc`` mappings in ``ApertureStats`` and ``Background2D``).
 cdef enum:
@@ -294,7 +348,7 @@ cdef enum:
     _STD_BIWEIGHT = 2
 
 
-cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
+cdef inline void _sigma_clip_bounds(double *s, Py_ssize_t n,
                                     double sigma_lower, double sigma_upper,
                                     Py_ssize_t maxiters, int cenfunc_code,
                                     int stdfunc_code, double *out_min,
@@ -324,9 +378,6 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
     ----------
     s : double *
         The ascending-sorted values, as ``s[0:n]``.
-
-    work : double *
-        A scratch buffer of at least ``n`` elements.
 
     n : Py_ssize_t
         The number of values in ``s``.
@@ -366,10 +417,7 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
         # unscaled MAD of the current values
         if biweight:
             med2 = _median_sorted(&s[lo], cnt)
-            for i in range(lo, hi):
-                work[i] = fabs(s[i] - med2)
-            _sort_doubles(&work[lo], cnt)
-            mad2 = _median_sorted(&work[lo], cnt)
+            mad2 = _mad_sorted(&s[lo], cnt)
 
         # Center.
         if cenfunc_code == _CEN_MEDIAN:
@@ -409,11 +457,7 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
                 std = sqrt(_biweight_midvar_range(s, lo, hi, med2, 9.0,
                                                   mad2))
         else:
-            med2 = _median_sorted(&s[lo], cnt)
-            for i in range(lo, hi):
-                work[i] = fabs(s[i] - med2)
-            _sort_doubles(&work[lo], cnt)
-            std = _median_sorted(&work[lo], cnt) * _MAD_STD_SCALE
+            std = _mad_sorted(&s[lo], cnt) * _MAD_STD_SCALE
 
         minv = cen - std * sigma_lower
         maxv = cen + std * sigma_upper
@@ -1174,30 +1218,14 @@ def batch_mad(const double[::1] sorted_values,
     mad_arr = np.full(n_src, np.nan, dtype=np.float64)
     cdef double[::1] mad = mad_arr
 
-    cdef Py_ssize_t maxn = 0, k
-    for k in range(n_src):
-        if counts[k] > maxn:
-            maxn = counts[k]
-    if maxn == 0:
-        return mad_arr
-
-    work_arr = np.empty(maxn, dtype=np.float64)
-    cdef double[::1] w = work_arr
-
-    cdef Py_ssize_t i, start, count
-    cdef double med
+    cdef Py_ssize_t k, count
 
     with nogil:
         for k in range(n_src):
             count = counts[k]
             if count == 0:
                 continue
-            start = starts[k]
-            med = _median_sorted(&sorted_values[start], count)
-            for i in range(count):
-                w[i] = fabs(sorted_values[start + i] - med)
-            _sort_doubles(&w[0], count)
-            mad[k] = _median_sorted(&w[0], count)
+            mad[k] = _mad_sorted(&sorted_values[starts[k]], count)
 
     return mad_arr
 
@@ -1433,9 +1461,7 @@ def batch_sigma_clip_center(const double[::1] values,
                 counts2_arr, out_sorted_arr)
 
     sort_arr = np.empty(maxn, dtype=np.float64)
-    work_arr = np.empty(maxn, dtype=np.float64)
     cdef double[::1] s = sort_arr
-    cdef double[::1] w = work_arr
 
     cdef Py_ssize_t start, count, i, j, lo, hi
     cdef double minv, maxv, v
@@ -1449,7 +1475,7 @@ def batch_sigma_clip_center(const double[::1] values,
             for i in range(count):
                 s[i] = values[start + i]
             _sort_doubles(&s[0], count)
-            _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
+            _sigma_clip_bounds(&s[0], count, sigma_lower, sigma_upper,
                                maxiters, cenfunc_code, stdfunc_code,
                                &minv, &maxv)
             j = 0
@@ -1542,9 +1568,7 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
         return (sum_arr, var_arr, area_arr)
 
     sort_arr = np.empty(maxn, dtype=np.float64)
-    work_arr = np.empty(maxn, dtype=np.float64)
     cdef double[::1] s = sort_arr
-    cdef double[::1] w = work_arr
 
     cdef Py_ssize_t start, count, i
     cdef double minv, maxv, v, frac, s_sum, s_area, s_var
@@ -1558,7 +1582,7 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
             for i in range(count):
                 s[i] = sum_values[start + i]
             _sort_doubles(&s[0], count)
-            _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
+            _sigma_clip_bounds(&s[0], count, sigma_lower, sigma_upper,
                                maxiters, cenfunc_code, stdfunc_code,
                                &minv, &maxv)
             s_sum = 0.0
@@ -1787,10 +1811,6 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
         return (mean_arr, median_arr, std_arr, madstd_arr, biloc_arr,
                 biscale_arr, n_kept_arr)
 
-    # Scratch buffer for the MAD computations
-    work_arr = np.empty(n_cols, dtype=np.float64)
-    cdef double[::1] w = work_arr
-
     cdef bint need_mad = compute_mad or compute_biloc or compute_biscale
     cdef Py_ssize_t k, i, n, lo, hi, cnt
     cdef double v, minv, maxv, mu, ss, med, madk, anchor
@@ -1812,9 +1832,9 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
             lo = 0
             hi = n
             if do_clip:
-                _sigma_clip_bounds(s, &w[0], n, sigma_lower,
-                                   sigma_upper, maxiters, cenfunc_code,
-                                   stdfunc_code, &minv, &maxv)
+                _sigma_clip_bounds(s, n, sigma_lower, sigma_upper,
+                                   maxiters, cenfunc_code, stdfunc_code,
+                                   &minv, &maxv)
                 # A value survives if not (v < minv) and not (v > maxv).
                 # When the clip rejects every value, the bounds exclude
                 # all of them and cnt becomes 0.
@@ -1842,10 +1862,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
 
             if need_mad:
                 # Unscaled MAD about the median of the survivors
-                for i in range(lo, hi):
-                    w[i - lo] = fabs(s[i] - med)
-                _sort_doubles(&w[0], cnt)
-                madk = _median_sorted(&w[0], cnt)
+                madk = _mad_sorted(&s[lo], cnt)
 
                 if compute_mad:
                     madstd_out[k] = madk * _MAD_STD_SCALE
