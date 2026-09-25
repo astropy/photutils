@@ -55,7 +55,6 @@ all = [
     'matplotlib >= 3.10',
     'rasterio >= 1.4',
     'regions >= 0.10',
-    'scikit-image >= 0.25',
     'shapely >= 2.1',
     'tqdm >= 4.67',
 ]

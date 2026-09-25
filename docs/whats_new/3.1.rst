@@ -29,7 +29,6 @@ are now:
 - SciPy: 1.15
 - Matplotlib: 3.10
 - Regions: 0.10
-- scikit-image: 0.25
 - gwcs: 0.22
 - Shapely: 2.1
 - tqdm: 4.67
@@ -704,9 +703,8 @@ faster, producing identical results. The whole watershed step now runs
 in compiled code.
 
 The compiled watershed kernel produces results identical to
-``skimage.segmentation.watershed``, so scikit-image is no longer
-required for source deblending (it remains an optional dependency
-for `~photutils.utils.ImageDepth`).
+``skimage.segmentation.watershed``, so scikit-image is no longer an
+optional dependency.
 
 A new ``n_threads`` keyword in
 :func:`~photutils.segmentation.deblend_sources` and

@@ -63,7 +63,6 @@ intersphinx_mapping.update(  # noqa: F405
     {'gwcs': ('https://gwcs.readthedocs.io/en/latest/', None),
      'regions': ('https://astropy-regions.readthedocs.io/en/stable/', None),
      'shapely': ('https://shapely.readthedocs.io/en/stable/', None),
-     'skimage': ('https://scikit-image.org/docs/stable/', None),
      })
 
 # Exclude astropy intersphinx_mapping for unused packages

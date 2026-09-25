@@ -6,14 +6,15 @@ Cython marker-based watershed kernel for source deblending.
 
 This implements the classic priority-flood watershed (Soille 1990)
 used for deblending. Pixels are flooded from the markers in order of
-increasing image value, with the queue-entry age breaking ties so
-that plateaus are split between the markers that reach them first.
-The algorithm, the neighbor ordering (orthogonal neighbors before
-diagonal ones, each group in raster order), and the tie-breaking
-match ``skimage.segmentation.watershed`` (with ``compactness=0``
-and ``watershed_line=False``), so the results are identical, but
-without the per-call validation, padding, and cropping overhead of the
-general-purpose function, which dominates for small cutouts.
+increasing image value, with the queue-entry age breaking ties so that
+plateaus are split between the markers that reach them first. The
+neighbors are visited with the orthogonal neighbors before the diagonal
+ones, each group in raster order. A pixel enters the queue with the
+larger of its own value and the value of the pixel it was reached
+from, so that the basins and plateaus below the current flood level
+are distributed between the contesting markers by queue-entry age. The
+kernel does no per-call validation, padding, or cropping, which would
+otherwise dominate the cost for small cutouts.
 
 The flood order is only defined for ordered image values, so the
 deblending entry point maps NaN data pixels to a +inf flooding cost.
@@ -221,11 +222,9 @@ def deblend_watershed(image, markers, mask, connectivity):
     """
     Compute the marker-based watershed of an image.
 
-    This is equivalent to ``skimage.segmentation.watershed(image,
-    markers, mask=mask, connectivity=footprint)`` for the deblending
-    use case (markers inside the mask, ``compactness=0``, and
-    ``watershed_line=False``), but avoids the per-call validation,
-    padding, and cropping overhead.
+    The image is flooded from the markers, which must lie inside the
+    mask, without watershed lines between the basins and without any
+    per-call validation, padding, or cropping.
 
     This entry point is exported only for the pure-Python
     reference implementation in ``_deblend_reference`` and the

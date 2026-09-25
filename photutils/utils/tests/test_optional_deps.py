@@ -44,11 +44,11 @@ class TestAll:
         """
         assert od_mod.__all__ == sorted(od_mod.__all__)
 
-    def test_skimage_always_in_all(self):
+    def test_matplotlib_always_in_all(self):
         """
-        Test that ``HAS_SKIMAGE`` is always present in ``__all__``.
+        Test that ``HAS_MATPLOTLIB`` is always present in ``__all__``.
         """
-        assert 'HAS_SKIMAGE' in od_mod.__all__
+        assert 'HAS_MATPLOTLIB' in od_mod.__all__
 
     def test_all_matches_deps_by_key(self):
         """
@@ -129,12 +129,12 @@ class TestCaching:
 class TestAttributeErrors:
     def test_typo_raises(self):
         """
-        Test that a plausible typo like ``HAS_SKIIMAGE`` raises
+        Test that a plausible typo like ``HAS_MATPLOTLIBB`` raises
         `AttributeError`.
         """
-        match = 'HAS_SKIIMAGE'
+        match = 'HAS_MATPLOTLIBB'
         with pytest.raises(AttributeError, match=match):
-            _ = od_mod.HAS_SKIIMAGE
+            _ = od_mod.HAS_MATPLOTLIBB
 
     def test_non_dependency_raises(self):
         """
@@ -172,9 +172,9 @@ class TestDistToHasKey:
     def test_hyphenated(self):
         """
         Test that a hyphenated distribution name is converted via the
-        import-name lookup (e.g., ``scikit-image`` -> ``SKIMAGE``).
+        import-name lookup (e.g., ``asdf-astropy`` -> ``ASDF_ASTROPY``).
         """
-        assert _dist_to_has_key('scikit-image') == 'SKIMAGE'
+        assert _dist_to_has_key('asdf-astropy') == 'ASDF_ASTROPY'
 
     def test_dotted(self):
         """
@@ -199,19 +199,19 @@ class TestGetOptionalDeps:
         assert isinstance(result, list)
         assert result == sorted(result)
 
-    def test_scikit_image_present(self):
+    def test_asdf_astropy_present(self):
         """
-        Test that ``scikit-image`` appears in the optional
+        Test that ``asdf-astropy`` appears in the optional
         dependencies.
         """
         result = _get_optional_deps(_pkg_dist_name, extra='all')
-        assert 'scikit-image' in result
+        assert 'asdf-astropy' in result
 
     def test_returns_dist_names_not_import_names(self):
         """
         Test that the returned names are distribution names, not import
-        names (e.g., ``scikit-image`` instead of ``skimage``).
+        names (e.g., ``asdf-astropy`` instead of ``asdf_astropy``).
         """
         result = _get_optional_deps(_pkg_dist_name, extra='all')
-        assert 'scikit-image' in result
-        assert 'skimage' not in result
+        assert 'asdf-astropy' in result
+        assert 'asdf_astropy' not in result
