@@ -821,9 +821,9 @@ defined above::
     ...                  finder_tbl['y_centroid'], strict=True))
     >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5),
     ...                 fwhm=2)
-    >>> fwhm
-    array([2.70584007, 2.71009548, 2.67319293, 2.6932673 , 2.6674289 ,
-           2.69499608, 2.68722503, 2.73280482, 2.7200538 , 2.68340968])
+    >>> print(fwhm)
+    [2.70584007 2.71009548 2.67319293 2.6932673  2.6674289  2.69499608
+     2.68722503 2.73280482 2.7200538  2.68340968]
 
 
 Convenience Gaussian Fitting Function

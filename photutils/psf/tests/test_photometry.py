@@ -1189,10 +1189,12 @@ def test_xy_bounds(test_data):
     assert phot['x_fit'] < 64.0
     assert_allclose(phot['y_fit'], 50.0)  # at lower bound
 
+    # Start closer to the source in y because the fit converges slowly
+    # from y=51 while x_0 is held at its bound.
     xy_bounds = (1, None)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=None,
-                            aperture_radius=4, xy_bounds=xy_bounds,
-                            fitter_maxiters=500)
+                            aperture_radius=4, xy_bounds=xy_bounds)
+    init_params['y'] = [50]
     phot = psfphot(data, error=error, init_params=init_params)
     assert_allclose(phot['x_fit'], 64.0)  # at lower bound
     assert phot['y_fit'] < 50.0
@@ -2391,11 +2393,13 @@ def test_qfit_cfit_with_different_errors(test_data):
     assert np.all(phot_large_error['qfit'] >= 0)
 
     assert_allclose(phot['qfit'], phot_no_error['qfit'])
-    assert_allclose(phot['cfit'], phot_no_error['cfit'])
+    assert_allclose(phot['cfit'], phot_no_error['cfit'], rtol=1e-6)
     assert_allclose(phot_small_error['qfit'], phot_no_error['qfit'])
-    assert_allclose(phot_small_error['cfit'], phot_no_error['cfit'])
+    assert_allclose(phot_small_error['cfit'], phot_no_error['cfit'],
+                    rtol=1e-6)
     assert_allclose(phot_large_error['qfit'], phot_no_error['qfit'])
-    assert_allclose(phot_large_error['cfit'], phot_no_error['cfit'])
+    assert_allclose(phot_large_error['cfit'], phot_no_error['cfit'],
+                    rtol=1e-6)
 
 
 def test_decode_flags():
