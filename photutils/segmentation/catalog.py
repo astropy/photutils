@@ -4961,7 +4961,7 @@ class SourceCatalog:
         # segmentation masking. Under 'correct', uncorrectable neighbor
         # pixels stay members (with value zero).
         members = fcounts[:, FLAG_COL_VALID].copy()
-        if seg_code == 3:
+        if seg_code == 4:
             members += fcounts[:, FLAG_COL_UNCORRECTED]
         good = overlap & (members > 0)
         flux[idx] = np.where(good, sums, np.nan)
@@ -5137,7 +5137,7 @@ class SourceCatalog:
             # neighbor pixels stay members (with value zero), so they
             # keep the flux at 0.0 rather than NaN.
             members = fcounts[:, FLAG_COL_VALID].copy()
-            if seg_code == 3:
+            if seg_code == 4:
                 members += fcounts[:, FLAG_COL_UNCORRECTED]
             good = overlap & (members > 0)
             flux[idx] = np.where(good, sums, np.nan)

@@ -29,7 +29,7 @@ from photutils.aperture._batch_overlap cimport (
     _classify_seg_pixel, _ellipse_pixel_frac, _elliptical_annulus_pixel_frac,
     _polygon_pixel_frac, _presize_packed_offsets, _rect_pixel_frac,
     _rectangular_annulus_pixel_frac, _resolve_seg_pixel, _round_half_away,
-    _source_grid_setup)
+    _seg_method_active, _source_grid_setup)
 from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
                                                   polygon_work_partition,
                                                   polygon_work_size)
@@ -224,7 +224,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     labels : 1D ndarray of intp (C-contiguous) or `None`
         The target source label for each position with shape
         ``(n_sources,)``. A label of 0 disables segmentation masking for
-        that source. Required (not `None`) if ``segmentation`` is input.
+        that source, except for method 3, which does not use the label.
+        Required (not `None`) if ``segmentation`` is input.
 
     seg_method : int
         The segmentation masking method:
@@ -234,9 +235,11 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
              (``(seg > 0) & (seg != label)``)
         * 2: excludes all pixels not assigned to the target source
              (``seg != label``).
-        * 3: replaces neighbor-source pixels with the values mirrored
+        * 3: excludes all labeled pixels (``seg > 0``), the
+             ``'background_only'`` method. The labels are ignored.
+        * 4: replaces neighbor-source pixels with the values mirrored
              across the (rounded) aperture center (the symmetric
-             ``'correct'`` method). For method 3, a neighbor pixel whose
+             ``'correct'`` method). For method 4, a neighbor pixel whose
              mirror falls outside the aperture bounding box, is itself a
              neighbor, or is masked is excluded instead of replaced.
 
@@ -382,6 +385,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef bint has_seg = segmentation is not None
     cdef bint has_bkg = local_bkg is not None
     cdef Py_ssize_t lbl = 0
+    cdef bint seg_active = False
 
     # Base pointers for the C-contiguous segmentation and mask planes,
     # used by the shared per-pixel segmentation helper
@@ -613,7 +617,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                 lbk = local_bkg[k]
             if has_seg:
                 lbl = labels[k]
-                if seg_method == 3:
+                seg_active = _seg_method_active(seg_method, lbl)
+                if seg_method == 4:
                     # Center pixel for the symmetric 'correct' mirror
                     ccx = _round_half_away(cx)
                     ccy = _round_half_away(cy)
@@ -728,8 +733,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             # mirror availability) here for callers
                             # that treat the mask and neighbor overlays
                             # independently.
-                            if (has_seg and lbl != 0
-                                    and seg_method != 0):
+                            if seg_active:
                                 pix_class = _classify_seg_pixel(
                                     seg_ptr, mask_ptr, nx_data,
                                     seg_method, lbl, ix, iy, ix0,
@@ -744,7 +748,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             continue
                     six = ix
                     siy = iy
-                    if (has_seg and lbl != 0
+                    if (seg_active
                             and not _resolve_seg_pixel(
                                 seg_ptr, mask_ptr, nx_data, seg_method,
                                 lbl, ix, iy, ix0, ix1, iy0, iy1, ccx,

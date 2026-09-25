@@ -267,7 +267,7 @@ def _driver_inputs(cat):
             'cxy': np.ascontiguousarray(cat.ellipse_cxy.value),
             'cyy': np.ascontiguousarray(cat.ellipse_cyy.value),
             'skip': np.zeros(n_src, dtype=np.uint8),
-            'seg_method': 3, 'scale': 6.0, 'min_circ_radius': 0.0,
+            'seg_method': 4, 'scale': 6.0, 'min_circ_radius': 0.0,
             'max_aper_size': 1_000_000}
 
 

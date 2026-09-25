@@ -224,11 +224,10 @@ class TestNDDataInput:
 
 
 class TestSegmentationMasking:
-    @pytest.mark.parametrize('use_segm_obj', [True, False])
-    def test_mask_method_matches_manual(self, use_segm_obj):
+    def test_mask_method_matches_manual(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=8)
-        segm_in = SegmentationImage(segm) if use_segm_obj else segm
+        segm_in = SegmentationImage(segm)
         phot = AperturePhotometry(data, aper, segmentation_image=segm_in,
                                   labels=[1], mask_method='mask')
         manual_mask = (segm > 0) & (segm != 1)
@@ -238,16 +237,28 @@ class TestSegmentationMasking:
     def test_source_only_matches_manual(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=8)
-        phot = AperturePhotometry(data, aper, segmentation_image=segm,
+        phot = AperturePhotometry(data, aper,
+                                  segmentation_image=SegmentationImage(segm),
                                   labels=[1], mask_method='source_only')
         manual_mask = segm != 1
         ref = AperturePhotometry(data, aper, mask=manual_mask)
         assert_allclose(phot.flux, ref.flux)
 
+    def test_background_only_matches_manual(self):
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21)], r=8)
+        phot = AperturePhotometry(data, aper,
+                                  segmentation_image=SegmentationImage(segm),
+                                  mask_method='background_only')
+        ref = AperturePhotometry(data, aper, mask=segm > 0)
+        assert_allclose(phot.flux, ref.flux)
+        assert phot.labels is None
+
     def test_none_method_ignores_segmentation(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=8)
-        phot = AperturePhotometry(data, aper, segmentation_image=segm,
+        phot = AperturePhotometry(data, aper,
+                                  segmentation_image=SegmentationImage(segm),
                                   mask_method='none')
         ref = AperturePhotometry(data, aper)
         assert_allclose(phot.flux, ref.flux)
@@ -264,8 +275,9 @@ class TestSegmentationMasking:
         data, segm = make_scene()
         xycen = (21, 21)
         aper = CircularAperture([xycen], r=10)
-        corr_phot = AperturePhotometry(data, aper, segmentation_image=segm,
-                                       labels=[1], mask_method='correct')
+        corr_phot = AperturePhotometry(
+            data, aper, segmentation_image=SegmentationImage(segm),
+            labels=[1], mask_method='correct')
 
         # Replace every neighbor pixel with its value mirrored across
         # the aperture center. Pixels outside the aperture have zero
@@ -285,7 +297,8 @@ class TestSegmentationMasking:
         data, segm = make_scene()
         offsets = np.array([[-7, -7], [9, -7], [9, 9], [-7, 9]])
         aper = PolygonAperture((21, 21), offsets)
-        phot = AperturePhotometry(data, aper, segmentation_image=segm,
+        phot = AperturePhotometry(data, aper,
+                                  segmentation_image=SegmentationImage(segm),
                                   labels=[1], mask_method='mask')
         manual_mask = (segm > 0) & (segm != 1)
         ref = AperturePhotometry(data, aper, mask=manual_mask)
@@ -296,7 +309,8 @@ class TestSegmentationMasking:
         aper = CircularAperture([(21, 21)], r=8)
         match = 'labels must be input when segmentation_image is input'
         with pytest.raises(ValueError, match=match):
-            AperturePhotometry(data, aper, segmentation_image=segm,
+            AperturePhotometry(data, aper,
+                               segmentation_image=SegmentationImage(segm),
                                mask_method='mask')
 
 
@@ -514,15 +528,14 @@ class TestScalarBehavior:
         phot = AperturePhotometry(data, aper, mask=mask)
         assert phot.decode_flags() == {1: ['masked_pixels']}
 
-    @pytest.mark.parametrize('use_segm_obj', [True, False])
-    def test_scalar_input_attributes_not_collapsed(self, use_segm_obj):
+    def test_scalar_input_attributes_not_collapsed(self):
         """
         Test that the ``segmentation_image`` and ``labels`` inputs are
         echoed back unchanged for a scalar instance, i.e., that they are
         not treated as per-position output arrays.
         """
         data, segm = make_scene()
-        segm_in = SegmentationImage(segm) if use_segm_obj else segm
+        segm_in = SegmentationImage(segm)
         aper = CircularAperture((21, 21), r=8)
         phot = AperturePhotometry(data, aper, segmentation_image=segm_in,
                                   labels=np.array([1]), mask_method='mask')
@@ -755,11 +768,13 @@ class TestInputValidation:
         aper = CircularAperture((5, 5), r=3)
         match = 'labels must be a 1D array'
         with pytest.raises(ValueError, match=match):
-            AperturePhotometry(data, aper, segmentation_image=segm,
+            AperturePhotometry(data, aper,
+                               segmentation_image=SegmentationImage(segm),
                                labels=np.array([[1, 2]]),
                                mask_method='mask')
         with pytest.raises(ValueError, match=match):
-            ApertureStats(data, aper, segmentation_image=segm,
+            ApertureStats(data, aper,
+                          segmentation_image=SegmentationImage(segm),
                           labels=np.array([[1, 2]]), mask_method='mask')
 
 
@@ -795,14 +810,15 @@ class TestReadOnlyInputs:
     @pytest.mark.parametrize('aper_cls', [CircularAperture,
                                           NoBatchCircularAperture])
     @pytest.mark.parametrize('mask_method', ['none', 'mask', 'source_only',
-                                             'correct'])
+                                             'background_only', 'correct'])
     def test_aperture_photometry(self, aper_cls, mask_method):
         arrays = self._make_readonly_inputs()
         originals = {key: arr.copy() for key, arr in arrays.items()}
 
         kwargs = {}
         if mask_method != 'none':
-            kwargs = {'segmentation_image': arrays['segmentation_image'],
+            segm = SegmentationImage(arrays['segmentation_image'])
+            kwargs = {'segmentation_image': segm,
                       'labels': arrays['labels'],
                       'mask_method': mask_method}
         aper = aper_cls(arrays['positions'], r=10)
@@ -827,11 +843,11 @@ class TestReadOnlyInputs:
         sigma_clip = (SigmaClip(sigma=3.0, maxiters=5) if with_sigma_clip
                       else None)
         aper = aper_cls(arrays['positions'], r=10)
+        segm = SegmentationImage(arrays['segmentation_image'])
         stats = ApertureStats(arrays['data'], aper, error=arrays['error'],
                               mask=arrays['mask'], sigma_clip=sigma_clip,
                               local_bkg=arrays['local_bkg'],
-                              segmentation_image=(
-                                  arrays['segmentation_image']),
+                              segmentation_image=segm,
                               labels=arrays['labels'],
                               mask_method='correct')
         for attr in ('sum', 'sum_err', 'mean', 'median', 'std', 'mad_std',
@@ -899,6 +915,7 @@ class TestSegmentationAttributes:
     @pytest.mark.parametrize('cls', [AperturePhotometry, ApertureStats])
     def test_inputs_echoed(self, cls):
         data, segm = make_scene()
+        segm = SegmentationImage(segm)
         aper = CircularAperture([(21, 21)], r=8)
         obj = cls(data, aper, segmentation_image=segm, labels=[1],
                   mask_method='mask')
@@ -913,6 +930,7 @@ class TestSegmentationAttributes:
         apertures it contains.
         """
         data, segm = make_scene()
+        segm = SegmentationImage(segm)
         aper = CircularAperture([(21, 21), (21, 21)], r=8)
         stats = ApertureStats(data, aper, segmentation_image=segm,
                               labels=[1, 2], mask_method='mask')
@@ -925,7 +943,8 @@ class TestSegmentationAttributes:
     def test_photometry_meta_records_mask_method(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=8)
-        phot = AperturePhotometry(data, aper, segmentation_image=segm,
+        phot = AperturePhotometry(data, aper,
+                                  segmentation_image=SegmentationImage(segm),
                                   labels=[1], mask_method='mask')
         args = phot.to_table().meta['aperture_photometry_args']
         assert "method='exact'" in args
@@ -1106,9 +1125,11 @@ class TestNThreads:
                      (28.5, 22.0), (20.5, 21.0)]
         labels = [1, 2, 1, 2, 1]
         aper = CircularAperture(positions, r=8.0)
-        phot1 = AperturePhotometry(data, aper, segmentation_image=segm,
+        phot1 = AperturePhotometry(data, aper,
+                                   segmentation_image=SegmentationImage(segm),
                                    labels=labels, mask_method='mask')
-        phot2 = AperturePhotometry(data, aper, segmentation_image=segm,
+        phot2 = AperturePhotometry(data, aper,
+                                   segmentation_image=SegmentationImage(segm),
                                    labels=labels, mask_method='mask',
                                    n_threads=3)
         assert_equal(phot1.flux, phot2.flux)

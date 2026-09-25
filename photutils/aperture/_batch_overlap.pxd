@@ -85,6 +85,31 @@ cdef enum:
     _SEG_UNCORRECTED = 4
 
 
+cdef inline bint _seg_method_active(int seg_method,
+                                    Py_ssize_t label) noexcept nogil:
+    """
+    Whether the segmentation masking method applies to a source.
+
+    A label of 0 disables the masking for that source, except for
+    method 3 ('background_only'), which does not use the label.
+
+    Parameters
+    ----------
+    seg_method : int
+        The segmentation masking method code (0 disables masking).
+
+    label : Py_ssize_t
+        The target source label.
+
+    Returns
+    -------
+    active : bint
+        `True` if the per-pixel segmentation helpers must be called for
+        this source.
+    """
+    return seg_method != 0 and (label != 0 or seg_method == 3)
+
+
 cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
                                     const unsigned char *mask,
                                     Py_ssize_t nx_data, int seg_method,
@@ -101,10 +126,11 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
     This is the segmentation-masking query shared by the per-pixel
     loops of the aperture and segmentation batch drivers. It has no
     side effects other than writing the mirror pixel coordinates of a
-    corrected pixel, so a caller counts or uses the outcome as it
-    needs (see the ``_resolve_seg_pixel`` and
-    ``_seg_pixel_contributes`` wrappers). The caller must invoke it
-    only when a segmentation array is present and ``label`` is nonzero.
+    corrected pixel, so a caller counts or uses the outcome as it needs
+    (see the ``_resolve_seg_pixel`` and ``_seg_pixel_contributes``
+    wrappers). The caller must invoke it only when a segmentation
+    array is present and the method is active for the source (see
+    ``_seg_method_active``).
 
     Parameters
     ----------
@@ -113,7 +139,7 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
 
     mask : const unsigned char *
         The C-contiguous mask-plane data, or NULL if there is no mask.
-        Used only by the symmetric 'correct' method (``seg_method`` 3)
+        Used only by the symmetric 'correct' method (``seg_method`` 4)
         to reject mirror pixels that are masked or non-finite.
 
     nx_data : Py_ssize_t
@@ -122,21 +148,23 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
     seg_method : int
         The segmentation masking method code: 1 excludes neighbor-source
         pixels, 2 excludes all pixels not assigned to the target source,
-        and 3 replaces neighbor-source pixels with the values mirrored
-        across the aperture center (see ``batch_aperture_sums``).
+        3 excludes all labeled pixels, and 4 replaces neighbor-source
+        pixels with the values mirrored across the aperture center
+        (see ``batch_aperture_sums``).
 
     label : Py_ssize_t
-        The target source label (nonzero).
+        The target source label (nonzero, except for method 3, which
+        ignores it).
 
     ix, iy : Py_ssize_t
         The pixel coordinates.
 
     ix0, ix1, iy0, iy1 : Py_ssize_t
-        The bounding-box limits, clipped to the image. For method 3, a
+        The bounding-box limits, clipped to the image. For method 4, a
         mirror pixel outside these limits cannot be used.
 
     ccx, ccy : Py_ssize_t
-        The rounded aperture center used by the method-3 mirror.
+        The rounded aperture center used by the method-4 mirror.
 
     six, siy : Py_ssize_t *
         Output. Overwritten with the mirror pixel coordinates only for
@@ -152,11 +180,11 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
         * ``_SEG_EXCLUDED``: a background pixel excluded by method 2
           (not a neighbor-source pixel)
         * ``_SEG_NEIGHBOR``: a neighbor-source pixel excluded by method
-          1 or 2
+          1, 2, or 3 (for method 3, every labeled pixel)
         * ``_SEG_CORRECTED``: a neighbor-source pixel replaced by the
-          mirror pixel written to ``(siy[0], six[0])`` (method 3)
+          mirror pixel written to ``(siy[0], six[0])`` (method 4)
         * ``_SEG_UNCORRECTED``: a neighbor-source pixel whose mirror
-          pixel is unavailable (method 3). The pixel is excluded
+          pixel is unavailable (method 4). The pixel is excluded
     """
     cdef Py_ssize_t seg_val = segmentation[iy * nx_data + ix]
     cdef Py_ssize_t xm, ym, mseg
@@ -170,6 +198,9 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
             # count toward the neighbor-pixels flag.
             return _SEG_NEIGHBOR if seg_val != 0 else _SEG_EXCLUDED
     elif seg_method == 3:
+        if seg_val != 0:
+            return _SEG_NEIGHBOR
+    elif seg_method == 4:
         if seg_val != 0 and seg_val != label:
             # Neighbor pixel: replace its value with the pixel
             # mirrored across the center, if that pixel is available.
@@ -246,7 +277,7 @@ cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
         corrected due to a neighboring source.
 
     n_uncorr : Py_ssize_t *
-        In/out. Incremented when a method-3 neighbor pixel could not be
+        In/out. Incremented when a method-4 neighbor pixel could not be
         corrected (the mirror pixel was unavailable).
 
     Returns

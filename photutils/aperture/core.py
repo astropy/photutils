@@ -81,9 +81,9 @@ _METHOD_SUBPIXELS_DOC = (
     + _SUBPIXELS_DOC)
 
 _SEGMENTATION_DOC = """\
-segmentation_image : `~photutils.segmentation.SegmentationImage`, 2D \
-array_like, or `None`, optional
-    A 2D segmentation image with the same shape as ``data``, where
+segmentation_image : `~photutils.segmentation.SegmentationImage` or \
+`None`, optional
+    A segmentation image with the same shape as ``data``, where
     background pixels have a value of 0 and sources are labeled with
     positive integers. If input, neighboring sources can be masked or
     corrected within each aperture according to the ``mask_method``
@@ -97,11 +97,16 @@ array_like, or `None`, optional
 labels : int, 1D array_like, or `None`, optional
     The source label(s) in ``segmentation_image`` associated
     with the aperture position(s). ``labels`` is required if
-    ``segmentation_image`` is input and ``mask_method`` is not
-    ``'none'``. ``labels`` must have the same length as the number of
-    aperture positions.
+    ``segmentation_image`` is input and ``mask_method`` is
+    ``'mask'``, ``'source_only'``, or ``'correct'``. It is not used
+    if ``mask_method`` is ``'background_only'``. ``labels`` must have
+    the same length as the number of aperture positions, and each
+    nonzero label must be present in the ``segmentation_image`` (unless
+    ``mask_method`` is ``'background_only'``). A label of 0 disables the
+    segmentation masking for that aperture.
 
-mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
+mask_method : {'none', 'mask', 'source_only', 'background_only', \
+        'correct'}, optional
     The method used to handle neighboring sources within each aperture
     using the ``segmentation_image``:
 
@@ -114,6 +119,12 @@ mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
     * ``'source_only'``:
       Only pixels belonging to the target source are included. Both
       neighboring sources and background pixels are excluded.
+    * ``'background_only'``:
+      Only background pixels are included. Pixels belonging to any
+      source are excluded, including the source at the aperture
+      position (if any). This method is intended for estimating the
+      local background, e.g., within an annulus aperture. The
+      ``labels`` keyword is not used.
     * ``'correct'``:
       Pixels belonging to neighboring sources are replaced by the
       values of the pixels mirrored across the aperture center. If a

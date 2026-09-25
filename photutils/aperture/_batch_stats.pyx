@@ -30,7 +30,7 @@ from photutils.aperture._batch_overlap cimport (
     _classify_seg_pixel, _ellipse_pixel_frac, _elliptical_annulus_pixel_frac,
     _polygon_pixel_frac, _presize_packed_offsets, _rect_pixel_frac,
     _rectangular_annulus_pixel_frac, _resolve_seg_pixel, _round_half_away,
-    _source_grid_setup)
+    _seg_method_active, _source_grid_setup)
 from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
                                                   polygon_work_partition,
                                                   polygon_work_size)
@@ -570,6 +570,7 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef bint has_bkg = local_bkg is not None
     cdef bint has_seg = segmentation is not None
     cdef Py_ssize_t lbl = 0
+    cdef bint seg_active = False
 
     # Base pointers for the C-contiguous segmentation and mask planes,
     # used by the shared per-pixel segmentation helper
@@ -729,7 +730,8 @@ def batch_aperture_gather(const double[:, ::1] data,
                 lbk = local_bkg[k]
             if has_seg:
                 lbl = labels[k]
-                if seg_method == 3:
+                seg_active = _seg_method_active(seg_method, lbl)
+                if seg_method == 4:
                     # Center pixel for the symmetric 'correct' mirror
                     ccx = _round_half_away(cx)
                     ccy = _round_half_away(cy)
@@ -811,7 +813,7 @@ def batch_aperture_gather(const double[:, ::1] data,
                             # mirror availability) here for callers
                             # that treat the mask and neighbor overlays
                             # independently.
-                            if (has_seg and lbl != 0 and seg_method != 0):
+                            if seg_active:
                                 pix_class = _classify_seg_pixel(
                                     seg_ptr, mask_ptr, nx_data,
                                     seg_method, lbl, ix, iy, ix0,
@@ -826,7 +828,7 @@ def batch_aperture_gather(const double[:, ::1] data,
                             continue
                     six = ix
                     siy = iy
-                    if (has_seg and lbl != 0
+                    if (seg_active
                             and not _resolve_seg_pixel(
                                 seg_ptr, mask_ptr, nx_data, seg_method,
                                 lbl, ix, iy, ix0, ix1, iy0, iy1, ccx,

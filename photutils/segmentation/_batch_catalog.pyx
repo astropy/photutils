@@ -378,7 +378,7 @@ def batch_centroid_win(const double[:, ::1] data, *,
         * 0: disables masking
         * 1: excludes neighbor-source pixels
              (``(seg > 0) & (seg != label)``)
-        * 3: replaces neighbor-source pixels with the values mirrored
+        * 4: replaces neighbor-source pixels with the values mirrored
              across the (rounded) window center (the symmetric
              ``'correct'`` method). A neighbor pixel whose mirror falls
              outside the clipped window, is itself a neighbor, or is
@@ -643,7 +643,7 @@ def batch_kron_radius(const double[:, ::1] data, *,
         * 0: disables masking
         * 1: excludes neighbor-source pixels
              (``(seg > 0) & (seg != label)``)
-        * 3: replaces neighbor-source pixels with the values mirrored
+        * 4: replaces neighbor-source pixels with the values mirrored
              across the (rounded) aperture center (the symmetric
              ``'correct'`` method). A neighbor pixel whose mirror falls
              outside the clipped bounding box, is itself a neighbor,
@@ -825,7 +825,7 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
         * 0: disables masking
         * 1: zeroes neighbor-source pixels
              (``(seg > 0) & (seg != label)``)
-        * 3: replaces neighbor-source pixels with the values mirrored
+        * 4: replaces neighbor-source pixels with the values mirrored
              across the (rounded) cutout center (the symmetric
              ``'correct'`` method). A neighbor pixel whose mirror falls
              outside the clipped cutout, is itself a neighbor, or is

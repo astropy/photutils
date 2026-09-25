@@ -273,13 +273,12 @@ class AperturePhotometry:
                 raise ValueError(msg)
         self._pixel_apertures = apertures
 
-        # Validate the segmentation-masking inputs and resolve the
-        # per-aperture source labels once
+        # Validate the segmentation-masking inputs up front and keep
+        # the resolved per-aperture source labels for slicing
         self.segmentation_image = segmentation_image
         self.labels = labels
         seg_positions = np.atleast_2d(apertures[0].positions)
-        (self._segmentation,
-         self._seg_labels) = process_segmentation_inputs(
+        _, self._seg_labels = process_segmentation_inputs(
             segmentation_image, labels, mask_method, seg_positions,
             self._data.shape)
 
@@ -348,7 +347,7 @@ class AperturePhotometry:
         return [aper._photometry(
             self._data, error=self._error, mask=self._mask,
             method=self.method, subpixels=self.subpixels,
-            segmentation_image=self._segmentation,
+            segmentation_image=self.segmentation_image,
             labels=self._seg_labels, mask_method=self.mask_method,
             mask_nonfinite=True, n_threads=self.n_threads)
             for aper in self._pixel_apertures]

@@ -295,7 +295,8 @@ def batch_segmentation_arrays(segmentation, labels, mask_method):
     labels : `~numpy.ndarray` or `None`
         The per-aperture source labels.
 
-    mask_method : {'none', 'mask', 'source_only', 'correct'}
+    mask_method : {'none', 'mask', 'source_only', 'background_only', \
+            'correct'}
         The segmentation masking method.
 
     Returns

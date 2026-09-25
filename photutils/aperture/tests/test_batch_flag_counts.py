@@ -281,27 +281,38 @@ class TestSegmentationCounts:
                            labels=labels, seg_method=2)[0]
         assert fc[FLAG_COL_SEG] == 1
 
-        # Method 3 ('correct'): the neighbor pixel is corrected (mirror
-        # pixel is valid)
+        # Method 3 ('background_only'): every labeled pixel is excluded
+        # and counted as a neighbor pixel
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, segmentation=segm,
                            labels=labels, seg_method=3)[0]
+        fc_ref = _sums_fcounts(data, (12.0, 12.0), 3.0,
+                               mask=(segm > 0).astype(np.uint8))[0]
+        assert fc[FLAG_COL_SEG] == fc_ref[FLAG_COL_MASKED]
+        assert fc[FLAG_COL_SEG] > 1
+        assert fc[FLAG_COL_UNCORRECTED] == 0
+        assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS] - fc[FLAG_COL_SEG]
+
+        # Method 4 ('correct'): the neighbor pixel is corrected (mirror
+        # pixel is valid)
+        fc = _sums_fcounts(data, (12.0, 12.0), 3.0, segmentation=segm,
+                           labels=labels, seg_method=4)[0]
         assert fc[FLAG_COL_SEG] == 1
         assert fc[FLAG_COL_UNCORRECTED] == 0
         assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
 
-        # Method 3 with the mirror pixel also a neighbor: uncorrectable
+        # Method 4 with the mirror pixel also a neighbor: uncorrectable
         segm2 = segm.copy()
         segm2[12, 10] = 2  # mirror of (12, 14) across (12, 12)
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, segmentation=segm2,
-                           labels=labels, seg_method=3)[0]
+                           labels=labels, seg_method=4)[0]
         assert fc[FLAG_COL_SEG] == 2
         assert fc[FLAG_COL_UNCORRECTED] == 2
 
-        # Method 3 with a masked mirror pixel: uncorrectable
+        # Method 4 with a masked mirror pixel: uncorrectable
         mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 10] = 1
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, mask=mask,
-                           segmentation=segm, labels=labels, seg_method=3)[0]
+                           segmentation=segm, labels=labels, seg_method=4)[0]
         assert fc[FLAG_COL_SEG] == 1
         assert fc[FLAG_COL_UNCORRECTED] == 1
 
@@ -345,7 +356,7 @@ class TestSegMaskedCounts:
     @pytest.mark.parametrize('func', [_sums_fcounts, _gather_fcounts])
     @pytest.mark.parametrize(('seg_method', 'n_seg', 'n_uncorr',
                               'n_seg_masked', 'n_uncorr_masked'),
-                             [(3, 1, 1, 1, 1),
+                             [(4, 1, 1, 1, 1),
                               (1, 1, 0, 1, 0),
                               (0, 0, 0, 0, 0)])
     def test_seg_masked_columns(self, func, seg_method, n_seg, n_uncorr,

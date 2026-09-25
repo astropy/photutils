@@ -18,8 +18,10 @@ __all__ = []
 
 # The valid ``mask_method`` values and their integer codes used
 # by the batch Cython driver (see ``_batch_photometry.pyx``).
-MASK_METHODS = ('none', 'mask', 'source_only', 'correct')
-SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'source_only': 2, 'correct': 3}
+MASK_METHODS = ('none', 'mask', 'source_only', 'background_only',
+                'correct')
+SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'source_only': 2,
+                    'background_only': 3, 'correct': 4}
 
 
 def process_segmentation_inputs(segmentation_image, labels,
@@ -30,18 +32,27 @@ def process_segmentation_inputs(segmentation_image, labels,
 
     Parameters
     ----------
-    segmentation_image : `~photutils.segmentation.SegmentationImage`, \
-            2D `~numpy.ndarray`, or `None`
+    segmentation_image : `~photutils.segmentation.SegmentationImage` \
+            or `None`
         The segmentation image, where background pixels are zero and
-        sources have positive integer labels.
+        sources have positive integer labels. A
+        `~photutils.segmentation.SegmentationImage` is required (rather
+        than a plain array) because its cached labels make the
+        per-call validation of ``labels`` inexpensive.
 
     labels : int, 1D array_like, or `None`
-        The source label(s) associated with the aperture ``positions``.
-        ``labels`` is required (must not be `None`) when
-        ``segmentation_image`` is input and ``mask_method`` is not
-        ``'none'``.
+        The source label(s) associated with the aperture
+        ``positions``. ``labels`` is required (must not be `None`)
+        when ``segmentation_image`` is input and ``mask_method`` is
+        ``'mask'``, ``'source_only'``, or ``'correct'``. Each nonzero
+        label must be present in the ``segmentation_image``. A label of
+        0 disables the masking for that aperture. ``labels`` is not used
+        when ``mask_method`` is ``'background_only'``. In that case the
+        labels need not be present in the ``segmentation_image``, but if
+        input they must still have one entry per aperture position.
 
-    mask_method : {'none', 'mask', 'source_only', 'correct'}
+    mask_method : {'none', 'mask', 'source_only', 'background_only', \
+            'correct'}
         The segmentation masking method.
 
     positions : 2D array_like
@@ -58,7 +69,8 @@ def process_segmentation_inputs(segmentation_image, labels,
 
     labels : 1D `~numpy.ndarray` (intp) or `None`
         The resolved per-aperture source labels, or `None` if
-        ``mask_method`` is ``'none'``.
+        ``mask_method`` is ``'none'``. For ``'background_only'``,
+        which does not use the labels, an array of zeros.
     """
     if mask_method not in MASK_METHODS:
         msg = f'mask_method must be one of {MASK_METHODS}'
@@ -75,21 +87,13 @@ def process_segmentation_inputs(segmentation_image, labels,
     # Local import to avoid a circular import with photutils.segmentation
     from photutils.segmentation import SegmentationImage
 
-    if isinstance(segmentation_image, SegmentationImage):
-        segm = segmentation_image.data
-    else:
-        segm = np.asarray(segmentation_image)
+    if not isinstance(segmentation_image, SegmentationImage):
+        msg = 'segmentation_image must be a SegmentationImage'
+        raise TypeError(msg)
 
-    if segm.ndim != 2:
-        msg = 'segmentation_image must be a 2D array'
-        raise ValueError(msg)
-
+    segm = segmentation_image.data
     if segm.shape != tuple(data_shape):
         msg = 'segmentation_image must have the same shape as the data'
-        raise ValueError(msg)
-
-    if segm.dtype.kind not in ('i', 'u'):
-        msg = 'segmentation_image must have an integer data type'
         raise ValueError(msg)
 
     segm = np.ascontiguousarray(segm, dtype=np.intp)
@@ -98,6 +102,10 @@ def process_segmentation_inputs(segmentation_image, labels,
     n_positions = positions.shape[0]
 
     if labels is None:
+        if mask_method == 'background_only':
+            # The labels are not used, but the batch kernels require a
+            # per-source labels array.
+            return segm, np.zeros(n_positions, dtype=np.intp)
         msg = ('labels must be input when segmentation_image is input '
                "and mask_method is not 'none'")
         raise ValueError(msg)
@@ -112,6 +120,24 @@ def process_segmentation_inputs(segmentation_image, labels,
         raise ValueError(msg)
     labels = np.ascontiguousarray(labels, dtype=np.intp)
 
+    if mask_method == 'background_only':
+        # The labels are not used, so they need not be present in the
+        # segmentation image. Their shape is still validated above
+        # because the input labels are stored and sliced per aperture.
+        return segm, np.zeros(n_positions, dtype=np.intp)
+
+    # Each nonzero label must be present in the segmentation image.
+    # Otherwise, every labeled pixel would silently be treated as a
+    # neighbor of the target source. The SegmentationImage labels are
+    # cached, so this check is inexpensive.
+    nonzero = labels[labels != 0]
+    present = np.isin(nonzero, segmentation_image.labels)
+    bad_labels = np.unique(nonzero[~present])
+    if bad_labels.size > 0:
+        msg = (f'labels {bad_labels.tolist()} are not present in the '
+               'segmentation_image')
+        raise ValueError(msg)
+
     return segm, labels
 
 
@@ -125,7 +151,8 @@ def make_segmentation_exclusion(mask_method, segmentation_cutout,
 
     Parameters
     ----------
-    mask_method : {'none', 'mask', 'source_only', 'correct'}
+    mask_method : {'none', 'mask', 'source_only', 'background_only', \
+            'correct'}
         The segmentation masking method.
 
     segmentation_cutout : 2D `~numpy.ndarray`
@@ -133,7 +160,9 @@ def make_segmentation_exclusion(mask_method, segmentation_cutout,
 
     label : int
         The target source label for this aperture. If ``label`` is 0,
-        masking is disabled and no pixels are excluded.
+        masking is disabled and no pixels are excluded. The label is
+        ignored by the ``'background_only'`` method, which has no
+        target source.
 
     data : 2D `~numpy.ndarray`, optional
         The data cutout, required for the ``'correct'`` method.
@@ -168,12 +197,25 @@ def make_segmentation_exclusion(mask_method, segmentation_cutout,
         replaced, or excluded-instead-of-replaced due to a neighboring
         source (i.e., a labeled pixel that is not the target source).
         Background pixels excluded by the ``'source_only'`` method are
-        not marked. For the ``'correct'`` method, ``exclude`` marks
-        exactly the neighbor pixels that could not be corrected.
+        not marked. For the ``'background_only'`` method, every labeled
+        pixel is a neighbor pixel. For the ``'correct'`` method,
+        ``exclude`` marks exactly the neighbor pixels that could not be
+        corrected. ``exclude`` and ``affected`` may be the same array
+        object, so neither must be modified in place.
     """
     exclude = np.zeros(segmentation_cutout.shape, dtype=bool)
 
-    if mask_method == 'none' or label == 0:
+    # The 'none' and 'background_only' methods return one array as both
+    # the exclude and affected masks. Callers must not modify either
+    # mask in place.
+    if mask_method == 'none':
+        return data, error, exclude, exclude
+
+    if mask_method == 'background_only':
+        labeled = segmentation_cutout > 0
+        return data, error, labeled, labeled
+
+    if label == 0:
         return data, error, exclude, exclude
 
     neighbor = ((segmentation_cutout > 0)

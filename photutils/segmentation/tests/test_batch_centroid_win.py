@@ -271,7 +271,7 @@ def test_skip_rows(scene):
         inp['data'], error=inp['error'], mask=inp['mask'],
         segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
         ycen0=inp['ycen0'], sigma=inp['sigma'], skip=skip,
-        seg_method=3, compute_err=1,
+        seg_method=4, compute_err=1,
         max_aper_size=scene['data'].size)
     expected = np.array([np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
                          np.nan, np.nan, np.nan, np.nan])
@@ -286,7 +286,7 @@ def test_oom_guard(scene):
         inp['data'], error=inp['error'], mask=inp['mask'],
         segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
         ycen0=inp['ycen0'], sigma=inp['sigma'], skip=inp['skip'],
-        seg_method=3, compute_err=1, max_aper_size=4)
+        seg_method=4, compute_err=1, max_aper_size=4)
     assert np.all(np.isnan(result[:, 0]))
 
 
@@ -299,7 +299,7 @@ def test_compute_err_without_error(scene):
             inp['data'], error=None, mask=inp['mask'],
             segm=inp['segm'], labels=inp['labels'],
             xcen0=inp['xcen0'], ycen0=inp['ycen0'],
-            sigma=inp['sigma'], skip=inp['skip'], seg_method=3,
+            sigma=inp['sigma'], skip=inp['skip'], seg_method=4,
             compute_err=1, max_aper_size=scene['data'].size)
 
 
@@ -308,7 +308,7 @@ def _call_driver(inp):
         inp['data'], error=inp['error'], mask=inp['mask'],
         segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
         ycen0=inp['ycen0'], sigma=inp['sigma'], skip=inp['skip'],
-        seg_method=3, compute_err=1, max_aper_size=inp['data'].size)
+        seg_method=4, compute_err=1, max_aper_size=inp['data'].size)
 
 
 @pytest.mark.parametrize('name', ['xcen0', 'ycen0', 'sigma', 'skip'])
@@ -341,7 +341,7 @@ def test_thread_safety(scene):
             inp['data'], error=inp['error'], mask=inp['mask'],
             segm=inp['segm'], labels=inp['labels'],
             xcen0=inp['xcen0'], ycen0=inp['ycen0'],
-            sigma=inp['sigma'], skip=inp['skip'], seg_method=3,
+            sigma=inp['sigma'], skip=inp['skip'], seg_method=4,
             compute_err=1, max_aper_size=max_aper_size)
 
     expected = run()

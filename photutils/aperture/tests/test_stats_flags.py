@@ -13,6 +13,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from photutils.aperture import (APERTURE_FLAGS, ApertureStats, CircularAnnulus,
                                 CircularAperture)
 from photutils.aperture.tests.conftest import UNIT_SHAPE
+from photutils.segmentation import SegmentationImage
 
 
 def _stats_flags(data, aperture, **kwargs):
@@ -306,9 +307,32 @@ class TestSegmentationFlags:
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture
         aper = CircularAperture((12, 12), r=3.0)
-        flags = _stats_flags(data, aper, segmentation_image=segm, labels=1,
-                             mask_method=mask_method)
+        flags = _stats_flags(data, aper,
+                             segmentation_image=SegmentationImage(segm),
+                             labels=1, mask_method=mask_method)
         assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_background_only_neighbor_pixels(self, unit_data):
+        """
+        Test the neighbor_pixels flag with mask_method='background_only',
+        where every labeled pixel counts as a neighbor pixel.
+        """
+        data = unit_data
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
+        segm[11:14, 11:14] = 1  # a source inside the aperture
+        aper = CircularAperture((12, 12), r=3.0)
+        flags = _stats_flags(data, aper,
+                             segmentation_image=SegmentationImage(segm),
+                             mask_method='background_only')
+        assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
+
+        # An aperture on pure background is not flagged
+        aper = CircularAperture((4, 4), r=3.0)
+        flags = _stats_flags(data, aper,
+                             segmentation_image=SegmentationImage(segm),
+                             mask_method='background_only')
+        assert flags == 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_uncorrected_pixels(self, unit_data):
@@ -321,8 +345,9 @@ class TestSegmentationFlags:
         segm[12, 14] = 2
         segm[12, 10] = 2  # the mirror is also a neighbor: uncorrectable
         aper = CircularAperture((12, 12), r=3.0)
-        flags = _stats_flags(data, aper, segmentation_image=segm, labels=1,
-                             mask_method='correct')
+        flags = _stats_flags(data, aper,
+                             segmentation_image=SegmentationImage(segm),
+                             labels=1, mask_method='correct')
         assert flags == (APERTURE_FLAGS.NEIGHBOR_PIXELS
                          | APERTURE_FLAGS.UNCORRECTED_PIXELS)
 

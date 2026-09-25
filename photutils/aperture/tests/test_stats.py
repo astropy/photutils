@@ -921,7 +921,8 @@ class TestMaskPathParity(BaseApertureStatsData):
         data[20:25, 26:32] = 100.0
         segm[20:25, 26:32] = 2
         positions = [(21, 21), (28, 22)]
-        kwargs = {'segmentation_image': segm, 'labels': [1, 2],
+        kwargs = {'segmentation_image': SegmentationImage(segm),
+                  'labels': [1, 2],
                   'mask_method': 'mask'}
         fast = ApertureStats(data, CircularAperture(positions, r=6),
                              **kwargs)
@@ -1445,7 +1446,8 @@ class TestNThreads:
                      (28.5, 22.0), (20.5, 21.0)]
         labels = [1, 2, 1, 2, 1]
         aper = CircularAperture(positions, r=8.0)
-        kwargs = {'segmentation_image': segm, 'labels': labels,
+        kwargs = {'segmentation_image': SegmentationImage(segm),
+                  'labels': labels,
                   'mask_method': 'mask'}
         stats1 = ApertureStats(data, aper, **kwargs)
         stats2 = ApertureStats(data, aper, n_threads=3, **kwargs)
@@ -1631,7 +1633,8 @@ class TestCenterCutoutParity:
             self.assert_cutout_lists_equal(fast_cutouts[key],
                                            slow_cutouts[key])
 
-    @pytest.mark.parametrize('mask_method', ['mask', 'source_only'])
+    @pytest.mark.parametrize('mask_method', ['mask', 'source_only',
+                                             'background_only'])
     def test_segmentation_masking(self, mask_method):
         """
         Test that segmentation-excluded pixels land in the cutout mask
@@ -1644,7 +1647,8 @@ class TestCenterCutoutParity:
         data[20:25, 26:32] = 100.0
         segm[20:25, 26:32] = 2
         aperture = CircularAperture([(21.0, 21.0), (28.0, 22.0)], r=8.0)
-        kwargs = {'segmentation_image': segm, 'labels': [1, 2],
+        kwargs = {'segmentation_image': SegmentationImage(segm),
+                  'labels': [1, 2],
                   'mask_method': mask_method}
 
         fast = ApertureStats(data, aperture, **kwargs)
@@ -1671,7 +1675,8 @@ class TestCenterCutoutParity:
         data[20:25, 26:32] = 100.0
         segm[20:25, 26:32] = 2
         aperture = CircularAperture([(21.0, 21.0)], r=8.0)
-        stats = ApertureStats(data, aperture, segmentation_image=segm,
+        stats = ApertureStats(data, aperture,
+                              segmentation_image=SegmentationImage(segm),
                               labels=[1], mask_method='correct')
         assert stats._fast_gather is not None
         assert stats._fast_cutouts_center is None
