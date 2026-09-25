@@ -202,6 +202,7 @@ skips = ['*_test.py', '*/test_*.py']
 [tool.cibuildwheel]
 # Explicitly skip free-threaded builds
 skip = ["cp*t-*"]
+environment = { EXTENSION_HELPERS_PY_LIMITED_API = "cp312" }
 
 [tool.repo-review]
 ignore = [
@@ -365,6 +366,3 @@ convention = 'numpy'
 
 [tool.cython-lint]
 max-line-length = 79
-
-[tool.distutils.bdist_wheel]
-py-limited-api = "cp312"
