@@ -642,9 +642,11 @@ class Background2D:
         else:
             data2d = data.reshape(-1, data.shape[-1])
 
-        # Sort each box (NaN values are placed last). The kernel
-        # requires ascending-sorted rows.
-        data2d = np.sort(data2d.astype(np.float64, copy=False), axis=-1)
+        # Sort each box in its own dtype (NaN values are placed last)
+        # and then cast to the float64 rows the kernel requires. The
+        # cast is exact and preserves the order, and sorting float32
+        # data is about twice as fast as sorting a float64 copy.
+        data2d = np.sort(data2d, axis=-1).astype(np.float64, copy=False)
 
         (mean, median, std, madstd, biloc,
          biscale, n_good) = batch_sigma_clip_stats(

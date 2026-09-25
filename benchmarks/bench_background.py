@@ -216,7 +216,9 @@ def main():
     parser.add_argument('--sizes', default='1024,2048,4096',
                         help='comma-separated image sizes '
                              '(default: %(default)s)')
-    parser.add_argument('--box-sizes', default='32,64,128',
+    # The large box keeps the per-box cost dominant for at least one
+    # setting so that regressions there are visible.
+    parser.add_argument('--box-sizes', default='32,64,128,1024',
                         help='comma-separated box sizes '
                              '(default: %(default)s)')
     parser.add_argument('--n-threads', default='1,2,4,8',
