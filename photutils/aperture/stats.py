@@ -1316,30 +1316,23 @@ class ApertureStats:
                 'xy': (gather.values, gather.local_x, gather.local_y)}
 
             block = {}
-
-            def block_value(key, i0=i0, i1=i1, block=block):
-                # A dependency is either calculated in this pass or was
-                # cached for all of the sources by an earlier pass.
-                if key in block:
-                    return block[key]
-                value = cache[key]
-                if isinstance(value, tuple):
-                    return tuple(arr[i0:i1] for arr in value)
-                return value[i0:i1]
+            index = slice(i0, i1)
 
             for key in names:
                 func, kind = _BLOCK_REDUCTIONS[key]
                 per_source = ()
                 if key == 'biweight':
-                    per_source = (block_value('order_stats')[2],
-                                  block_value('mad'))
+                    per_source = (
+                        self._block_dependency(block, 'order_stats', index)[2],
+                        self._block_dependency(block, 'mad', index))
                 elif key == 'moments':
                     zeros = np.zeros(i1 - i0)
                     per_source = (zeros, zeros)
                 elif key == 'moments_central':
                     # No-overlap sources have NaN moments and centroids
                     # (see the moments property)
-                    moments = block_value('moments').copy()
+                    moments = self._block_dependency(block, 'moments',
+                                                     index).copy()
                     moments[~np.asarray(gather.overlap, dtype=bool)] = np.nan
                     centroid = centroid_from_moments(moments)
                     per_source = (np.ascontiguousarray(centroid[:, 0]),
@@ -1350,7 +1343,7 @@ class ApertureStats:
                 parts[key].append(block[key])
 
             # Free this block's packed buffers before gathering the next
-            del gather, sorted_values, buffers, block
+            del gather, sorted_values, buffers
 
         parts['meta'] = meta_parts
         for key, results in parts.items():
@@ -1361,6 +1354,22 @@ class ApertureStats:
                                    for arrays in zip(*results, strict=True))
             else:
                 cache[key] = np.concatenate(results)
+
+    def _block_dependency(self, block, key, index):
+        """
+        Return the per-source reduction ``key`` for the block of sources
+        selected by the slice ``index``.
+
+        A dependency is either calculated in the current pass, and then
+        found in ``block``, or was cached for all of the sources by an
+        earlier pass (see `_block_cache`).
+        """
+        if key in block:
+            return block[key]
+        value = self._block_cache[key]
+        if isinstance(value, tuple):
+            return tuple(arr[index] for arr in value)
+        return value[index]
 
     def _block_result(self, name):
         """
