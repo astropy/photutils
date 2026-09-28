@@ -444,7 +444,7 @@ class ApertureStats:
     _NON_SLICEABLE_CACHES = frozenset({
         '_batch_inputs', '_fast_gather', '_fast_sum', '_sorted_values',
         '_order_stats', '_minmax', '_mean_var', '_mad', '_biweight',
-        '_gini', '_fast_cutouts_center', '_block_edges', '_block_cache',
+        '_gini', '_fast_cutouts_center', '_block_edges',
         '_center_gather_meta'})
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
@@ -505,6 +505,12 @@ class ApertureStats:
             raise ValueError(msg)
         self.n_threads = int(n_threads)
         self._block_max_pixels = _BLOCK_MAX_PIXELS
+        # The per-source results calculated by `_block_reduce`, keyed by
+        # reduction name. The dict is created here, not lazily, so that
+        # threads calculating different properties concurrently share
+        # the same dict (a lazily created dict could be replaced by a
+        # second thread before the first stored its results in it).
+        self._block_cache = {}
 
         self._local_bkg = np.zeros(self.n_positions)  # no local bkg
         if local_bkg is not None:
@@ -615,6 +621,7 @@ class ApertureStats:
                      'mask_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
+        newcls._block_cache = {}
 
         # aperture determines isscalar (needed below)
         newcls.aperture = self.aperture[index]
@@ -1232,14 +1239,6 @@ class ApertureStats:
         if n_sources == 0:
             edges.append(0)  # a single empty block
         return edges
-
-    @cached_property
-    def _block_cache(self):
-        """
-        The per-source results calculated by `_block_reduce`, keyed by
-        reduction name.
-        """
-        return {}
 
     def _block_reduce(self, names):
         """

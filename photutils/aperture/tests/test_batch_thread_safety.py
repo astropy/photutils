@@ -274,6 +274,43 @@ class TestApertureStatsThreadSafety:
                 assert_allclose(values, expected[name], rtol=0, atol=0,
                                 equal_nan=True)
 
+    @pytest.mark.parametrize('block_max_pixels', [None, 2000])
+    def test_shared_instance_distinct_properties(self, monkeypatch,
+                                                 block_max_pixels):
+        """
+        Test that threads reading different properties of one shared
+        ApertureStats instance all see complete results.
+
+        Each thread starts with a different property, so the threads
+        fill the shared block-reduction cache concurrently, in both the
+        single-block and the multi-block mode.
+        """
+        if block_max_pixels is not None:
+            monkeypatch.setattr('photutils.aperture.stats._BLOCK_MAX_PIXELS',
+                                block_max_pixels)
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 1.0, (300, 300))
+        aperture = CircularAperture(rng.uniform(20, 280, (200, 2)), r=6.0)
+        names = ('mean', 'std', 'min', 'median', 'mad_std',
+                 'biweight_location', 'gini', 'moments_central',
+                 'centroid', 'flags', 'center_aper_area')
+        sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
+
+        for _ in range(5):
+            stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
+            expected = ApertureStats(data, aperture, sigma_clip=sigma_clip)
+            barrier = threading.Barrier(len(names))
+
+            def read(first, stats=stats, barrier=barrier):
+                barrier.wait()
+                return np.asarray(getattr(stats, first))
+
+            with ThreadPoolExecutor(max_workers=len(names)) as ex:
+                results = list(ex.map(read, names))
+            for name, values in zip(names, results, strict=True):
+                assert_array_equal(values, np.asarray(getattr(expected,
+                                                              name)))
+
     def test_no_cross_instance_serialization(self, monkeypatch):
         """
         Test that computing a cached property on one instance does not
