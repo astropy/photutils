@@ -4,6 +4,7 @@ Tests for the catalog module.
 """
 
 import threading
+import tracemalloc
 from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 from unittest.mock import patch
@@ -2630,6 +2631,300 @@ def test_centroid_win_nan_when_flux_radius_nan(gauss_101_data):
 
         cwin = cat.centroid_win
         assert np.all(np.isnan(cwin))
+
+
+def assert_allclose_per_source(actual, desired, rtol):
+    """
+    Assert that two per-source arrays agree to within ``rtol``.
+
+    The tolerance is relative to each value and also to the largest
+    finite magnitude of the same source (the first axis), because
+    elements that are analytically zero (e.g., the first-order central
+    moments) are rounding residuals of much larger terms of that
+    source.
+    """
+    actual = np.asarray(actual, dtype=float)
+    desired = np.asarray(desired, dtype=float)
+    finite = np.where(np.isfinite(desired), np.abs(desired), 0.0)
+    axes = tuple(range(1, desired.ndim))
+    scale = finite.max(axis=axes, keepdims=True) if axes else finite
+    scale = np.where(scale > 0, scale, 1.0)
+    assert_allclose(actual / scale, desired / scale, rtol=rtol, atol=rtol,
+                    equal_nan=True)
+
+
+@pytest.fixture
+def float32_catalog_inputs():
+    """
+    Float32 data, error, and convolved data with three sources on a
+    256x256 grid.
+
+    Returns ``(data, segm, error, convolved_data)``.
+    """
+    yy, xx = np.mgrid[0:256, 0:256]
+    data = (Gaussian2D(100, 60, 60, 4, 4)(xx, yy)
+            + Gaussian2D(80, 180, 90, 5, 3)(xx, yy)
+            + Gaussian2D(60, 120, 200, 3, 3)(xx, yy)).astype(np.float32)
+    error = np.full(data.shape, 0.5, dtype=np.float32)
+    kernel = make_2dgaussian_kernel(2.0, size=5)
+    convolved_data = convolve(data, kernel).astype(np.float32)
+    segm = detect_sources(convolved_data, 5.0, n_pixels=5)
+    return data, segm, error, convolved_data
+
+
+def test_release_cache_frees_memory(float32_catalog_inputs):
+    """
+    Test that release_cache frees the full-image working arrays,
+    including when a sliced catalog is still alive.
+    """
+    data, segm, error, convolved_data = float32_catalog_inputs
+    # With a float64 error array, the float32 data and convolved data
+    # are copied to float64 so that all of the images have the same
+    # dtype.
+    cat = SourceCatalog(data, segm, error=error.astype(np.float64),
+                        convolved_data=convolved_data)
+
+    tracemalloc.start()
+    try:
+        # The float64 data and convolved data working copies and the
+        # mask plane are built on first use.
+        _ = cat.centroid
+        _ = cat.segment_flux_err
+        sub = cat[0:2]
+        _ = sub.kron_flux
+        used = tracemalloc.get_traced_memory()[0]
+        cat.release_cache()
+        freed = used - tracemalloc.get_traced_memory()[0]
+    finally:
+        tracemalloc.stop()
+
+    assert freed >= 2 * data.size * 8
+    assert sub.n_labels == 2
+
+
+def test_release_cache_results_unchanged(float32_catalog_inputs):
+    """
+    Test that properties computed before and after release_cache match
+    those of a catalog whose cache was never released.
+    """
+    data, segm, error, convolved_data = float32_catalog_inputs
+    kwargs = {'error': error, 'convolved_data': convolved_data}
+    cat_ref = SourceCatalog(data, segm, **kwargs)
+    cat = SourceCatalog(data, segm, **kwargs)
+
+    centroid = cat.centroid
+    assert cat.release_cache() is None
+    assert_equal(cat.centroid, centroid)
+
+    # New properties rebuild the working arrays on demand
+    assert_equal(cat.centroid, cat_ref.centroid)
+    assert_equal(cat.segment_flux_err, cat_ref.segment_flux_err)
+    assert_equal(cat.kron_flux, cat_ref.kron_flux)
+
+    # Releasing a catalog that has nothing cached is allowed
+    cat.release_cache()
+    cat.release_cache()
+    assert_equal(cat.kron_flux_err, cat_ref.kron_flux_err)
+
+
+class TestInputDtypes:
+    """
+    Tests that the compiled code reads float32 and float64 images and
+    int32 and intp segmentation images directly, with the same
+    results.
+
+    All calculations are performed in float64, so float32 inputs give
+    the same results as the same values input as float64, up to
+    floating-point rounding. The compiler may fuse multiply-add
+    operations differently in the float32 and float64 specializations
+    of the compiled code, which changes some results by one ulp on some
+    platforms (e.g., GCC on aarch64).
+    """
+
+    # The relative tolerance for float32 versus float64 inputs (a few
+    # ulps)
+    rtol = 1e-13
+
+    @classmethod
+    def assert_properties_close(cls, props, props_ref):
+        """
+        Assert that the numeric properties agree to within ``rtol`` for
+        floating-point values and exactly otherwise.
+
+        See `assert_allclose_per_source` for the tolerance.
+        """
+        assert props.keys() == props_ref.keys()
+        for name, expected in props_ref.items():
+            value = props[name]
+            if expected.dtype.kind == 'f':
+                try:
+                    assert_allclose_per_source(value, expected, cls.rtol)
+                except AssertionError as exc:
+                    msg = f'{name} differs'
+                    raise AssertionError(msg) from exc
+            else:
+                assert_equal(value, expected, err_msg=name)
+
+    @staticmethod
+    def make_inputs(size=200):
+        """
+        Make float64 data, error, background, and convolved data arrays
+        and a segmentation image.
+        """
+        rng = np.random.default_rng(1)
+        yy, xx = np.mgrid[0:size, 0:size]
+        data = rng.normal(0.0, 1.0, (size, size))
+        for _ in range(12):
+            xcen, ycen = rng.uniform(15, size - 15, 2)
+            xsig, ysig = rng.uniform(1.5, 4.0, 2)
+            data += Gaussian2D(rng.uniform(50, 200), xcen, ycen, xsig, ysig,
+                               rng.uniform(0, np.pi))(xx, yy)
+        data[5, 5] = np.nan
+        error = rng.uniform(0.8, 1.2, data.shape)
+        background = rng.uniform(4.9, 5.1, data.shape)
+        kernel = make_2dgaussian_kernel(2.0, size=5)
+        convolved_data = convolve(data, kernel)
+        segm = detect_sources(convolved_data, 5.0, n_pixels=10)
+        return data, error, background, convolved_data, segm
+
+    @staticmethod
+    def numeric_properties(cat):
+        """
+        Return a dict of the per-source numeric property arrays.
+        """
+        results = {}
+        for name in cat.properties:
+            value = getattr(cat, name)
+            if isinstance(value, u.Quantity):
+                value = value.value
+            if isinstance(value, np.ndarray) and value.dtype.kind in 'fiub':
+                results[name] = value
+        return results
+
+    @pytest.mark.parametrize('segm_dtype',
+                             [np.int16, np.int32, '>i4', np.intp])
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    def test_identical_results(self, dtype, segm_dtype):
+        """
+        Test that the results do not depend on the input dtypes.
+
+        The float32 values are exactly representable as float64, so the
+        results must agree with those for the same values input as
+        float64 to within rounding.
+        """
+        data, error, background, convolved_data, segm = self.make_inputs()
+        data = data.astype(np.float32)
+        error = error.astype(np.float32)
+        background = background.astype(np.float32)
+        convolved_data = convolved_data.astype(np.float32)
+
+        cat_ref = SourceCatalog(
+            data.astype(float), SegmentationImage(segm.data.astype(np.intp)),
+            error=error.astype(float), background=background.astype(float),
+            convolved_data=convolved_data.astype(float))
+        cat = SourceCatalog(
+            data.astype(dtype),
+            SegmentationImage(segm.data.astype(segm_dtype)),
+            error=error.astype(dtype), background=background.astype(dtype),
+            convolved_data=convolved_data.astype(dtype))
+
+        props_ref = self.numeric_properties(cat_ref)
+        props = self.numeric_properties(cat)
+        assert len(props) > 60
+        self.assert_properties_close(props, props_ref)
+        assert_allclose(cat.flux_radius(0.5).value,
+                        cat_ref.flux_radius(0.5).value, rtol=self.rtol,
+                        atol=0, equal_nan=True)
+
+    def test_mixed_dtypes(self):
+        """
+        Test float32 data with float64 error and convolved data,
+        non-contiguous float32 inputs, and Quantity inputs.
+        """
+        data, error, _, convolved_data, segm = self.make_inputs()
+        data32 = data.astype(np.float32)
+        cat_ref = SourceCatalog(data32.astype(float), segm, error=error,
+                                convolved_data=convolved_data)
+        props_ref = self.numeric_properties(cat_ref)
+
+        cat1 = SourceCatalog(data32, segm, error=error,
+                             convolved_data=convolved_data)
+        data_fortran = np.asfortranarray(data32)
+        assert not data_fortran.flags.c_contiguous
+        cat2 = SourceCatalog(data_fortran, segm, error=error,
+                             convolved_data=convolved_data)
+        cat3 = SourceCatalog(data32 << u.Jy, segm, error=error << u.Jy,
+                             convolved_data=convolved_data << u.Jy)
+        # Big-endian float32 (e.g., from a FITS file) and float16 values
+        # are exactly representable in native float32
+        conv32 = convolved_data.astype(np.float32)
+        cat_ref2 = SourceCatalog(data32.astype(float), segm,
+                                 error=error.astype(np.float16).astype(float),
+                                 convolved_data=conv32.astype(float))
+        cat4 = SourceCatalog(data32.astype('>f4'), segm,
+                             error=error.astype(np.float16),
+                             convolved_data=conv32.astype('>f4'))
+        self.assert_properties_close(self.numeric_properties(cat4),
+                                     self.numeric_properties(cat_ref2))
+
+        for cat in (cat1, cat2, cat3):
+            self.assert_properties_close(self.numeric_properties(cat),
+                                         props_ref)
+
+    def test_float32_inputs_not_copied(self):
+        """
+        Test that C-contiguous float32 inputs and an int32 segmentation
+        image are used without making full-image float64 copies.
+        """
+        data, error, _, convolved_data, segm = self.make_inputs(size=512)
+        data = data.astype(np.float32)
+        error = error.astype(np.float32)
+        convolved_data = convolved_data.astype(np.float32)
+        segm = SegmentationImage(segm.data.astype(np.int32))
+        cat = SourceCatalog(data, segm, error=error,
+                            convolved_data=convolved_data)
+
+        tracemalloc.start()
+        try:
+            start = tracemalloc.get_traced_memory()[0]
+            tbl = cat.to_table()
+            _ = cat.centroid_win
+            _ = cat.centroid_quad
+            _ = cat.flux_radius(0.5)
+            current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+
+        assert len(tbl) == cat.n_labels
+        # A float64 copy of one image needs 8 bytes per pixel. Only the
+        # uint8 mask plane (1 byte per pixel) is kept. The temporary
+        # images used for the flags need about 7 bytes per pixel.
+        assert current - start < 2 * data.size
+        assert peak - start < 8 * data.size
+
+    def test_big_endian_segmentation_image(self):
+        """
+        Test that a big-endian int32 segmentation image (e.g., read from
+        a FITS file) is converted to a native int32 copy, not an intp
+        copy.
+        """
+        data, _, _, _, segm = self.make_inputs(size=512)
+        data = data.astype(np.float32)
+        segm = SegmentationImage(segm.data.astype('>i4'))
+        cat = SourceCatalog(data, segm)
+
+        tracemalloc.start()
+        try:
+            start = tracemalloc.get_traced_memory()[0]
+            _ = cat.segment_flux
+            current = tracemalloc.get_traced_memory()[0]
+        finally:
+            tracemalloc.stop()
+
+        # The native int32 copy needs 4 bytes per pixel and the mask
+        # plane 1 byte per pixel. An intp copy would need 8 bytes per
+        # pixel.
+        assert current - start < 6 * data.size
 
 
 def test_centroid_win_oom_guard(gauss_101_catalog):

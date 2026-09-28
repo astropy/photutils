@@ -132,10 +132,10 @@ image showing the detected sources:
 Source Deblending
 -----------------
 
-In the example above, overlapping sources are detected as single
-sources. Separating those sources requires a deblending procedure,
-such as a multi-thresholding technique used by `SourceExtractor`_.
-Photutils provides a :func:`~photutils.segmentation.deblend_sources`
+In the example above, overlapping sources are detected as
+single sources. Separating those sources requires a deblending
+procedure, such as a multi-thresholding technique. Photutils
+provides a :func:`~photutils.segmentation.deblend_sources`
 function that deblends sources using a combination
 of multi-thresholding and `watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. Note
@@ -153,25 +153,24 @@ The ``contrast_method`` keyword selects the flux to which the
 total flux in the source's watershed basin, i.e., everything the
 watershed assigns to the source, including its share of any surrounding
 envelope. Basins below the contrast are removed iteratively and their
-territory is re-flooded. With the ``'saddle'`` method, it is only
-the flux the source holds above the saddle level where it separates
-from its neighbors. This is the significance criterion that
-`SourceExtractor`_ applies with its ``DEBLEND_MINCONT`` parameter,
-although the two codes space their threshold levels differently
-(SourceExtractor between the detection threshold and the peak,
-photutils between the source minimum and maximum) and assign the
-remaining pixels differently (SourceExtractor with a profile model,
-photutils with a watershed). The saddle flux measures the significance
-of the peak itself, independently of how much envelope territory the
-source would inherit, which makes it stricter for faint peaks sitting
-on bright envelopes. Because it excludes the flux below the saddle, the
-same ``contrast`` value selects sources differently between the two
-methods. The saddle method is evaluated once during marker construction
-and needs only a single watershed pass, so it is never slower than
-the basin method and is substantially faster when many below-contrast
-basins would otherwise be removed one at a time. The default of
-`None` currently resolves to ``'basin'``. The default may change to
-``'saddle'`` in version 4.0.
+territory is re-flooded. With the ``'saddle'`` method, it is only the
+flux the source holds above the saddle level where it separates from its
+neighbors. This is the significance criterion that `SourceExtractor`_
+applies with its ``DEBLEND_MINCONT`` parameter, although the two codes
+space their threshold levels differently (SourceExtractor between
+the detection threshold and the peak, photutils between the source
+minimum and maximum) and assign the remaining pixels differently
+(SourceExtractor with a profile model, photutils with a watershed). The
+saddle flux measures the significance of the peak itself, independently
+of how much envelope territory the source would inherit, which makes
+it stricter for faint peaks sitting on bright envelopes. Because
+it excludes the flux below the saddle, the same ``contrast`` value
+selects sources differently between the two methods. The saddle method
+is evaluated once during marker construction and needs only a single
+watershed pass, so it is never slower than the basin method and is
+substantially faster when many below-contrast basins would otherwise
+be removed one at a time. The default of `None` currently resolves to
+``'basin'``. The default may change to ``'saddle'`` in version 4.0.
 
 Here's a simple example of source deblending::
 
@@ -894,6 +893,79 @@ source label::
     ...     print(label, names)
     1 []
     2 ['edge_touch', 'kron_partial_overlap']
+
+
+Memory Usage
+------------
+
+Most `~photutils.segmentation.SourceCatalog` properties are calculated
+for all sources at once in compiled code. That code reads the input
+``data``, ``error``, ``background``, and ``convolved_data`` arrays and
+the segmentation image directly, without making copies, when:
+
+* the image arrays are C-contiguous, have native byte order, and are
+  all ``float32`` or all ``float64``, and
+
+* the segmentation array is C-contiguous ``int32`` or `numpy.intp`
+  with native byte order (e.g., as returned by
+  :func:`~photutils.segmentation.detect_sources`).
+
+All calculations are performed in ``float64`` regardless of the input
+dtype, so ``float32`` inputs give the same results as the same values
+input as ``float64`` (to within floating-point rounding), while using
+half the memory. For a 4088 x 4088
+``float32`` image with ``error`` and ``convolved_data`` arrays and about
+4600 sources, the catalog then holds about 50 MB of working memory (a 1
+byte per pixel mask and the per-source results).
+
+If the image arrays have different dtypes from each other (e.g.,
+``float32`` data with a ``float64`` error array), or another dtype such
+as an integer dtype, they are converted to ``float64`` working copies
+that need 8 bytes per pixel each. The copies are created the first time
+they are needed and are cached for the lifetime of the catalog, so
+that they are shared by all of the source properties. The simplest way
+to avoid the copies is to input all of the image arrays with the same
+dtype.
+
+Note that arrays read from a FITS file with `astropy.io.fits` have
+big-endian byte order (e.g., a ``>f4`` dtype for ``float32`` data),
+which the compiled code does not read directly. Big-endian image
+arrays are converted to native byte-order working copies of the
+same dtype (4 bytes per pixel for ``float32`` and 8 bytes per pixel
+for ``float64``), and a big-endian ``int32`` segmentation array is
+converted to a native ``int32`` copy. Arithmetic on the arrays (e.g.,
+subtracting a background) returns native byte-order arrays, but
+:func:`~astropy.convolution.convolve` preserves the input byte order.
+Also, some operations return ``float64`` arrays for ``float32`` input
+(e.g., :func:`~astropy.convolution.convolve_fft`), which then causes
+all of the image arrays to be converted to ``float64`` copies. To avoid
+all of these copies, convert the image arrays to native byte order once
+before using them, keeping their dtype (``np.float32`` for ``float32``
+FITS data and ``np.float64`` for ``float64`` FITS data):
+
+.. doctest-skip::
+
+    >>> from astropy.io import fits
+    >>> data = fits.getdata('image.fits').astype(np.float32)
+    >>> error = fits.getdata('error.fits').astype(np.float32)
+    >>> convolved_data = convolve(data, kernel)  # native float32
+
+If memory is a concern and the copies cannot be avoided, call the
+:meth:`~photutils.segmentation.SourceCatalog.release_cache` method after
+calculating the properties that you need::
+
+    >>> cat = SourceCatalog(data, segm)
+    >>> tbl = cat.to_table()
+    >>> cat.release_cache()
+
+This is useful when the catalog object stays alive while other
+memory-intensive work is performed. It is not needed for a catalog
+that is about to be deleted or go out of scope, because the cache is
+freed along with the catalog. Source properties that were already
+calculated are unaffected, and the working arrays are recreated on
+demand if another property is later requested. For that reason, avoid
+calling the method between property calculations. A catalog input as the
+``detection_catalog`` has its own cache.
 
 
 API Reference

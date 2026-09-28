@@ -88,7 +88,7 @@ New Features
     typically by factors of ~5-15 depending on the requested
     properties by computing all sources in a single call into compiled
     code. Sigma-clipped statistics are also computed in compiled code
-    for the common ``SigmaClip`` configurations. [#2314]
+    for the common ``SigmaClip`` configurations. [#2314, #2446]
 
   - Added ``mean_err`` and ``median_err`` properties to
     ``ApertureStats`` providing the standard error of the mean and the
@@ -337,7 +337,7 @@ New Features
     ``flags`` attribute and the default ``to_table()`` output are about
     5 times faster for large catalogs. No property displays a progress
     bar any more (see the ``progress_bar`` deprecation under API
-    Changes). [#2406]
+    Changes). [#2406, #2446]
 
   - Added an ``n_threads`` keyword to ``SourceCatalog`` to compute
     the compiled per-source measurements (the isophotal moments and
@@ -372,6 +372,11 @@ New Features
     4.0. The new ``'saddle'`` method instead measures the flux a source
     holds above the saddle level where it separates from its neighbors.
     [#2411]
+
+  - Added a ``release_cache`` method to ``SourceCatalog`` to free the
+    cached full-image working arrays used by the compiled code. Working
+    copies are made when the input image arrays do not have a common
+    ``float32`` or ``float64`` dtype. [#2446]
 
 - ``photutils.utils``
 
@@ -460,6 +465,11 @@ Bug Fixes
     ``ApertureStats.error_sum_cutout`` values are now the pixel errors
     multiplied by the aperture mask weights, so their quadrature sum
     equals ``sum_err``. [#2398]
+
+  - Fixed ``ApertureStats.error_sum_cutout`` being calculated in
+    ``float32`` precision for a ``float32`` input ``error`` array. It is
+    now calculated in ``float64``, as are all of the other statistics.
+    [#2446]
 
 - ``photutils.background``
 
@@ -911,6 +921,11 @@ Bug Fixes
   - Fixed the ``SourceCatalog`` ``kron_flux_err`` and
     ``circular_photometry`` flux errors so that each pixel variance is
     weighted by the squared aperture overlap fraction. [#2398]
+
+  - Fixed ``SourceCatalog.background_centroid`` being calculated in
+    ``float32`` precision for a ``float32`` input ``background`` array.
+    It is now calculated in ``float64``, as are all of the other source
+    properties. [#2446]
 
 - ``photutils.utils``
 

@@ -4,6 +4,7 @@ Tests for the stats module.
 """
 
 import sys
+import tracemalloc
 from functools import cached_property
 from unittest.mock import patch
 
@@ -27,7 +28,8 @@ from photutils.aperture.flags import APERTURE_FLAGS
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
-from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
+from photutils.aperture.stats import (_BLOCK_MAX_PIXELS, _MAD_STD_SCALE,
+                                      ApertureStats)
 from photutils.aperture.tests.conftest import NoBatchCircularAperture
 from photutils.datasets import make_100gaussians_image, make_wcs
 from photutils.segmentation import (SEGMENTATION_FLAGS, SegmentationImage,
@@ -1046,7 +1048,7 @@ class TestDdof(BaseApertureStatsData):
         assert_allclose(var1, var0 * n_pixels / (n_pixels - 1.0))
         assert_allclose(std1, std0 * np.sqrt(n_pixels / (n_pixels - 1.0)))
         # The standard errors are defined with the sample std and are
-        # independent of the ``ddof`` keyword
+        # independent of the ``ddof`` keyword.
         assert_allclose(apstats0.mean_err, apstats1.mean_err, equal_nan=True)
         assert_allclose(apstats0.median_err, apstats1.median_err,
                         equal_nan=True)
@@ -1074,7 +1076,7 @@ class TestDdof(BaseApertureStatsData):
         assert apstats.center_aper_area.value < 2
         assert np.isnan(apstats.var)
         assert np.isnan(apstats.std)
-        # The default (ddof=0) gives a finite (zero) variance
+        # The default (ddof=0) gives a finite (zero) variance.
         assert ApertureStats(data, aper).var == 0.0
 
     def test_ddof_invalid(self):
@@ -1232,7 +1234,7 @@ class TestSigmaClipSharedInstance:
         data = rng.normal(0.0, 1.0, (ny, 50 * n_src + 50))
         for i, x in enumerate(xs):
             # Strong per-source scale differences make any clipping
-            # bound contamination between sources visible
+            # bound contamination between sources visible.
             scale = 10.0 ** (i % 6)
             data[:, x - 20:x + 20] = rng.normal(scale, scale / 10.0,
                                                 (ny, 40))
@@ -1310,7 +1312,7 @@ class TestSigmaClipBiweightStrings:
         std1 = apstats1.std
         sum1 = apstats1.sum
 
-        # Force the mask-based fallback path
+        # Force the mask-based fallback path.
         monkeypatch.setattr(ApertureStats, '_fast_clip_spec',
                             lambda _self: None)
         apstats2 = ApertureStats(data, aper, sigma_clip=sigclip,
@@ -1340,7 +1342,7 @@ def test_sigma_clip_sorted_values_reuse(monkeypatch):
              'std', 'mean')
     results1 = [getattr(apstats1, prop) for prop in props]
 
-    # Force the mask-based fallback path
+    # Force the mask-based fallback path.
     monkeypatch.setattr(ApertureStats, '_fast_clip_spec',
                         lambda _self: None)
     apstats2 = ApertureStats(data, aper, sigma_clip=sigclip)
@@ -1372,11 +1374,32 @@ class TestNThreads:
         return data, error, mask, positions
 
     @staticmethod
-    def assert_stats_equal(stats1, stats2):
+    def assert_stats_equal(stats1, stats2, *, rtol=0):
         """
-        Assert that all (non-cutout) properties of two ApertureStats
-        instances are exactly equal.
+        Assert that all properties of two ApertureStats instances are
+        equal.
+
+        Floating-point values must be exactly equal when ``rtol`` is 0
+        (the default) and must agree to within ``rtol`` otherwise. The
+        tolerance is relative to each value and also to the largest
+        magnitude of the same source, because elements that are
+        analytically zero (e.g., the first-order central moments) are
+        rounding residuals of much larger terms of that source.
         """
+        def check(value1, value2):
+            value1 = np.asarray(value1)
+            value2 = np.asarray(value2)
+            if rtol and value1.dtype.kind == 'f':
+                finite = np.where(np.isfinite(value2), np.abs(value2), 0.0)
+                axes = tuple(range(1, value2.ndim))
+                scale = (finite.max(axis=axes, keepdims=True) if axes
+                         else finite)
+                scale = np.where(scale > 0, scale, 1.0)
+                assert_allclose(value1 / scale, value2 / scale, rtol=rtol,
+                                atol=rtol, equal_nan=True)
+            else:
+                assert_equal(value1, value2)
+
         for prop in stats1.properties:
             value1 = getattr(stats1, prop)
             value2 = getattr(stats2, prop)
@@ -1384,16 +1407,16 @@ class TestNThreads:
                 for arr1, arr2 in zip(value1, value2, strict=True):
                     arr1 = np.ma.filled(arr1, np.nan)
                     arr2 = np.ma.filled(arr2, np.nan)
-                    assert_equal(arr1, arr2)
+                    check(arr1, arr2)
             elif prop.startswith('sky_'):
-                # SkyCoord without a wcs is None or an array of None
+                # SkyCoord without a wcs is None or an array of None.
                 if hasattr(value1, 'ra'):
-                    assert_equal(value1.ra.deg, value2.ra.deg)
-                    assert_equal(value1.dec.deg, value2.dec.deg)
+                    check(value1.ra.deg, value2.ra.deg)
+                    check(value1.dec.deg, value2.dec.deg)
                 else:
                     assert_equal(value1, value2)
             else:
-                assert_equal(value1, value2)
+                check(value1, value2)
 
     @pytest.mark.parametrize('n_threads', [2, 8])
     @pytest.mark.parametrize('use_sigma_clip', [False, True])
@@ -1527,6 +1550,383 @@ class TestNThreads:
         for n_threads in (0, -1, 2.5, True):
             with pytest.raises(ValueError, match=match):
                 ApertureStats(data, aper, n_threads=n_threads)
+
+
+class TestBoundedMemory:
+    """
+    Tests for the block-by-block processing used when the packed pixel
+    buffers would exceed the ``_BLOCK_MAX_PIXELS`` budget.
+    """
+
+    @staticmethod
+    def make_stats_pair(monkeypatch, data, aper, *, max_pixels=500,
+                        **kwargs):
+        """
+        Return ApertureStats instances made with the default budget and
+        with a small budget that forces block processing.
+        """
+        stats1 = ApertureStats(data, aper, **kwargs)
+        monkeypatch.setattr('photutils.aperture.stats._BLOCK_MAX_PIXELS',
+                            max_pixels)
+        stats2 = ApertureStats(data, aper, **kwargs)
+        return stats1, stats2
+
+    @pytest.mark.parametrize('n_threads', [1, 3])
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    def test_identical_results(self, monkeypatch, n_threads,
+                               use_sigma_clip):
+        """
+        Test that block processing gives results identical to the
+        single-buffer computation for every property, including for
+        off-edge positions, masked pixels, and non-finite data values.
+        """
+        data, error, mask, positions = TestNThreads.make_inputs()
+        wcs = make_wcs(data.shape)
+        sigma_clip = (SigmaClip(sigma=3.0, maxiters=10) if use_sigma_clip
+                      else None)
+        aper = CircularAperture(positions, r=7.0)
+        stats1, stats2 = self.make_stats_pair(
+            monkeypatch, data, aper, error=error, mask=mask, wcs=wcs,
+            sigma_clip=sigma_clip, n_threads=n_threads)
+        TestNThreads.assert_stats_equal(stats1, stats2)
+
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    def test_packed_buffers_not_cached(self, monkeypatch, use_sigma_clip):
+        """
+        Test that the full packed buffers are never built or cached
+        by the statistics when block processing is used.
+        """
+        data, error, _, positions = TestNThreads.make_inputs()
+        sigma_clip = SigmaClip(sigma=3.0) if use_sigma_clip else None
+        aper = CircularAperture(positions, r=7.0)
+        stats1, stats2 = self.make_stats_pair(
+            monkeypatch, data, aper, error=error, sigma_clip=sigma_clip)
+        props = ('min', 'max', 'mean', 'median', 'std', 'mad_std',
+                 'biweight_location', 'biweight_midvariance', 'gini',
+                 'moments', 'moments_central', 'centroid', 'sum',
+                 'sum_err', 'center_aper_area', 'median_err', 'flags')
+        for prop in props:
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+        assert '_fast_gather' in stats1.__dict__
+        assert '_fast_gather' not in stats2.__dict__
+        assert '_sorted_values' not in stats2.__dict__
+
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    def test_to_table(self, monkeypatch, use_sigma_clip):
+        """
+        Test that to_table, which calculates the reductions for all of
+        its columns in a single pass over the blocks, gives identical
+        results.
+        """
+        data, error, _, positions = TestNThreads.make_inputs()
+        sigma_clip = SigmaClip(sigma=3.0) if use_sigma_clip else None
+        aper = CircularAperture(positions, r=7.0)
+        stats1, stats2 = self.make_stats_pair(
+            monkeypatch, data, aper, error=error, sigma_clip=sigma_clip)
+        columns = [*stats1.default_columns, 'gini', 'moments_central']
+        columns.remove('sky_centroid')
+        tbl1 = stats1.to_table(columns=columns)
+        tbl2 = stats2.to_table(columns=columns)
+        for column in columns:
+            assert_equal(tbl1[column].value, tbl2[column].value)
+        assert '_fast_gather' not in stats2.__dict__
+
+        # Only the requested reductions are calculated.
+        stats3, stats4 = self.make_stats_pair(monkeypatch, data, aper)
+        tbl4 = stats4.to_table(columns=['id', 'mean', 'sum'])
+        assert_equal(tbl4['mean'].value, stats3.mean)
+        assert set(stats4._block_cache) == {'mean_var', 'minmax', 'meta'}
+
+        # Columns that do not use the center gather do not start a pass
+        # over the blocks or build the packed buffers
+        stats5, stats6 = self.make_stats_pair(monkeypatch, data, aper)
+        for stats in (stats5, stats6):
+            tbl = stats.to_table(columns=['id', 'sum', 'sum_err'])
+            assert_equal(tbl['sum'].value, stats3.sum)
+            assert not stats._block_cache
+            assert '_fast_gather' not in stats.__dict__
+
+    def test_shape_flags(self, monkeypatch):
+        """
+        Test that block processing gives identical results for sources
+        with the ``undefined_shape``, ``singular_covariance``, and
+        ``centroid_outside`` flags.
+        """
+        data = np.zeros((40, 110))
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[14:27, 4:17] = True  # fully masked
+        data[16:25, 26:35] = -1.0  # negative flux
+        data[20, 50] = 100.0  # single pixel
+        data[20, 66] = 10.0  # centroid outside the bounding box
+        data[20, 74] = -9.0
+        data[17:24, 87:94] = 5.0
+        positions = [(10, 20), (30, 20), (50, 20), (70, 20), (90, 20)]
+        aper = CircularAperture(positions, r=6.0)
+
+        stats1, stats2 = self.make_stats_pair(monkeypatch, data, aper,
+                                              mask=mask)
+        expected = [APERTURE_FLAGS.MASKED_PIXELS
+                    | APERTURE_FLAGS.ALL_MASKED
+                    | APERTURE_FLAGS.UNDEFINED_SHAPE,
+                    APERTURE_FLAGS.UNDEFINED_SHAPE,
+                    APERTURE_FLAGS.SINGULAR_COVARIANCE,
+                    APERTURE_FLAGS.UNDEFINED_SHAPE
+                    | APERTURE_FLAGS.CENTROID_OUTSIDE,
+                    0]
+        assert_equal(stats2.flags, expected)
+        assert '_fast_gather' not in stats2.__dict__
+        TestNThreads.assert_stats_equal(stats1, stats2)
+
+        # to_table calculates the reductions in a single pass.
+        stats3, stats4 = self.make_stats_pair(monkeypatch, data, aper,
+                                              mask=mask)
+        columns = list(stats3.default_columns)
+        columns.remove('sky_centroid')
+        tbl3 = stats3.to_table(columns=columns)
+        tbl4 = stats4.to_table(columns=columns)
+        for column in columns:
+            assert_equal(np.asarray(tbl3[column]), np.asarray(tbl4[column]))
+
+    def test_local_bkg_ddof_sum_method(self, monkeypatch):
+        """
+        Test that the per-source local background values are divided
+        into blocks together with the positions.
+        """
+        data, error, _, positions = TestNThreads.make_inputs()
+        local_bkg = np.linspace(-1.0, 1.0, positions.shape[0])
+        aper = CircularAperture(positions, r=6.0)
+        stats1, stats2 = self.make_stats_pair(
+            monkeypatch, data, aper, error=error, local_bkg=local_bkg,
+            ddof=1, sum_method='center')
+        for prop in ('sum', 'sum_err', 'std', 'median', 'mean'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    @pytest.mark.parametrize('mask_method', ['mask', 'correct'])
+    def test_segmentation_masking(self, monkeypatch, mask_method):
+        """
+        Test that the per-source segmentation labels are divided into
+        blocks together with the positions.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        positions = [(21.0, 21.0), (28.0, 22.0), (21.0, 21.5),
+                     (28.5, 22.0), (20.5, 21.0)]
+        labels = [1, 2, 1, 2, 1]
+        aper = CircularAperture(positions, r=8.0)
+        stats1, stats2 = self.make_stats_pair(
+            monkeypatch, data, aper,
+            segmentation_image=SegmentationImage(segm), labels=labels,
+            mask_method=mask_method)
+        for prop in ('sum', 'mean', 'median', 'centroid', 'flags'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    def test_source_larger_than_budget(self, monkeypatch):
+        """
+        Test that a source whose bounding box exceeds the budget is
+        processed in a block of its own.
+        """
+        data, _, _, positions = TestNThreads.make_inputs()
+        aper = CircularAperture(positions[:6], r=7.0)
+        stats1, stats2 = self.make_stats_pair(monkeypatch, data, aper,
+                                              max_pixels=10)
+        for prop in ('median', 'mean', 'sum', 'centroid'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    def test_indexing(self, monkeypatch):
+        """
+        Test slicing, both before and after properties are computed.
+        """
+        data, _, _, positions = TestNThreads.make_inputs()
+        aper = CircularAperture(positions, r=7.0)
+        stats1, stats2 = self.make_stats_pair(monkeypatch, data, aper)
+        assert_equal(stats2[3:20].median, stats1.median[3:20])
+        assert_equal(stats2.median, stats1.median)
+        assert_equal(stats2[3:20].median, stats1.median[3:20])
+        assert_equal(stats2[3:20].mean, stats1.mean[3:20])
+        assert_equal(stats2[5].mean, stats1.mean[5])
+
+    def test_mask_based_path(self, monkeypatch):
+        """
+        Test that apertures without batch support are unaffected.
+        """
+        data, _, _, positions = TestNThreads.make_inputs()
+        aper = NoBatchCircularAperture(positions, r=7.0)
+        stats1, stats2 = self.make_stats_pair(monkeypatch, data, aper)
+        for prop in ('median', 'mean', 'sum'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    def test_peak_memory(self):
+        """
+        Test that the peak memory is bounded by the block size instead
+        of growing with the number of sources.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 1.0, (1000, 1000))
+        n_sources = 3000
+        positions = rng.uniform(40, 960, (n_sources, 2))
+        aper = CircularAnnulus(positions, r_in=25.0, r_out=35.0)
+
+        stats = ApertureStats(data, aper, sigma_clip=SigmaClip(sigma=3.0))
+        tracemalloc.start()
+        try:
+            median = stats.median
+            median_err = stats.median_err
+            peak = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+
+        assert np.all(np.isfinite(median))
+        assert np.all(np.isfinite(median_err))
+        # The packed buffers need up to 40 bytes per bounding-box pixel.
+        # For all of the sources at once that is about 600 MB, while a
+        # single block needs at most about 40 MB.
+        n_bbox_pixels = n_sources * 71**2
+        assert n_bbox_pixels > 10 * _BLOCK_MAX_PIXELS
+        assert peak < 2 * 40 * _BLOCK_MAX_PIXELS
+
+
+class TestInputDtypes:
+    """
+    Tests that the compiled code reads float32 and float64 images and
+    int32 and intp segmentation images directly, with the same
+    results.
+
+    All calculations are performed in float64, so float32 inputs give
+    the same results as the same values input as float64, up to
+    floating-point rounding. The compiler may fuse multiply-add
+    operations differently in the float32 and float64 specializations
+    of the compiled code, which changes some results by one ulp on some
+    platforms (e.g., GCC on aarch64).
+    """
+
+    # The relative tolerance for float32 versus float64 inputs (a few
+    # ulps)
+    rtol = 1e-13
+
+    @staticmethod
+    def make_segmentation(shape, positions):
+        """
+        Make a segmentation image with a square segment at each
+        position and the matching labels.
+        """
+        segm = np.zeros(shape, dtype=int)
+        for label, (xpos, ypos) in enumerate(positions, start=1):
+            xidx = int(np.clip(xpos, 0, shape[1] - 1))
+            yidx = int(np.clip(ypos, 0, shape[0] - 1))
+            segm[max(yidx - 4, 0):yidx + 5, max(xidx - 4, 0):xidx + 5] = label
+        return segm, np.arange(1, len(positions) + 1)
+
+    @pytest.mark.parametrize('mask_method', ['none', 'mask', 'correct'])
+    @pytest.mark.parametrize('segm_dtype', [np.int16, np.int32, np.intp])
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64])
+    def test_identical_results(self, dtype, segm_dtype, mask_method):
+        """
+        Test that the statistics and the aperture photometry do not
+        depend on the input dtypes.
+
+        The float32 values are exactly representable as float64, so the
+        results must agree with those for the same values input as
+        float64 to within rounding.
+        """
+        data, error, mask, positions = TestNThreads.make_inputs()
+        data = data.astype(np.float32)
+        error = error.astype(np.float32)
+        segm, labels = self.make_segmentation(data.shape, positions)
+        aper = CircularAperture(positions, r=7.0)
+        sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
+
+        def make_stats(data, error, segm):
+            kwargs = {'error': error, 'mask': mask,
+                      'sigma_clip': sigma_clip}
+            if mask_method != 'none':
+                kwargs.update(segmentation_image=SegmentationImage(segm),
+                              labels=labels, mask_method=mask_method)
+            return ApertureStats(data, aper, **kwargs)
+
+        stats_ref = make_stats(data.astype(float), error.astype(float),
+                               segm.astype(np.intp))
+        stats = make_stats(data.astype(dtype), error.astype(dtype),
+                           segm.astype(segm_dtype))
+        TestNThreads.assert_stats_equal(stats_ref, stats, rtol=self.rtol)
+
+        phot_ref = AperturePhotometry(data.astype(float), aper,
+                                      error=error.astype(float), mask=mask)
+        phot = AperturePhotometry(data.astype(dtype), aper,
+                                  error=error.astype(dtype), mask=mask)
+        assert_allclose(phot.flux, phot_ref.flux, rtol=self.rtol, atol=0)
+        assert_allclose(phot.flux_err, phot_ref.flux_err, rtol=self.rtol,
+                        atol=0)
+
+    def test_mixed_dtypes(self):
+        """
+        Test float32 data with a float64 error array and
+        non-contiguous float32 data.
+        """
+        data, error, _, positions = TestNThreads.make_inputs()
+        data32 = data.astype(np.float32)
+        aper = CircularAperture(positions, r=7.0)
+        stats_ref = ApertureStats(data32.astype(float), aper, error=error)
+        data_fortran = np.asfortranarray(data32)
+        assert not data_fortran.flags.c_contiguous
+        # Big-endian float32 data (e.g., from a FITS file) with a
+        # float64 error array.
+        for data_in in (data32, data_fortran, data32.astype('>f4')):
+            stats = ApertureStats(data_in, aper, error=error)
+            for prop in ('sum', 'sum_err', 'median', 'std', 'centroid'):
+                assert_allclose(getattr(stats, prop),
+                                getattr(stats_ref, prop), rtol=self.rtol,
+                                atol=0)
+
+        # Big-endian float32 and float16 inputs are read as float32.
+        error16 = error.astype(np.float16)
+        stats_ref = ApertureStats(data32.astype(float), aper,
+                                  error=error16.astype(float))
+        stats = ApertureStats(data32.astype('>f4'), aper, error=error16)
+        for prop in ('sum', 'sum_err', 'median', 'std', 'centroid'):
+            assert_allclose(getattr(stats, prop), getattr(stats_ref, prop),
+                            rtol=self.rtol, atol=0)
+
+    @staticmethod
+    def traced_peak(func):
+        """
+        Return the peak traced memory, in bytes, while calling ``func``.
+        """
+        tracemalloc.start()
+        try:
+            start = tracemalloc.get_traced_memory()[0]
+            func()
+            return tracemalloc.get_traced_memory()[1] - start
+        finally:
+            tracemalloc.stop()
+
+    def test_float32_inputs_not_copied(self):
+        """
+        Test that C-contiguous float32 inputs are used without making
+        full-image float64 copies.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 1.0, (1024, 1024)).astype(np.float32)
+        error = np.ones(data.shape, dtype=np.float32)
+        aper = CircularAperture(rng.uniform(20, 1000, (20, 2)), r=5.0)
+
+        def run_stats(error):
+            stats = ApertureStats(data, aper, error=error)
+            return stats.median, stats.sum, stats.sum_err
+
+        def run_photometry(error):
+            return AperturePhotometry(data, aper, error=error).flux
+
+        # A float64 copy of one image needs 8 bytes per pixel, while the
+        # uint8 mask plane needs 1 byte per pixel.
+        for func in (run_stats, run_photometry):
+            assert self.traced_peak(lambda f=func: f(error)) < 4 * data.size
+            # The images are copied when their dtypes differ.
+            peak = self.traced_peak(lambda f=func: f(error.astype(float)))
+            assert peak >= 8 * data.size
 
 
 def test_overridden_bbox_fallback():

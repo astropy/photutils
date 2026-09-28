@@ -26,7 +26,8 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID, N_FLAG_COLS,
                                                   batch_aperture_sums)
-from photutils.aperture._common import (batch_inputs_supported,
+from photutils.aperture._common import (batch_image_arrays,
+                                        batch_inputs_supported,
                                         batch_mask_plane,
                                         batch_segmentation_arrays,
                                         validate_mask_method)
@@ -1042,12 +1043,10 @@ class PixelAperture(Aperture):
         use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
         shape_code, params = spec
-        if error is not None:
-            error = np.ascontiguousarray(error, dtype=np.float64)
         ext_x, ext_y = self._xy_extents
         off_x, off_y = self._xy_bbox_offset
 
-        data = np.ascontiguousarray(data, dtype=np.float64)
+        data, error = batch_image_arrays(data, error)
         positions = np.ascontiguousarray(self._positions, dtype=np.float64)
         params = np.array(params, dtype=np.float64)
 

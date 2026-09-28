@@ -18,7 +18,8 @@ from astropy.coordinates import SkyCoord
 from astropy.nddata import StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.aperture._segmentation import SEG_METHOD_CODES
+from photutils.aperture._segmentation import (SEG_METHOD_CODES,
+                                              batch_segmentation_image)
 
 __all__ = []
 
@@ -236,6 +237,60 @@ def batch_inputs_supported(data, error, mask):
                      or mask.shape != data.shape))
 
 
+def batch_image_dtype(*arrays):
+    """
+    Return the common dtype in which the batch Cython drivers read the
+    image arrays.
+
+    The drivers read C-contiguous float32 or float64 images directly,
+    converting each pixel value to double as it is read. That
+    conversion is exact, so the results agree to within rounding for
+    either dtype. All of the images passed to a driver must have the
+    same dtype.
+
+    Parameters
+    ----------
+    *arrays : `~numpy.ndarray` or `None`
+        The image arrays. `None` values are ignored.
+
+    Returns
+    -------
+    dtype : type
+        `numpy.float32` if all of the input arrays are floating-point
+        arrays of at most 4 bytes per value (e.g., float32, big-endian
+        float32 data read from a FITS file, or float16), whose values
+        are exactly representable in float32. Otherwise
+        `numpy.float64`.
+    """
+    if all(array.dtype.kind == 'f' and array.dtype.itemsize <= 4
+           for array in arrays if array is not None):
+        return np.float32
+    return np.float64
+
+
+def batch_image_arrays(*arrays):
+    """
+    Return the image arrays in the form read by the batch Cython
+    drivers (see `batch_image_dtype`).
+
+    Parameters
+    ----------
+    *arrays : `~numpy.ndarray` or `None`
+        The image arrays. `None` values are passed through.
+
+    Returns
+    -------
+    result : list of `~numpy.ndarray` or `None`
+        The C-contiguous arrays in their common dtype. Arrays that are
+        already C-contiguous with that dtype are returned without a
+        copy.
+    """
+    dtype = batch_image_dtype(*arrays)
+    return [None if array is None
+            else np.ascontiguousarray(array, dtype=dtype)
+            for array in arrays]
+
+
 def batch_mask_plane(data, mask, *, mask_nonfinite):
     """
     Build the uint8 mask plane used by the batch Cython kernels.
@@ -301,9 +356,10 @@ def batch_segmentation_arrays(segmentation, labels, mask_method):
 
     Returns
     -------
-    segmentation, labels : `~numpy.ndarray` (intp) or `None`
-        The C-contiguous segmentation array and source labels, or
-        `None` if no segmentation masking is performed.
+    segmentation, labels : `~numpy.ndarray` or `None`
+        The C-contiguous segmentation array (see
+        `batch_segmentation_image`) and intp source labels, or `None`
+        if no segmentation masking is performed.
 
     method_code : int
         The segmentation method code (0 disables masking).
@@ -311,6 +367,6 @@ def batch_segmentation_arrays(segmentation, labels, mask_method):
     if segmentation is None or mask_method == 'none':
         return None, None, 0
 
-    return (np.ascontiguousarray(segmentation, dtype=np.intp),
+    return (batch_segmentation_image(segmentation),
             np.ascontiguousarray(labels, dtype=np.intp),
             SEG_METHOD_CODES[mask_method])

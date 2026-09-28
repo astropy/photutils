@@ -35,8 +35,6 @@ from photutils.utils._stats import nanmedian, nanmin
 
 __all__ = ['Background2D']
 
-__doctest_skip__ = ['Background2D']
-
 
 class _BoxStatsSpec(NamedTuple):
     """
