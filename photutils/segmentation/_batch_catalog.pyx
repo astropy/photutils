@@ -2751,15 +2751,20 @@ def batch_local_background(const real_t[:, ::1] data, *,
     if n_src == 0:
         return result_arr
 
-    # Scratch buffers sized to the largest annulus bounding box
-    cdef Py_ssize_t i, y0, y1, x0, x1, area, max_area = 1
-    for i in range(n_src):
-        _local_background_bbox(bbox_iymin[i], bbox_iymax[i], bbox_ixmin[i],
-                               bbox_ixmax[i], width, scale, nx_data,
-                               ny_data, &y0, &y1, &x0, &x1)
-        area = (y1 - y0) * (x1 - x0)
-        if area > max_area:
-            max_area = area
+    # Scratch buffers sized to an upper bound on the annulus bounding
+    # box area, capped at the image area. An outer rectangle side is
+    # scale times the segment bounding box side plus the annulus width
+    # on each side, and rounding its edges outward to pixel indices
+    # adds less than one pixel on each side (see
+    # ``_local_background_bbox``).
+    cdef Py_ssize_t max_h = np.max(np.subtract(bbox_iymax, bbox_iymin))
+    cdef Py_ssize_t max_w = np.max(np.subtract(bbox_ixmax, bbox_ixmin))
+    cdef Py_ssize_t max_area = ((<Py_ssize_t>(max_h * scale) + 2 * width + 2)
+                                * (<Py_ssize_t>(max_w * scale) + 2 * width
+                                   + 2))
+    if max_area > ny_data * nx_data:
+        max_area = ny_data * nx_data
+    cdef Py_ssize_t i
     values_arr = np.empty(max_area, dtype=np.float64)
     kept_arr = np.empty(max_area, dtype=np.float64)
     work_arr = np.empty(max_area, dtype=np.float64)

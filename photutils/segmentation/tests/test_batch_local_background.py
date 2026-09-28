@@ -467,6 +467,17 @@ def test_invalid_inputs(scene):
         _kernel_local_background(cat, maxiters=0)
 
 
+def test_n_threads(scene):
+    cat = SourceCatalog(scene['data'], scene['segm'], mask=scene['mask'],
+                        local_bkg_width=6)
+    cat_threaded = SourceCatalog(scene['data'], scene['segm'],
+                                 mask=scene['mask'], local_bkg_width=6,
+                                 n_threads=4)
+    assert cat.n_labels >= 4
+    assert_array_equal(cat_threaded._local_background,
+                       cat._local_background)
+
+
 def test_thread_safety(scene):
     cat = SourceCatalog(scene['data'], scene['segm'], mask=scene['mask'],
                         local_bkg_width=6)

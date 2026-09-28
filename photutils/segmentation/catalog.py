@@ -4372,10 +4372,12 @@ class SourceCatalog:
         input ``data`` is non-finite, and within any non-zero pixel
         label in the segmentation image.
 
-        The value is the SExtractor background mode of the
-        sigma-clipped annulus pixel values (3 sigma about the median,
-        up to 20 iterations), and zero for a source with fewer than 10
-        usable annulus pixels.
+        The value is the `~photutils.background.SExtractorBackground`
+        estimate of the usable annulus pixel values with a
+        ``SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)`` sigma
+        clip, which reproduces it to rounding, and zero for a source
+        with fewer than 10 usable annulus pixels. The sources are
+        measured concurrently when ``n_threads`` > 1.
 
         This property is always an `~numpy.ndarray` without units.
         """
@@ -4384,12 +4386,13 @@ class SourceCatalog:
         else:
             arrays = self._get_batch_arrays()
             iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-            local_bkgs = batch_local_background(
-                arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
-                bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-                bbox_ixmax=ixmax, width=self.local_bkg_width,
-                scale=_LOCAL_BKG_SCALE, sigma=3.0, maxiters=20,
-                min_pixels=10)
+            per_source = {'bbox_iymin': iymin, 'bbox_iymax': iymax,
+                          'bbox_ixmin': ixmin, 'bbox_ixmax': ixmax}
+            local_bkgs = self._threaded_batch(
+                batch_local_background, per_source, data=arrays['data'],
+                mask=arrays['mask'], segm=arrays['segm'],
+                width=self.local_bkg_width, scale=_LOCAL_BKG_SCALE,
+                sigma=3.0, maxiters=20, min_pixels=10)
 
         local_bkgs[self._all_masked] = np.nan
         return local_bkgs
