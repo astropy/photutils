@@ -1606,25 +1606,22 @@ class ApertureStats:
     @cached_property
     def _sorted_values(self):
         """
-        The packed per-source ascending-sorted center pixel values, or
-        `None`.
+        The packed per-source ascending-sorted center pixel values.
 
-        When the fast gather path is active (see `_fast_gather`), each
-        source's packed pixel values are sorted once. The sorted buffer
+        Each source's packed pixel values (see `_fast_gather`) are
+        sorted once. This is used only when the fast batch path is
+        available (see `_block_reduce`). The sorted buffer
         is cached and shared by the order statistics (``min``, ``max``,
         ``median``), ``mad_std``, and the biweight estimators, so the
         per-source sort is performed only once. When sigma clipping is
         applied, the sorted surviving values produced by the clipping
         kernel are reused directly (the clipping already sorts each
-        source's values to compute the clip bounds). `None` is returned
-        when the fast path is unavailable.
+        source's values to compute the clip bounds).
 
         When ``n_threads`` > 1, the per-source sorts run concurrently
         (see `_threaded_reduction`).
         """
         gather = self._fast_gather
-        if gather is None:
-            return None
         values, starts, counts = gather.values, gather.starts, gather.counts
         if gather.sorted_values is not None:
             return (gather.sorted_values, starts, counts)
