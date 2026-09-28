@@ -244,9 +244,9 @@ def batch_image_dtype(*arrays):
 
     The drivers read C-contiguous float32 or float64 images directly,
     converting each pixel value to double as it is read. That
-    conversion is exact, so the results do not depend on which of the
-    two dtypes is used. All of the images passed to a driver must have
-    the same dtype.
+    conversion is exact, so the results agree to within rounding for
+    either dtype. All of the images passed to a driver must have the
+    same dtype.
 
     Parameters
     ----------

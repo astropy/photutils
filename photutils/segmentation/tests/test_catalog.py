@@ -2710,9 +2710,35 @@ def test_release_cache_results_unchanged(float32_catalog_inputs):
 class TestInputDtypes:
     """
     Tests that the compiled code reads float32 and float64 images and
-    int32 and intp segmentation images directly, with identical
+    int32 and intp segmentation images directly, with the same
     results.
+
+    All calculations are performed in float64, so float32 inputs give
+    the same results as the same values input as float64, up to
+    floating-point rounding. The compiler may fuse multiply-add
+    operations differently in the float32 and float64 specializations
+    of the compiled code, which changes some results by one ulp on some
+    platforms (e.g., GCC on aarch64).
     """
+
+    # The relative tolerance for float32 versus float64 inputs (a few
+    # ulps)
+    rtol = 1e-13
+
+    @classmethod
+    def assert_properties_close(cls, props, props_ref):
+        """
+        Assert that the numeric properties agree to within ``rtol`` for
+        floating-point values and exactly otherwise.
+        """
+        assert props.keys() == props_ref.keys()
+        for name, expected in props_ref.items():
+            value = props[name]
+            if expected.dtype.kind == 'f':
+                assert_allclose(value, expected, rtol=cls.rtol, atol=0,
+                                equal_nan=True, err_msg=name)
+            else:
+                assert_equal(value, expected, err_msg=name)
 
     @staticmethod
     def make_inputs(size=200):
@@ -2758,8 +2784,8 @@ class TestInputDtypes:
         Test that the results do not depend on the input dtypes.
 
         The float32 values are exactly representable as float64, so the
-        results must be identical to those for the same values input as
-        float64.
+        results must agree with those for the same values input as
+        float64 to within rounding.
         """
         data, error, background, convolved_data, segm = self.make_inputs()
         data = data.astype(np.float32)
@@ -2780,10 +2806,10 @@ class TestInputDtypes:
         props_ref = self.numeric_properties(cat_ref)
         props = self.numeric_properties(cat)
         assert len(props) > 60
-        for name, value in props_ref.items():
-            assert_equal(props[name], value)
-        assert_equal(cat.flux_radius(0.5).value,
-                     cat_ref.flux_radius(0.5).value)
+        self.assert_properties_close(props, props_ref)
+        assert_allclose(cat.flux_radius(0.5).value,
+                        cat_ref.flux_radius(0.5).value, rtol=self.rtol,
+                        atol=0, equal_nan=True)
 
     def test_mixed_dtypes(self):
         """
@@ -2813,15 +2839,12 @@ class TestInputDtypes:
         cat4 = SourceCatalog(data32.astype('>f4'), segm,
                              error=error.astype(np.float16),
                              convolved_data=conv32.astype('>f4'))
-        props_ref2 = self.numeric_properties(cat_ref2)
-        props4 = self.numeric_properties(cat4)
-        for name, value in props_ref2.items():
-            assert_equal(props4[name], value)
+        self.assert_properties_close(self.numeric_properties(cat4),
+                                     self.numeric_properties(cat_ref2))
 
         for cat in (cat1, cat2, cat3):
-            props = self.numeric_properties(cat)
-            for name, value in props_ref.items():
-                assert_equal(props[name], value)
+            self.assert_properties_close(self.numeric_properties(cat),
+                                         props_ref)
 
     def test_float32_inputs_not_copied(self):
         """

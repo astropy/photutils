@@ -1374,11 +1374,21 @@ class TestNThreads:
         return data, error, mask, positions
 
     @staticmethod
-    def assert_stats_equal(stats1, stats2):
+    def assert_stats_equal(stats1, stats2, *, rtol=0):
         """
-        Assert that all (non-cutout) properties of two ApertureStats
-        instances are exactly equal.
+        Assert that all properties of two ApertureStats instances are
+        equal.
+
+        Floating-point values must be exactly equal when ``rtol`` is 0
+        (the default) and must agree to within ``rtol`` otherwise.
         """
+        def check(value1, value2):
+            if rtol and np.asarray(value1).dtype.kind == 'f':
+                assert_allclose(value1, value2, rtol=rtol, atol=0,
+                                equal_nan=True)
+            else:
+                assert_equal(value1, value2)
+
         for prop in stats1.properties:
             value1 = getattr(stats1, prop)
             value2 = getattr(stats2, prop)
@@ -1386,16 +1396,16 @@ class TestNThreads:
                 for arr1, arr2 in zip(value1, value2, strict=True):
                     arr1 = np.ma.filled(arr1, np.nan)
                     arr2 = np.ma.filled(arr2, np.nan)
-                    assert_equal(arr1, arr2)
+                    check(arr1, arr2)
             elif prop.startswith('sky_'):
                 # SkyCoord without a wcs is None or an array of None.
                 if hasattr(value1, 'ra'):
-                    assert_equal(value1.ra.deg, value2.ra.deg)
-                    assert_equal(value1.dec.deg, value2.dec.deg)
+                    check(value1.ra.deg, value2.ra.deg)
+                    check(value1.dec.deg, value2.dec.deg)
                 else:
                     assert_equal(value1, value2)
             else:
-                assert_equal(value1, value2)
+                check(value1, value2)
 
     @pytest.mark.parametrize('n_threads', [2, 8])
     @pytest.mark.parametrize('use_sigma_clip', [False, True])
@@ -1771,9 +1781,20 @@ class TestBoundedMemory:
 class TestInputDtypes:
     """
     Tests that the compiled code reads float32 and float64 images and
-    int32 and intp segmentation images directly, with identical
+    int32 and intp segmentation images directly, with the same
     results.
+
+    All calculations are performed in float64, so float32 inputs give
+    the same results as the same values input as float64, up to
+    floating-point rounding. The compiler may fuse multiply-add
+    operations differently in the float32 and float64 specializations
+    of the compiled code, which changes some results by one ulp on some
+    platforms (e.g., GCC on aarch64).
     """
+
+    # The relative tolerance for float32 versus float64 inputs (a few
+    # ulps)
+    rtol = 1e-13
 
     @staticmethod
     def make_segmentation(shape, positions):
@@ -1797,8 +1818,8 @@ class TestInputDtypes:
         depend on the input dtypes.
 
         The float32 values are exactly representable as float64, so the
-        results must be identical to those for the same values input as
-        float64.
+        results must agree with those for the same values input as
+        float64 to within rounding.
         """
         data, error, mask, positions = TestNThreads.make_inputs()
         data = data.astype(np.float32)
@@ -1819,14 +1840,15 @@ class TestInputDtypes:
                                segm.astype(np.intp))
         stats = make_stats(data.astype(dtype), error.astype(dtype),
                            segm.astype(segm_dtype))
-        TestNThreads.assert_stats_equal(stats_ref, stats)
+        TestNThreads.assert_stats_equal(stats_ref, stats, rtol=self.rtol)
 
         phot_ref = AperturePhotometry(data.astype(float), aper,
                                       error=error.astype(float), mask=mask)
         phot = AperturePhotometry(data.astype(dtype), aper,
                                   error=error.astype(dtype), mask=mask)
-        assert_equal(phot.flux, phot_ref.flux)
-        assert_equal(phot.flux_err, phot_ref.flux_err)
+        assert_allclose(phot.flux, phot_ref.flux, rtol=self.rtol, atol=0)
+        assert_allclose(phot.flux_err, phot_ref.flux_err, rtol=self.rtol,
+                        atol=0)
 
     def test_mixed_dtypes(self):
         """
@@ -1844,7 +1866,9 @@ class TestInputDtypes:
         for data_in in (data32, data_fortran, data32.astype('>f4')):
             stats = ApertureStats(data_in, aper, error=error)
             for prop in ('sum', 'sum_err', 'median', 'std', 'centroid'):
-                assert_equal(getattr(stats, prop), getattr(stats_ref, prop))
+                assert_allclose(getattr(stats, prop),
+                                getattr(stats_ref, prop), rtol=self.rtol,
+                                atol=0)
 
         # Big-endian float32 and float16 inputs are read as float32.
         error16 = error.astype(np.float16)
@@ -1852,7 +1876,8 @@ class TestInputDtypes:
                                   error=error16.astype(float))
         stats = ApertureStats(data32.astype('>f4'), aper, error=error16)
         for prop in ('sum', 'sum_err', 'median', 'std', 'centroid'):
-            assert_equal(getattr(stats, prop), getattr(stats_ref, prop))
+            assert_allclose(getattr(stats, prop), getattr(stats_ref, prop),
+                            rtol=self.rtol, atol=0)
 
     @staticmethod
     def traced_peak(func):

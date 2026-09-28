@@ -912,7 +912,8 @@ the segmentation image directly, without making copies, when:
 
 All calculations are performed in ``float64`` regardless of the input
 dtype, so ``float32`` inputs give the same results as the same values
-input as ``float64``, while using half the memory. For a 4088 x 4088
+input as ``float64`` (to within floating-point rounding), while using
+half the memory. For a 4088 x 4088
 ``float32`` image with ``error`` and ``convolved_data`` arrays and about
 4600 sources, the catalog then holds about 50 MB of working memory (a 1
 byte per pixel mask and the per-source results).

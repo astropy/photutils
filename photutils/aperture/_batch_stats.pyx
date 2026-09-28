@@ -23,8 +23,8 @@ C-contiguous float32 or float64 images and int32 or intp segmentation
 images directly, without the caller making full-image copies. All of
 the images passed in one call must have the same dtype. Each pixel
 value is converted to double as it is read, which is exact, and all
-arithmetic is performed in double precision, so the results do not
-depend on the input dtype.
+arithmetic is performed in double precision, so the results agree to
+within rounding for either input dtype.
 """
 
 import numpy as np

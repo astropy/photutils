@@ -385,8 +385,9 @@ class ApertureStats:
     copy, when they are both float32 or both float64 (or when ``data``
     is float32 or float64 and no ``error`` is input). Otherwise they
     are converted to float64 copies, which are kept for the lifetime of
-    the `ApertureStats` object. The results do not depend on the input
-    dtype, because all calculations are performed in float64.
+    the `ApertureStats` object. All calculations are performed in
+    float64, so float32 inputs give the same results as the same values
+    input as float64 (to within floating-point rounding).
 
     The pixel values within the apertures are gathered into temporary
     buffers. When the input contains many or large apertures, the

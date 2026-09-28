@@ -31,9 +31,11 @@ from photutils.geometry.rectangle_overlap cimport (
 
 # The image dtypes read directly by the batch kernels. Pixel values are
 # converted to double as they are read, which is exact, so the float and
-# double specializations give identical results. Inputs with any other
-# dtype are converted to one of these by the Python callers (see
-# ``photutils.aperture._common.batch_image_dtype``).
+# double specializations perform the same double-precision arithmetic.
+# Their results agree to within rounding (the C compiler may fuse
+# multiply-add operations differently in the two specializations).
+# Inputs with any other dtype are converted to one of these by the
+# Python callers (see ``photutils.aperture._common.batch_image_dtype``).
 ctypedef fused real_t:
     float
     double

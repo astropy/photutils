@@ -648,8 +648,9 @@ class SourceCatalog:
     built on first use and kept for the lifetime of the catalog (they
     are shared with sliced catalogs). All calculations are performed in
     float64 regardless of the input dtype, so float32 inputs give the
-    same results as the same values input as float64. If memory is a
-    concern, input all of the image arrays with the same dtype.
+    same results as the same values input as float64 (to within
+    floating-point rounding). If memory is a concern, input all of the
+    image arrays with the same dtype.
     Otherwise, call
     `~photutils.segmentation.SourceCatalog.release_cache` after
     calculating the desired properties to free the working copies.
