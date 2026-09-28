@@ -1616,6 +1616,15 @@ class TestBoundedMemory:
         assert_equal(tbl4['mean'].value, stats3.mean)
         assert set(stats4._block_cache) == {'mean_var', 'minmax', 'meta'}
 
+        # Columns that do not use the center gather do not start a pass
+        # over the blocks or build the packed buffers
+        stats5, stats6 = self.make_stats_pair(monkeypatch, data, aper)
+        for stats in (stats5, stats6):
+            tbl = stats.to_table(columns=['id', 'sum', 'sum_err'])
+            assert_equal(tbl['sum'].value, stats3.sum)
+            assert not stats._block_cache
+            assert '_fast_gather' not in stats.__dict__
+
     def test_shape_flags(self, monkeypatch):
         """
         Test that block processing gives identical results for sources

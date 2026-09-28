@@ -908,10 +908,13 @@ class ApertureStats:
 
         if self._block_edges is not None:
             # Calculate the reductions needed by all of the columns in a
-            # single pass over the blocks.
-            self._block_reduce(_BLOCK_COLUMN_REDUCTIONS[column]
-                               for column in table_columns
-                               if column in _BLOCK_COLUMN_REDUCTIONS)
+            # single pass over the blocks. Columns that do not use the
+            # center gather (e.g., 'sum') do not start a pass.
+            reductions = {_BLOCK_COLUMN_REDUCTIONS[column]
+                          for column in table_columns
+                          if column in _BLOCK_COLUMN_REDUCTIONS}
+            if reductions:
+                self._block_reduce(reductions)
 
         for column in table_columns:
             values = getattr(self, column)
