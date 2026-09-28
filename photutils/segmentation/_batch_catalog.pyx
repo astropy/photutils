@@ -63,9 +63,11 @@ cdef extern from "math.h" nogil:
     double floor(double x)
     double ceil(double x)
     double fmax(double x, double y)
+    double fmin(double x, double y)
     double fabs(double x)
     bint isfinite(double x)
     double NAN
+    double INFINITY
 
 
 cdef int _check_length(Py_ssize_t n, Py_ssize_t n_src,
@@ -2439,6 +2441,7 @@ cdef double _local_background_source(const real_t *data,
                                      Py_ssize_t width, double scale,
                                      double sigma, Py_ssize_t maxiters,
                                      Py_ssize_t min_pixels, double *values,
+                                     double *kept,
                                      double *work) noexcept nogil:
     """
     Compute the local background of one source.
@@ -2447,9 +2450,17 @@ cdef double _local_background_source(const real_t *data,
     background annulus (see ``_local_background_bbox``), excluding
     masked pixels and pixels within any source segment. Their values
     are sigma-clipped about the median with the standard deviation as
-    the scale, following `astropy.stats.SigmaClip` (no-axis, no-grow
-    case), and the SExtractor background mode of the surviving values
-    is returned (see `~photutils.background.SExtractorBackground`).
+    the scale, following `astropy.stats.SigmaClip`. Each iteration
+    computes the bounds ``median +/- sigma * std`` of the values kept
+    so far and drops the values outside them, until an iteration drops
+    nothing or ``maxiters`` iterations have run. The survivors are the
+    usable values within the bounds of the final iteration, as for the
+    astropy C implementation and its masked output. A value dropped in
+    an earlier iteration is therefore included again when the final
+    bounds admit it, which happens when the median moves by more than
+    the standard deviation shrinks (typically for integer-valued
+    data). The SExtractor background mode of the survivors is returned
+    (see `~photutils.background.SExtractorBackground`).
 
     Parameters
     ----------
@@ -2478,21 +2489,25 @@ cdef double _local_background_source(const real_t *data,
         The clipping limit in units of the standard deviation.
 
     maxiters : Py_ssize_t
-        The maximum number of clipping iterations.
+        The maximum number of clipping iterations (at least 1).
 
     min_pixels : Py_ssize_t
         The minimum number of usable pixels. Zero is returned for
         fewer pixels.
 
-    values, work : double *
-        Scratch buffers of at least the annulus bounding-box area.
+    values, kept, work : double *
+        Scratch buffers of at least the annulus bounding-box area, for
+        the usable values, the values kept by the clipping, and the
+        median selection.
 
     Returns
     -------
     result : double
-        The local background value, zero for fewer than
-        ``min_pixels`` usable pixels, or NaN if every pixel is
-        clipped.
+        The local background value. Zero is returned for fewer than
+        ``min_pixels`` usable pixels. NaN is returned for no usable
+        pixels, or when the last allowed iteration drops every value,
+        which needs a ``sigma`` below 1 because the two middle values
+        always lie within one standard deviation of the median.
     """
     cdef double xpos = 0.5 * (ixmin + ixmax - 1)
     cdef double ypos = 0.5 * (iymin + iymax - 1)
@@ -2503,7 +2518,7 @@ cdef double _local_background_source(const real_t *data,
     cdef Py_ssize_t y0, y1, x0, x1, ix, iy, pos, i, j, n, n_kept
     cdef Py_ssize_t iteration, nchanged
     cdef double dx, dy, v, total, center, mean, delta, ss, std, lower
-    cdef double upper, median, result
+    cdef double upper, lo_tight, hi_tight, median, result
 
     _local_background_bbox(iymin, iymax, ixmin, ixmax, width, scale,
                            nx_data, ny_data, &y0, &y1, &x0, &x1)
@@ -2534,58 +2549,88 @@ cdef double _local_background_source(const real_t *data,
 
     if n < min_pixels:
         return 0.0
+    if n == 0:
+        return NAN
 
     # Sigma clip. Each iteration centers on the median of the kept
-    # values and clips outside center +/- sigma * std, keeping the
-    # survivors in their pixel order (and summing them for the next
-    # iteration's mean), until no value is clipped or maxiters is
-    # reached.
+    # values and drops the values outside center +/- sigma * std,
+    # keeping the survivors in their pixel order (and summing them for
+    # the next iteration's mean), until no value is dropped or maxiters
+    # is reached. The tightest bounds of all iterations are tracked to
+    # detect whether the final bounds widened.
+    for i in range(n):
+        kept[i] = values[i]
     n_kept = n
     nchanged = 1
     iteration = 0
+    lo_tight = -INFINITY
+    hi_tight = INFINITY
     while nchanged != 0 and iteration < maxiters:
         iteration += 1
         for i in range(n_kept):
-            work[i] = values[i]
+            work[i] = kept[i]
         center = _median_select(work, n_kept)
 
         mean = total / n_kept
         ss = 0.0
         for i in range(n_kept):
-            delta = values[i] - mean
+            delta = kept[i] - mean
             ss += delta * delta
         std = sqrt(ss / n_kept)
 
         lower = center - std * sigma
         upper = center + std * sigma
+        lo_tight = fmax(lo_tight, lower)
+        hi_tight = fmin(hi_tight, upper)
         j = 0
         total = 0.0
         for i in range(n_kept):
-            v = values[i]
+            v = kept[i]
             if not (v < lower) and not (v > upper):
-                values[j] = v
+                kept[j] = v
                 total += v
                 j += 1
         nchanged = n_kept - j
         n_kept = j
+        if n_kept == 0:
+            # Every value was dropped. Before maxiters, the astropy C
+            # implementation goes on to compute NaN bounds from the
+            # empty set, which exclude nothing, so the survivors are
+            # all of the values. At maxiters, its finite bounds stand
+            # and exclude every value.
+            if iteration < maxiters:
+                lower = -INFINITY
+                upper = INFINITY
+            break
 
-    if n_kept == 0:
-        return NAN
-
-    if nchanged == 0:
-        # The last iteration clipped nothing, so its statistics are
-        # those of the survivors
+    if nchanged == 0 and lower == lo_tight and upper == hi_tight:
+        # The last iteration dropped nothing and its bounds are the
+        # tightest of all iterations, so the values within them are
+        # exactly the kept values, whose statistics were just computed
         median = center
     else:
-        # maxiters was reached with values still being clipped, so
-        # compute the statistics of the final survivors
+        # Either maxiters was reached with values still being dropped,
+        # or the final bounds are wider on a side than an earlier
+        # iteration's, so the values within the final bounds are
+        # gathered again from all of the usable values
+        j = 0
+        total = 0.0
+        for i in range(n):
+            v = values[i]
+            if not (v < lower) and not (v > upper):
+                kept[j] = v
+                total += v
+                j += 1
+        n_kept = j
+        if n_kept == 0:
+            return NAN
         for i in range(n_kept):
-            work[i] = values[i]
+            work[i] = kept[i]
         median = _median_select(work, n_kept)
         mean = total / n_kept
         ss = 0.0
         for i in range(n_kept):
-            delta = values[i] - mean
+            delta = kept[i] - mean
             ss += delta * delta
         std = sqrt(ss / n_kept)
 
@@ -2626,8 +2671,12 @@ def batch_local_background(const real_t[:, ::1] data, *,
     surviving values (see `~photutils.background.SExtractorBackground`)
     is returned.
 
-    The median of each clipping iteration is found by selection
-    rather than by sorting the values.
+    The clipping follows the astropy C implementation (and the masked
+    output of `astropy.stats.SigmaClip`): the surviving values are the
+    values within the bounds of the final clipping iteration, so a
+    value clipped in an earlier iteration is included again when the
+    final bounds admit it. The median of each clipping iteration is
+    found by selection rather than by sorting the values.
 
     Parameters
     ----------
@@ -2658,7 +2707,7 @@ def batch_local_background(const real_t[:, ::1] data, *,
         The clipping limit in units of the standard deviation.
 
     maxiters : int
-        The maximum number of clipping iterations.
+        The maximum number of clipping iterations. Must be at least 1.
 
     min_pixels : int
         The minimum number of usable annulus pixels. Sources with
@@ -2668,14 +2717,17 @@ def batch_local_background(const real_t[:, ::1] data, *,
     -------
     result : 1D ndarray of float64
         The local background of each source, with shape
-        ``(n_sources,)``.
+        ``(n_sources,)``. A source with no usable annulus pixels, or
+        whose last allowed clipping iteration drops every value
+        (possible only for ``sigma`` below 1), has a NaN local
+        background.
 
     Raises
     ------
     ValueError
         If a per-source array does not have the same length as
-        ``bbox_iymin``, or if a 2D array does not have the same shape
-        as ``data``.
+        ``bbox_iymin``, if a 2D array does not have the same shape as
+        ``data``, or if ``maxiters`` is less than 1.
     """
     cdef Py_ssize_t n_src = bbox_iymin.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
@@ -2690,6 +2742,9 @@ def batch_local_background(const real_t[:, ::1] data, *,
                  'mask', 'data')
     _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
                  'segm', 'data')
+    if maxiters < 1:
+        msg = 'maxiters must be at least 1'
+        raise ValueError(msg)
 
     result_arr = np.empty(n_src, dtype=np.float64)
     cdef double[::1] result = result_arr
@@ -2706,8 +2761,10 @@ def batch_local_background(const real_t[:, ::1] data, *,
         if area > max_area:
             max_area = area
     values_arr = np.empty(max_area, dtype=np.float64)
+    kept_arr = np.empty(max_area, dtype=np.float64)
     work_arr = np.empty(max_area, dtype=np.float64)
     cdef double[::1] values = values_arr
+    cdef double[::1] kept = kept_arr
     cdef double[::1] work = work_arr
 
     with nogil:
@@ -2716,5 +2773,5 @@ def batch_local_background(const real_t[:, ::1] data, *,
                 &data[0, 0], &mask[0, 0], &segm[0, 0], nx_data, ny_data,
                 bbox_iymin[i], bbox_iymax[i], bbox_ixmin[i], bbox_ixmax[i],
                 width, scale, sigma, maxiters, min_pixels, &values[0],
-                &work[0])
+                &kept[0], &work[0])
     return result_arr

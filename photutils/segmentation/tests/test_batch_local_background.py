@@ -17,21 +17,18 @@ from photutils.segmentation._batch_catalog import batch_local_background
 from photutils.segmentation.tests._batch_scene import make_batch_scene
 
 
-def _reference_local_background(cat):
+def _annulus_values(cat):
     """
-    Compute the local background of each source with per-source
-    aperture masks.
+    Gather the usable local background annulus values of each source
+    with per-source aperture masks.
 
-    This is a port of the previous per-source loop that the batch
-    kernel replaces, with the cutout data mask inlined and the aperture
-    weights applied to the usable pixels only (the previous in-place
-    multiplication of the whole cutout raised a warning for non-finite
-    data within the aperture). It is the reference for the kernel.
+    This is a port of the pixel selection of the previous per-source
+    loop that the batch kernel replaces, with the cutout data mask
+    inlined and the aperture weights applied to the usable pixels only
+    (the previous in-place multiplication of the whole cutout raised a
+    warning for non-finite data within the aperture).
     """
-    sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
-    bkg_func = SExtractorBackground(sigma_clip=sigma_clip)
-
-    local_bkgs = []
+    values = []
     for aperture in cat._local_background_apertures:
         aperture_mask = aperture.to_mask(method='center')
         slc_lg, slc_sm = aperture_mask.get_overlap_slices(cat._data.shape)
@@ -45,11 +42,62 @@ def _reference_local_background(cat):
 
         aperweight_cutout = aperture_mask.data[slc_sm]
         good_mask = (aperweight_cutout > 0) & ~data_mask_cutout
-        data_values = data_cutout[good_mask] * aperweight_cutout[good_mask]
+        values.append(data_cutout[good_mask] * aperweight_cutout[good_mask])
+    return values
+
+
+def _reference_local_background(cat, *, sigma=3.0, maxiters=20):
+    """
+    Compute the local background of each source as the previous
+    per-source loop did, with `SExtractorBackground` and its sigma
+    clipping.
+
+    The sigma clipping goes through astropy's fast C implementation,
+    whose surviving values are the values within the final clipping
+    bounds. It is the reference for the kernel.
+    """
+    sigma_clip = SigmaClip(sigma=sigma, cenfunc='median', maxiters=maxiters)
+    bkg_func = SExtractorBackground(sigma_clip=sigma_clip)
+
+    local_bkgs = []
+    for data_values in _annulus_values(cat):
         if len(data_values) < 10:
             local_bkgs.append(0.0)
             continue
         local_bkgs.append(bkg_func(data_values))
+
+    local_bkgs = np.array(local_bkgs)
+    local_bkgs[cat._all_masked] = np.nan
+    return local_bkgs
+
+
+def _iterative_local_background(cat, *, sigma=3.0, maxiters=20):
+    """
+    Compute the local background of each source with iterative-removal
+    sigma clipping, where a value dropped in an earlier iteration is
+    never included again.
+
+    This is the ``axis=None, masked=False`` code path of
+    `~astropy.stats.SigmaClip`. It differs from the reference only when
+    the clipping bounds widen between iterations.
+    """
+    sigma_clip = SigmaClip(sigma=sigma, cenfunc='median', maxiters=maxiters)
+
+    local_bkgs = []
+    for data_values in _annulus_values(cat):
+        if len(data_values) < 10:
+            local_bkgs.append(0.0)
+            continue
+        values = sigma_clip(data_values, axis=None, masked=False)
+        median = np.median(values)
+        mean = np.mean(values)
+        std = np.std(values)
+        if std == 0:
+            local_bkgs.append(mean)
+        elif abs(mean - median) / std >= 0.3:
+            local_bkgs.append(median)
+        else:
+            local_bkgs.append(2.5 * median - 1.5 * mean)
 
     local_bkgs = np.array(local_bkgs)
     local_bkgs[cat._all_masked] = np.nan
@@ -87,17 +135,19 @@ def test_matches_reference(scene, width, with_mask):
     expected = _reference_local_background(cat)
     assert np.all(np.isfinite(expected))
     assert np.any(expected != 0)
-    # The kernel accumulates the survivors in the same pixel order as
-    # the reference, so the results agree to rounding
+    # The reference sums the values in a different order, so the
+    # results agree to rounding
     assert_allclose(cat._local_background, expected, rtol=1e-13, atol=0)
     assert_allclose(_kernel_local_background(cat), expected, rtol=1e-13,
                     atol=0)
 
 
-@pytest.mark.parametrize('seed', [1, 2, 3])
-def test_matches_reference_noise_scene(seed):
-    # Sources of varied sizes on a sloped background with outliers, so
-    # the clipping iterates and the estimator branches are exercised
+def _make_noise_scene(seed):
+    """
+    Make sources of varied sizes on a sloped noisy background with
+    outliers, so that the clipping iterates and the estimator branches
+    are exercised.
+    """
     rng = np.random.default_rng(seed)
     ny = nx = 121
     yy, xx = np.mgrid[0:ny, 0:nx]
@@ -111,11 +161,120 @@ def test_matches_reference_noise_scene(seed):
                              / (2 * sig ** 2))
     segm = detect_sources(data, 5.0, n_pixels=5)
     mask = rng.random((ny, nx)) < 0.02
+    return data, segm, mask
+
+
+@pytest.mark.parametrize('seed', [1, 2, 3])
+def test_matches_reference_noise_scene(seed):
+    data, segm, mask = _make_noise_scene(seed)
     for width in (2, 6):
         cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=width)
         expected = _reference_local_background(cat)
         assert_allclose(cat._local_background, expected, rtol=1e-13,
                         atol=0)
+
+
+@pytest.mark.parametrize('seed', [1, 2, 3])
+def test_matches_reference_quantized_scene(seed):
+    # Integer-valued data (e.g., raw counts) has many repeated values,
+    # so the median jumps between iterations and the clipping bounds
+    # can widen. The reference then includes values clipped in an
+    # earlier iteration again, and the kernel must do the same.
+    data, segm, mask = _make_noise_scene(seed)
+    data = np.round(data * 4)
+    for width in (2, 8, 24):
+        cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=width)
+        expected = _reference_local_background(cat)
+        assert_allclose(cat._local_background, expected, rtol=1e-13,
+                        atol=0)
+
+
+def test_final_bounds_readmit_clipped_value():
+    # A small case where the clipping bounds widen. Iteration 3 drops
+    # the value -1 at a lower bound of -0.84, then the median of the
+    # remaining values falls from 1.5 to 1 while the standard deviation
+    # shrinks only a little, so the final lower bound is -1.03 and the
+    # -1 lies within the final bounds. The kernel must match the
+    # reference, which includes the -1 again, rather than the
+    # iterative-removal result.
+    values = np.array([-1] + [0] * 8 + [1] * 2 + [2] * 2 + [3] * 7
+                      + [4] * 2 + [8, 29], dtype=float)
+    sigma = 1.5
+    shape = (21, 21)
+    segm_data = np.zeros(shape, dtype=int)
+    segm_data[9:12, 9:12] = 1
+    segm = SegmentationImage(segm_data)
+    annulus = _annulus_pixels(9, 12, 9, 12, 3, shape)
+    iy, ix = np.nonzero(annulus)
+    assert iy.size > values.size
+    rng = np.random.default_rng(0)
+    order = rng.permutation(values.size)
+    data = np.zeros(shape)
+    data[iy[:values.size], ix[:values.size]] = values[order]
+    mask = np.ones(shape, dtype=bool)
+    mask[iy[:values.size], ix[:values.size]] = False
+    mask[9:12, 9:12] = False  # the source segment
+    cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=3)
+
+    sigma_clip = SigmaClip(sigma=sigma, cenfunc='median', maxiters=20)
+    clipped = sigma_clip(values, axis=None, masked=False)
+    assert clipped.min() == 0.0
+    clipped = sigma_clip(values, axis=None, masked=True).compressed()
+    assert clipped.min() == -1.0
+
+    expected = SExtractorBackground(sigma_clip=sigma_clip)(values)
+    iterative = _iterative_local_background(cat, sigma=sigma)[0]
+    assert not np.isclose(expected, iterative)
+    assert_allclose(_reference_local_background(cat, sigma=sigma)[0],
+                    expected, rtol=1e-13, atol=0)
+    assert_allclose(_kernel_local_background(cat, sigma=sigma)[0], expected,
+                    rtol=1e-13, atol=0)
+
+
+def test_maxiters_reached():
+    # With a single iteration, the outliers of the noise scene are
+    # still being clipped when maxiters is reached, so the statistics
+    # of the values within the final bounds are computed anew
+    data, segm, mask = _make_noise_scene(1)
+    cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=6)
+    result = _kernel_local_background(cat, maxiters=1)
+    expected = _reference_local_background(cat, maxiters=1)
+    assert_allclose(result, expected, rtol=1e-13, atol=0)
+    assert not np.allclose(result, _kernel_local_background(cat))
+
+
+def test_all_values_dropped():
+    # Ten annulus pixels of two values in equal number have a median
+    # halfway between them and a standard deviation of half of their
+    # difference, so a sigma below 1 drops every value. Before maxiters
+    # the reference then retains every value (the NaN bounds of the
+    # empty set exclude nothing), and at maxiters its final bounds
+    # exclude every value.
+    shape = (11, 11)
+    segm_data = np.zeros(shape, dtype=int)
+    segm_data[4:7, 4:7] = 1
+    segm = SegmentationImage(segm_data)
+    annulus = _annulus_pixels(4, 7, 4, 7, 2, shape)
+    iy, ix = np.nonzero(annulus)
+    data = np.zeros(shape)
+    data[iy[:10], ix[:10]] = np.tile([0.0, 1.0], 5)
+    mask = np.ones(shape, dtype=bool)
+    mask[iy[:10], ix[:10]] = False
+    mask[4:7, 4:7] = False  # the source segment
+    cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
+
+    # The reference computes the NaN bounds of the empty set
+    with np.errstate(invalid='ignore'):
+        expected = _reference_local_background(cat, sigma=0.1)[0]
+        expected_maxiters = _reference_local_background(cat, sigma=0.1,
+                                                        maxiters=1)[0]
+    result = _kernel_local_background(cat, sigma=0.1)[0]
+    assert result == 0.5
+    assert result == expected
+
+    result = _kernel_local_background(cat, sigma=0.1, maxiters=1)[0]
+    assert np.isnan(result)
+    assert np.isnan(expected_maxiters)
 
 
 def test_zero_width(scene):
@@ -150,6 +309,8 @@ def test_few_pixels():
     assert cat._local_background[0] == 0.0
     assert _reference_local_background(cat)[0] == 0.0
     assert _kernel_local_background(cat, min_pixels=1)[0] == 0.0
+    # No usable pixel at all gives NaN when min_pixels allows it
+    assert np.isnan(_kernel_local_background(cat, min_pixels=0)[0])
 
     # A single usable annulus pixel is measured only when min_pixels
     # allows it
@@ -300,6 +461,10 @@ def test_invalid_inputs(scene):
                                segm=arrays['segm'], bbox_iymin=iymin,
                                bbox_iymax=iymax, bbox_ixmin=ixmin,
                                bbox_ixmax=ixmax, **kwargs)
+
+    match = 'maxiters must be at least 1'
+    with pytest.raises(ValueError, match=match):
+        _kernel_local_background(cat, maxiters=0)
 
 
 def test_thread_safety(scene):
