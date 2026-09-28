@@ -1380,12 +1380,23 @@ class TestNThreads:
         equal.
 
         Floating-point values must be exactly equal when ``rtol`` is 0
-        (the default) and must agree to within ``rtol`` otherwise.
+        (the default) and must agree to within ``rtol`` otherwise. The
+        tolerance is relative to each value and also to the largest
+        magnitude of the same source, because elements that are
+        analytically zero (e.g., the first-order central moments) are
+        rounding residuals of much larger terms of that source.
         """
         def check(value1, value2):
-            if rtol and np.asarray(value1).dtype.kind == 'f':
-                assert_allclose(value1, value2, rtol=rtol, atol=0,
-                                equal_nan=True)
+            value1 = np.asarray(value1)
+            value2 = np.asarray(value2)
+            if rtol and value1.dtype.kind == 'f':
+                finite = np.where(np.isfinite(value2), np.abs(value2), 0.0)
+                axes = tuple(range(1, value2.ndim))
+                scale = (finite.max(axis=axes, keepdims=True) if axes
+                         else finite)
+                scale = np.where(scale > 0, scale, 1.0)
+                assert_allclose(value1 / scale, value2 / scale, rtol=rtol,
+                                atol=rtol, equal_nan=True)
             else:
                 assert_equal(value1, value2)
 

@@ -2633,6 +2633,26 @@ def test_centroid_win_nan_when_flux_radius_nan(gauss_101_data):
         assert np.all(np.isnan(cwin))
 
 
+def assert_allclose_per_source(actual, desired, rtol):
+    """
+    Assert that two per-source arrays agree to within ``rtol``.
+
+    The tolerance is relative to each value and also to the largest
+    finite magnitude of the same source (the first axis), because
+    elements that are analytically zero (e.g., the first-order central
+    moments) are rounding residuals of much larger terms of that
+    source.
+    """
+    actual = np.asarray(actual, dtype=float)
+    desired = np.asarray(desired, dtype=float)
+    finite = np.where(np.isfinite(desired), np.abs(desired), 0.0)
+    axes = tuple(range(1, desired.ndim))
+    scale = finite.max(axis=axes, keepdims=True) if axes else finite
+    scale = np.where(scale > 0, scale, 1.0)
+    assert_allclose(actual / scale, desired / scale, rtol=rtol, atol=rtol,
+                    equal_nan=True)
+
+
 @pytest.fixture
 def float32_catalog_inputs():
     """
@@ -2730,13 +2750,18 @@ class TestInputDtypes:
         """
         Assert that the numeric properties agree to within ``rtol`` for
         floating-point values and exactly otherwise.
+
+        See `assert_allclose_per_source` for the tolerance.
         """
         assert props.keys() == props_ref.keys()
         for name, expected in props_ref.items():
             value = props[name]
             if expected.dtype.kind == 'f':
-                assert_allclose(value, expected, rtol=cls.rtol, atol=0,
-                                equal_nan=True, err_msg=name)
+                try:
+                    assert_allclose_per_source(value, expected, cls.rtol)
+                except AssertionError as exc:
+                    msg = f'{name} differs'
+                    raise AssertionError(msg) from exc
             else:
                 assert_equal(value, expected, err_msg=name)
 
