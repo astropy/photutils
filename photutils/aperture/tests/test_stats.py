@@ -1323,6 +1323,39 @@ class TestSigmaClipBiweightStrings:
         assert_allclose(std1, apstats2.std, rtol=1e-10)
         assert_allclose(sum1, apstats2.sum, rtol=1e-10)
 
+    def test_biweight_final_bounds_survivors(self):
+        """
+        Test that the biweight clipping keeps every value within the
+        final bounds, including a value dropped in an earlier iteration.
+
+        The value 4 is dropped in the second iteration (upper bound
+        3.87) and is within the final bounds (upper bound 4.14).
+        """
+        values = np.array([-2, 1, -2, 1, -5, 1, 1, -6, -3, -3, 2, -4, -2,
+                           -3, -2, -1, 6, 2, 4, 2, 0, 1, 1, 3], dtype=float)
+        kept = values
+        n_dropped = 1
+        while n_dropped:
+            center = biweight_location(kept)
+            scale = biweight_scale(kept)
+            lower = center - 1.5 * scale
+            upper = center + 1.5 * scale
+            survivors = kept[(kept >= lower) & (kept <= upper)]
+            n_dropped = kept.size - survivors.size
+            kept = survivors
+        expected = values[(values >= lower) & (values <= upper)]
+        assert 4.0 not in kept
+        assert 4.0 in expected
+
+        data = values.reshape(4, 6)
+        aper = RectangularAperture((2.5, 1.5), w=6, h=4)
+        sigclip = self._make_sigma_clip_biweight(sigma=1.5, maxiters=20)
+        apstats = ApertureStats(data, aper, sigma_clip=sigclip,
+                                sum_method='center')
+        assert apstats._fast_clip_spec() is not None
+        assert_allclose(apstats.mean, np.mean(expected), rtol=1e-12)
+        assert_allclose(apstats.sum, np.sum(expected), rtol=1e-12)
+
 
 def test_sigma_clip_sorted_values_reuse(monkeypatch):
     """
