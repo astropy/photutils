@@ -29,7 +29,7 @@ def _annulus_values(cat):
     warning for non-finite data within the aperture).
     """
     values = []
-    for aperture in cat._local_background_apertures:
+    for aperture in cat.local_background_aperture:
         aperture_mask = aperture.to_mask(method='center')
         slc_lg, slc_sm = aperture_mask.get_overlap_slices(cat._data.shape)
 
@@ -137,7 +137,7 @@ def test_matches_reference(scene, width, with_mask):
     assert np.any(expected != 0)
     # The reference sums the values in a different order, so the
     # results agree to rounding
-    assert_allclose(cat._local_background, expected, rtol=1e-13, atol=0)
+    assert_allclose(cat.local_background, expected, rtol=1e-13, atol=0)
     assert_allclose(_kernel_local_background(cat), expected, rtol=1e-13,
                     atol=0)
 
@@ -170,7 +170,7 @@ def test_matches_reference_noise_scene(seed):
     for width in (2, 6):
         cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=width)
         expected = _reference_local_background(cat)
-        assert_allclose(cat._local_background, expected, rtol=1e-13,
+        assert_allclose(cat.local_background, expected, rtol=1e-13,
                         atol=0)
 
 
@@ -185,7 +185,7 @@ def test_matches_reference_quantized_scene(seed):
     for width in (2, 8, 24):
         cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=width)
         expected = _reference_local_background(cat)
-        assert_allclose(cat._local_background, expected, rtol=1e-13,
+        assert_allclose(cat.local_background, expected, rtol=1e-13,
                         atol=0)
 
 
@@ -246,10 +246,9 @@ def test_maxiters_reached():
 def test_all_values_dropped():
     # Ten annulus pixels of two values in equal number have a median
     # halfway between them and a standard deviation of half of their
-    # difference, so a sigma below 1 drops every value. Before maxiters
-    # the reference then retains every value (the NaN bounds of the
-    # empty set exclude nothing), and at maxiters its final bounds
-    # exclude every value.
+    # difference, so a sigma below 1 drops every value in the first
+    # iteration. Those bounds are final whether or not maxiters is
+    # reached, and no value lies within them.
     shape = (11, 11)
     segm_data = np.zeros(shape, dtype=int)
     segm_data[4:7, 4:7] = 1
@@ -263,23 +262,18 @@ def test_all_values_dropped():
     mask[4:7, 4:7] = False  # the source segment
     cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
 
-    # The reference computes the NaN bounds of the empty set
-    with np.errstate(invalid='ignore'):
-        expected = _reference_local_background(cat, sigma=0.1)[0]
-        expected_maxiters = _reference_local_background(cat, sigma=0.1,
-                                                        maxiters=1)[0]
-    result = _kernel_local_background(cat, sigma=0.1)[0]
-    assert result == 0.5
-    assert result == expected
+    for maxiters in (1, 20):
+        result = _kernel_local_background(cat, sigma=0.1, maxiters=maxiters)
+        assert np.isnan(result[0])
 
-    result = _kernel_local_background(cat, sigma=0.1, maxiters=1)[0]
-    assert np.isnan(result)
-    assert np.isnan(expected_maxiters)
+    # A sigma of 1 keeps the two middle values, which lie exactly one
+    # standard deviation from the median
+    assert _kernel_local_background(cat, sigma=1.0)[0] == 0.5
 
 
 def test_zero_width(scene):
     cat = SourceCatalog(scene['data'], scene['segm'], local_bkg_width=0)
-    assert_array_equal(cat._local_background, np.zeros(cat.n_labels))
+    assert_array_equal(cat.local_background, np.zeros(cat.n_labels))
 
 
 def test_all_masked_source(scene):
@@ -288,7 +282,7 @@ def test_all_masked_source(scene):
     slc = segm.slices[0]
     mask[slc] |= segm.data[slc] == segm.labels[0]
     cat = SourceCatalog(scene['data'], segm, mask=mask, local_bkg_width=5)
-    result = cat._local_background
+    result = cat.local_background
     assert cat._all_masked[0]
     assert np.isnan(result[0])
     assert np.all(np.isfinite(result[1:]))
@@ -306,7 +300,7 @@ def test_few_pixels():
     mask = np.ones((11, 11), dtype=bool)
     mask[3:8, 3:8] = False  # the inner rectangle only, no annulus pixel
     cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
-    assert cat._local_background[0] == 0.0
+    assert cat.local_background[0] == 0.0
     assert _reference_local_background(cat)[0] == 0.0
     assert _kernel_local_background(cat, min_pixels=1)[0] == 0.0
     # No usable pixel at all gives NaN when min_pixels allows it
@@ -317,7 +311,7 @@ def test_few_pixels():
     mask[2, 5] = False
     data[2, 5] = 2.0
     cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
-    assert cat._local_background[0] == 0.0
+    assert cat.local_background[0] == 0.0
     assert _reference_local_background(cat)[0] == 0.0
     assert _kernel_local_background(cat, min_pixels=2)[0] == 0.0
     assert _kernel_local_background(cat, min_pixels=1)[0] == 2.0
@@ -362,13 +356,13 @@ def test_annulus_pixels_and_median(nx_src, ny_src, width):
     annulus = _annulus_pixels(ixmin, ixmax, iymin, iymax, width, shape)
     values = data[annulus]
     assert values.size >= 10
-    aperture_mask = cat._local_background_apertures[0].to_mask(
+    aperture_mask = cat.local_background_aperture[0].to_mask(
         method='center')
     assert_array_equal(aperture_mask.to_image(shape) > 0, annulus)
 
     sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
     expected = SExtractorBackground(sigma_clip=sigma_clip)(values)
-    assert_allclose(cat._local_background[0], expected, rtol=1e-13,
+    assert_allclose(cat.local_background[0], expected, rtol=1e-13,
                     atol=0)
 
 
@@ -382,7 +376,7 @@ def test_estimator_branches():
 
     data = np.full(shape, 3.0)
     cat = SourceCatalog(data, segm, local_bkg_width=4)
-    assert cat._local_background[0] == 3.0
+    assert cat.local_background[0] == 3.0
 
     data = np.zeros(shape)
     data[::2, ::2] = 1.5
@@ -392,7 +386,7 @@ def test_estimator_branches():
     assert np.all(np.abs(values - np.median(values))
                   <= 3 * np.std(values))
     assert abs(np.mean(values) - np.median(values)) / np.std(values) >= 0.3
-    assert cat._local_background[0] == np.median(values)
+    assert cat.local_background[0] == np.median(values)
 
 
 def test_clipping_removes_outliers():
@@ -406,18 +400,17 @@ def test_clipping_removes_outliers():
     data[10, 10] = 1000.0
     data[30, 30] = -1000.0
     cat = SourceCatalog(data, segm, local_bkg_width=8)
-    assert_allclose(cat._local_background[0], 5.0, atol=0.05)
+    assert_allclose(cat.local_background[0], 5.0, atol=0.05)
     expected = _reference_local_background(cat)
-    assert_allclose(cat._local_background, expected, rtol=1e-13, atol=0)
+    assert_allclose(cat.local_background, expected, rtol=1e-13, atol=0)
 
 
 def test_sliced_and_scalar_catalog(scene):
     cat = SourceCatalog(scene['data'], scene['segm'], mask=scene['mask'],
                         local_bkg_width=6)
-    expected = cat._local_background
-    assert_array_equal(cat[2:5]._local_background, expected[2:5])
-    assert_array_equal(cat[3]._local_background, expected[3:4])
-    assert cat[3].local_background == expected[3]
+    expected = cat.local_background
+    assert_array_equal(cat[2:5].local_background, expected[2:5])
+    assert_array_equal(cat[3].local_background, expected[3:4])
 
 
 def test_input_dtypes(scene):
@@ -474,8 +467,8 @@ def test_n_threads(scene):
                                  mask=scene['mask'], local_bkg_width=6,
                                  n_threads=4)
     assert cat.n_labels >= 4
-    assert_array_equal(cat_threaded._local_background,
-                       cat._local_background)
+    assert_array_equal(cat_threaded.local_background,
+                       cat.local_background)
 
 
 def test_thread_safety(scene):

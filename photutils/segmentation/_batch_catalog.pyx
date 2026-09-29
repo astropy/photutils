@@ -2458,9 +2458,11 @@ cdef double _local_background_source(const real_t *data,
     astropy C implementation and its masked output. A value dropped in
     an earlier iteration is therefore included again when the final
     bounds admit it, which happens when the median moves by more than
-    the standard deviation shrinks (typically for integer-valued
-    data). The SExtractor background mode of the survivors is returned
-    (see `~photutils.background.SExtractorBackground`).
+    the standard deviation shrinks (typically for integer-valued data).
+    An iteration that drops every value ends the clipping with its
+    bounds as the final bounds, in the same way as when it is the last
+    allowed iteration. The SExtractor background mode of the survivors
+    is returned (see `~photutils.background.SExtractorBackground`).
 
     Parameters
     ----------
@@ -2505,9 +2507,10 @@ cdef double _local_background_source(const real_t *data,
     result : double
         The local background value. Zero is returned for fewer than
         ``min_pixels`` usable pixels. NaN is returned for no usable
-        pixels, or when the last allowed iteration drops every value,
-        which needs a ``sigma`` below 1 because the two middle values
-        always lie within one standard deviation of the median.
+        pixels, or when no usable value lies within the final bounds.
+        The latter needs an iteration that drops every value, and so
+        a ``sigma`` below 1, because the two middle values always lie
+        within one standard deviation of the median.
     """
     cdef double xpos = 0.5 * (ixmin + ixmax - 1)
     cdef double ypos = 0.5 * (iymin + iymax - 1)
@@ -2556,8 +2559,9 @@ cdef double _local_background_source(const real_t *data,
     # values and drops the values outside center +/- sigma * std,
     # keeping the survivors in their pixel order (and summing them for
     # the next iteration's mean), until no value is dropped or maxiters
-    # is reached. The tightest bounds of all iterations are tracked to
-    # detect whether the final bounds widened.
+    # is reached. The median is selected from a copy, so that the sums
+    # run in pixel order. The tightest bounds of all iterations are
+    # tracked to detect whether the final bounds widened.
     for i in range(n):
         kept[i] = values[i]
     n_kept = n
@@ -2593,26 +2597,21 @@ cdef double _local_background_source(const real_t *data,
         nchanged = n_kept - j
         n_kept = j
         if n_kept == 0:
-            # Every value was dropped. Before maxiters, the astropy C
-            # implementation goes on to compute NaN bounds from the
-            # empty set, which exclude nothing, so the survivors are
-            # all of the values. At maxiters, its finite bounds stand
-            # and exclude every value.
-            if iteration < maxiters:
-                lower = -INFINITY
-                upper = INFINITY
+            # Every value was dropped, so the empty set has no bounds
+            # of its own and the bounds of this iteration are final.
             break
 
     if nchanged == 0 and lower == lo_tight and upper == hi_tight:
         # The last iteration dropped nothing and its bounds are the
         # tightest of all iterations, so the values within them are
-        # exactly the kept values, whose statistics were just computed
+        # exactly the kept values, whose statistics were just computed.
         median = center
     else:
-        # Either maxiters was reached with values still being dropped,
-        # or the final bounds are wider on a side than an earlier
-        # iteration's, so the values within the final bounds are
-        # gathered again from all of the usable values
+        # Either the clipping stopped with values still being dropped
+        # (at maxiters or with every value dropped), or the final bounds
+        # are wider on a side than an earlier iteration's, so the values
+        # within the final bounds are gathered again from all of the
+        # usable values.
         j = 0
         total = 0.0
         for i in range(n):
@@ -2718,7 +2717,7 @@ def batch_local_background(const real_t[:, ::1] data, *,
     result : 1D ndarray of float64
         The local background of each source, with shape
         ``(n_sources,)``. A source with no usable annulus pixels, or
-        whose last allowed clipping iteration drops every value
+        with no usable value within the final clipping bounds
         (possible only for ``sigma`` below 1), has a NaN local
         background.
 
