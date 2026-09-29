@@ -14,7 +14,7 @@ from functools import cached_property
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
+from astropy.stats import gaussian_fwhm_to_sigma
 from scipy.ndimage import map_coordinates
 
 from photutils.aperture import (BoundingBox, CircularAperture,
@@ -34,12 +34,12 @@ from photutils.aperture._batch_results import BatchApertureSums
 from photutils.aperture._common import batch_image_dtype
 from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               batch_segmentation_image)
-from photutils.background import SExtractorBackground
 from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_centroid_win,
                                                    batch_flux_radius_prepare,
                                                    batch_flux_radius_solve,
                                                    batch_kron_radius,
+                                                   batch_local_background,
                                                    batch_minmax_index,
                                                    batch_moment_err,
                                                    batch_perimeter,
@@ -74,6 +74,10 @@ from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
+
+# The inner rectangle of the local background annulus is this factor
+# times the segment bounding box size
+_LOCAL_BKG_SCALE = 1.5
 
 
 class _SegmentValues:
@@ -4337,10 +4341,9 @@ class SourceCatalog:
         for bbox_ in self._bbox:
             xpos = 0.5 * (bbox_.ixmin + bbox_.ixmax - 1)
             ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
-            scale = 1.5
-            width_in = (bbox_.ixmax - bbox_.ixmin) * scale
+            width_in = (bbox_.ixmax - bbox_.ixmin) * _LOCAL_BKG_SCALE
             width_out = width_in + 2 * self.local_bkg_width
-            height_in = (bbox_.iymax - bbox_.iymin) * scale
+            height_in = (bbox_.iymax - bbox_.iymin) * _LOCAL_BKG_SCALE
             height_out = height_in + 2 * self.local_bkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
@@ -4362,52 +4365,23 @@ class SourceCatalog:
     @cached_property
     def _local_background(self):
         """
-        The local background value (per pixel) estimated using a
-        rectangular annulus aperture around the source.
-
-        Pixels are masked where the input ``mask`` is `True`, where the
-        input ``data`` is non-finite, and within any non-zero pixel
-        label in the segmentation image.
+        The local background value (per pixel) of each source (see
+        `local_background`).
 
         This property is always an `~numpy.ndarray` without units.
         """
         if self.local_bkg_width == 0:
             local_bkgs = np.zeros(self.n_labels)
         else:
-            sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
-            bkg_func = SExtractorBackground(sigma_clip=sigma_clip)
-            bkg_apers = self._local_background_apertures
-
-            local_bkgs = []
-            for aperture in bkg_apers:
-                aperture_mask = aperture.to_mask(method='center')
-                slc_lg, slc_sm = aperture_mask.get_overlap_slices(
-                    self._data.shape)
-
-                data_cutout = self._data[slc_lg].astype(float, copy=True)
-                # All non-zero segment labels are masked
-                segm_mask_cutout = (
-                    self._segmentation_image.data[slc_lg].astype(bool))
-                if self._mask is None:
-                    mask_cutout = None
-                else:
-                    mask_cutout = self._mask[slc_lg]
-                data_mask_cutout = self._make_cutout_data_mask(data_cutout,
-                                                               mask_cutout)
-                data_mask_cutout |= segm_mask_cutout
-
-                aperweight_cutout = aperture_mask.data[slc_sm]
-                good_mask = (aperweight_cutout > 0) & ~data_mask_cutout
-
-                data_cutout *= aperweight_cutout
-                data_values = data_cutout[good_mask]  # 1D array
-
-                # Check not enough unmasked pixels
-                if len(data_values) < 10:
-                    local_bkgs.append(0.0)
-                    continue
-                local_bkgs.append(bkg_func(data_values))
-            local_bkgs = np.array(local_bkgs)
+            arrays = self._get_batch_arrays()
+            iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+            per_source = {'bbox_iymin': iymin, 'bbox_iymax': iymax,
+                          'bbox_ixmin': ixmin, 'bbox_ixmax': ixmax}
+            local_bkgs = self._threaded_batch(
+                batch_local_background, per_source, data=arrays['data'],
+                mask=arrays['mask'], segm=arrays['segm'],
+                width=self.local_bkg_width, scale=_LOCAL_BKG_SCALE,
+                sigma=3.0, maxiters=20, min_pixels=10)
 
         local_bkgs[self._all_masked] = np.nan
         return local_bkgs
@@ -4417,6 +4391,17 @@ class SourceCatalog:
         """
         The local background value (per pixel) estimated using a
         rectangular annulus aperture around the source.
+
+        Pixels are masked where the input ``mask`` is `True`, where the
+        input ``data`` is non-finite, and within any non-zero pixel
+        label in the segmentation image.
+
+        The value is the `~photutils.background.SExtractorBackground`
+        estimate of the usable annulus pixel values with a
+        ``SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)`` sigma
+        clip, matching it to within rounding. It is zero for a source
+        with fewer than 10 usable annulus pixels. The sources are
+        measured concurrently when ``n_threads`` > 1.
         """
         bkg = self._local_background
         if self._data_unit is not None:

@@ -337,7 +337,7 @@ New Features
     ``flags`` attribute and the default ``to_table()`` output are about
     5 times faster for large catalogs. No property displays a progress
     bar any more (see the ``progress_bar`` deprecation under API
-    Changes). [#2406, #2446]
+    Changes). [#2406, #2446, #2447]
 
   - Added an ``n_threads`` keyword to ``SourceCatalog`` to compute
     the compiled per-source measurements (the isophotal moments and
