@@ -23,7 +23,8 @@ import numpy as np
 from astropy.nddata import NDData
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import Table
-from bench_helpers import print_environment, time_best
+from bench_helpers import (add_memory_argument, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.detection import DAOStarFinder
 from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
@@ -792,7 +793,9 @@ def main():
                                  'simulation'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
 

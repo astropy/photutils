@@ -4,6 +4,21 @@ This directory contains standalone benchmark scripts for photutils.
 They are not part of the installed package or the test suite. Helper
 functions shared by the scripts live in `bench_helpers.py`.
 
+Every timing script accepts `--memory`, which also reports the peak and
+retained memory of each timed call. The call is made once more under
+`tracemalloc` before the timed repeats, so the times are unaffected,
+and the memory line is printed just before the timing row it belongs
+to. The peak is the largest traced memory above the level at the start
+of the call. The retained memory is what remains allocated after the
+call returns and unreachable objects are collected, such as values
+cached on an object that outlives the call. Only allocations made
+through the Python allocator are traced, which includes NumPy arrays
+but not memory that extension code obtains from `malloc` directly.
+
+```bash
+python benchmarks/bench_segmentation.py --which catalog --memory
+```
+
 ## Aperture statistics (`bench_aperture_stats.py`)
 
 Benchmarks for `ApertureStats`:

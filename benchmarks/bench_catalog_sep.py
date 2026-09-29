@@ -99,7 +99,8 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_helpers import print_environment, time_best
+from bench_helpers import (add_memory_argument, print_environment,
+                           set_memory_mode, time_best)
 from bench_segmentation import THRESHOLD, make_inputs
 from numpy.testing import assert_allclose, assert_array_equal
 
@@ -1040,7 +1041,9 @@ def main():
                         choices=['all', 'validate', 'degenerate',
                                  'benchmark'],
                         help='which part to run (default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
     if not HAS_SEP:

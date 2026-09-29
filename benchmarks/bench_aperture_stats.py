@@ -23,9 +23,10 @@ import argparse
 from functools import partial
 
 from astropy.stats import SigmaClip
-from bench_helpers import (format_sweep_cells, make_aperture_inputs,
-                           make_apertures, parse_thread_counts,
-                           print_environment, time_best)
+from bench_helpers import (add_memory_argument, format_sweep_cells,
+                           make_aperture_inputs, make_apertures,
+                           parse_thread_counts, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.aperture import ApertureStats, CircularAperture
 
@@ -309,7 +310,9 @@ def main():
                              'properties in the all-properties timings '
                              '(excluded by default because they do not '
                              'parallelize with n_threads)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
 

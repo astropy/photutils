@@ -21,8 +21,9 @@ from functools import partial
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-from bench_helpers import (format_sweep_cells, make_image, parse_thread_counts,
-                           print_environment, time_best)
+from bench_helpers import (add_memory_argument, format_sweep_cells, make_image,
+                           parse_thread_counts, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.utils import (CutoutImage, ImageDepth, ShepardIDWInterpolator,
                              calc_total_error)
@@ -485,7 +486,9 @@ def main():
                                  'nan-stats', 'random-coords'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
 

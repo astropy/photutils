@@ -17,8 +17,8 @@ from functools import partial
 
 import numpy as np
 from astropy.stats import SigmaClip
-from bench_helpers import (format_sweep_cells, make_image, print_environment,
-                           time_best)
+from bench_helpers import (add_memory_argument, format_sweep_cells, make_image,
+                           print_environment, set_memory_mode, time_best)
 
 from photutils.background import (Background2D, BiweightLocationBackground,
                                   BiweightScaleBackgroundRMS, LocalBackground,
@@ -235,7 +235,9 @@ def main():
                                  'estimators', 'local'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     sizes = [int(size) for size in args.sizes.split(',')]
     box_sizes = [int(box) for box in args.box_sizes.split(',')]

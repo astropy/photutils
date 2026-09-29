@@ -61,7 +61,8 @@ import argparse
 import sys
 
 import numpy as np
-from bench_helpers import parse_thread_counts, print_environment, time_best
+from bench_helpers import (add_memory_argument, parse_thread_counts,
+                           print_environment, set_memory_mode, time_best)
 from numpy.testing import assert_allclose
 
 from photutils.aperture import (AperturePhotometry, ApertureStats,
@@ -929,7 +930,9 @@ def main():
                         choices=['all', 'validate', 'benchmark',
                                  'threads'],
                         help='which suite to run (default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
     if HAS_SEP:

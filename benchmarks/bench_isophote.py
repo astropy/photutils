@@ -18,7 +18,8 @@ import warnings
 from functools import partial
 
 import numpy as np
-from bench_helpers import print_environment, time_best
+from bench_helpers import (add_memory_argument, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.isophote import (Ellipse, EllipseGeometry, EllipseSample,
                                 build_ellipse_model)
@@ -335,7 +336,9 @@ def main():
                                  'kernel'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
 

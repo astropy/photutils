@@ -16,9 +16,10 @@ the available options.
 import argparse
 from functools import partial
 
-from bench_helpers import (format_sweep_cells, make_aperture_inputs,
-                           make_apertures, parse_thread_counts,
-                           print_environment, time_best)
+from bench_helpers import (add_memory_argument, format_sweep_cells,
+                           make_aperture_inputs, make_apertures,
+                           parse_thread_counts, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.aperture import AperturePhotometry
 
@@ -138,7 +139,9 @@ def main():
                         default='1,2,4,8',
                         help='comma-separated thread counts for the '
                              'threads benchmark (default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
 

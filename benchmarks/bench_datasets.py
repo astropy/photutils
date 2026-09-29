@@ -17,7 +17,8 @@ from functools import partial
 
 import numpy as np
 from astropy.modeling.models import Gaussian2D
-from bench_helpers import print_environment, time_best
+from bench_helpers import (add_memory_argument, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.datasets import (apply_poisson_noise, make_4gaussians_image,
                                 make_100gaussians_image, make_gwcs,
@@ -364,7 +365,9 @@ def main():
                                  'examples'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
 

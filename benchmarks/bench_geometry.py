@@ -18,7 +18,8 @@ import argparse
 from functools import partial
 
 import numpy as np
-from bench_helpers import print_environment, time_best
+from bench_helpers import (add_memory_argument, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.geometry import (circular_overlap_grid, elliptical_overlap_grid,
                                 rectangular_overlap_grid)
@@ -311,7 +312,9 @@ def main():
                         choices=['all', 'shapes', 'sizes', 'polygon'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     if any(n % 2 for n in args.n_vertices):
         parser.error('--n-vertices values must be even')

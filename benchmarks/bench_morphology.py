@@ -18,7 +18,8 @@ from functools import partial
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_helpers import print_environment, time_best
+from bench_helpers import (add_memory_argument, print_environment,
+                           set_memory_mode, time_best)
 
 from photutils.datasets import make_wcs
 from photutils.morphology import data_properties, gini
@@ -241,7 +242,9 @@ def main():
                         choices=['all', 'data-properties', 'gini'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
+    add_memory_argument(parser)
     args = parser.parse_args()
+    set_memory_mode(args.memory)
 
     print_environment()
 

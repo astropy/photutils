@@ -3,10 +3,12 @@
 Shared helper functions for the photutils benchmark scripts.
 """
 
+import gc
 import os
 import platform
 import sys
 import time
+import tracemalloc
 
 import numpy as np
 
@@ -16,10 +18,83 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 RectangularAperture)
 from photutils.datasets import make_wcs
 
+# Whether time_best also reports the memory of each call (see
+# set_memory_mode)
+_options = {'memory': False}
+
+
+def add_memory_argument(parser):
+    """
+    Add the ``--memory`` option to a benchmark argument parser.
+
+    Pass the parsed value to `set_memory_mode`.
+
+    Parameters
+    ----------
+    parser : `argparse.ArgumentParser`
+        The argument parser of the benchmark script.
+    """
+    parser.add_argument('--memory', action='store_true',
+                        help='also report the peak and retained memory '
+                             'of each timed call, measured with '
+                             'tracemalloc in one untimed call before '
+                             'the timed repeats (the memory line is '
+                             'printed before the timing row)')
+
+
+def set_memory_mode(enabled):
+    """
+    Enable or disable the memory report of `time_best`.
+
+    Parameters
+    ----------
+    enabled : bool
+        Whether `time_best` reports the peak and retained memory of
+        each call.
+    """
+    _options['memory'] = bool(enabled)
+
+
+def print_memory(func):
+    """
+    Call ``func`` once under `tracemalloc` and print its peak and
+    retained memory.
+
+    The peak is the largest traced memory above the level at the start
+    of the call. The retained memory is what remains allocated after
+    the call returns and unreachable objects are collected, such as
+    values cached on an object that outlives the call. Only
+    allocations made through the Python allocator are traced, which
+    includes NumPy arrays but not memory that extension code obtains
+    from ``malloc`` directly.
+
+    Parameters
+    ----------
+    func : callable
+        The zero-argument callable to measure.
+    """
+    gc.collect()
+    tracemalloc.start()
+    try:
+        start = tracemalloc.get_traced_memory()[0]
+        func()
+        peak = tracemalloc.get_traced_memory()[1]
+        gc.collect()
+        current = tracemalloc.get_traced_memory()[0]
+    finally:
+        tracemalloc.stop()
+    print(f'    memory: peak {(peak - start) / 1e6:.1f} MB, '
+          f'retained {(current - start) / 1e6:.1f} MB')
+
 
 def time_best(func, *, repeats=3):
     """
     Return the best wall-clock time of ``repeats`` calls to ``func``.
+
+    When the memory mode is enabled (see `set_memory_mode`), ``func``
+    is first called once more under `tracemalloc` and its peak and
+    retained memory are printed (see `print_memory`). The timed
+    repeats run without tracing, so the times are unaffected.
 
     Parameters
     ----------
@@ -34,6 +109,8 @@ def time_best(func, *, repeats=3):
     result : float
         The best (minimum) wall-clock time in seconds.
     """
+    if _options['memory']:
+        print_memory(func)
     best = np.inf
     for _ in range(repeats):
         t0 = time.perf_counter()
