@@ -345,7 +345,7 @@ def bench_catalog(*, n_sources=1000, repeats=3, seed=0):
     background = np.full(data.shape, 0.1)
     wcs = make_wcs(data.shape)
 
-    def _make_catalog(local_bkg_width=0):
+    def _make_catalog(*, local_bkg_width=0):
         return SourceCatalog(data, segm, convolved_data=convolved_data,
                              error=error, background=background, wcs=wcs,
                              local_bkg_width=local_bkg_width)

@@ -4365,19 +4365,8 @@ class SourceCatalog:
     @cached_property
     def _local_background(self):
         """
-        The local background value (per pixel) estimated using a
-        rectangular annulus aperture around the source.
-
-        Pixels are masked where the input ``mask`` is `True`, where the
-        input ``data`` is non-finite, and within any non-zero pixel
-        label in the segmentation image.
-
-        The value is the `~photutils.background.SExtractorBackground`
-        estimate of the usable annulus pixel values with a
-        ``SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)`` sigma
-        clip, which reproduces it to rounding, and zero for a source
-        with fewer than 10 usable annulus pixels. The sources are
-        measured concurrently when ``n_threads`` > 1.
+        The local background value (per pixel) of each source (see
+        `local_background`).
 
         This property is always an `~numpy.ndarray` without units.
         """
@@ -4402,6 +4391,17 @@ class SourceCatalog:
         """
         The local background value (per pixel) estimated using a
         rectangular annulus aperture around the source.
+
+        Pixels are masked where the input ``mask`` is `True`, where the
+        input ``data`` is non-finite, and within any non-zero pixel
+        label in the segmentation image.
+
+        The value is the `~photutils.background.SExtractorBackground`
+        estimate of the usable annulus pixel values with a
+        ``SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)`` sigma
+        clip, matching it to within rounding. It is zero for a source
+        with fewer than 10 usable annulus pixels. The sources are
+        measured concurrently when ``n_threads`` > 1.
         """
         bkg = self._local_background
         if self._data_unit is not None:
