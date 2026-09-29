@@ -1204,6 +1204,41 @@ class TestFastBoxStatistics:
                                                sigma=2.0, maxiters=5)
         self._compare_paths(monkeypatch, sigma_clip=sigma_clip)
 
+    def test_biweight_final_bounds_survivors(self):
+        """
+        Test that the fused kernel's biweight clipping keeps every value
+        within the final bounds, including a value dropped in an earlier
+        iteration.
+
+        The value 4 is dropped in the second iteration (upper bound
+        3.87) and is within the final bounds (upper bound 4.14).
+        """
+        values = np.array([-2, 1, -2, 1, -5, 1, 1, -6, -3, -3, 2, -4, -2,
+                           -3, -2, -1, 6, 2, 4, 2, 0, 1, 1, 3], dtype=float)
+        kept = values
+        n_dropped = 1
+        while n_dropped:
+            center = biweight_location(kept)
+            scale = biweight_scale(kept)
+            lower = center - 1.5 * scale
+            upper = center + 1.5 * scale
+            survivors = kept[(kept >= lower) & (kept <= upper)]
+            n_dropped = kept.size - survivors.size
+            kept = survivors
+        expected = values[(values >= lower) & (values <= upper)]
+        assert 4.0 not in kept
+        assert 4.0 in expected
+
+        sigma_clip = _make_sigma_clip_biweight(sigma=1.5, maxiters=20)
+        bkg = Background2D(values.reshape(4, 6), (4, 6), filter_size=1,
+                           sigma_clip=sigma_clip,
+                           bkg_estimator=MeanBackground(sigma_clip=None),
+                           exclude_percentile=100.0)
+        assert bkg._box_stats_spec is not None
+        assert_equal(bkg.n_pixels_mesh, [[expected.size]])
+        assert_allclose(bkg.background_mesh, [[np.mean(expected)]],
+                        rtol=1e-12)
+
     def test_biweight_nonfinite_m_falls_back(self, test_data):
         """
         Test that a non-finite biweight location anchor (M) falls back

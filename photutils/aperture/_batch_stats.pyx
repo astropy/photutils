@@ -362,25 +362,23 @@ cdef inline void _sigma_clip_bounds(double *s, Py_ssize_t n,
                                     int stdfunc_code, double *out_min,
                                     double *out_max) noexcept nogil:
     """
-    Compute the converged sigma-clip bounds for one source.
+    Compute the final sigma-clip bounds for one source.
 
-    This reproduces `astropy.stats.SigmaClip` for the no-axis, no-grow
-    case. It iteratively narrows the kept range and returns the final
-    lower and upper value bounds. A source survives the clip if its
-    value ``v`` satisfies ``not (v < out_min) and not (v > out_max)``.
-    If an iteration rejects every remaining value, the bounds from the
-    last iteration that still had data are kept, so every value is
-    clipped. This matches astropy's behavior in this degenerate case.
-    For an empty input, the bounds are NaN.
-
-    For the biweight center/scale codes (astropy's 'biweight' string
-    options, which use astropy's Python clipping code paths), the
-    returned bounds are the extrema of the final kept window rather
-    than the last computed clipping limits. The Python code paths clip
-    accumulatively (a value clipped in any iteration stays clipped), so
-    reapplying the last limits could otherwise re-include values that
-    were clipped in an earlier iteration. Equal values always share the
-    same fate, so the window extrema reproduce the kept set exactly.
+    Each iteration computes the center and scale of the values kept so
+    far and keeps the values within ``center - sigma_lower * scale`` and
+    ``center + sigma_upper * scale``, until an iteration drops nothing
+    or ``maxiters`` iterations have run. The returned bounds are those
+    of the final iteration, and a value ``v`` survives if ``not (v <
+    out_min) and not (v > out_max)``. The survivors are therefore all
+    of the values within the final bounds, for every center and scale
+    function. A value dropped in an earlier iteration survives again
+    when the final bounds admit it, which happens when the center moves
+    by more than the scale shrinks. If an iteration drops every value,
+    its bounds are final, in the same way as when it is the last allowed
+    iteration. The center always lies within the range of the values it
+    is computed from, so those bounds lie strictly between the smallest
+    and largest of them and every value is clipped. For an empty input,
+    the bounds are NaN.
 
     Parameters
     ----------
@@ -398,13 +396,15 @@ cdef inline void _sigma_clip_bounds(double *s, Py_ssize_t n,
         to iterate until convergence.
 
     cenfunc_code : int
-        The center function code (``_CEN_MEDIAN`` or ``_CEN_MEAN``).
+        The center function code (``_CEN_MEDIAN``, ``_CEN_MEAN``, or
+        ``_CEN_BIWEIGHT``).
 
     stdfunc_code : int
-        The scale function code (``_STD_STD`` or ``_STD_MADSTD``).
+        The scale function code (``_STD_STD``, ``_STD_MADSTD``, or
+        ``_STD_BIWEIGHT``).
 
     out_min, out_max : double *
-        Output. The converged lower and upper value bounds.
+        Output. The final lower and upper value bounds.
     """
     cdef Py_ssize_t lo = 0, hi = n, new_lo, new_hi, cnt, i, iteration = 0
     cdef Py_ssize_t nchanged = 1
@@ -479,13 +479,6 @@ cdef inline void _sigma_clip_bounds(double *s, Py_ssize_t n,
         nchanged = (hi - lo) - (new_hi - new_lo)
         lo = new_lo
         hi = new_hi
-
-    if biweight and hi > lo:
-        # Match the accumulative clipping of astropy's Python code
-        # paths (see the docstring). The effective bounds are the
-        # extrema of the final kept window.
-        minv = s[lo]
-        maxv = s[hi - 1]
 
     out_min[0] = minv
     out_max[0] = maxv
@@ -1404,11 +1397,11 @@ def batch_sigma_clip_center(const double[::1] values,
     Sigma-clip each source's packed center buffer.
 
     For each source the packed pixel values (and their cutout
-    coordinates) are sigma-clipped following `astropy.stats.SigmaClip`
-    (no-axis, no-grow case), and the surviving pixels are written to a
-    new packed buffer that reuses the input ``starts`` offsets. The
-    output can be fed directly to the packed-buffer reductions (e.g.,
-    ``batch_mean_var`` and ``batch_moments``).
+    coordinates) are sigma-clipped (see ``_sigma_clip_bounds``), and
+    the surviving pixels are written to a new packed buffer that reuses
+    the input ``starts`` offsets. The output can be fed directly
+    to the packed-buffer reductions (e.g., ``batch_mean_var`` and
+    ``batch_moments``).
 
     Because computing the clip bounds requires sorting each source's
     values, the ascending-sorted surviving values are also returned
@@ -1524,11 +1517,10 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
     """
     Sigma-clip each source's packed ``sum_method`` member buffer.
 
-    The sum members are sigma-clipped following
-    `astropy.stats.SigmaClip` (using the unweighted, background
-    subtracted pixel values), and the aperture sum, error variance, and
-    area are recomputed over the surviving members. Sources with no sum
-    members have NaN outputs.
+    The sum members are sigma-clipped (see ``_sigma_clip_bounds``) using
+    the unweighted, background-subtracted pixel values, and the aperture
+    sum, error variance, and area are recomputed over the surviving
+    members. Sources with no sum members have NaN outputs.
 
     Parameters
     ----------
@@ -1724,8 +1716,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     """
     Compute fused sigma-clipped statistics for each row of a 2D array.
 
-    For each row, the finite values are sigma-clipped following
-    `astropy.stats.SigmaClip` (no-axis, no-grow case, as in
+    For each row, the finite values are sigma-clipped (see
     ``_sigma_clip_bounds``), and the mean, median, and population
     standard deviation of the surviving values are computed directly,
     without generating a clipped copy of the input. Optionally, the
