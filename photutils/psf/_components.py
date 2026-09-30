@@ -1399,7 +1399,7 @@ class PSFResultsAssembler:
 
         # Non-positive flux
         flag4_mask = results_tbl[flux_col] <= 0
-        flags[flag4_mask] |= PSF_FLAGS.NEGATIVE_FLUX
+        flags[flag4_mask] |= PSF_FLAGS.NON_POSITIVE_FLUX
 
         # Possible non-convergence
         if fit_error_indices is not None:

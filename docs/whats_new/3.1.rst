@@ -991,6 +991,8 @@ name states what it describes:
   the flag for fitted parameters near their bounds.
 * ``non_finite_localbkg`` (bit 2048) is now ``non_finite_local_bkg``,
   matching the ``local_bkg`` column name.
+* ``negative_flux`` (bit 4) is now ``non_positive_flux``, because the
+  flag is also set for a zero fitted flux.
 
 The flag constants have been renamed in the same way (e.g.,
 ``OUTSIDE_BOUNDS`` is now ``POSITION_OUTSIDE_IMAGE``). The old names

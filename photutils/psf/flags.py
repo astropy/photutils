@@ -55,7 +55,7 @@ class _PSFFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=4,
-            name='negative_flux',
+            name='non_positive_flux',
             description='non-positive flux',
             detailed_description=('The fitted flux value is negative or zero, '
                                   'which is non-physical.'),
@@ -145,6 +145,7 @@ class _PSFFlags(FlagRegistry):
         'npixfit_partial': 'n_pixels_fit_partial',
         'outside_bounds': 'position_outside_image',
         'non_finite_localbkg': 'non_finite_local_bkg',
+        'negative_flux': 'non_positive_flux',
     }
 
     # Remove in 4.0
@@ -152,12 +153,14 @@ class _PSFFlags(FlagRegistry):
         'NPIXFIT_PARTIAL': 'N_PIXELS_FIT_PARTIAL',
         'OUTSIDE_BOUNDS': 'POSITION_OUTSIDE_IMAGE',
         'NON_FINITE_LOCALBKG': 'NON_FINITE_LOCAL_BKG',
+        'NEGATIVE_FLUX': 'NON_POSITIVE_FLUX',
     }
 
     _DEPRECATED_SINCE: ClassVar = {
         'npixfit_partial': '3.0',
         'outside_bounds': '3.1',
         'non_finite_localbkg': '3.1',
+        'negative_flux': '3.1',
     }
     _DEPRECATED_UNTIL: ClassVar = '4.0'
 
@@ -231,7 +234,7 @@ def decode_psf_flags(flags, return_bit_values=False):
     >>> from photutils.psf import decode_psf_flags
     >>> issues = decode_psf_flags(5)  # bits 1 and 4 set
     >>> print(issues)
-    ['n_pixels_fit_partial', 'negative_flux']
+    ['n_pixels_fit_partial', 'non_positive_flux']
     >>> 'n_pixels_fit_partial' in issues
     True
     >>> 'no_convergence' in issues
@@ -282,7 +285,7 @@ def decode_psf_flags(flags, return_bit_values=False):
     >>> for i, issues in enumerate(issues_list):
     ...     if issues:
     ...         print(f"Source {i+1}: {', '.join(issues)}")
-    Source 1: negative_flux
+    Source 1: non_positive_flux
     Source 3: n_pixels_fit_partial, no_covariance, too_few_pixels, \
 non_finite_position, non_finite_flux
     """

@@ -30,7 +30,7 @@ def test_decode_psf_flags():
     assert decoded == ['position_outside_image']
 
     decoded = decode_psf_flags(4)
-    assert decoded == ['negative_flux']
+    assert decoded == ['non_positive_flux']
 
     decoded = decode_psf_flags(8)
     assert decoded == ['no_convergence']
@@ -64,7 +64,7 @@ def test_decode_psf_flags():
 
     # Test combination of flags
     decoded = decode_psf_flags(5)  # bits 1 and 4
-    assert set(decoded) == {'n_pixels_fit_partial', 'negative_flux'}
+    assert set(decoded) == {'n_pixels_fit_partial', 'non_positive_flux'}
     assert len(decoded) == 2
 
     decoded = decode_psf_flags(136)  # bits 8 and 128
@@ -76,7 +76,7 @@ def test_decode_psf_flags():
                  + 2048 + 4096)  # 8191
     decoded = decode_psf_flags(all_flags)
     expected_all = ['n_pixels_fit_partial', 'position_outside_image',
-                    'negative_flux', 'no_convergence', 'no_covariance',
+                    'non_positive_flux', 'no_convergence', 'no_covariance',
                     'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
@@ -94,7 +94,8 @@ def test_decode_psf_flags():
     assert decoded_list[0] == []
     assert decoded_list[1] == ['n_pixels_fit_partial']
     assert decoded_list[2] == ['position_outside_image']
-    assert set(decoded_list[3]) == {'n_pixels_fit_partial', 'negative_flux'}
+    assert set(decoded_list[3]) == {'n_pixels_fit_partial',
+                                    'non_positive_flux'}
 
     # Test with numpy array
     flags_np = np.array([8, 16, 32])
@@ -114,7 +115,7 @@ def test_decode_psf_flags():
     issues = decode_psf_flags(136)
     assert 'no_convergence' in issues
     assert 'fully_masked' in issues
-    assert 'negative_flux' not in issues
+    assert 'non_positive_flux' not in issues
 
     # Test error conditions
     match = 'Flag value must be an integer'
@@ -174,7 +175,7 @@ def test_decode_psf_flags_edge_cases():
     large_flag = 2**16 - 1  # Much larger than our defined flags
     decoded = decode_psf_flags(large_flag)
     expected_all = ['n_pixels_fit_partial', 'position_outside_image',
-                    'negative_flux', 'no_convergence', 'no_covariance',
+                    'non_positive_flux', 'no_convergence', 'no_covariance',
                     'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
@@ -226,7 +227,7 @@ def test_psf_flags_constants():
     expected_constants = {
         'N_PIXELS_FIT_PARTIAL': 1,
         'POSITION_OUTSIDE_IMAGE': 2,
-        'NEGATIVE_FLUX': 4,
+        'NON_POSITIVE_FLUX': 4,
         'NO_CONVERGENCE': 8,
         'NO_COVARIANCE': 16,
         'NEAR_BOUND': 32,
@@ -260,7 +261,7 @@ def test_psf_flags_properties():
     # Test names property
     names = PSF_FLAGS.names
     expected_names = [
-        'n_pixels_fit_partial', 'position_outside_image', 'negative_flux',
+        'n_pixels_fit_partial', 'position_outside_image', 'non_positive_flux',
         'no_convergence', 'no_covariance', 'near_bound',
         'no_overlap', 'fully_masked', 'too_few_pixels',
         'non_finite_position', 'non_finite_flux', 'non_finite_local_bkg',
@@ -358,6 +359,7 @@ def test_psf_flags_get_definition():
     ('npixfit_partial', 'n_pixels_fit_partial', '3.0'),
     ('outside_bounds', 'position_outside_image', '3.1'),
     ('non_finite_localbkg', 'non_finite_local_bkg', '3.1'),
+    ('negative_flux', 'non_positive_flux', '3.1'),
 ])
 def test_psf_flags_deprecated_names(old_name, new_name, since):
     """
@@ -529,7 +531,7 @@ def test_decode_psf_flags_docstring():
     expected_flags = [
         "``'n_pixels_fit_partial'``",
         "``'position_outside_image'``",
-        "``'negative_flux'``",
+        "``'non_positive_flux'``",
         "``'no_convergence'``",
         "``'no_covariance'``",
         "``'near_bound'``",

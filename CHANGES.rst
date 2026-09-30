@@ -1177,9 +1177,10 @@ API Changes
 
   - The following PSF flags have been renamed, along with their
     uppercase constants: ``outside_bounds`` (bit 2) to
-    ``position_outside_image`` and ``non_finite_localbkg`` (bit 2048)
-    to ``non_finite_local_bkg``. The old names are deprecated and will
-    be removed in version 4.0. ``decode_psf_flags`` now returns the new
+    ``position_outside_image``, ``non_finite_localbkg`` (bit 2048)
+    to ``non_finite_local_bkg``, and ``negative_flux`` (bit 4) to
+    ``non_positive_flux``. The old names are deprecated and will be
+    removed in version 4.0. ``decode_psf_flags`` now returns the new
     names. [#2449]
 
 - ``photutils.segmentation``
