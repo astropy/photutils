@@ -853,10 +853,10 @@ def test_grouped_fit_two_image_psfs():
         gc.enable()
 
 
-def test_near_bound_flag_grouped():
+def test_parameter_near_bound_flag_grouped():
     """
-    Regression test that the NEAR_BOUND flag (bit 32) is set for
-    grouped sources, matching single-source behavior.
+    Regression test that the PARAMETER_NEAR_BOUND flag (bit 32) is set
+    for grouped sources, matching single-source behavior.
     """
     model = CircularGaussianPRF(fwhm=2.7)
     data, params = make_psf_model_image(
@@ -2632,11 +2632,11 @@ def test_finder_empty_table():
     assert phot is None
 
 
-def test_near_bound_flag_model_bounds():
+def test_parameter_near_bound_flag_model_bounds():
     """
-    Regression test that the near_bound flag (bit 32) is set when the
-    fit is pinned at a bound set on the PSF model itself, without the
-    xy_bounds keyword.
+    Regression test that the parameter_near_bound flag (bit 32) is set
+    when the fit is pinned at a bound set on the PSF model itself,
+    without the xy_bounds keyword.
     """
     model = CircularGaussianPRF(fwhm=2.7)
     data, params = make_psf_model_image((35, 35), model, 1,
@@ -2654,11 +2654,11 @@ def test_near_bound_flag_model_bounds():
     assert phot['flags'][0] & 32
 
 
-def test_near_bound_flag_flux_bounds_units():
+def test_parameter_near_bound_flag_flux_bounds_units():
     """
-    Regression test that the near_bound flag (bit 32) is evaluated for
-    a flux parameter with bounds when the data has units (the fitted
-    flux is then a Quantity).
+    Regression test that the parameter_near_bound flag (bit 32) is
+    evaluated for a flux parameter with bounds when the data has units
+    (the fitted flux is then a Quantity).
     """
     unit = u.Jy
     model = CircularGaussianPRF(fwhm=2.7)

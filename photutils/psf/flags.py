@@ -76,7 +76,7 @@ class _PSFFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=32,
-            name='near_bound',
+            name='parameter_near_bound',
             description='fitted parameter near a bound',
             detailed_description=('One or more fitted parameters are very '
                                   'close to their imposed bounds.'),
@@ -146,6 +146,7 @@ class _PSFFlags(FlagRegistry):
         'outside_bounds': 'position_outside_image',
         'non_finite_localbkg': 'non_finite_local_bkg',
         'negative_flux': 'non_positive_flux',
+        'near_bound': 'parameter_near_bound',
     }
 
     # Remove in 4.0
@@ -154,6 +155,7 @@ class _PSFFlags(FlagRegistry):
         'OUTSIDE_BOUNDS': 'POSITION_OUTSIDE_IMAGE',
         'NON_FINITE_LOCALBKG': 'NON_FINITE_LOCAL_BKG',
         'NEGATIVE_FLUX': 'NON_POSITIVE_FLUX',
+        'NEAR_BOUND': 'PARAMETER_NEAR_BOUND',
     }
 
     _DEPRECATED_SINCE: ClassVar = {
@@ -161,6 +163,7 @@ class _PSFFlags(FlagRegistry):
         'outside_bounds': '3.1',
         'non_finite_localbkg': '3.1',
         'negative_flux': '3.1',
+        'near_bound': '3.1',
     }
     _DEPRECATED_UNTIL: ClassVar = '4.0'
 

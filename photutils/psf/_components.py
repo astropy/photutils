@@ -1429,7 +1429,7 @@ class PSFResultsAssembler:
                 if isinstance(value, u.Quantity):
                     value = value.value
                 if np.any(np.abs(bounds - value) <= bound_tol):
-                    flags[index] |= PSF_FLAGS.NEAR_BOUND
+                    flags[index] |= PSF_FLAGS.PARAMETER_NEAR_BOUND
                     break
 
         # Invalid source reasons. Sources invalid because of a

@@ -988,11 +988,13 @@ name states what it describes:
 
 * ``outside_bounds`` (bit 2) is now ``position_outside_image``. The
   new name states what is outside the image and avoids confusion with
-  the flag for fitted parameters near their bounds.
-* ``non_finite_localbkg`` (bit 2048) is now ``non_finite_local_bkg``,
-  matching the ``local_bkg`` column name.
+  ``parameter_near_bound``.
 * ``negative_flux`` (bit 4) is now ``non_positive_flux``, because the
   flag is also set for a zero fitted flux.
+* ``near_bound`` (bit 32) is now ``parameter_near_bound``, stating
+  that a fitted parameter is near its bound.
+* ``non_finite_localbkg`` (bit 2048) is now ``non_finite_local_bkg``,
+  matching the ``local_bkg`` column name.
 
 The flag constants have been renamed in the same way (e.g.,
 ``OUTSIDE_BOUNDS`` is now ``POSITION_OUTSIDE_IMAGE``). The old names
