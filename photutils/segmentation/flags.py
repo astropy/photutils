@@ -163,35 +163,6 @@ class _SegmentationFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=1024,
-            name='centroid_win_fallback',
-            description=('windowed centroid failed or fell back to '
-                         'the isophotal centroid'),
-            detailed_description=('The windowed centroid fell '
-                                  'outside the 1-sigma moment '
-                                  'ellipse, the windowed flux was '
-                                  'non-positive, the windowed '
-                                  '2nd-order moments or covariance '
-                                  'determinant were negative, or '
-                                  'the iterated centroid was NaN. '
-                                  'In each of these cases, the '
-                                  'isophotal ``centroid`` value '
-                                  'was used instead. If the '
-                                  'half-light radius was not '
-                                  'finite, the windowed centroid '
-                                  'could not be computed and is '
-                                  'NaN. See ``centroid_win`` for '
-                                  'algorithm details.'),
-        ),
-        FlagDefinition(
-            bit_value=2048,
-            name='centroid_quad_failed',
-            description='quadratic-fit centroid is non-finite',
-            detailed_description=('The quadratic-fit centroid '
-                                  '(``centroid_quad``) could not be '
-                                  'computed and is NaN.'),
-        ),
-        FlagDefinition(
-            bit_value=4096,
             name='kron_undefined',
             description='Kron aperture undefined or skipped',
             detailed_description=('The Kron aperture could not be '
@@ -214,7 +185,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'radii and can still be set.'),
         ),
         FlagDefinition(
-            bit_value=8192,
+            bit_value=2048,
             name='kron_minimum_radius',
             description=('minimum Kron radius or minimum circular '
                          'radius applied'),
@@ -227,7 +198,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'instead of the Kron ellipse.'),
         ),
         FlagDefinition(
-            bit_value=16384,
+            bit_value=4096,
             name='kron_no_overlap',
             description='Kron aperture fully outside the data',
             detailed_description=('The Kron aperture is fully '
@@ -236,7 +207,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'falls inside the data.'),
         ),
         FlagDefinition(
-            bit_value=32768,
+            bit_value=8192,
             name='kron_partial_overlap',
             description='Kron aperture partially outside the data',
             detailed_description=('The Kron aperture is partially '
@@ -245,7 +216,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'weight fall outside the data.'),
         ),
         FlagDefinition(
-            bit_value=65536,
+            bit_value=16384,
             name='kron_masked_pixels',
             description='masked pixels within the Kron aperture',
             detailed_description=('One or more input-masked pixels '
@@ -254,7 +225,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'aperture.'),
         ),
         FlagDefinition(
-            bit_value=131072,
+            bit_value=32768,
             name='kron_non_finite_data',
             description=('non-finite data values within the Kron '
                          'aperture'),
@@ -264,7 +235,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'non-finite.'),
         ),
         FlagDefinition(
-            bit_value=262144,
+            bit_value=65536,
             name='kron_non_finite_error',
             description=('non-finite error values within the Kron '
                          'aperture'),
@@ -275,7 +246,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'error is NaN.'),
         ),
         FlagDefinition(
-            bit_value=524288,
+            bit_value=131072,
             name='kron_neighbor_pixels',
             description=('neighbor-source pixels within the Kron '
                          'aperture'),
@@ -287,7 +258,7 @@ class _SegmentationFlags(FlagRegistry):
                                   '"mask" or "correct").'),
         ),
         FlagDefinition(
-            bit_value=1048576,
+            bit_value=262144,
             name='kron_uncorrected_pixels',
             description=('uncorrectable neighbor pixels within the '
                          'Kron aperture'),
@@ -300,7 +271,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'were set to zero instead.'),
         ),
         FlagDefinition(
-            bit_value=2097152,
+            bit_value=524288,
             name='local_bkg_too_few_pixels',
             description=('too few usable pixels to estimate the local '
                          'background'),

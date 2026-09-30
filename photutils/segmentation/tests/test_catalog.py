@@ -1587,22 +1587,22 @@ class TestSourceCatalogFlags:
         assert not np.any(cat.flags
                           & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
 
-    def test_centroid_flags_fully_masked(self):
+    def test_centroid_fallbacks_fully_masked(self):
         """
-        Test that a fully-masked source flags both centroid failures
-        (windowed centroid NaN, quadratic fit NaN).
+        Test that a fully-masked source reports both centroid fallbacks
+        (windowed centroid NaN, quadratic centroid NaN).
         """
         mask = np.zeros(self.data.shape, dtype=bool)
         mask[self.segm.data == self.segm.labels[0]] = True
         cat = SourceCatalog(self.data, self.segm, mask=mask)
         assert np.all(np.isnan(cat.centroid_quad[0]))
-        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
-        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+        assert cat.centroid_win_fallback[0]
+        assert cat.centroid_quad_fallback[0]
 
-    def test_centroid_flags_fully_masked_small(self):
+    def test_centroid_fallbacks_fully_masked_small(self):
         """
         Test that a fully-masked source smaller than the 3x3 quadratic
-        fit box flags both centroid failures.
+        fit box reports both centroid fallbacks.
         """
         data = np.zeros((21, 21))
         data[5:7, 5:7] = 10.0
@@ -1611,17 +1611,47 @@ class TestSourceCatalogFlags:
         mask = segm_data.astype(bool)
         cat = SourceCatalog(data, SegmentationImage(segm_data),
                             mask=mask)
-        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
-        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+        assert cat.centroid_win_fallback
+        assert cat.centroid_quad_fallback
 
-    def test_centroid_flags_not_set(self):
+    def test_centroid_fallbacks_not_set(self):
         """
-        Test that centroid flags are not set for clean resolved sources.
+        Test that the centroid fallbacks are not set for clean resolved
+        sources, and that computing the flags does not compute the
+        windowed or quadratic centroids.
         """
         cat = SourceCatalog(self.data, self.segm)
-        bits = (SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
-                | SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED)
-        assert not np.any(cat.flags & bits)
+        cat.flags  # noqa: B018
+        assert '_centroid_win_results' not in cat.__dict__
+        assert '_centroid_quad_results' not in cat.__dict__
+        assert not np.any(cat.centroid_win_fallback)
+        assert not np.any(cat.centroid_quad_fallback)
+
+    def test_centroid_quad_fallback(self):
+        """
+        Test that centroid_quad_fallback marks the peak pixel and
+        isophotal substitutions, whose values are finite.
+        """
+        data = np.zeros((30, 30))
+        segm_data = np.zeros((30, 30), dtype=int)
+        # Peak on the segment edge (the peak pixel is returned)
+        data[2:7, 2:7] = 1.0 + np.arange(5)
+        segm_data[2:7, 2:7] = 1
+        # A saddle without a maximum (the isophotal centroid is
+        # returned)
+        yy, xx = np.mgrid[-2:3, -2:3]
+        data[12:17, 12:17] = 10.0 + xx**2 - yy**2 + 0.1 * (xx == 0)
+        segm_data[12:17, 12:17] = 2
+        # A well-sampled peak (the fit is used)
+        y, x = np.mgrid[0:30, 0:30]
+        data += 10 * np.exp(-((x - 23.3)**2 + (y - 23.6)**2) / 4.0)
+        segm_data[20:27, 20:27] = 3
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+
+        assert_equal(cat.centroid_quad_fallback, [True, True, False])
+        assert np.all(np.isfinite(cat.centroid_quad))
+        assert_equal(cat.centroid_quad[0], [6.0, 2.0])
+        assert_allclose(cat.centroid_quad[2], [23.3, 23.6], atol=0.05)
 
     def test_kron_partial_overlap(self):
         """
@@ -2224,10 +2254,8 @@ def test_centroid_win(centroid_win_data):
     assert cat.x_centroid[1] == cat.x_centroid_win[1]
     assert cat.y_centroid[1] == cat.y_centroid_win[1]
 
-    # Only the reset source is flagged
-    win_flags = cat.flags & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
-    assert not win_flags[0]
-    assert win_flags[1]
+    # Only the reset source reports the fallback
+    assert_equal(cat.centroid_win_fallback, [False, True])
 
 
 def test_centroid_win_migrate():
@@ -2249,8 +2277,8 @@ def test_centroid_win_migrate():
     for idx in indices:
         assert_equal(cat.centroid_win[idx], cat.centroid[idx])
         # The windowed centroid diverged off the image (a non-ellipse
-        # fallback condition), so the fallback flag is set.
-        assert cat.flags[idx] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+        # fallback condition), so the fallback is reported
+        assert cat.centroid_win_fallback[idx]
 
 
 def test_background_centroid_coordinate_order():

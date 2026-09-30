@@ -2108,11 +2108,10 @@ class SourceCatalog:
         the values.
 
         If a ``detection_catalog`` was input, the shape
-        (``undefined_shape``, ``singular_covariance``), centroid
-        (``centroid_win_fallback``, ``centroid_quad_failed``),
-        and Kron aperture geometry (``kron_undefined``,
-        ``kron_minimum_radius``) flags derive from the detection
-        catalog. The Kron photometry-loop flags (``kron_no_overlap``,
+        (``undefined_shape``, ``singular_covariance``) and Kron
+        aperture geometry (``kron_undefined``, ``kron_minimum_radius``)
+        flags derive from the detection catalog. The Kron
+        photometry-loop flags (``kron_no_overlap``,
         ``kron_partial_overlap``, ``kron_masked_pixels``,
         ``kron_non_finite_data``, ``kron_non_finite_error``,
         ``kron_neighbor_pixels``, ``kron_uncorrected_pixels``), like the
@@ -2120,11 +2119,13 @@ class SourceCatalog:
         ``local_bkg_too_few_pixels`` flags, are evaluated on this
         catalog's own inputs.
 
-        Accessing ``flags`` computes the moment, covariance, centroid,
-        local background, and Kron-aperture properties if they have not
-        already
-        been computed (the results are cached and reused by those
-        properties).
+        Accessing ``flags`` computes the moment, covariance, local
+        background, and Kron-aperture properties if they have not
+        already been computed (the results are cached and reused by
+        those properties). The windowed and quadratic centroid
+        fallbacks are reported by the `centroid_win_fallback` and
+        `centroid_quad_fallback` properties instead of by flags, so
+        that the flags do not require computing those centroids.
 
         The flags are:
 
@@ -2186,16 +2187,6 @@ class SourceCatalog:
         # matrix
         flags[self._singular_covariance_mask] |= (
             SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
-
-        # Windowed centroid is NaN or fell back to the isophotal
-        # centroid
-        flags[self._centroid_win_fallback] |= (
-            SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK)
-
-        # Quadratic-fit centroid is non-finite
-        quad = self._array('centroid_quad')
-        quad_failed = ~np.all(np.isfinite(quad), axis=1)
-        flags[quad_failed] |= SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
 
         # Kron-aperture flags
         flags |= self._kron_flags
@@ -2760,7 +2751,7 @@ class SourceCatalog:
         otherwise.
 
         This is the single computation behind `centroid_win`,
-        `centroid_win_err`, and ``_centroid_win_fallback``. See
+        `centroid_win_err`, and `centroid_win_fallback`. See
         `centroid_win` for the algorithm details.
         """
         # Use .copy() to avoid mutating the cached flux_radius value
@@ -2819,10 +2810,14 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
-    def _centroid_win_fallback(self):
+    def centroid_win_fallback(self):
         """
-        A boolean array that is `True` where the windowed centroid is
-        NaN or fell back to the isophotal centroid.
+        A boolean array that is `True` where the windowed centroid
+        (`centroid_win`) fell back to the isophotal `centroid` or is
+        NaN.
+
+        See `centroid_win` for the fallback conditions. It is analogous
+        to `SourceExtractor`_'s FLAGS_WIN parameter.
         """
         return self._centroid_win_results[:, 5].astype(bool)
 
@@ -2966,14 +2961,19 @@ class SourceCatalog:
     @use_detcat
     def _centroid_quad_results(self):
         """
-        The quadratic centroid coordinates, relative to the cutout data,
-        and their error variances and covariance as a 2D array with
-        columns ``(x, y, var_x, var_y, cov_xy)`` and shape ``(n_labels,
-        5)``.
+        The quadratic centroid coordinates, relative to the cutout
+        data, their error variances and covariance, and the fallback
+        indicator as a 2D array with columns ``(x, y, var_x, var_y,
+        cov_xy, fallback)`` and shape ``(n_labels, 6)``.
+
+        The ``fallback`` column is 1.0 for sources whose centroid is not
+        the maximum of a quadratic fit (the peak pixel position, the
+        isophotal centroid, or NaN), and 0.0 otherwise.
 
         This is the single computation behind `cutout_centroid_quad`,
-        `centroid_quad`, and `centroid_quad_err`. See
-        `cutout_centroid_quad` for the algorithm details.
+        `centroid_quad`, `centroid_quad_err`, and
+        `centroid_quad_fallback`. See `cutout_centroid_quad` for the
+        algorithm details.
         """
         # Precompute the pseudo-inverse for the 3x3 relative coordinate
         # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
@@ -3007,7 +3007,7 @@ class SourceCatalog:
         ny = iymax - iymin
         n_src = len(status)
 
-        results = np.full((n_src, 5), np.nan)
+        results = np.full((n_src, 6), np.nan)
 
         # If the peak is at the edge of the cutout, return the peak
         # position. No fit is performed, so no errors can be propagated.
@@ -3084,6 +3084,7 @@ class SourceCatalog:
             results[nan_mask, 3] = iso_cov[nan_mask, 1, 1]
             results[nan_mask, 4] = iso_cov[nan_mask, 0, 1]
 
+        results[:, 5] = ~fit
         return results
 
     @cached_property
@@ -3131,7 +3132,7 @@ class SourceCatalog:
         the centroid with ``fit_boxsize=3``.
 
         Because this centroid is based on fitting data, it can fail for
-        many reasons, returning (np.nan, np.nan):
+        many reasons including:
 
         * quadratic fit failed
         * quadratic fit does not have a maximum
@@ -3139,12 +3140,33 @@ class SourceCatalog:
         * not enough unmasked data points (6 are required)
         * no unmasked pixels within the source segment
 
+        In these cases, the isophotal `centroid` is returned instead
+        (NaN where the isophotal centroid is NaN).
+
         Also note that a fit is not performed if the maximum data value
         is at the edge of the source segment. In this case, the position
         of the maximum pixel will be returned.
+
+        The `centroid_quad_fallback` property is `True` for sources
+        without a quadratic-fit centroid.
         """
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid_quad + origin
+
+    @cached_property
+    @use_detcat
+    def centroid_quad_fallback(self):
+        """
+        A boolean array that is `True` where the quadratic centroid
+        (`centroid_quad`) is not the maximum of a quadratic fit.
+
+        This is the case where the maximum data value is at the edge
+        of the source segment (the position of the maximum pixel is
+        returned), where the fit failed (the isophotal `centroid` is
+        returned), or where the centroid is NaN. See `centroid_quad`
+        for details.
+        """
+        return self._centroid_quad_results[:, 5].astype(bool)
 
     @cached_property
     @use_detcat

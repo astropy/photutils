@@ -384,6 +384,12 @@ New Features
     copies are made when the input image arrays do not have a common
     ``float32`` or ``float64`` dtype. [#2446]
 
+  - Added ``centroid_win_fallback`` and ``centroid_quad_fallback``
+    boolean properties to ``SourceCatalog`` that are ``True`` where the
+    windowed or quadratic centroid is not a windowed or quadratic-fit
+    position (i.e., the isophotal centroid or peak pixel was
+    substituted, or the value is NaN). [#2449]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
