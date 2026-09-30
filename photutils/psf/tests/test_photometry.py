@@ -1590,6 +1590,36 @@ def test_flag16_missing_covariance():
     assert (phot['flags'][0] & 16) == 16
 
 
+@pytest.mark.filterwarnings('ignore:One or more fit.* may not have '
+                            'converged:astropy.utils.exceptions.'
+                            'AstropyUserWarning')
+@pytest.mark.parametrize('fitter', [TRFLSQFitter, LevMarLSQFitter])
+def test_flag16_degenerate_covariance(fitter):
+    """
+    Test that non-finite parameter errors from a degenerate fit are
+    always flagged as missing covariance (flag=16).
+
+    Two grouped sources at the same position have degenerate fluxes,
+    so the fit covariance matrix is singular. The fitters either
+    return a covariance matrix with finite (but large) errors or none
+    at all. Whether the fit also emits a convergence warning depends
+    on the platform, so that warning is ignored.
+    """
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    sources = QTable({'x_0': [12.0], 'y_0': [12.0], 'flux': [1000.0]})
+    data = make_model_image((25, 25), psf_model, sources)
+    data += make_noise_image(data.shape, mean=0.0, stddev=1.0, seed=0)
+    init_params = QTable({'x_0': [12.0, 12.0], 'y_0': [12.0, 12.0],
+                          'flux': [500.0, 500.0], 'group_id': [1, 1]})
+
+    psfphot = PSFPhotometry(psf_model, (7, 7), fitter=fitter())
+    phot = psfphot(data, init_params=init_params)
+
+    errs = np.array([phot[col] for col in ('x_err', 'y_err', 'flux_err')])
+    non_finite = ~np.all(np.isfinite(errs), axis=0)
+    assert_equal(non_finite, (phot['flags'] & 16) > 0)
+
+
 def test_flag32_parameter_at_bounds():
     """
     Test flag=32 when fitted x/y are exactly at imposed bounds.
