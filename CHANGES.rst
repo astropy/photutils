@@ -1186,11 +1186,6 @@ API Changes
 
 - ``photutils.segmentation``
 
-  - The ``deblend_sources`` "too many markers" warning key stored in
-    the returned ``SegmentationImage.info['warnings']`` dictionary has
-    been renamed from ``'nmarkers'`` to ``'n_markers'``, consistent
-    with the ``n_*`` naming used elsewhere in photutils. [#2346]
-
   - The deblending warning information stored by ``deblend_sources``
     in the returned ``SegmentationImage`` ``info`` dictionary has been
     restructured. The affected input labels are now stored as
