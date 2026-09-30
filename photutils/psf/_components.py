@@ -1384,12 +1384,12 @@ class PSFResultsAssembler:
         y_col = self.param_mapper.fit_colnames['y']
         flux_col = self.param_mapper.fit_colnames['flux']
 
-        # Flag=1: n_pixels_fit smaller than full fit_shape region
+        # n_pixels_fit smaller than full fit_shape region
         flag1_mask = (results_tbl['n_pixels_fit']
                       < np.prod(self.fit_shape))
         flags[flag1_mask] |= PSF_FLAGS.N_PIXELS_FIT_PARTIAL
 
-        # Flag=2: fitted position outside input image bounds
+        # Fitted position outside input image bounds
         ny, nx = shape
         x_fit = results_tbl[x_col]
         y_fit = results_tbl[y_col]
@@ -1397,20 +1397,20 @@ class PSFResultsAssembler:
                       | (y_fit > ny - 0.5))
         flags[flag2_mask] |= PSF_FLAGS.OUTSIDE_BOUNDS
 
-        # Flag=4: non-positive flux
+        # Non-positive flux
         flag4_mask = results_tbl[flux_col] <= 0
         flags[flag4_mask] |= PSF_FLAGS.NEGATIVE_FLUX
 
-        # Flag=8: possible non-convergence
+        # Possible non-convergence
         if fit_error_indices is not None:
             flags[fit_error_indices] |= PSF_FLAGS.NO_CONVERGENCE
 
-        # Flag=16: missing parameter covariance
+        # Missing parameter covariance
         missing_cov_mask = np.array(['param_cov' not in info
                                      for info in fit_info])
         flags[missing_cov_mask] |= PSF_FLAGS.NO_COVARIANCE
 
-        # Flag=32: near a fitted-parameter bound. Bounds may come from
+        # Near a fitted-parameter bound. Bounds may come from
         # the xy_bounds keyword or be set directly on the PSF model.
         bound_tol = 0.01
         param_names = [col for col in fitted_models_table.colnames
@@ -1432,8 +1432,8 @@ class PSFResultsAssembler:
                     flags[index] |= PSF_FLAGS.NEAR_BOUND
                     break
 
-        # Flag=64, 128, 256: invalid source reasons. Sources invalid
-        # because of a non-finite input flux get bit 1024 below from
+        # Invalid source reasons. Sources invalid because of a
+        # non-finite input flux get the non-finite flux flag below from
         # their NaN fitted flux.
         if invalid_reasons is not None:
             reasons = np.array(invalid_reasons, dtype=object)
@@ -1441,16 +1441,16 @@ class PSFResultsAssembler:
             flags[reasons == 'fully_masked'] |= PSF_FLAGS.FULLY_MASKED
             flags[reasons == 'too_few_pixels'] |= PSF_FLAGS.TOO_FEW_PIXELS
 
-        # Flag=512: non-finite fitted position
+        # Non-finite fitted position
         non_finite_pos_mask = ~np.isfinite(x_fit) | ~np.isfinite(y_fit)
         flags[non_finite_pos_mask] |= PSF_FLAGS.NON_FINITE_POSITION
 
-        # Flag=1024: non-finite fitted flux
+        # Non-finite fitted flux
         flux_fit = results_tbl[flux_col]
         non_finite_flux_mask = ~np.isfinite(flux_fit)
         flags[non_finite_flux_mask] |= PSF_FLAGS.NON_FINITE_FLUX
 
-        # Flag=2048: non-finite local background
+        # Non-finite local background
         local_bkg_vals = init_params['local_bkg']
         if hasattr(local_bkg_vals, 'value'):
             # Handle Quantity
