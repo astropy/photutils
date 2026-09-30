@@ -979,21 +979,25 @@ is deprecated and will be removed in version 4.0. All property
 calculations are now computed for all sources at once in compiled
 code, so no progress bar is displayed and the keyword has no effect.
 
-PSF ``outside_bounds`` Flag Renamed
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PSF Flags Renamed
+^^^^^^^^^^^^^^^^^
 
-The ``outside_bounds`` flag (bit 2) of
-`~photutils.psf.PSFPhotometry` and
-`~photutils.psf.IterativePSFPhotometry` has been renamed to
-``position_outside_image`` to state what is outside the image and to
-avoid confusion with the ``near_bound`` flag, which refers to
-parameter bounds. The ``OUTSIDE_BOUNDS`` constant has been renamed
-to ``POSITION_OUTSIDE_IMAGE``. The old names are deprecated and
-will be removed in version 4.0. The bit value is unchanged, but
-:func:`~photutils.psf.decode_psf_flags` now returns the new name, so
-code that compares decoded names with ``'outside_bounds'`` must be
-updated.
+Several flags of `~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry` have been renamed so that each
+name states what it describes:
 
+* ``outside_bounds`` (bit 2) is now ``position_outside_image``. The
+  new name states what is outside the image and avoids confusion with
+  the flag for fitted parameters near their bounds.
+* ``non_finite_localbkg`` (bit 2048) is now ``non_finite_local_bkg``,
+  matching the ``local_bkg`` column name.
+
+The flag constants have been renamed in the same way (e.g.,
+``OUTSIDE_BOUNDS`` is now ``POSITION_OUTSIDE_IMAGE``). The old names
+are deprecated and will be removed in version 4.0. The bit values are
+unchanged, but :func:`~photutils.psf.decode_psf_flags` now returns the
+new names, so code that compares decoded names with the old names must
+be updated.
 
 Removed Deprecations
 --------------------

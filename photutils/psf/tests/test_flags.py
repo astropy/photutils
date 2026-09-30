@@ -57,7 +57,7 @@ def test_decode_psf_flags():
     assert decoded == ['non_finite_flux']
 
     decoded = decode_psf_flags(2048)
-    assert decoded == ['non_finite_localbkg']
+    assert decoded == ['non_finite_local_bkg']
 
     decoded = decode_psf_flags(4096)
     assert decoded == ['position_outside_fit_region']
@@ -80,7 +80,7 @@ def test_decode_psf_flags():
                     'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
-                    'non_finite_localbkg', 'position_outside_fit_region']
+                    'non_finite_local_bkg', 'position_outside_fit_region']
     assert set(decoded) == set(expected_all)
     assert len(decoded) == 13
 
@@ -178,7 +178,7 @@ def test_decode_psf_flags_edge_cases():
                     'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
-                    'non_finite_localbkg', 'position_outside_fit_region']
+                    'non_finite_local_bkg', 'position_outside_fit_region']
     assert set(decoded) == set(expected_all)
 
     match = 'Flag value must be a non-negative integer'
@@ -235,7 +235,7 @@ def test_psf_flags_constants():
         'TOO_FEW_PIXELS': 256,
         'NON_FINITE_POSITION': 512,
         'NON_FINITE_FLUX': 1024,
-        'NON_FINITE_LOCALBKG': 2048,
+        'NON_FINITE_LOCAL_BKG': 2048,
         'POSITION_OUTSIDE_FIT_REGION': 4096,
     }
 
@@ -263,7 +263,7 @@ def test_psf_flags_properties():
         'n_pixels_fit_partial', 'position_outside_image', 'negative_flux',
         'no_convergence', 'no_covariance', 'near_bound',
         'no_overlap', 'fully_masked', 'too_few_pixels',
-        'non_finite_position', 'non_finite_flux', 'non_finite_localbkg',
+        'non_finite_position', 'non_finite_flux', 'non_finite_local_bkg',
         'position_outside_fit_region',
     ]
     assert set(names) == set(expected_names)
@@ -295,7 +295,7 @@ def test_psf_flags_get_methods():
     assert PSF_FLAGS.get_name(256) == 'too_few_pixels'
     assert PSF_FLAGS.get_name(512) == 'non_finite_position'
     assert PSF_FLAGS.get_name(1024) == 'non_finite_flux'
-    assert PSF_FLAGS.get_name(2048) == 'non_finite_localbkg'
+    assert PSF_FLAGS.get_name(2048) == 'non_finite_local_bkg'
     assert PSF_FLAGS.get_name(4096) == 'position_outside_fit_region'
 
     # Test get_bit_value
@@ -357,6 +357,7 @@ def test_psf_flags_get_definition():
 @pytest.mark.parametrize(('old_name', 'new_name', 'since'), [
     ('npixfit_partial', 'n_pixels_fit_partial', '3.0'),
     ('outside_bounds', 'position_outside_image', '3.1'),
+    ('non_finite_localbkg', 'non_finite_local_bkg', '3.1'),
 ])
 def test_psf_flags_deprecated_names(old_name, new_name, since):
     """

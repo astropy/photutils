@@ -1175,11 +1175,12 @@ API Changes
     string value for either parameter now raises a ``ValueError``.
     [#2421]
 
-  - The ``outside_bounds`` PSF flag (bit 2) has been renamed to
-    ``position_outside_image``, and the ``OUTSIDE_BOUNDS`` constant
-    to ``POSITION_OUTSIDE_IMAGE``. The old names are deprecated and
-    will be removed in version 4.0. ``decode_psf_flags`` now returns
-    the new name. [#2449]
+  - The following PSF flags have been renamed, along with their
+    uppercase constants: ``outside_bounds`` (bit 2) to
+    ``position_outside_image`` and ``non_finite_localbkg`` (bit 2048)
+    to ``non_finite_local_bkg``. The old names are deprecated and will
+    be removed in version 4.0. ``decode_psf_flags`` now returns the new
+    names. [#2449]
 
 - ``photutils.segmentation``
 

@@ -118,7 +118,7 @@ class _PSFFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=2048,
-            name='non_finite_localbkg',
+            name='non_finite_local_bkg',
             description='non-finite local background',
             detailed_description=('The local background value is NaN or '
                                   'inf, so it was not subtracted before '
@@ -144,17 +144,20 @@ class _PSFFlags(FlagRegistry):
     _DEPRECATED_FLAG_NAMES: ClassVar = {
         'npixfit_partial': 'n_pixels_fit_partial',
         'outside_bounds': 'position_outside_image',
+        'non_finite_localbkg': 'non_finite_local_bkg',
     }
 
     # Remove in 4.0
     _DEPRECATED_CONSTANT_NAMES: ClassVar = {
         'NPIXFIT_PARTIAL': 'N_PIXELS_FIT_PARTIAL',
         'OUTSIDE_BOUNDS': 'POSITION_OUTSIDE_IMAGE',
+        'NON_FINITE_LOCALBKG': 'NON_FINITE_LOCAL_BKG',
     }
 
     _DEPRECATED_SINCE: ClassVar = {
         'npixfit_partial': '3.0',
         'outside_bounds': '3.1',
+        'non_finite_localbkg': '3.1',
     }
     _DEPRECATED_UNTIL: ClassVar = '4.0'
 

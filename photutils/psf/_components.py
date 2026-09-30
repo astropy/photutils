@@ -1456,7 +1456,7 @@ class PSFResultsAssembler:
             # Handle Quantity
             local_bkg_vals = local_bkg_vals.value
         non_finite_bkg_mask = ~np.isfinite(local_bkg_vals)
-        flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCALBKG
+        flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCAL_BKG
 
         # Flag=4096: fitted position outside the fitted data region.
         # The region is the fit_shape box around the initial position,
