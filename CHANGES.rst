@@ -278,6 +278,12 @@ New Features
     in a single vectorized operation instead of a loop over the stars,
     which makes each build iteration about 20% faster. [#2422]
 
+  - Added a ``PSFPhotometry`` and ``IterativePSFPhotometry`` flag (bit
+    4096, ``outside_fit_region``) that is set when the fitted source
+    position is outside the region of fitted data, which is the
+    ``fit_shape`` box around the initial position, trimmed to the
+    input image. [#2450]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``

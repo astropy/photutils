@@ -124,6 +124,18 @@ class _PSFFlags(FlagRegistry):
                                   'inf, so it was not subtracted before '
                                   'fitting.'),
         ),
+        FlagDefinition(
+            bit_value=4096,
+            name='outside_fit_region',
+            description='fitted position outside the fitted data region',
+            detailed_description=('The fitted source position is outside '
+                                  'the region of fitted data, which is the '
+                                  'fit_shape box around the initial '
+                                  'position, trimmed to the input image. '
+                                  'The fit is constrained only by the PSF '
+                                  'wings, often because it moved toward a '
+                                  'neighboring source.'),
+        ),
     ]
 
     domain: ClassVar = 'psf'

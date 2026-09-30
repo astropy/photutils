@@ -1458,6 +1458,26 @@ class PSFResultsAssembler:
         non_finite_bkg_mask = ~np.isfinite(local_bkg_vals)
         flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCALBKG
 
+        # Flag=4096: fitted position outside the fitted data region.
+        # The region is the fit_shape box around the initial position,
+        # trimmed to the image, matching the overlap_slices cutout in
+        # get_source_cutout_data. Its edges are the outer pixel edges.
+        # Non-finite positions compare as False and are not flagged.
+        fit_ny, fit_nx = self.fit_shape
+        x_init = np.asarray(
+            init_params[self.param_mapper.init_colnames['x']], dtype=float)
+        y_init = np.asarray(
+            init_params[self.param_mapper.init_colnames['y']], dtype=float)
+        x_start = np.ceil(x_init - fit_nx / 2.0)
+        y_start = np.ceil(y_init - fit_ny / 2.0)
+        x_min = np.maximum(x_start, 0) - 0.5
+        y_min = np.maximum(y_start, 0) - 0.5
+        x_max = np.minimum(x_start + fit_nx, nx) - 0.5
+        y_max = np.minimum(y_start + fit_ny, ny) - 0.5
+        flag4096_mask = ((x_fit < x_min) | (x_fit > x_max)
+                         | (y_fit < y_min) | (y_fit > y_max))
+        flags[flag4096_mask] |= PSF_FLAGS.OUTSIDE_FIT_REGION
+
         return flags
 
     def assemble_results_table(self, init_params, fit_params, data_shape,

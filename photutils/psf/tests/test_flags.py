@@ -59,6 +59,9 @@ def test_decode_psf_flags():
     decoded = decode_psf_flags(2048)
     assert decoded == ['non_finite_localbkg']
 
+    decoded = decode_psf_flags(4096)
+    assert decoded == ['outside_fit_region']
+
     # Test combination of flags
     decoded = decode_psf_flags(5)  # bits 1 and 4
     assert set(decoded) == {'n_pixels_fit_partial', 'negative_flux'}
@@ -70,15 +73,15 @@ def test_decode_psf_flags():
 
     # Test with all flags set
     all_flags = (1 + 2 + 4 + 8 + 16 + 32 + 64 + 128 + 256 + 512 + 1024
-                 + 2048)  # 4095
+                 + 2048 + 4096)  # 8191
     decoded = decode_psf_flags(all_flags)
     expected_all = ['n_pixels_fit_partial', 'outside_bounds', 'negative_flux',
                     'no_convergence', 'no_covariance', 'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
-                    'non_finite_localbkg']
+                    'non_finite_localbkg', 'outside_fit_region']
     assert set(decoded) == set(expected_all)
-    assert len(decoded) == 12
+    assert len(decoded) == 13
 
     # Test with array input
     flags_array = [0, 1, 2, 5]
@@ -173,7 +176,7 @@ def test_decode_psf_flags_edge_cases():
                     'no_convergence', 'no_covariance', 'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
-                    'non_finite_localbkg']
+                    'non_finite_localbkg', 'outside_fit_region']
     assert set(decoded) == set(expected_all)
 
     match = 'Flag value must be a non-negative integer'
@@ -231,6 +234,7 @@ def test_psf_flags_constants():
         'NON_FINITE_POSITION': 512,
         'NON_FINITE_FLUX': 1024,
         'NON_FINITE_LOCALBKG': 2048,
+        'OUTSIDE_FIT_REGION': 4096,
     }
 
     for const_name, expected_value in expected_constants.items():
@@ -246,9 +250,10 @@ def test_psf_flags_properties():
     """
     # Test bit_values property
     bit_values = PSF_FLAGS.bit_values
-    expected_bits = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+    expected_bits = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048,
+                     4096]
     assert set(bit_values) == set(expected_bits)
-    assert len(bit_values) == 12
+    assert len(bit_values) == 13
 
     # Test names property
     names = PSF_FLAGS.names
@@ -257,14 +262,15 @@ def test_psf_flags_properties():
         'no_convergence', 'no_covariance', 'near_bound',
         'no_overlap', 'fully_masked', 'too_few_pixels',
         'non_finite_position', 'non_finite_flux', 'non_finite_localbkg',
+        'outside_fit_region',
     ]
     assert set(names) == set(expected_names)
-    assert len(names) == 12
+    assert len(names) == 13
 
     # Test flag_dict property
     flag_dict = PSF_FLAGS.flag_dict
     assert isinstance(flag_dict, dict)
-    assert len(flag_dict) == 12
+    assert len(flag_dict) == 13
     for bit_val, name in flag_dict.items():
         assert bit_val in expected_bits
         assert name in expected_names
@@ -272,7 +278,7 @@ def test_psf_flags_properties():
     # Test all_flags property
     all_flags = PSF_FLAGS.all_flags
     assert isinstance(all_flags, list)
-    assert len(all_flags) == 12
+    assert len(all_flags) == 13
     for flag_def in all_flags:
         assert isinstance(flag_def, FlagDefinition)
 
@@ -288,6 +294,7 @@ def test_psf_flags_get_methods():
     assert PSF_FLAGS.get_name(512) == 'non_finite_position'
     assert PSF_FLAGS.get_name(1024) == 'non_finite_flux'
     assert PSF_FLAGS.get_name(2048) == 'non_finite_localbkg'
+    assert PSF_FLAGS.get_name(4096) == 'outside_fit_region'
 
     # Test get_bit_value
     assert PSF_FLAGS.get_bit_value('n_pixels_fit_partial') == 1
@@ -434,7 +441,7 @@ def test_psf_flags_completeness():
     Test that _PSFFlags covers all expected flag scenarios.
     """
     # Test that we have the expected number of flags
-    assert len(PSF_FLAGS.all_flags) == 12
+    assert len(PSF_FLAGS.all_flags) == 13
 
     # Test that bit values are powers of 2
     for bit_val in PSF_FLAGS.bit_values:
@@ -460,7 +467,7 @@ def test_psf_flags_completeness():
         all_combined |= bit_val
 
     decoded_all = decode_psf_flags(all_combined)
-    assert len(decoded_all) == 12
+    assert len(decoded_all) == 13
     assert set(decoded_all) == set(PSF_FLAGS.names)
 
 
@@ -487,6 +494,7 @@ def test_psf_classes_docstrings():
             'no overlap with valid data pixels',
             'All pixels in the source fitting region are masked',
             'Insufficient unmasked pixels available for reliable PSF fitting',
+            'outside the region of fitted data',
         ]
 
         for flag_desc in dynamic_flags:
@@ -578,11 +586,12 @@ def test_decode_psf_flags_return_bit_values():
 
     # Test with all flags set
     all_flags = (1 + 2 + 4 + 8 + 16 + 32 + 64 + 128 + 256 + 512 + 1024
-                 + 2048)  # 4095
+                 + 2048 + 4096)  # 8191
     decoded = decode_psf_flags(all_flags, return_bit_values=True)
-    expected_all = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+    expected_all = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048,
+                    4096]
     assert set(decoded) == set(expected_all)
-    assert len(decoded) == 12
+    assert len(decoded) == 13
 
     # Test with array input
     flags_array = [0, 1, 2, 5]

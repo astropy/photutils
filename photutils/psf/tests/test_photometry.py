@@ -1485,7 +1485,9 @@ def test_flag2_boundaries():
     psfphot = PSFPhotometry(psf_model, fit_shape)
     phot = psfphot(data, init_params=init_params)
     assert len(phot) == 8
-    assert_equal(phot['flags'][[2, 3, 6, 7]], [3, 3, 3, 3])
+    # Sources fit outside the image are also outside the fit region,
+    # which is trimmed to the image
+    assert_equal(phot['flags'][[2, 3, 6, 7]], [4099, 4099, 4099, 4099])
     assert_equal(phot['flags'][[0, 1, 4, 5]], [1, 1, 1, 1])
 
 
@@ -1679,6 +1681,82 @@ def test_flag1024_non_finite_flux():
     # Third source should have non-finite flux_fit (flag 1024 set)
     assert not np.isfinite(phot['flux_fit'][2])
     assert (phot['flags'][2] & 1024) == 1024
+
+
+@pytest.mark.parametrize(('x_init', 'y_init', 'dx', 'dy', 'expected'), [
+    # The 5x5 fit region spans pixel edges 9.5 to 14.5
+    (12.0, 12.0, 2.4, 0.0, False),
+    (12.0, 12.0, 2.5, -2.5, False),
+    (12.0, 12.0, 2.6, 0.0, True),
+    (12.0, 12.0, -2.6, 0.0, True),
+    (12.0, 12.0, 0.0, 2.6, True),
+    (12.0, 12.0, 0.0, -2.6, True),
+    (12.3, 11.6, 2.1, 0.0, False),  # region spans x edges 9.5 to 14.5
+    (12.6, 11.6, -2.2, 0.0, True),  # region spans x edges 10.5 to 15.5
+    # The fit region is trimmed to the image, spanning x edges -0.5
+    # to 3.5
+    (1.0, 12.0, 2.6, 0.0, True),
+    (1.0, 12.0, -1.4, 0.0, False),
+])
+def test_flag4096_outside_fit_region(x_init, y_init, dx, dy, expected):
+    """
+    Test flag=4096 for a fitted position outside the fitted data
+    region.
+
+    A mock fitter shifts the fitted position by a known offset from the
+    initial position.
+    """
+    shape = (25, 25)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros(shape)
+    init_params = QTable()
+    init_params['x_0'] = [x_init]
+    init_params['y_0'] = [y_init]
+    init_params['flux'] = [500.0]
+
+    def mock_fitter(model, *args, **kwargs):  # noqa: ARG001
+        model = model.copy()
+        model.x_0 += dx
+        model.y_0 += dy
+        return model
+
+    mock_fitter.fit_info = {'status': 1}
+    match = "'fitter_maxiters' will be ignored because the fitter's"
+    with pytest.warns(AstropyUserWarning, match=match):
+        psfphot = PSFPhotometry(psf_model, (5, 5), fitter=mock_fitter)
+    phot = psfphot(data, init_params=init_params)
+
+    assert_allclose(phot['x_fit'][0], x_init + dx)
+    assert_allclose(phot['y_fit'][0], y_init + dy)
+    assert bool(phot['flags'][0] & 4096) is expected
+    # The trimmed region case lies inside the image
+    if x_init == 1.0:
+        assert (phot['flags'][0] & 2) == 0
+
+
+def test_flag4096_outside_fit_region_fit():
+    """
+    Test flag=4096 when a fit converges on a bright neighbor outside
+    the fitted data region.
+    """
+    shape = (25, 41)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    sources = QTable()
+    sources['x_0'] = [20.0]
+    sources['y_0'] = [12.0]
+    sources['flux'] = [1.0e5]
+    data = make_model_image(shape, psf_model, sources)
+
+    # The fit region spans x edges 13.5 to 18.5
+    init_params = QTable()
+    init_params['x_0'] = [16.0]
+    init_params['y_0'] = [12.0]
+    init_params['flux'] = [1.0e4]
+    psfphot = PSFPhotometry(psf_model, (5, 5))
+    phot = psfphot(data, init_params=init_params)
+
+    assert_allclose(phot['x_fit'][0], 20.0)
+    assert phot['flags'][0] == 4096
 
 
 def test_psf_photometry_methods(test_data):
