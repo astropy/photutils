@@ -2816,8 +2816,7 @@ class SourceCatalog:
         (`centroid_win`) fell back to the isophotal `centroid` or is
         NaN.
 
-        See `centroid_win` for the fallback conditions. It is analogous
-        to `SourceExtractor`_'s FLAGS_WIN parameter.
+        See `centroid_win` for the fallback conditions.
         """
         return self._centroid_win_results[:, 5].astype(bool)
 
@@ -2861,8 +2860,7 @@ class SourceCatalog:
         (`centroid_win`).
 
         The window centroid is computed using an iterative algorithm
-        to derive a more accurate centroid. It is equivalent to
-        `SourceExtractor`_'s XWIN_IMAGE parameters.
+        to derive a more accurate centroid.
         """
         return self._array('centroid_win')[:, 0]
 
@@ -2874,8 +2872,7 @@ class SourceCatalog:
         (`centroid_win`).
 
         The window centroid is computed using an iterative algorithm
-        to derive a more accurate centroid. It is equivalent to
-        `SourceExtractor`_'s YWIN_IMAGE parameters.
+        to derive a more accurate centroid.
         """
         return self._array('centroid_win')[:, 1]
 
@@ -4177,8 +4174,7 @@ class SourceCatalog:
         any local distortion. The position angle is measured from
         North toward East (i.e., counter-clockwise on the sky) in the
         celestial frame of the input ``wcs`` and is in the range (-90,
-        90] degrees. This is the same convention as SourceExtractor's
-        ``THETA_J2000`` parameter for an equatorial ``wcs``.
+        90] degrees.
 
         `None` if ``wcs`` is not input.
         """
