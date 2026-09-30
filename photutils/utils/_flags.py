@@ -64,16 +64,27 @@ class FlagRegistry:
     FLAG_DEFINITIONS: ClassVar = []
     domain: ClassVar = ''
 
-    # Mappings of deprecated flag/constant names to their new names.
-    # Subclasses may override these along with the deprecation
-    # versions used in the warning messages. _DEPRECATED_SINCE maps
-    # each deprecated flag name to the version in which it was
-    # deprecated. Deprecated constant names are the uppercase flag
-    # names, so they share the same entries.
+    # Mapping of deprecated flag names to their new names, along with
+    # the deprecation versions used in the warning messages.
+    # _DEPRECATED_SINCE maps each deprecated flag name to the version
+    # in which it was deprecated and must have an entry for every
+    # deprecated name. The deprecated constant names are the uppercase
+    # flag names and are derived from _DEPRECATED_FLAG_NAMES.
     _DEPRECATED_FLAG_NAMES: ClassVar = {}
     _DEPRECATED_CONSTANT_NAMES: ClassVar = {}
     _DEPRECATED_SINCE: ClassVar = {}
     _DEPRECATED_UNTIL: ClassVar = None
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        missing = set(cls._DEPRECATED_FLAG_NAMES) - set(cls._DEPRECATED_SINCE)
+        if missing:
+            msg = (f'{cls.__name__}._DEPRECATED_SINCE is missing the '
+                   f'deprecated flag names {sorted(missing)}')
+            raise ValueError(msg)
+        cls._DEPRECATED_CONSTANT_NAMES = {
+            old.upper(): new.upper()
+            for old, new in cls._DEPRECATED_FLAG_NAMES.items()}
 
     def __init__(self):
         for flag_def in self.FLAG_DEFINITIONS:

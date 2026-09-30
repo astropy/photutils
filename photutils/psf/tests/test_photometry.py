@@ -1790,6 +1790,24 @@ def test_flag4096_position_outside_fit_region_fit():
     assert phot['flags'][0] == 4096
 
 
+def test_flag4096_non_finite_position():
+    """
+    Test that flag=4096 is not set for a non-finite fitted position.
+    """
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros((25, 25))
+    init_params = QTable()
+    init_params['x_0'] = [12.0, 40.0]
+    init_params['y_0'] = [12.0, 12.0]
+    init_params['flux'] = [500.0, 500.0]
+    psfphot = PSFPhotometry(psf_model, (5, 5))
+    phot = psfphot(data, init_params=init_params)
+
+    assert np.isnan(phot['x_fit'][1])
+    assert (phot['flags'][1] & 64) == 64
+    assert not np.any(phot['flags'] & 4096)
+
+
 def test_psf_photometry_methods(test_data):
     data, error, _ = test_data
 

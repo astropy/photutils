@@ -182,8 +182,8 @@ def n_fallbacks(segm):
         The total number of input labels whose deblending mode fell
         back to linear.
     """
-    return (len(segm.info.get('nonposmin_labels', ()))
-            + len(segm.info.get('n_markers_labels', ())))
+    return (len(segm.info.get('non_positive_min_labels', ()))
+            + len(segm.info.get('too_many_markers_labels', ())))
 
 
 def bench_many_sources(*, n_sources_sweep=(500, 1000, 2000, 4000),

@@ -26,8 +26,6 @@ class _ExampleFlags(FlagRegistry):
     ]
     domain: ClassVar = 'example'
     _DEPRECATED_FLAG_NAMES: ClassVar = {'old_one': 'one', 'old_two': 'two'}
-    _DEPRECATED_CONSTANT_NAMES: ClassVar = {'OLD_ONE': 'ONE',
-                                            'OLD_TWO': 'TWO'}
     _DEPRECATED_SINCE: ClassVar = {'old_one': '3.0', 'old_two': '3.1'}
     _DEPRECATED_UNTIL: ClassVar = '4.0'
 
@@ -174,6 +172,33 @@ class TestFlagRegistry:
         match = "'OLD_TWO' attribute was deprecated in version 3.1"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             assert registry.OLD_TWO == 2
+
+    def test_deprecated_constant_names_derived(self, registry):
+        """
+        Test that the deprecated constant names are the uppercase
+        deprecated flag names.
+        """
+        assert registry._DEPRECATED_CONSTANT_NAMES == {'OLD_ONE': 'ONE',
+                                                       'OLD_TWO': 'TWO'}
+
+    def test_missing_deprecated_since(self):
+        """
+        Test that a registry with a deprecated flag name that has no
+        deprecation version raises an error when the class is defined.
+        """
+        match = ('_DEPRECATED_SINCE is missing the deprecated flag names '
+                 r"\['old_two'\]")
+        with pytest.raises(ValueError, match=match):
+            class _BadFlags(FlagRegistry):
+                FLAG_DEFINITIONS: ClassVar = [
+                    FlagDefinition(1, 'one', 'first flag', 'The first flag.'),
+                    FlagDefinition(2, 'two', 'second flag',
+                                   'The second flag.'),
+                ]
+                domain: ClassVar = 'bad'
+                _DEPRECATED_FLAG_NAMES: ClassVar = {'old_one': 'one',
+                                                    'old_two': 'two'}
+                _DEPRECATED_SINCE: ClassVar = {'old_one': '3.0'}
 
     def test_unknown_attribute(self, registry):
         """

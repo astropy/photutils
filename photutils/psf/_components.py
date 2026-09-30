@@ -1370,7 +1370,8 @@ class PSFResultsAssembler:
             List of reasons why sources were invalid.
 
         init_params : `~astropy.table.QTable`
-            Initial parameter guesses for sources, containing local_bkg.
+            Initial parameter guesses for sources, containing the
+            initial positions and local_bkg.
 
         Returns
         -------

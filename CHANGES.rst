@@ -622,8 +622,8 @@ Bug Fixes
   - Fixed a bug where PSF model parameter bounds were not applied in
     grouped fits, so grouped fits were unconstrained where single-source
     fits were constrained. The bounds are now also propagated back to
-    the fitted models, so the ``NEAR_BOUND`` flag is now set for grouped
-    sources. [#2384]
+    the fitted models, so the ``PARAMETER_NEAR_BOUND`` flag is now set
+    for grouped sources. [#2384]
 
   - Fixed a bug where ``PSFPhotometry`` raised an error for
     integer-dtype data when a ``local_bkg`` column was provided. [#2384]

@@ -386,7 +386,8 @@ image. Such a fit is constrained only by the PSF wings, often because it
 moved toward a neighboring source. Unlike the ``position_outside_image``
 flag (bit 2), which is set only for positions outside the input image,
 this flag also catches fits that move away from their data within the
-image.
+image. For grouped fits, the region is the box of each source, not the
+union of the boxes of the group.
 
 
 Polygon Apertures

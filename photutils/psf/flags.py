@@ -134,7 +134,10 @@ class _PSFFlags(FlagRegistry):
                                   'position, trimmed to the input image. '
                                   'The fit is constrained only by the PSF '
                                   'wings, often because it moved toward a '
-                                  'neighboring source.'),
+                                  'neighboring source. For grouped fits, '
+                                  'the region is the box of each source, '
+                                  'not the union of the boxes of the '
+                                  'group.'),
         ),
     ]
 
@@ -147,15 +150,6 @@ class _PSFFlags(FlagRegistry):
         'non_finite_localbkg': 'non_finite_local_bkg',
         'negative_flux': 'non_positive_flux',
         'near_bound': 'parameter_near_bound',
-    }
-
-    # Remove in 4.0
-    _DEPRECATED_CONSTANT_NAMES: ClassVar = {
-        'NPIXFIT_PARTIAL': 'N_PIXELS_FIT_PARTIAL',
-        'OUTSIDE_BOUNDS': 'POSITION_OUTSIDE_IMAGE',
-        'NON_FINITE_LOCALBKG': 'NON_FINITE_LOCAL_BKG',
-        'NEGATIVE_FLUX': 'NON_POSITIVE_FLUX',
-        'NEAR_BOUND': 'PARAMETER_NEAR_BOUND',
     }
 
     _DEPRECATED_SINCE: ClassVar = {
