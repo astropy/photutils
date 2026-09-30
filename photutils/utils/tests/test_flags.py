@@ -225,6 +225,37 @@ class TestUpdateFlagDocstring:
         assert '<flag_descriptions>' not in func.__doc__
         assert "* **1** (``'one'``) : The first flag." in func.__doc__
 
+    def test_placeholder_indent_inferred(self, registry):
+        """
+        Test that indent=None applies the placeholder indentation.
+        """
+        docstring = 'Flags:\n\n    <flag_descriptions>\n\nMore text.\n'
+
+        def func():
+            pass
+
+        func.__doc__ = docstring
+        func = update_flag_docstring(func, registry, indent=None)
+        expected = ('Flags:\n\n\n'
+                    '    * **0** : No flags set.\n'
+                    "    * **1** (``'one'``) : The first flag.\n")
+        assert func.__doc__.startswith(expected)
+        assert func.__doc__.endswith('\n\nMore text.\n')
+
+    def test_placeholder_indent_inferred_not_alone(self, registry):
+        """
+        Test that indent=None ignores a placeholder that is not alone on
+        its line.
+        """
+        docstring = 'The flags are <flag_descriptions> here.\n'
+
+        def func():
+            pass
+
+        func.__doc__ = docstring
+        func = update_flag_docstring(func, registry, indent=None)
+        assert func.__doc__ == docstring
+
     def test_no_placeholder(self, registry):
         """
         Test that a docstring without the placeholder is unchanged.

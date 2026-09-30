@@ -165,7 +165,7 @@ def _update_decode_docstring(func):
     func : function
         The decorated function with updated docstring.
     """
-    return update_flag_docstring(func, PSF_FLAGS, indent=4)
+    return update_flag_docstring(func, PSF_FLAGS, indent=None)
 
 
 @_update_decode_docstring

@@ -444,7 +444,7 @@ def _update_flags_docstring(func):
     func : function
         The decorated function with an updated docstring.
     """
-    return update_flag_docstring(func, SEGMENTATION_FLAGS, indent=8)
+    return update_flag_docstring(func, SEGMENTATION_FLAGS, indent=None)
 
 
 class SourceCatalog:
