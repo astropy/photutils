@@ -279,10 +279,10 @@ New Features
     which makes each build iteration about 20% faster. [#2422]
 
   - Added a ``PSFPhotometry`` and ``IterativePSFPhotometry`` flag (bit
-    4096, ``outside_fit_region``) that is set when the fitted source
-    position is outside the region of fitted data, which is the
-    ``fit_shape`` box around the initial position, trimmed to the
-    input image. [#2450]
+    4096, ``position_outside_fit_region``) that is set when the
+    fitted source position is outside the region of fitted data, which
+    is the ``fit_shape`` box around the initial position, trimmed to
+    the input image. [#2450]
 
 - ``photutils.segmentation``
 

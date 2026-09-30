@@ -1698,7 +1698,8 @@ def test_flag1024_non_finite_flux():
     (1.0, 12.0, 2.6, 0.0, True),
     (1.0, 12.0, -1.4, 0.0, False),
 ])
-def test_flag4096_outside_fit_region(x_init, y_init, dx, dy, expected):
+def test_flag4096_position_outside_fit_region(x_init, y_init, dx, dy,
+                                              expected):
     """
     Test flag=4096 for a fitted position outside the fitted data
     region.
@@ -1734,7 +1735,7 @@ def test_flag4096_outside_fit_region(x_init, y_init, dx, dy, expected):
         assert (phot['flags'][0] & 2) == 0
 
 
-def test_flag4096_outside_fit_region_fit():
+def test_flag4096_position_outside_fit_region_fit():
     """
     Test flag=4096 when a fit converges on a bright neighbor outside
     the fitted data region.

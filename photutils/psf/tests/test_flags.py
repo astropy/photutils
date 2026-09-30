@@ -60,7 +60,7 @@ def test_decode_psf_flags():
     assert decoded == ['non_finite_localbkg']
 
     decoded = decode_psf_flags(4096)
-    assert decoded == ['outside_fit_region']
+    assert decoded == ['position_outside_fit_region']
 
     # Test combination of flags
     decoded = decode_psf_flags(5)  # bits 1 and 4
@@ -79,7 +79,7 @@ def test_decode_psf_flags():
                     'no_convergence', 'no_covariance', 'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
-                    'non_finite_localbkg', 'outside_fit_region']
+                    'non_finite_localbkg', 'position_outside_fit_region']
     assert set(decoded) == set(expected_all)
     assert len(decoded) == 13
 
@@ -176,7 +176,7 @@ def test_decode_psf_flags_edge_cases():
                     'no_convergence', 'no_covariance', 'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
-                    'non_finite_localbkg', 'outside_fit_region']
+                    'non_finite_localbkg', 'position_outside_fit_region']
     assert set(decoded) == set(expected_all)
 
     match = 'Flag value must be a non-negative integer'
@@ -234,7 +234,7 @@ def test_psf_flags_constants():
         'NON_FINITE_POSITION': 512,
         'NON_FINITE_FLUX': 1024,
         'NON_FINITE_LOCALBKG': 2048,
-        'OUTSIDE_FIT_REGION': 4096,
+        'POSITION_OUTSIDE_FIT_REGION': 4096,
     }
 
     for const_name, expected_value in expected_constants.items():
@@ -262,7 +262,7 @@ def test_psf_flags_properties():
         'no_convergence', 'no_covariance', 'near_bound',
         'no_overlap', 'fully_masked', 'too_few_pixels',
         'non_finite_position', 'non_finite_flux', 'non_finite_localbkg',
-        'outside_fit_region',
+        'position_outside_fit_region',
     ]
     assert set(names) == set(expected_names)
     assert len(names) == 13
@@ -294,7 +294,7 @@ def test_psf_flags_get_methods():
     assert PSF_FLAGS.get_name(512) == 'non_finite_position'
     assert PSF_FLAGS.get_name(1024) == 'non_finite_flux'
     assert PSF_FLAGS.get_name(2048) == 'non_finite_localbkg'
-    assert PSF_FLAGS.get_name(4096) == 'outside_fit_region'
+    assert PSF_FLAGS.get_name(4096) == 'position_outside_fit_region'
 
     # Test get_bit_value
     assert PSF_FLAGS.get_bit_value('n_pixels_fit_partial') == 1

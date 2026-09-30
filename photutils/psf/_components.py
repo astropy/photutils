@@ -1476,7 +1476,7 @@ class PSFResultsAssembler:
         y_max = np.minimum(y_start + fit_ny, ny) - 0.5
         flag4096_mask = ((x_fit < x_min) | (x_fit > x_max)
                          | (y_fit < y_min) | (y_fit > y_max))
-        flags[flag4096_mask] |= PSF_FLAGS.OUTSIDE_FIT_REGION
+        flags[flag4096_mask] |= PSF_FLAGS.POSITION_OUTSIDE_FIT_REGION
 
         return flags
 

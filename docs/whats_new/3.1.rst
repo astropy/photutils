@@ -379,8 +379,8 @@ PSF Photometry Fit Region Flag
 
 `~photutils.psf.PSFPhotometry` and
 `~photutils.psf.IterativePSFPhotometry` have a new bitwise flag (bit
-4096, ``outside_fit_region``) that is set when the fitted source
-position is outside the region of fitted data. The region is the
+4096, ``position_outside_fit_region``) that is set when the fitted
+source position is outside the region of fitted data. The region is the
 ``fit_shape`` box around the initial position, trimmed to the input
 image. Such a fit is constrained only by the PSF wings, often because
 it moved toward a neighboring source. Unlike the ``outside_bounds``

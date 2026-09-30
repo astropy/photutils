@@ -126,7 +126,7 @@ class _PSFFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=4096,
-            name='outside_fit_region',
+            name='position_outside_fit_region',
             description='fitted position outside the fitted data region',
             detailed_description=('The fitted source position is outside '
                                   'the region of fitted data, which is the '
