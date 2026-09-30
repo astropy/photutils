@@ -21,6 +21,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import AperturePhotometry, CircularAperture
 from photutils.datasets import make_model_image as _make_model_image
 from photutils.utils._deprecation import DeprecatedColumnQTable
+from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
 
 from .flags import PSF_FLAGS
@@ -54,6 +55,26 @@ def _apply_bounds_to_param(model, param_name, param_value, bound_value):
         param_obj = getattr(model, param_name)
         param_obj.bounds = (param_value - bound_value,
                             param_value + bound_value)
+
+
+def _update_flags_docstring(func):
+    """
+    Decorator to insert the PSF flag descriptions into a docstring.
+
+    The ``<flag_descriptions>`` placeholder in the function docstring is
+    replaced with a bullet list generated from ``PSF_FLAGS``.
+
+    Parameters
+    ----------
+    func : function
+        The function to decorate.
+
+    Returns
+    -------
+    func : function
+        The decorated function with an updated docstring.
+    """
+    return update_flag_docstring(func, PSF_FLAGS, indent=None)
 
 
 def _create_flat_model_class(n_sources, psf_model):
@@ -1317,9 +1338,11 @@ class PSFResultsAssembler:
 
         return qfit, cfit, reduced_chi2
 
+    @_update_flags_docstring
     def define_flags(self, results_tbl, shape, fit_error_indices, fit_info,
                      fitted_models_table, valid_mask, invalid_reasons,
                      init_params):
+        # numpydoc ignore: RT05
         """
         Define per-source bitwise flags summarizing fit conditions.
 
@@ -1353,19 +1376,8 @@ class PSFResultsAssembler:
         -------
         flags : `~numpy.ndarray`
             Array of integer flags where each bit indicates a specific
-            condition:
-            - 1: n_pixels_fit smaller than full fit_shape region
-            - 2: fitted position outside input image bounds
-            - 4: non-positive flux
-            - 8: possible non-convergence
-            - 16: missing parameter covariance
-            - 32: near a fitted-parameter bound
-            - 64: no overlap with data
-            - 128: fully masked source
-            - 256: too few pixels for fitting
-            - 512: non-finite fitted position
-            - 1024: non-finite fitted flux
-            - 2048: non-finite local background
+            condition. The flags are:
+            <flag_descriptions>
         """
         flags = np.zeros(len(results_tbl), dtype=int)
         x_col = self.param_mapper.fit_colnames['x']

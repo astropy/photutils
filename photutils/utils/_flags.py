@@ -8,6 +8,7 @@ public per-package flag registries (e.g., ``photutils.psf.flags`` and
 base class, a flag decoder, and a docstring-substitution helper.
 """
 
+import re
 import warnings
 from dataclasses import dataclass
 from typing import ClassVar
@@ -282,8 +283,13 @@ def update_flag_docstring(func, registry, *, indent=0,
     registry : `FlagRegistry`
         The flag registry providing the flag definitions.
 
-    indent : int, optional
-        Number of spaces to indent the bullet list.
+    indent : int or None, optional
+        Number of spaces to indent the bullet list. If `None`, the
+        placeholder must appear alone on its own line, and the leading
+        indentation of that line is applied to the bullet list. This
+        keeps the list aligned with the surrounding text on all Python
+        versions, including Python 3.13+, which strips the common
+        leading whitespace from docstrings at compile time.
 
     placeholder : str, optional
         The placeholder text to replace in the docstring.
@@ -297,6 +303,18 @@ def update_flag_docstring(func, registry, *, indent=0,
         return func
 
     docstring = func.__doc__
+
+    if indent is None:
+        pattern = re.compile(rf'^([ \t]*){re.escape(placeholder)}[ \t]*$',
+                             re.MULTILINE)
+
+        def replace(match):
+            flag_descriptions = define_flag_docstring(
+                registry, indent=len(match.group(1)))
+            return '\n'.join(flag_descriptions)
+
+        func.__doc__ = pattern.sub(replace, docstring)
+        return func
 
     if placeholder in docstring:
         flag_descriptions = define_flag_docstring(registry, indent=indent)
