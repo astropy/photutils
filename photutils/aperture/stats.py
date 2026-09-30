@@ -2397,7 +2397,7 @@ class ApertureStats:
         These are the "center"-method footprint bits plus the sigma-clip
         and ``ddof`` bits. The `flags` property combines them with the
         ``sum_method`` footprint bits and the ``undefined_shape``,
-        ``singular_covariance``, and ``centroid_outside`` bits.
+        ``singular_covariance``, and ``centroid_outside_bbox`` bits.
         """
         # The gather kernel and the center-method cutouts do not
         # evaluate error values, so the non-finite-error bit is stripped
@@ -2485,7 +2485,7 @@ class ApertureStats:
                                       determinant=self._raw_covariance_det)
 
     @cached_property
-    def _centroid_outside_mask(self):
+    def _centroid_outside_bbox_mask(self):
         """
         Boolean mask (1D) marking sources whose centroid lies outside
         the aperture bounding box.
@@ -2523,11 +2523,11 @@ class ApertureStats:
         on the ``sum_method`` footprint. The ``'sigma_clipped'``,
         ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
         on the value-statistics footprint. The ``'undefined_shape'``,
-        ``'singular_covariance'``, and ``'centroid_outside'`` flags are
-        always evaluated. Accessing
-        ``flags`` computes the moment and covariance properties if they
-        have not already been computed (the results are cached and
-        shared with the corresponding shape properties).
+        ``'singular_covariance'``, and ``'centroid_outside_bbox'``
+        flags are always evaluated. Accessing ``flags`` computes the
+        moment and covariance properties if they have not already been
+        computed (the results are cached and shared with the
+        corresponding shape properties).
 
         See `~photutils.aperture.decode_aperture_flags` for decoding
         flag values. The flags are:
@@ -2541,8 +2541,8 @@ class ApertureStats:
             APERTURE_FLAGS.UNDEFINED_SHAPE)
         flags[self._singular_covariance_mask] |= (
             APERTURE_FLAGS.SINGULAR_COVARIANCE)
-        flags[self._centroid_outside_mask] |= (
-            APERTURE_FLAGS.CENTROID_OUTSIDE)
+        flags[self._centroid_outside_bbox_mask] |= (
+            APERTURE_FLAGS.CENTROID_OUTSIDE_BBOX)
         return flags
 
     def decode_flags(self, *, return_bit_values=False):

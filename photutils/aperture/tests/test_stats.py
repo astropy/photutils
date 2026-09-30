@@ -1683,7 +1683,7 @@ class TestBoundedMemory:
         """
         Test that block processing gives identical results for sources
         with the ``undefined_shape``, ``singular_covariance``, and
-        ``centroid_outside`` flags.
+        ``centroid_outside_bbox`` flags.
         """
         data = np.zeros((40, 110))
         mask = np.zeros(data.shape, dtype=bool)
@@ -1704,7 +1704,7 @@ class TestBoundedMemory:
                     APERTURE_FLAGS.UNDEFINED_SHAPE,
                     APERTURE_FLAGS.SINGULAR_COVARIANCE,
                     APERTURE_FLAGS.UNDEFINED_SHAPE
-                    | APERTURE_FLAGS.CENTROID_OUTSIDE,
+                    | APERTURE_FLAGS.CENTROID_OUTSIDE_BBOX,
                     0]
         assert_equal(stats2.flags, expected)
         assert '_fast_gather' not in stats2.__dict__

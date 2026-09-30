@@ -293,7 +293,7 @@ New Features
     a dictionary containing auxiliary information. Segmentation
     images returned by ``deblend_sources`` store the input labels
     affected by deblending warnings under ``'nonposmin_labels'`` and
-    ``'n_markers_labels'`` keys. [#2378]
+    ``'too_many_markers_labels'`` keys. [#2378]
 
   - Added a ``get_label_mapping`` method to ``SegmentationImage`` to find
     the mapping of labels to another segmentation image defined on the
@@ -1190,12 +1190,13 @@ API Changes
 
   - The deblending warning information stored by ``deblend_sources``
     in the returned ``SegmentationImage`` ``info`` dictionary has been
-    restructured. The affected input labels are now stored as arrays
-    directly under ``'nonposmin_labels'`` and ``'n_markers_labels'``
-    keys. The nested ``info['warnings']`` dictionary, including
-    its ``'message'`` entries, has been removed. The emitted
-    warning is now a ``DeblendWarning`` (a subclass of astropy's
-    ``AstropyUserWarning``) instead of an ``AstropyUserWarning``.
+    restructured. The affected input labels are now stored as
+    arrays directly under ``'nonposmin_labels'`` and
+    ``'too_many_markers_labels'`` keys. The nested ``info['warnings']``
+    dictionary, including its ``'message'`` entries, has been removed.
+    The emitted warning is now a ``DeblendWarning`` (a subclass of
+    astropy's ``AstropyUserWarning``) instead of an
+    ``AstropyUserWarning``.
     [#2378]
 
   - ``SegmentationImage`` now raises a ``TypeError`` for masked array

@@ -540,12 +540,13 @@ as:
   (``'no_overlap'``) outside the data
 * the aperture contains no pixels with nonzero weight
   (``'no_pixels'``)
-* input-masked pixels within the aperture (``'masked_pixels'``), or
-  no valid pixels at all (``'all_masked'``)
+* input-masked pixels within the aperture (``'masked_pixels'``)
 * non-finite data or error values within the aperture
   (``'non_finite_data'``, ``'non_finite_error'``)
 * pixels excluded or corrected due to neighboring sources in a
   segmentation image (``'neighbor_pixels'``, ``'uncorrected_pixels'``)
+* no valid pixels at all, because every pixel is masked, non-finite,
+  or excluded (``'all_masked'``)
 * sigma-clipped pixels within the aperture (``'sigma_clipped'``,
   ``'all_clipped'``) and too few pixels to compute a statistic
   (``'too_few_pixels'``) in `~photutils.aperture.ApertureStats`
@@ -553,7 +554,7 @@ as:
   moments are not positive semidefinite (``'undefined_shape'``),
   whose covariance matrix is singular or nearly singular
   (``'singular_covariance'``), or whose centroid lies outside the
-  aperture bounding box (``'centroid_outside'``), so that the
+  aperture bounding box (``'centroid_outside_bbox'``), so that the
   centroid and shape properties are undefined or unreliable, in
   `~photutils.aperture.ApertureStats`
 
@@ -1123,6 +1124,6 @@ Deblending Warning Information
 ``AstropyUserWarning``) when the deblending mode is changed
 to a fallback mode for one or more sources. The affected
 input labels are now stored as arrays directly under
-``'nonposmin_labels'`` and ``'n_markers_labels'`` keys in the returned
-`~photutils.segmentation.SegmentationImage` ``info`` dictionary,
+``'nonposmin_labels'`` and ``'too_many_markers_labels'`` keys in the
+returned `~photutils.segmentation.SegmentationImage` ``info`` dictionary,
 replacing the nested ``info['warnings']`` dictionary.

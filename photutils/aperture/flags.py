@@ -80,16 +80,6 @@ class _ApertureFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=16,
-            name='all_masked',
-            description='no valid pixels within the aperture',
-            detailed_description=('The aperture contains pixels, but '
-                                  'none are valid: every nonzero-weight '
-                                  'pixel inside the data is masked, '
-                                  'non-finite, or excluded by '
-                                  'segmentation masking.'),
-        ),
-        FlagDefinition(
-            bit_value=32,
             name='non_finite_data',
             description='non-finite data values within the aperture',
             detailed_description=('One or more unmasked data values '
@@ -97,7 +87,7 @@ class _ApertureFlags(FlagRegistry):
                                   'weight are non-finite.'),
         ),
         FlagDefinition(
-            bit_value=64,
+            bit_value=32,
             name='non_finite_error',
             description='non-finite error values within the aperture',
             detailed_description=('One or more unmasked error values '
@@ -105,7 +95,7 @@ class _ApertureFlags(FlagRegistry):
                                   'weight are non-finite.'),
         ),
         FlagDefinition(
-            bit_value=128,
+            bit_value=64,
             name='neighbor_pixels',
             description='segmentation-masked pixels within the aperture',
             detailed_description=('One or more pixels within the '
@@ -114,7 +104,7 @@ class _ApertureFlags(FlagRegistry):
                                   'sources in the segmentation image.'),
         ),
         FlagDefinition(
-            bit_value=256,
+            bit_value=128,
             name='uncorrected_pixels',
             description='uncorrectable neighbor pixels within the aperture',
             detailed_description=('With ``mask_method="correct"``, one '
@@ -122,6 +112,16 @@ class _ApertureFlags(FlagRegistry):
                                   'not be corrected (the mirror pixel '
                                   'was unavailable) and were excluded '
                                   'instead.'),
+        ),
+        FlagDefinition(
+            bit_value=256,
+            name='all_masked',
+            description='no valid pixels within the aperture',
+            detailed_description=('The aperture contains pixels, but '
+                                  'none are valid: every nonzero-weight '
+                                  'pixel inside the data is masked, '
+                                  'non-finite, or excluded by '
+                                  'segmentation masking.'),
         ),
         FlagDefinition(
             bit_value=512,
@@ -193,7 +193,7 @@ class _ApertureFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=16384,
-            name='centroid_outside',
+            name='centroid_outside_bbox',
             description='centroid is outside the aperture bounding box',
             detailed_description=('The ``centroid`` lies outside the '
                                   'bounding box of the aperture. The '
@@ -283,7 +283,7 @@ def decode_aperture_flags(flags, *, return_bit_values=False):
 
     Decode multiple flag values:
 
-    >>> flags = [0, 8, 24]  # 0, bit 8, bits 8+16
+    >>> flags = [0, 8, 264]  # 0, bit 8, bits 8+256
     >>> decoded_list = decode_aperture_flags(flags)
     >>> decoded_list[0]  # No issues
     []

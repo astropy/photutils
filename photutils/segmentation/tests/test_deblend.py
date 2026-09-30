@@ -1633,7 +1633,7 @@ def test_n_markers_fallback():
     match = 'The deblending mode of one or more source labels from the'
     with pytest.warns(DeblendWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
-    assert segm2.info['n_markers_labels'][0] == 1
+    assert segm2.info['too_many_markers_labels'][0] == 1
 
 
 def test_flags_n_markers_fallback():
@@ -1659,7 +1659,7 @@ def test_flags_n_markers_fallback():
     with pytest.warns(DeblendWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
 
-    bit = SEGMENTATION_FLAGS.DEBLEND_N_MARKERS
+    bit = SEGMENTATION_FLAGS.DEBLEND_TOO_MANY_MARKERS
     flagged = segm2.labels[(segm2.flags & bit) > 0]
     assert len(flagged) > 0
     # Every flagged label traces back to input label 1

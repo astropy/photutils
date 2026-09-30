@@ -696,9 +696,9 @@ class TestSingularCovariance:
         assert_allclose(stats.centroid, (12.0, 12.0))
 
 
-class TestCentroidOutside:
+class TestCentroidOutsideBbox:
     """
-    Tests for the centroid_outside flag, which marks sources whose
+    Tests for the centroid_outside_bbox flag, which marks sources whose
     centroid lies outside the aperture bounding box.
     """
 
@@ -722,8 +722,8 @@ class TestCentroidOutside:
         stats = ApertureStats(self._make_data(), aper)
         assert stats.moments[0, 0] > 0
         assert stats.centroid[0] > 100.0
-        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
-        assert 'centroid_outside' in stats.decode_flags()[1]
+        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE_BBOX) != 0
+        assert 'centroid_outside_bbox' in stats.decode_flags()[1]
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_array_and_guards(self):
@@ -738,10 +738,11 @@ class TestCentroidOutside:
                                  (-50.0, 12.0)], r=2.0)
         aper0 = CircularAperture((12.0, 12.0), r=6.0)
         assert (ApertureStats(data, aper0).flags
-                & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+                & APERTURE_FLAGS.CENTROID_OUTSIDE_BBOX) != 0
 
         stats = ApertureStats(data, aper)
-        outside = (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+        outside = (stats.flags
+                   & APERTURE_FLAGS.CENTROID_OUTSIDE_BBOX) != 0
         assert_array_equal(outside, [False, False, False, False])
         assert np.all(np.isnan(stats.centroid[[0, 2, 3]]))
         assert_allclose(stats.centroid[1], (20.0, 4.0))
@@ -758,7 +759,8 @@ class TestCentroidOutside:
         for xcen, expected in ((xmax + 0.49, False), (xmax + 0.51, True)):
             stats = ApertureStats(data, aper)
             stats.centroid = np.array([[xcen, 12.0]])
-            outside = (stats.flags[0] & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+            outside = (stats.flags[0]
+                       & APERTURE_FLAGS.CENTROID_OUTSIDE_BBOX) != 0
             assert outside == expected
 
     def test_annulus_hole(self):
@@ -769,7 +771,7 @@ class TestCentroidOutside:
         aper = CircularAnnulus((12.0, 12.0), r_in=4.0, r_out=8.0)
         stats = ApertureStats(data, aper)
         assert_allclose(stats.centroid, (12.0, 12.0))
-        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) == 0
+        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE_BBOX) == 0
 
 
 class TestUndefinedShape:

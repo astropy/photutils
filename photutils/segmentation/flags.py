@@ -111,7 +111,7 @@ class _SegmentationFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=128,
-            name='deblend_n_markers',
+            name='deblend_too_many_markers',
             description=('deblending mode changed to linear: too '
                          'many markers'),
             detailed_description=('The deblending mode for the '

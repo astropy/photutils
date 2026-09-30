@@ -15,17 +15,17 @@ EXPECTED_FLAGS = {
     'partial_overlap': 2,
     'no_pixels': 4,
     'masked_pixels': 8,
-    'all_masked': 16,
-    'non_finite_data': 32,
-    'non_finite_error': 64,
-    'neighbor_pixels': 128,
-    'uncorrected_pixels': 256,
+    'non_finite_data': 16,
+    'non_finite_error': 32,
+    'neighbor_pixels': 64,
+    'uncorrected_pixels': 128,
+    'all_masked': 256,
     'sigma_clipped': 512,
     'all_clipped': 1024,
     'too_few_pixels': 2048,
     'undefined_shape': 4096,
     'singular_covariance': 8192,
-    'centroid_outside': 16384,
+    'centroid_outside_bbox': 16384,
 }
 
 
@@ -68,12 +68,12 @@ class TestDecodeApertureFlags:
         assert decoded_list[3] == ['partial_overlap', 'masked_pixels']
 
         # Test with numpy array
-        decoded_list = decode_aperture_flags(np.array([8, 16, 32]))
-        assert decoded_list == [['masked_pixels'], ['all_masked'],
-                                ['non_finite_data']]
+        decoded_list = decode_aperture_flags(np.array([8, 16, 256]))
+        assert decoded_list == [['masked_pixels'], ['non_finite_data'],
+                                ['all_masked']]
 
         # Test with 0D numpy array (scalar array)
-        decoded = decode_aperture_flags(np.array(64))
+        decoded = decode_aperture_flags(np.array(32))
         assert decoded == ['non_finite_error']
 
         # Test with empty array
@@ -81,7 +81,7 @@ class TestDecodeApertureFlags:
         assert decoded == []
 
         # Test with 2D array (shape preserved as nested lists)
-        decoded = decode_aperture_flags(np.array([[0, 1], [8, 24]]))
+        decoded = decode_aperture_flags(np.array([[0, 1], [8, 264]]))
         assert len(decoded) == 2
         assert decoded == [[[], ['no_overlap']],
                            [['masked_pixels'],
