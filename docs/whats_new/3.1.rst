@@ -383,10 +383,10 @@ PSF Photometry Fit Region Flag
 source position is outside the region of fitted data. The region is the
 ``fit_shape`` box around the initial position, trimmed to the input
 image. Such a fit is constrained only by the PSF wings, often because
-it moved toward a neighboring source. Unlike the ``outside_bounds``
-flag (bit 2), which is set only for positions outside the input image,
-this flag also catches fits that move away from their data within the
-image.
+it moved toward a neighboring source. Unlike the
+``position_outside_image`` flag (bit 2), which is set only for
+positions outside the input image, this flag also catches fits that
+move away from their data within the image.
 
 
 Polygon Apertures
@@ -977,6 +977,21 @@ The `~photutils.segmentation.SourceCatalog` ``progress_bar`` keyword
 is deprecated and will be removed in version 4.0. All property
 calculations are now computed for all sources at once in compiled
 code, so no progress bar is displayed and the keyword has no effect.
+
+PSF ``outside_bounds`` Flag Renamed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``outside_bounds`` flag (bit 2) of
+`~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry` has been renamed to
+``position_outside_image`` to state what is outside the image and to
+avoid confusion with the ``near_bound`` flag, which refers to
+parameter bounds. The ``OUTSIDE_BOUNDS`` constant has been renamed
+to ``POSITION_OUTSIDE_IMAGE``. The old names are deprecated and
+will be removed in version 4.0. The bit value is unchanged, but
+:func:`~photutils.psf.decode_psf_flags` now returns the new name, so
+code that compares decoded names with ``'outside_bounds'`` must be
+updated.
 
 
 Removed Deprecations

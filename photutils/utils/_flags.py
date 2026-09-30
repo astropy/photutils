@@ -66,10 +66,13 @@ class FlagRegistry:
 
     # Mappings of deprecated flag/constant names to their new names.
     # Subclasses may override these along with the deprecation
-    # versions used in the warning messages.
+    # versions used in the warning messages. _DEPRECATED_SINCE maps
+    # each deprecated flag name to the version in which it was
+    # deprecated. Deprecated constant names are the uppercase flag
+    # names, so they share the same entries.
     _DEPRECATED_FLAG_NAMES: ClassVar = {}
     _DEPRECATED_CONSTANT_NAMES: ClassVar = {}
-    _DEPRECATED_SINCE: ClassVar = None
+    _DEPRECATED_SINCE: ClassVar = {}
     _DEPRECATED_UNTIL: ClassVar = None
 
     def __init__(self):
@@ -85,7 +88,8 @@ class FlagRegistry:
     def __getattr__(self, name):
         return deprecated_getattr(self, name,
                                   self._DEPRECATED_CONSTANT_NAMES,
-                                  since=self._DEPRECATED_SINCE,
+                                  since=self._DEPRECATED_SINCE.get(
+                                      name.lower()),
                                   until=self._DEPRECATED_UNTIL)
 
     @property
@@ -146,9 +150,10 @@ class FlagRegistry:
         if isinstance(identifier, str):
             if identifier in self._DEPRECATED_FLAG_NAMES:
                 new_name = self._DEPRECATED_FLAG_NAMES[identifier]
+                since = self._DEPRECATED_SINCE[identifier]
                 warnings.warn(
                     f"The flag name '{identifier}' is deprecated "
-                    f"in version {self._DEPRECATED_SINCE}. Use "
+                    f"in version {since}. Use "
                     f"'{new_name}' instead. It will be removed in "
                     f'version {self._DEPRECATED_UNTIL}.',
                     PhotutilsDeprecationWarning,

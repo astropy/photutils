@@ -1395,7 +1395,7 @@ class PSFResultsAssembler:
         y_fit = results_tbl[y_col]
         flag2_mask = ((x_fit < -0.5) | (y_fit < -0.5) | (x_fit > nx - 0.5)
                       | (y_fit > ny - 0.5))
-        flags[flag2_mask] |= PSF_FLAGS.OUTSIDE_BOUNDS
+        flags[flag2_mask] |= PSF_FLAGS.POSITION_OUTSIDE_IMAGE
 
         # Non-positive flux
         flag4_mask = results_tbl[flux_col] <= 0

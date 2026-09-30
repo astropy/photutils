@@ -48,7 +48,7 @@ class _PSFFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=2,
-            name='outside_bounds',
+            name='position_outside_image',
             description='fitted position outside input image bounds',
             detailed_description=('The fitted source position is outside the '
                                   'bounds of the input image.'),
@@ -143,14 +143,19 @@ class _PSFFlags(FlagRegistry):
     # Remove in 4.0
     _DEPRECATED_FLAG_NAMES: ClassVar = {
         'npixfit_partial': 'n_pixels_fit_partial',
+        'outside_bounds': 'position_outside_image',
     }
 
     # Remove in 4.0
     _DEPRECATED_CONSTANT_NAMES: ClassVar = {
         'NPIXFIT_PARTIAL': 'N_PIXELS_FIT_PARTIAL',
+        'OUTSIDE_BOUNDS': 'POSITION_OUTSIDE_IMAGE',
     }
 
-    _DEPRECATED_SINCE: ClassVar = '3.0'
+    _DEPRECATED_SINCE: ClassVar = {
+        'npixfit_partial': '3.0',
+        'outside_bounds': '3.1',
+    }
     _DEPRECATED_UNTIL: ClassVar = '4.0'
 
 

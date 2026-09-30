@@ -25,9 +25,10 @@ class _ExampleFlags(FlagRegistry):
         FlagDefinition(4, 'four', 'third flag', 'The third flag.'),
     ]
     domain: ClassVar = 'example'
-    _DEPRECATED_FLAG_NAMES: ClassVar = {'old_one': 'one'}
-    _DEPRECATED_CONSTANT_NAMES: ClassVar = {'OLD_ONE': 'ONE'}
-    _DEPRECATED_SINCE: ClassVar = '3.0'
+    _DEPRECATED_FLAG_NAMES: ClassVar = {'old_one': 'one', 'old_two': 'two'}
+    _DEPRECATED_CONSTANT_NAMES: ClassVar = {'OLD_ONE': 'ONE',
+                                            'OLD_TWO': 'TWO'}
+    _DEPRECATED_SINCE: ClassVar = {'old_one': '3.0', 'old_two': '3.1'}
     _DEPRECATED_UNTIL: ClassVar = '4.0'
 
 
@@ -94,17 +95,22 @@ class TestFlagRegistry:
         assert definition.bit_value == 1
         assert definition.description == 'first flag'
 
-    def test_get_definition_deprecated_name(self, registry):
+    @pytest.mark.parametrize(('old_name', 'new_name', 'since'), [
+        ('old_one', 'one', '3.0'),
+        ('old_two', 'two', '3.1'),
+    ])
+    def test_get_definition_deprecated_name(self, registry, old_name,
+                                            new_name, since):
         """
-        Test that a deprecated flag name warns and resolves to the new
-        name.
+        Test that a deprecated flag name warns with its own deprecation
+        version and resolves to the new name.
         """
-        match = "'old_one' is deprecated"
+        match = f"'{old_name}' is deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
-            definition = registry.get_definition('old_one')
-        assert definition.name == 'one'
+            definition = registry.get_definition(old_name)
+        assert definition.name == new_name
         msg = str(record[0].message)
-        assert 'version 3.0' in msg
+        assert f'version {since}' in msg
         assert 'version 4.0' in msg
 
     def test_get_definition_unknown_bit_value(self, registry):
@@ -161,9 +167,13 @@ class TestFlagRegistry:
         Test that a deprecated constant name warns and resolves to the
         new constant.
         """
-        match = "'OLD_ONE' attribute was deprecated"
+        match = "'OLD_ONE' attribute was deprecated in version 3.0"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             assert registry.OLD_ONE == 1
+
+        match = "'OLD_TWO' attribute was deprecated in version 3.1"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            assert registry.OLD_TWO == 2
 
     def test_unknown_attribute(self, registry):
         """

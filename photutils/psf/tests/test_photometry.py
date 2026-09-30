@@ -2493,7 +2493,7 @@ def test_decode_flags():
     m1 = CircularGaussianPRF(flux=100, x_0=10, y_0=10, fwhm=2)
     # Source 2: negative flux (will have negative_flux flag)
     m2 = CircularGaussianPRF(flux=-50, x_0=5, y_0=5, fwhm=2)
-    # Source 3: outside bounds (will have outside_bounds flag)
+    # Source 3: outside the image (will have position_outside_image flag)
     m3 = CircularGaussianPRF(flux=100, x_0=25, y_0=25, fwhm=2)
 
     data = m1(xx, yy) + m2(xx, yy) + m3(xx, yy)

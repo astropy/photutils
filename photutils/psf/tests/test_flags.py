@@ -27,7 +27,7 @@ def test_decode_psf_flags():
     assert decoded == ['n_pixels_fit_partial']
 
     decoded = decode_psf_flags(2)
-    assert decoded == ['outside_bounds']
+    assert decoded == ['position_outside_image']
 
     decoded = decode_psf_flags(4)
     assert decoded == ['negative_flux']
@@ -75,8 +75,9 @@ def test_decode_psf_flags():
     all_flags = (1 + 2 + 4 + 8 + 16 + 32 + 64 + 128 + 256 + 512 + 1024
                  + 2048 + 4096)  # 8191
     decoded = decode_psf_flags(all_flags)
-    expected_all = ['n_pixels_fit_partial', 'outside_bounds', 'negative_flux',
-                    'no_convergence', 'no_covariance', 'near_bound',
+    expected_all = ['n_pixels_fit_partial', 'position_outside_image',
+                    'negative_flux', 'no_convergence', 'no_covariance',
+                    'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
                     'non_finite_localbkg', 'position_outside_fit_region']
@@ -92,7 +93,7 @@ def test_decode_psf_flags():
     # Check individual results
     assert decoded_list[0] == []
     assert decoded_list[1] == ['n_pixels_fit_partial']
-    assert decoded_list[2] == ['outside_bounds']
+    assert decoded_list[2] == ['position_outside_image']
     assert set(decoded_list[3]) == {'n_pixels_fit_partial', 'negative_flux'}
 
     # Test with numpy array
@@ -172,8 +173,9 @@ def test_decode_psf_flags_edge_cases():
     # Test with very large flag value (all bits set + extra)
     large_flag = 2**16 - 1  # Much larger than our defined flags
     decoded = decode_psf_flags(large_flag)
-    expected_all = ['n_pixels_fit_partial', 'outside_bounds', 'negative_flux',
-                    'no_convergence', 'no_covariance', 'near_bound',
+    expected_all = ['n_pixels_fit_partial', 'position_outside_image',
+                    'negative_flux', 'no_convergence', 'no_covariance',
+                    'near_bound',
                     'no_overlap', 'fully_masked', 'too_few_pixels',
                     'non_finite_position', 'non_finite_flux',
                     'non_finite_localbkg', 'position_outside_fit_region']
@@ -223,7 +225,7 @@ def test_psf_flags_constants():
     # Test all flag constants exist and have correct values
     expected_constants = {
         'N_PIXELS_FIT_PARTIAL': 1,
-        'OUTSIDE_BOUNDS': 2,
+        'POSITION_OUTSIDE_IMAGE': 2,
         'NEGATIVE_FLUX': 4,
         'NO_CONVERGENCE': 8,
         'NO_COVARIANCE': 16,
@@ -258,7 +260,7 @@ def test_psf_flags_properties():
     # Test names property
     names = PSF_FLAGS.names
     expected_names = [
-        'n_pixels_fit_partial', 'outside_bounds', 'negative_flux',
+        'n_pixels_fit_partial', 'position_outside_image', 'negative_flux',
         'no_convergence', 'no_covariance', 'near_bound',
         'no_overlap', 'fully_masked', 'too_few_pixels',
         'non_finite_position', 'non_finite_flux', 'non_finite_localbkg',
@@ -364,6 +366,30 @@ def test_psf_flags_get_definition_deprecated_name():
 
     current_def = PSF_FLAGS.get_definition('n_pixels_fit_partial')
     assert deprecated_def is current_def
+
+
+@pytest.mark.parametrize(('old_name', 'new_name', 'since'), [
+    ('npixfit_partial', 'n_pixels_fit_partial', '3.0'),
+    ('outside_bounds', 'position_outside_image', '3.1'),
+])
+def test_psf_flags_deprecated_names(old_name, new_name, since):
+    """
+    Test that deprecated flag and constant names resolve to the new
+    names and warn with the version in which each was deprecated.
+    """
+    match = (f"The flag name '{old_name}' is deprecated in version "
+             f"{since}. Use '{new_name}' instead. It will be removed in "
+             'version 4.0')
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        deprecated_def = PSF_FLAGS.get_definition(old_name)
+    assert deprecated_def is PSF_FLAGS.get_definition(new_name)
+
+    match = (f"'{old_name.upper()}' attribute was deprecated in version "
+             f"{since}. Use '{new_name.upper()}' instead. It will be "
+             'removed in version 4.0')
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        value = getattr(PSF_FLAGS, old_name.upper())
+    assert value == getattr(PSF_FLAGS, new_name.upper())
 
 
 def test_psf_flag_definition():
@@ -515,7 +541,7 @@ def test_decode_psf_flags_docstring():
     # Should have all expected flag names in the expected format
     expected_flags = [
         "``'n_pixels_fit_partial'``",
-        "``'outside_bounds'``",
+        "``'position_outside_image'``",
         "``'negative_flux'``",
         "``'no_convergence'``",
         "``'no_covariance'``",

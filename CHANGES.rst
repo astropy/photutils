@@ -1175,6 +1175,12 @@ API Changes
     string value for either parameter now raises a ``ValueError``.
     [#2421]
 
+  - The ``outside_bounds`` PSF flag (bit 2) has been renamed to
+    ``position_outside_image``, and the ``OUTSIDE_BOUNDS`` constant
+    to ``POSITION_OUTSIDE_IMAGE``. The old names are deprecated and
+    will be removed in version 4.0. ``decode_psf_flags`` now returns
+    the new name. [#2449]
+
 - ``photutils.segmentation``
 
   - The ``deblend_sources`` "too many markers" warning key stored in
