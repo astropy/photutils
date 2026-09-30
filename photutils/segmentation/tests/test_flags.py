@@ -35,8 +35,9 @@ EXPECTED_BITS = {
     'kron_partial_overlap': 32768,
     'kron_masked_pixels': 65536,
     'kron_non_finite_data': 131072,
-    'kron_neighbor_pixels': 262144,
-    'kron_uncorrected_pixels': 524288,
+    'kron_non_finite_error': 262144,
+    'kron_neighbor_pixels': 524288,
+    'kron_uncorrected_pixels': 1048576,
 }
 
 

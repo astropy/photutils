@@ -23,6 +23,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_MASKED,
                                                   FLAG_COL_N_PIXELS,
                                                   FLAG_COL_NONFINITE_DATA,
+                                                  FLAG_COL_NONFINITE_ERROR,
                                                   FLAG_COL_SEG,
                                                   FLAG_COL_SEG_MASKED,
                                                   FLAG_COL_UNCORRECTED,
@@ -2107,8 +2108,8 @@ class SourceCatalog:
         ``kron_minimum_radius``) flags derive from the detection
         catalog. The Kron photometry-loop flags (``kron_no_overlap``,
         ``kron_partial_overlap``, ``kron_masked_pixels``,
-        ``kron_non_finite_data``, ``kron_neighbor_pixels``,
-        ``kron_uncorrected_pixels``), like the
+        ``kron_non_finite_data``, ``kron_non_finite_error``,
+        ``kron_neighbor_pixels``, ``kron_uncorrected_pixels``), like the
         segment-level edge, mask, non-finite, and ``all_masked`` flags,
         are evaluated on this catalog's own inputs.
 
@@ -5246,6 +5247,8 @@ class SourceCatalog:
                 SEGMENTATION_FLAGS.KRON_MASKED_PIXELS)
             grp_flags[fcounts[:, FLAG_COL_NONFINITE_DATA] > 0] |= (
                 SEGMENTATION_FLAGS.KRON_NON_FINITE_DATA)
+            grp_flags[fcounts[:, FLAG_COL_NONFINITE_ERROR] > 0] |= (
+                SEGMENTATION_FLAGS.KRON_NON_FINITE_ERROR)
             seg_any = (fcounts[:, FLAG_COL_SEG]
                        + fcounts[:, FLAG_COL_SEG_MASKED]) > 0
             grp_flags[seg_any] |= (

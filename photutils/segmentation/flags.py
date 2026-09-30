@@ -205,6 +205,7 @@ class _SegmentationFlags(FlagRegistry):
                                   '``kron_partial_overlap``, '
                                   '``kron_masked_pixels``, '
                                   '``kron_non_finite_data``, '
+                                  '``kron_non_finite_error``, '
                                   '``kron_neighbor_pixels``, '
                                   '``kron_uncorrected_pixels``) are '
                                   'not evaluated for these sources, '
@@ -264,6 +265,17 @@ class _SegmentationFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=262144,
+            name='kron_non_finite_error',
+            description=('non-finite error values within the Kron '
+                         'aperture'),
+            detailed_description=('One or more unmasked error values '
+                                  '(NaN or inf) with nonzero aperture '
+                                  'weight within the Kron aperture '
+                                  'are non-finite, so the Kron flux '
+                                  'error is NaN.'),
+        ),
+        FlagDefinition(
+            bit_value=524288,
             name='kron_neighbor_pixels',
             description=('neighbor-source pixels within the Kron '
                          'aperture'),
@@ -275,7 +287,7 @@ class _SegmentationFlags(FlagRegistry):
                                   '"mask" or "correct").'),
         ),
         FlagDefinition(
-            bit_value=524288,
+            bit_value=1048576,
             name='kron_uncorrected_pixels',
             description=('uncorrectable neighbor pixels within the '
                          'Kron aperture'),

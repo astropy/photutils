@@ -1742,6 +1742,29 @@ class TestSourceCatalogFlags:
         assert not flags & SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
         assert not flags & SEGMENTATION_FLAGS.NON_FINITE_DATA
 
+    def test_kron_non_finite_error(self):
+        """
+        Test the kron_non_finite_error flag for a non-finite error value
+        inside the Kron aperture but outside the segment.
+        """
+        cat0 = SourceCatalog(self.data, self.segm)
+        interior_idx = np.argmax(cat0.bbox_xmin > 0)
+        x_out = int(cat0.bbox_xmax[interior_idx]) + 1
+        y_cen = int(cat0.bbox_ymin[interior_idx]
+                    + cat0.bbox_ymax[interior_idx]) // 2
+        error = np.ones(self.data.shape)
+        cat = SourceCatalog(self.data, self.segm, error=error)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.KRON_NON_FINITE_ERROR)
+
+        error[y_cen, x_out] = np.nan
+        cat = SourceCatalog(self.data, self.segm, error=error)
+        flags = cat.flags[interior_idx]
+        assert flags & SEGMENTATION_FLAGS.KRON_NON_FINITE_ERROR
+        assert not flags & SEGMENTATION_FLAGS.NON_FINITE_ERROR
+        assert np.isfinite(cat.kron_flux[interior_idx])
+        assert np.isnan(cat.kron_flux_err[interior_idx])
+
     def test_kron_undefined(self):
         """
         Test the kron_undefined flag for a fully-masked source (whose
