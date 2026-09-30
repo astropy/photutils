@@ -1370,7 +1370,8 @@ class PSFResultsAssembler:
             List of reasons why sources were invalid.
 
         init_params : `~astropy.table.QTable`
-            Initial parameter guesses for sources, containing local_bkg.
+            Initial parameter guesses for sources, containing the
+            initial positions and local_bkg.
 
         Returns
         -------
@@ -1395,11 +1396,11 @@ class PSFResultsAssembler:
         y_fit = results_tbl[y_col]
         flag2_mask = ((x_fit < -0.5) | (y_fit < -0.5) | (x_fit > nx - 0.5)
                       | (y_fit > ny - 0.5))
-        flags[flag2_mask] |= PSF_FLAGS.OUTSIDE_BOUNDS
+        flags[flag2_mask] |= PSF_FLAGS.POSITION_OUTSIDE_IMAGE
 
         # Non-positive flux
         flag4_mask = results_tbl[flux_col] <= 0
-        flags[flag4_mask] |= PSF_FLAGS.NEGATIVE_FLUX
+        flags[flag4_mask] |= PSF_FLAGS.NON_POSITIVE_FLUX
 
         # Possible non-convergence
         if fit_error_indices is not None:
@@ -1429,7 +1430,7 @@ class PSFResultsAssembler:
                 if isinstance(value, u.Quantity):
                     value = value.value
                 if np.any(np.abs(bounds - value) <= bound_tol):
-                    flags[index] |= PSF_FLAGS.NEAR_BOUND
+                    flags[index] |= PSF_FLAGS.PARAMETER_NEAR_BOUND
                     break
 
         # Invalid source reasons. Sources invalid because of a
@@ -1456,7 +1457,27 @@ class PSFResultsAssembler:
             # Handle Quantity
             local_bkg_vals = local_bkg_vals.value
         non_finite_bkg_mask = ~np.isfinite(local_bkg_vals)
-        flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCALBKG
+        flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCAL_BKG
+
+        # Flag=4096: fitted position outside the fitted data region.
+        # The region is the fit_shape box around the initial position,
+        # trimmed to the image, matching the overlap_slices cutout in
+        # get_source_cutout_data. Its edges are the outer pixel edges.
+        # Non-finite positions compare as False and are not flagged.
+        fit_ny, fit_nx = self.fit_shape
+        x_init = np.asarray(
+            init_params[self.param_mapper.init_colnames['x']], dtype=float)
+        y_init = np.asarray(
+            init_params[self.param_mapper.init_colnames['y']], dtype=float)
+        x_start = np.ceil(x_init - fit_nx / 2.0)
+        y_start = np.ceil(y_init - fit_ny / 2.0)
+        x_min = np.maximum(x_start, 0) - 0.5
+        y_min = np.maximum(y_start, 0) - 0.5
+        x_max = np.minimum(x_start + fit_nx, nx) - 0.5
+        y_max = np.minimum(y_start + fit_ny, ny) - 0.5
+        flag4096_mask = ((x_fit < x_min) | (x_fit > x_max)
+                         | (y_fit < y_min) | (y_fit > y_max))
+        flags[flag4096_mask] |= PSF_FLAGS.POSITION_OUTSIDE_FIT_REGION
 
         return flags
 

@@ -853,10 +853,10 @@ def test_grouped_fit_two_image_psfs():
         gc.enable()
 
 
-def test_near_bound_flag_grouped():
+def test_parameter_near_bound_flag_grouped():
     """
-    Regression test that the NEAR_BOUND flag (bit 32) is set for
-    grouped sources, matching single-source behavior.
+    Regression test that the PARAMETER_NEAR_BOUND flag (bit 32) is set
+    for grouped sources, matching single-source behavior.
     """
     model = CircularGaussianPRF(fwhm=2.7)
     data, params = make_psf_model_image(
@@ -1485,7 +1485,9 @@ def test_flag2_boundaries():
     psfphot = PSFPhotometry(psf_model, fit_shape)
     phot = psfphot(data, init_params=init_params)
     assert len(phot) == 8
-    assert_equal(phot['flags'][[2, 3, 6, 7]], [3, 3, 3, 3])
+    # Sources fit outside the image are also outside the fit region,
+    # which is trimmed to the image
+    assert_equal(phot['flags'][[2, 3, 6, 7]], [4099, 4099, 4099, 4099])
     assert_equal(phot['flags'][[0, 1, 4, 5]], [1, 1, 1, 1])
 
 
@@ -1588,6 +1590,36 @@ def test_flag16_missing_covariance():
     assert (phot['flags'][0] & 16) == 16
 
 
+@pytest.mark.filterwarnings('ignore:One or more fit.* may not have '
+                            'converged:astropy.utils.exceptions.'
+                            'AstropyUserWarning')
+@pytest.mark.parametrize('fitter', [TRFLSQFitter, LevMarLSQFitter])
+def test_flag16_degenerate_covariance(fitter):
+    """
+    Test that non-finite parameter errors from a degenerate fit are
+    always flagged as missing covariance (flag=16).
+
+    Two grouped sources at the same position have degenerate fluxes,
+    so the fit covariance matrix is singular. The fitters either
+    return a covariance matrix with finite (but large) errors or none
+    at all. Whether the fit also emits a convergence warning depends
+    on the platform, so that warning is ignored.
+    """
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    sources = QTable({'x_0': [12.0], 'y_0': [12.0], 'flux': [1000.0]})
+    data = make_model_image((25, 25), psf_model, sources)
+    data += make_noise_image(data.shape, mean=0.0, stddev=1.0, seed=0)
+    init_params = QTable({'x_0': [12.0, 12.0], 'y_0': [12.0, 12.0],
+                          'flux': [500.0, 500.0], 'group_id': [1, 1]})
+
+    psfphot = PSFPhotometry(psf_model, (7, 7), fitter=fitter())
+    phot = psfphot(data, init_params=init_params)
+
+    errs = np.array([phot[col] for col in ('x_err', 'y_err', 'flux_err')])
+    non_finite = ~np.all(np.isfinite(errs), axis=0)
+    assert_equal(non_finite, (phot['flags'] & 16) > 0)
+
+
 def test_flag32_parameter_at_bounds():
     """
     Test flag=32 when fitted x/y are exactly at imposed bounds.
@@ -1679,6 +1711,101 @@ def test_flag1024_non_finite_flux():
     # Third source should have non-finite flux_fit (flag 1024 set)
     assert not np.isfinite(phot['flux_fit'][2])
     assert (phot['flags'][2] & 1024) == 1024
+
+
+@pytest.mark.parametrize(('x_init', 'y_init', 'dx', 'dy', 'expected'), [
+    # The 5x5 fit region spans pixel edges 9.5 to 14.5
+    (12.0, 12.0, 2.4, 0.0, False),
+    (12.0, 12.0, 2.5, -2.5, False),
+    (12.0, 12.0, 2.6, 0.0, True),
+    (12.0, 12.0, -2.6, 0.0, True),
+    (12.0, 12.0, 0.0, 2.6, True),
+    (12.0, 12.0, 0.0, -2.6, True),
+    (12.3, 11.6, 2.1, 0.0, False),  # region spans x edges 9.5 to 14.5
+    (12.6, 11.6, -2.2, 0.0, True),  # region spans x edges 10.5 to 15.5
+    # The fit region is trimmed to the image, spanning x edges -0.5
+    # to 3.5
+    (1.0, 12.0, 2.6, 0.0, True),
+    (1.0, 12.0, -1.4, 0.0, False),
+])
+def test_flag4096_position_outside_fit_region(x_init, y_init, dx, dy,
+                                              expected):
+    """
+    Test flag=4096 for a fitted position outside the fitted data
+    region.
+
+    A mock fitter shifts the fitted position by a known offset from the
+    initial position.
+    """
+    shape = (25, 25)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros(shape)
+    init_params = QTable()
+    init_params['x_0'] = [x_init]
+    init_params['y_0'] = [y_init]
+    init_params['flux'] = [500.0]
+
+    def mock_fitter(model, *args, **kwargs):  # noqa: ARG001
+        model = model.copy()
+        model.x_0 += dx
+        model.y_0 += dy
+        return model
+
+    mock_fitter.fit_info = {'status': 1}
+    match = "'fitter_maxiters' will be ignored because the fitter's"
+    with pytest.warns(AstropyUserWarning, match=match):
+        psfphot = PSFPhotometry(psf_model, (5, 5), fitter=mock_fitter)
+    phot = psfphot(data, init_params=init_params)
+
+    assert_allclose(phot['x_fit'][0], x_init + dx)
+    assert_allclose(phot['y_fit'][0], y_init + dy)
+    assert bool(phot['flags'][0] & 4096) is expected
+    # The trimmed region case lies inside the image
+    if x_init == 1.0:
+        assert (phot['flags'][0] & 2) == 0
+
+
+def test_flag4096_position_outside_fit_region_fit():
+    """
+    Test flag=4096 when a fit converges on a bright neighbor outside
+    the fitted data region.
+    """
+    shape = (25, 41)
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    sources = QTable()
+    sources['x_0'] = [20.0]
+    sources['y_0'] = [12.0]
+    sources['flux'] = [1.0e5]
+    data = make_model_image(shape, psf_model, sources)
+
+    # The fit region spans x edges 13.5 to 18.5
+    init_params = QTable()
+    init_params['x_0'] = [16.0]
+    init_params['y_0'] = [12.0]
+    init_params['flux'] = [1.0e4]
+    psfphot = PSFPhotometry(psf_model, (5, 5))
+    phot = psfphot(data, init_params=init_params)
+
+    assert_allclose(phot['x_fit'][0], 20.0)
+    assert phot['flags'][0] == 4096
+
+
+def test_flag4096_non_finite_position():
+    """
+    Test that flag=4096 is not set for a non-finite fitted position.
+    """
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros((25, 25))
+    init_params = QTable()
+    init_params['x_0'] = [12.0, 40.0]
+    init_params['y_0'] = [12.0, 12.0]
+    init_params['flux'] = [500.0, 500.0]
+    psfphot = PSFPhotometry(psf_model, (5, 5))
+    phot = psfphot(data, init_params=init_params)
+
+    assert np.isnan(phot['x_fit'][1])
+    assert (phot['flags'][1] & 64) == 64
+    assert not np.any(phot['flags'] & 4096)
 
 
 def test_psf_photometry_methods(test_data):
@@ -2412,9 +2539,9 @@ def test_decode_flags():
 
     # Source 1: normal source (no flags expected)
     m1 = CircularGaussianPRF(flux=100, x_0=10, y_0=10, fwhm=2)
-    # Source 2: negative flux (will have negative_flux flag)
+    # Source 2: negative flux (will have non_positive_flux flag)
     m2 = CircularGaussianPRF(flux=-50, x_0=5, y_0=5, fwhm=2)
-    # Source 3: outside bounds (will have outside_bounds flag)
+    # Source 3: outside the image (will have position_outside_image flag)
     m3 = CircularGaussianPRF(flux=100, x_0=25, y_0=25, fwhm=2)
 
     data = m1(xx, yy) + m2(xx, yy) + m3(xx, yy)
@@ -2454,8 +2581,8 @@ def test_decode_flags():
     # (depending on fitting success)
     assert isinstance(decoded_flags[1], list)
 
-    # Check that the second source has the negative_flux flag
-    assert 'negative_flux' in decoded_flags[2]
+    # Check that the second source has the non_positive_flux flag
+    assert 'non_positive_flux' in decoded_flags[2]
 
     # Check that the third source has flags (it's outside the image
     # bounds). It should have 'no_overlap' since it's completely
@@ -2473,7 +2600,7 @@ def test_decode_flags():
     results2 = psfphot(data, init_params=init_params)
     decoded2 = psfphot.decode_flags()
     assert list(decoded2) == list(results2['id'])
-    assert 'negative_flux' in decoded2[3]
+    assert 'non_positive_flux' in decoded2[3]
 
 
 def test_int_mask_matches_bool_mask():
@@ -2553,11 +2680,11 @@ def test_finder_empty_table():
     assert phot is None
 
 
-def test_near_bound_flag_model_bounds():
+def test_parameter_near_bound_flag_model_bounds():
     """
-    Regression test that the near_bound flag (bit 32) is set when the
-    fit is pinned at a bound set on the PSF model itself, without the
-    xy_bounds keyword.
+    Regression test that the parameter_near_bound flag (bit 32) is set
+    when the fit is pinned at a bound set on the PSF model itself,
+    without the xy_bounds keyword.
     """
     model = CircularGaussianPRF(fwhm=2.7)
     data, params = make_psf_model_image((35, 35), model, 1,
@@ -2575,11 +2702,11 @@ def test_near_bound_flag_model_bounds():
     assert phot['flags'][0] & 32
 
 
-def test_near_bound_flag_flux_bounds_units():
+def test_parameter_near_bound_flag_flux_bounds_units():
     """
-    Regression test that the near_bound flag (bit 32) is evaluated for
-    a flux parameter with bounds when the data has units (the fitted
-    flux is then a Quantity).
+    Regression test that the parameter_near_bound flag (bit 32) is
+    evaluated for a flux parameter with bounds when the data has units
+    (the fitted flux is then a Quantity).
     """
     unit = u.Jy
     model = CircularGaussianPRF(fwhm=2.7)

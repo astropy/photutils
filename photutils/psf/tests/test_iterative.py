@@ -785,7 +785,7 @@ def test_decode_flags():
 
     # Source 1: normal source (no flags expected)
     m1 = CircularGaussianPRF(flux=100, x_0=10, y_0=10, fwhm=2)
-    # Source 2: negative flux (will have negative_flux flag)
+    # Source 2: negative flux (will have non_positive_flux flag)
     m2 = CircularGaussianPRF(flux=-50, x_0=5, y_0=5, fwhm=2)
     # Source 3: outside the image (will have the no_overlap flag)
     m3 = CircularGaussianPRF(flux=100, x_0=25, y_0=25, fwhm=2)
@@ -829,8 +829,8 @@ def test_decode_flags():
     # (depending on fitting success)
     assert isinstance(decoded_flags[1], list)
 
-    # Check that the second source has the negative_flux flag
-    assert 'negative_flux' in decoded_flags[2]
+    # Check that the second source has the non_positive_flux flag
+    assert 'non_positive_flux' in decoded_flags[2]
 
     # Check that the third source has flags (it's outside the image
     # bounds). It should have 'no_overlap' since it's completely outside.

@@ -11,8 +11,8 @@ from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.background import SExtractorBackground
-from photutils.segmentation import (SegmentationImage, SourceCatalog,
-                                    detect_sources)
+from photutils.segmentation import (SEGMENTATION_FLAGS, SegmentationImage,
+                                    SourceCatalog, detect_sources)
 from photutils.segmentation._batch_catalog import batch_local_background
 from photutils.segmentation.tests._batch_scene import make_batch_scene
 
@@ -116,7 +116,7 @@ def _kernel_local_background(cat, **kwargs):
     return batch_local_background(
         arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
         bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-        bbox_ixmax=ixmax, **params)
+        bbox_ixmax=ixmax, **params)[0]
 
 
 @pytest.fixture(scope='module')
@@ -140,6 +140,20 @@ def test_matches_reference(scene, width, with_mask):
     assert_allclose(cat.local_background, expected, rtol=1e-13, atol=0)
     assert_allclose(_kernel_local_background(cat), expected, rtol=1e-13,
                     atol=0)
+
+
+@pytest.mark.parametrize('width', [1, 3, 8, 24])
+@pytest.mark.parametrize('with_mask', [True, False])
+def test_n_pixels_matches_reference(scene, width, with_mask):
+    """
+    Test that the kernel counts the same usable annulus pixels as the
+    per-source aperture masks.
+    """
+    cat = SourceCatalog(scene['data'], scene['segm'],
+                        mask=scene['mask'] if with_mask else None,
+                        local_bkg_width=width)
+    expected = [len(values) for values in _annulus_values(cat)]
+    assert_array_equal(cat._local_bkg_n_pixels, expected)
 
 
 def _make_noise_scene(seed):
@@ -301,6 +315,8 @@ def test_few_pixels():
     mask[3:8, 3:8] = False  # the inner rectangle only, no annulus pixel
     cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
     assert cat.local_background[0] == 0.0
+    assert cat._local_bkg_n_pixels[0] == 0
+    assert cat.flags[0] & SEGMENTATION_FLAGS.LOCAL_BKG_TOO_FEW_PIXELS
     assert _reference_local_background(cat)[0] == 0.0
     assert _kernel_local_background(cat, min_pixels=1)[0] == 0.0
     # No usable pixel at all gives NaN when min_pixels allows it
@@ -312,6 +328,8 @@ def test_few_pixels():
     data[2, 5] = 2.0
     cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
     assert cat.local_background[0] == 0.0
+    assert cat._local_bkg_n_pixels[0] == 1
+    assert cat.flags[0] & SEGMENTATION_FLAGS.LOCAL_BKG_TOO_FEW_PIXELS
     assert _reference_local_background(cat)[0] == 0.0
     assert _kernel_local_background(cat, min_pixels=2)[0] == 0.0
     assert _kernel_local_background(cat, min_pixels=1)[0] == 2.0

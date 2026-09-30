@@ -48,6 +48,7 @@ def make_batch_scene(*, seed=0):
                              / (2 * sig ** 2))
     error = np.full((ny, nx), 0.1)
     error[::17, ::13] = 0.3
+    error[100, 102] = np.nan  # non-finite error inside a source
     mask = np.zeros((ny, nx), dtype=bool)
     mask[18:20, 22:24] = True  # inside a source of a close pair
     mask[73:75, 72:84] = True  # spans a close pair
@@ -133,7 +134,8 @@ def reference_aperture_data(cat, label, x_centroid, y_centroid,
     data = cat._data[slc_lg].astype(float) - local_background
 
     mask_cutout = None if cat._mask is None else cat._mask[slc_lg]
-    data_mask = ~np.isfinite(data)
+    non_finite_mask = ~np.isfinite(data)
+    data_mask = non_finite_mask.copy()
     if mask_cutout is not None:
         data_mask |= mask_cutout
 
@@ -167,6 +169,8 @@ def reference_aperture_data(cat, label, x_centroid, y_centroid,
                                             mask=mask)
 
     flag_masks = {'data_mask': data_mask,
+                  'input_mask': mask_cutout,
+                  'non_finite_mask': non_finite_mask,
                   'segm_mask': segm_mask,
                   'uncorrected_mask': uncorrected_mask}
 

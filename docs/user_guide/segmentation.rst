@@ -535,26 +535,26 @@ properties are shown below::
     label x_centroid y_centroid sky_centroid ... kron_flux kron_flux_err flags
                                               ...
     ----- ---------- ---------- ------------ ... --------- ------------- ------
-        1     235.38       1.44         None ...    490.35           nan  40976
-        2     493.78       5.84         None ...    489.37           nan  40976
+        1     235.38       1.44         None ...    490.35           nan  10256
+        2     493.78       5.84         None ...    489.37           nan  10256
         3     207.29      10.26         None ...    694.24           nan      0
-        4     364.87      11.13         None ...    681.20           nan  32768
+        4     364.87      11.13         None ...    681.20           nan  8192
         5     257.85      12.18         None ...    748.18           nan      0
-        6     289.79      22.39         None ...    941.39           nan   8192
+        6     289.79      22.39         None ...    941.39           nan   2048
         7     379.21      27.86         None ...    635.38           nan      0
-        8     441.42      31.26         None ...    742.80           nan   8192
-        9     358.54      36.08         None ...    449.14           nan   8192
+        8     441.42      31.26         None ...    742.80           nan   2048
+        9     358.54      36.08         None ...    449.14           nan   2048
       ...        ...        ...          ... ...       ...           ...    ...
-       84     208.00     199.45         None ...   1008.23           nan 139296
+       84     208.00     199.45         None ...   1008.23           nan 133152
        85     220.83     198.24         None ...    546.55           nan 131104
-       86     426.56     211.19         None ...    876.52           nan 401440
+       86     426.56     211.19         None ...    876.52           nan 395296
        87     419.52     216.55         None ...    814.66           nan 131104
        88     302.52     238.92         None ...    505.42           nan 393248
        89     292.77     244.93         None ...    792.63           nan 131104
        90      32.66     241.24         None ...    930.77           nan 131104
-       91      42.60     249.43         None ...    580.54           nan 401440
-       92     433.80     280.74         None ...    663.44           nan 139296
-       93     434.03     288.88         None ...    879.64           nan 139296
+       91      42.60     249.43         None ...    580.54           nan 395296
+       92     433.80     280.74         None ...    663.44           nan 133152
+       93     434.03     288.88         None ...    879.64           nan 133152
     Length = 93 rows
 
 The error columns are NaN because we did not input an error array (see
@@ -630,11 +630,11 @@ label numbers in the segmentation image::
     label x_centroid y_centroid sky_centroid ... kron_flux kron_flux_err flags
                                               ...
     ----- ---------- ---------- ------------ ... --------- ------------- ------
-        1     235.38       1.44         None ...    490.35           nan  40976
+        1     235.38       1.44         None ...    490.35           nan  10256
         5     257.85      12.18         None ...    748.18           nan      0
-       20     347.17      66.45         None ...    855.34           nan   8192
+       20     347.17      66.45         None ...    855.34           nan   2048
        50     381.02     174.67         None ...    438.55           nan      0
-       75      74.44     259.78         None ...    876.02           nan   8192
+       75      74.44     259.78         None ...    876.02           nan   2048
        80      14.93      60.06         None ...    878.52           nan 131104
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`

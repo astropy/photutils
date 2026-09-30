@@ -23,6 +23,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_MASKED,
                                                   FLAG_COL_N_PIXELS,
                                                   FLAG_COL_NONFINITE_DATA,
+                                                  FLAG_COL_NONFINITE_ERROR,
                                                   FLAG_COL_SEG,
                                                   FLAG_COL_SEG_MASKED,
                                                   FLAG_COL_UNCORRECTED,
@@ -78,6 +79,10 @@ __all__ = ['SourceCatalog']
 # The inner rectangle of the local background annulus is this factor
 # times the segment bounding box size
 _LOCAL_BKG_SCALE = 1.5
+
+# The minimum number of usable local background annulus pixels. The
+# local background of a source with fewer pixels is zero.
+_LOCAL_BKG_MIN_PIXELS = 10
 
 
 class _SegmentValues:
@@ -710,10 +715,12 @@ class SourceCatalog:
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
-    # Cached properties whose values are packed across sources and thus
-    # cannot be sliced per source. __getitem__ drops them from the
-    # sliced catalog, which recomputes them on demand.
-    _recompute_on_slice = ('_flux_radius_optimizer_args',)
+    # Cached properties whose values cannot be sliced per source
+    # (buffers packed across sources or tuples of per-source arrays).
+    # __getitem__ drops them from the sliced catalog, which recomputes
+    # them on demand.
+    _recompute_on_slice = ('_flux_radius_optimizer_args',
+                           '_local_background_batch')
 
     @deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
                                  until='4.0')
@@ -2101,20 +2108,24 @@ class SourceCatalog:
         the values.
 
         If a ``detection_catalog`` was input, the shape
-        (``undefined_shape``, ``singular_covariance``), centroid
-        (``centroid_win_fallback``, ``centroid_quad_failed``),
-        and Kron aperture geometry (``kron_undefined``,
-        ``kron_minimum_radius``) flags derive from the detection
-        catalog. The Kron photometry-loop flags (``kron_no_overlap``,
+        (``undefined_shape``, ``singular_covariance``) and Kron
+        aperture geometry (``kron_undefined``, ``kron_minimum_radius``)
+        flags derive from the detection catalog. The Kron
+        photometry-loop flags (``kron_no_overlap``,
         ``kron_partial_overlap``, ``kron_masked_pixels``,
+        ``kron_non_finite_data``, ``kron_non_finite_error``,
         ``kron_neighbor_pixels``, ``kron_uncorrected_pixels``), like the
-        segment-level edge, mask, non-finite, and ``all_masked`` flags,
-        are evaluated on this catalog's own inputs.
+        segment-level edge, mask, non-finite, ``all_masked``, and
+        ``local_bkg_too_few_pixels`` flags, are evaluated on this
+        catalog's own inputs.
 
-        Accessing ``flags`` computes the moment, covariance, centroid,
-        and Kron-aperture properties if they have not already
-        been computed (the results are cached and reused by those
-        properties).
+        Accessing ``flags`` computes the moment, covariance, local
+        background, and Kron-aperture properties if they have not
+        already been computed (the results are cached and reused by
+        those properties). The windowed and quadratic centroid
+        fallbacks are reported by the `centroid_win_fallback` and
+        `centroid_quad_fallback` properties instead of by flags, so
+        that the flags do not require computing those centroids.
 
         The flags are:
 
@@ -2145,6 +2156,12 @@ class SourceCatalog:
         # All pixels within the source segment are masked
         flags[self._all_masked] |= SEGMENTATION_FLAGS.ALL_MASKED
 
+        # Too few usable local background annulus pixels, so the local
+        # background is zero
+        if self.local_bkg_width > 0:
+            too_few = self._local_bkg_n_pixels < _LOCAL_BKG_MIN_PIXELS
+            flags[too_few] |= SEGMENTATION_FLAGS.LOCAL_BKG_TOO_FEW_PIXELS
+
         # Non-positive net flux (the zeroth image moment over the
         # source segment). The moment-derived shape properties are
         # undefined. Fully-masked sources and sources with no positive
@@ -2170,16 +2187,6 @@ class SourceCatalog:
         # matrix
         flags[self._singular_covariance_mask] |= (
             SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
-
-        # Windowed centroid is NaN or fell back to the isophotal
-        # centroid
-        flags[self._centroid_win_fallback] |= (
-            SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK)
-
-        # Quadratic-fit centroid is non-finite
-        quad = self._array('centroid_quad')
-        quad_failed = ~np.all(np.isfinite(quad), axis=1)
-        flags[quad_failed] |= SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
 
         # Kron-aperture flags
         flags |= self._kron_flags
@@ -2744,7 +2751,7 @@ class SourceCatalog:
         otherwise.
 
         This is the single computation behind `centroid_win`,
-        `centroid_win_err`, and ``_centroid_win_fallback``. See
+        `centroid_win_err`, and `centroid_win_fallback`. See
         `centroid_win` for the algorithm details.
         """
         # Use .copy() to avoid mutating the cached flux_radius value
@@ -2803,10 +2810,13 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
-    def _centroid_win_fallback(self):
+    def centroid_win_fallback(self):
         """
-        A boolean array that is `True` where the windowed centroid is
-        NaN or fell back to the isophotal centroid.
+        A boolean array that is `True` where the windowed centroid
+        (`centroid_win`) fell back to the isophotal `centroid` or is
+        NaN.
+
+        See `centroid_win` for the fallback conditions.
         """
         return self._centroid_win_results[:, 5].astype(bool)
 
@@ -2850,8 +2860,7 @@ class SourceCatalog:
         (`centroid_win`).
 
         The window centroid is computed using an iterative algorithm
-        to derive a more accurate centroid. It is equivalent to
-        `SourceExtractor`_'s XWIN_IMAGE parameters.
+        to derive a more accurate centroid.
         """
         return self._array('centroid_win')[:, 0]
 
@@ -2863,8 +2872,7 @@ class SourceCatalog:
         (`centroid_win`).
 
         The window centroid is computed using an iterative algorithm
-        to derive a more accurate centroid. It is equivalent to
-        `SourceExtractor`_'s YWIN_IMAGE parameters.
+        to derive a more accurate centroid.
         """
         return self._array('centroid_win')[:, 1]
 
@@ -2950,14 +2958,19 @@ class SourceCatalog:
     @use_detcat
     def _centroid_quad_results(self):
         """
-        The quadratic centroid coordinates, relative to the cutout data,
-        and their error variances and covariance as a 2D array with
-        columns ``(x, y, var_x, var_y, cov_xy)`` and shape ``(n_labels,
-        5)``.
+        The quadratic centroid coordinates, relative to the cutout
+        data, their error variances and covariance, and the fallback
+        indicator as a 2D array with columns ``(x, y, var_x, var_y,
+        cov_xy, fallback)`` and shape ``(n_labels, 6)``.
+
+        The ``fallback`` column is 1.0 for sources whose centroid is not
+        the maximum of a quadratic fit (the peak pixel position, the
+        isophotal centroid, or NaN), and 0.0 otherwise.
 
         This is the single computation behind `cutout_centroid_quad`,
-        `centroid_quad`, and `centroid_quad_err`. See
-        `cutout_centroid_quad` for the algorithm details.
+        `centroid_quad`, `centroid_quad_err`, and
+        `centroid_quad_fallback`. See `cutout_centroid_quad` for the
+        algorithm details.
         """
         # Precompute the pseudo-inverse for the 3x3 relative coordinate
         # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
@@ -2991,7 +3004,7 @@ class SourceCatalog:
         ny = iymax - iymin
         n_src = len(status)
 
-        results = np.full((n_src, 5), np.nan)
+        results = np.full((n_src, 6), np.nan)
 
         # If the peak is at the edge of the cutout, return the peak
         # position. No fit is performed, so no errors can be propagated.
@@ -3068,6 +3081,7 @@ class SourceCatalog:
             results[nan_mask, 3] = iso_cov[nan_mask, 1, 1]
             results[nan_mask, 4] = iso_cov[nan_mask, 0, 1]
 
+        results[:, 5] = ~fit
         return results
 
     @cached_property
@@ -3115,7 +3129,7 @@ class SourceCatalog:
         the centroid with ``fit_boxsize=3``.
 
         Because this centroid is based on fitting data, it can fail for
-        many reasons, returning (np.nan, np.nan):
+        many reasons including:
 
         * quadratic fit failed
         * quadratic fit does not have a maximum
@@ -3123,12 +3137,33 @@ class SourceCatalog:
         * not enough unmasked data points (6 are required)
         * no unmasked pixels within the source segment
 
+        In these cases, the isophotal `centroid` is returned instead
+        (NaN where the isophotal centroid is NaN).
+
         Also note that a fit is not performed if the maximum data value
         is at the edge of the source segment. In this case, the position
         of the maximum pixel will be returned.
+
+        The `centroid_quad_fallback` property is `True` for sources
+        without a quadratic-fit centroid.
         """
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid_quad + origin
+
+    @cached_property
+    @use_detcat
+    def centroid_quad_fallback(self):
+        """
+        A boolean array that is `True` where the quadratic centroid
+        (`centroid_quad`) is not the maximum of a quadratic fit.
+
+        This is the case where the maximum data value is at the edge
+        of the source segment (the position of the maximum pixel is
+        returned), where the fit failed (the isophotal `centroid` is
+        returned), or where the centroid is NaN. See `centroid_quad`
+        for details.
+        """
+        return self._centroid_quad_results[:, 5].astype(bool)
 
     @cached_property
     @use_detcat
@@ -4139,8 +4174,7 @@ class SourceCatalog:
         any local distortion. The position angle is measured from
         North toward East (i.e., counter-clockwise on the sky) in the
         celestial frame of the input ``wcs`` and is in the range (-90,
-        90] degrees. This is the same convention as SourceExtractor's
-        ``THETA_J2000`` parameter for an equatorial ``wcs``.
+        90] degrees.
 
         `None` if ``wcs`` is not input.
         """
@@ -4363,6 +4397,30 @@ class SourceCatalog:
         return self._local_background_apertures
 
     @cached_property
+    def _local_background_batch(self):
+        """
+        The local background kernel output.
+
+        A tuple of the local background value (per pixel) and the
+        number of usable annulus pixels of each source. Both are zero
+        if ``local_bkg_width`` is zero.
+        """
+        if self.local_bkg_width == 0:
+            return (np.zeros(self.n_labels),
+                    np.zeros(self.n_labels, dtype=np.intp))
+
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        per_source = {'bbox_iymin': iymin, 'bbox_iymax': iymax,
+                      'bbox_ixmin': ixmin, 'bbox_ixmax': ixmax}
+        return self._threaded_batch(
+            batch_local_background, per_source,
+            merge=_concatenate_arrays, data=arrays['data'],
+            mask=arrays['mask'], segm=arrays['segm'],
+            width=self.local_bkg_width, scale=_LOCAL_BKG_SCALE,
+            sigma=3.0, maxiters=20, min_pixels=_LOCAL_BKG_MIN_PIXELS)
+
+    @cached_property
     def _local_background(self):
         """
         The local background value (per pixel) of each source (see
@@ -4370,21 +4428,17 @@ class SourceCatalog:
 
         This property is always an `~numpy.ndarray` without units.
         """
-        if self.local_bkg_width == 0:
-            local_bkgs = np.zeros(self.n_labels)
-        else:
-            arrays = self._get_batch_arrays()
-            iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-            per_source = {'bbox_iymin': iymin, 'bbox_iymax': iymax,
-                          'bbox_ixmin': ixmin, 'bbox_ixmax': ixmax}
-            local_bkgs = self._threaded_batch(
-                batch_local_background, per_source, data=arrays['data'],
-                mask=arrays['mask'], segm=arrays['segm'],
-                width=self.local_bkg_width, scale=_LOCAL_BKG_SCALE,
-                sigma=3.0, maxiters=20, min_pixels=10)
-
+        local_bkgs = self._local_background_batch[0].copy()
         local_bkgs[self._all_masked] = np.nan
         return local_bkgs
+
+    @cached_property
+    def _local_bkg_n_pixels(self):
+        """
+        The number of usable local background annulus pixels of each
+        source.
+        """
+        return self._local_background_batch[1]
 
     @cached_property
     def local_background(self):
@@ -4400,8 +4454,9 @@ class SourceCatalog:
         estimate of the usable annulus pixel values with a
         ``SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)`` sigma
         clip, matching it to within rounding. It is zero for a source
-        with fewer than 10 usable annulus pixels. The sources are
-        measured concurrently when ``n_threads`` > 1.
+        with fewer than 10 usable annulus pixels, which sets the
+        ``local_bkg_too_few_pixels`` flag (see `flags`). The sources
+        are measured concurrently when ``n_threads`` > 1.
         """
         bkg = self._local_background
         if self._data_unit is not None:
@@ -5241,10 +5296,12 @@ class SourceCatalog:
             grp_flags[no_ovl] |= SEGMENTATION_FLAGS.KRON_NO_OVERLAP
             grp_flags[(n_pix > 0) & weights_out] |= (
                 SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
-            masked_any = (fcounts[:, FLAG_COL_MASKED]
-                          + fcounts[:, FLAG_COL_NONFINITE_DATA]) > 0
-            grp_flags[masked_any] |= (
+            grp_flags[fcounts[:, FLAG_COL_MASKED] > 0] |= (
                 SEGMENTATION_FLAGS.KRON_MASKED_PIXELS)
+            grp_flags[fcounts[:, FLAG_COL_NONFINITE_DATA] > 0] |= (
+                SEGMENTATION_FLAGS.KRON_NON_FINITE_DATA)
+            grp_flags[fcounts[:, FLAG_COL_NONFINITE_ERROR] > 0] |= (
+                SEGMENTATION_FLAGS.KRON_NON_FINITE_ERROR)
             seg_any = (fcounts[:, FLAG_COL_SEG]
                        + fcounts[:, FLAG_COL_SEG_MASKED]) > 0
             grp_flags[seg_any] |= (

@@ -575,7 +575,7 @@ class TestNonFiniteData:
         assert np.isfinite(phot.flux)
         assert_allclose(phot.flux, aper.area_overlap(data) - 2)
         assert_allclose(phot.area.value, phot.flux)
-        assert phot.flags == 32
+        assert phot.flags == APERTURE_FLAGS.NON_FINITE_DATA
         assert phot.decode_flags()[1] == ['non_finite_data']
 
     def test_mask_path_masks_nonfinite(self):
@@ -593,7 +593,7 @@ class TestNonFiniteData:
             decoded = phot.decode_flags()[1]
         assert np.isfinite(flux)
         assert_allclose(flux, aper.area_overlap(data) - 2)
-        assert flags == 32
+        assert flags == APERTURE_FLAGS.NON_FINITE_DATA
         assert decoded == ['non_finite_data']
 
     @pytest.mark.parametrize('aperture_type', ['circle', 'polygon'])
@@ -628,8 +628,9 @@ class TestNonFiniteData:
         aper = CircularAperture((12, 12), r=5)
         phot = AperturePhotometry(data, aper, mask=mask)
         assert np.isfinite(phot.flux)
-        # Both masked_pixels (8) and non_finite_data (32) are set.
-        assert phot.flags == 8 | 32
+        # Both masked_pixels and non_finite_data are set
+        assert phot.flags == (APERTURE_FLAGS.MASKED_PIXELS
+                              | APERTURE_FLAGS.NON_FINITE_DATA)
         assert set(phot.decode_flags()[1]) == {'masked_pixels',
                                                'non_finite_data'}
 
@@ -642,7 +643,7 @@ class TestNonFiniteData:
         mask[12, 12] = True
         aper = CircularAperture((12, 12), r=5)
         phot = AperturePhotometry(data, aper, mask=mask)
-        assert phot.flags == 8
+        assert phot.flags == APERTURE_FLAGS.MASKED_PIXELS
         stats = ApertureStats(data, aper, mask=mask)
         assert phot.flags == stats.flags
 

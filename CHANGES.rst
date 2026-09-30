@@ -278,6 +278,12 @@ New Features
     in a single vectorized operation instead of a loop over the stars,
     which makes each build iteration about 20% faster. [#2422]
 
+  - Added a ``PSFPhotometry`` and ``IterativePSFPhotometry`` flag (bit
+    4096, ``position_outside_fit_region``) that is set when the
+    fitted source position is outside the region of fitted data, which
+    is the ``fit_shape`` box around the initial position, trimmed to
+    the input image. [#2450]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
@@ -286,8 +292,8 @@ New Features
   - ``SegmentationImage`` objects now always have an ``info`` attribute,
     a dictionary containing auxiliary information. Segmentation
     images returned by ``deblend_sources`` store the input labels
-    affected by deblending warnings under ``'nonposmin_labels'`` and
-    ``'n_markers_labels'`` keys. [#2378]
+    affected by deblending warnings under ``'non_positive_min_labels'``
+    and ``'too_many_markers_labels'`` keys. [#2378]
 
   - Added a ``get_label_mapping`` method to ``SegmentationImage`` to find
     the mapping of labels to another segmentation image defined on the
@@ -377,6 +383,11 @@ New Features
     cached full-image working arrays used by the compiled code. Working
     copies are made when the input image arrays do not have a common
     ``float32`` or ``float64`` dtype. [#2446]
+
+  - Added ``centroid_win_fallback`` and ``centroid_quad_fallback``
+    boolean properties to ``SourceCatalog`` that are ``True`` where the
+    windowed or quadratic centroid was substituted by the isophotal
+    centroid or peak pixel, or the value is NaN. [#2450]
 
 - ``photutils.utils``
 
@@ -611,8 +622,8 @@ Bug Fixes
   - Fixed a bug where PSF model parameter bounds were not applied in
     grouped fits, so grouped fits were unconstrained where single-source
     fits were constrained. The bounds are now also propagated back to
-    the fitted models, so the ``NEAR_BOUND`` flag is now set for grouped
-    sources. [#2384]
+    the fitted models, so the ``PARAMETER_NEAR_BOUND`` flag is now set
+    for grouped sources. [#2384]
 
   - Fixed a bug where ``PSFPhotometry`` raised an error for
     integer-dtype data when a ``local_bkg`` column was provided. [#2384]
@@ -1169,21 +1180,26 @@ API Changes
     string value for either parameter now raises a ``ValueError``.
     [#2421]
 
-- ``photutils.segmentation``
+  - The following PSF flags have been renamed, along with their
+    uppercase constants: ``outside_bounds`` (bit 2) to
+    ``position_outside_image``, ``negative_flux`` (bit 4)
+    to ``non_positive_flux``, ``near_bound`` (bit 32) to
+    ``parameter_near_bound``, and ``non_finite_localbkg`` (bit 2048) to
+    ``non_finite_local_bkg``. The old names are deprecated and will be
+    removed in version 4.0. ``decode_psf_flags`` now returns the new
+    names. [#2450]
 
-  - The ``deblend_sources`` "too many markers" warning key stored in
-    the returned ``SegmentationImage.info['warnings']`` dictionary has
-    been renamed from ``'nmarkers'`` to ``'n_markers'``, consistent
-    with the ``n_*`` naming used elsewhere in photutils. [#2346]
+- ``photutils.segmentation``
 
   - The deblending warning information stored by ``deblend_sources``
     in the returned ``SegmentationImage`` ``info`` dictionary has been
-    restructured. The affected input labels are now stored as arrays
-    directly under ``'nonposmin_labels'`` and ``'n_markers_labels'``
-    keys. The nested ``info['warnings']`` dictionary, including
-    its ``'message'`` entries, has been removed. The emitted
-    warning is now a ``DeblendWarning`` (a subclass of astropy's
-    ``AstropyUserWarning``) instead of an ``AstropyUserWarning``.
+    restructured. The affected input labels are now stored as
+    arrays directly under ``'non_positive_min_labels'`` and
+    ``'too_many_markers_labels'`` keys. The nested ``info['warnings']``
+    dictionary, including its ``'message'`` entries, has been removed.
+    The emitted warning is now a ``DeblendWarning`` (a subclass of
+    astropy's ``AstropyUserWarning``) instead of an
+    ``AstropyUserWarning``.
     [#2378]
 
   - ``SegmentationImage`` now raises a ``TypeError`` for masked array
@@ -1218,9 +1234,9 @@ API Changes
     spacing keeps the threshold levels concentrated near the source
     minimum, recovering faint companions of bright sources that the
     linear spacing misses, so deblending results can change for the
-    affected sources. The ``'nonposmin_labels'`` info key and the
-    ``deblend_nonposmin`` flag are unchanged and continue to record
-    the affected sources. [#2410]
+    affected sources. The ``'non_positive_min_labels'`` info key and
+    the ``deblend_non_positive_min`` flag are unchanged and continue to
+    record the affected sources. [#2410]
 
   - ``detect_sources`` now emits an ``AstropyUserWarning`` if the
     ``threshold`` is negative or, for a threshold array, has any

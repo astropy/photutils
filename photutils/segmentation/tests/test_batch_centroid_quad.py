@@ -46,8 +46,9 @@ def _reference_centroid_quad_results(cat):
     Compute the quadratic centroid results of each source.
 
     This is a verbatim port of the per-source Python implementation
-    of ``_centroid_quad_results`` that the batch path replaces. It is
-    the numerical reference for the batch path.
+    of ``_centroid_quad_results`` that the batch path replaces, with
+    a final column that is 1.0 where the centroid is not a quadratic
+    fit maximum. It is the numerical reference for the batch path.
     """
     xi = np.arange(3)
     x, y = np.meshgrid(xi, xi)
@@ -65,7 +66,7 @@ def _reference_centroid_quad_results(cat):
     compute_err = cat._error is not None
 
     _nan = np.nan
-    nan_result = (_nan, _nan, _nan, _nan, _nan)
+    nan_result = (_nan, _nan, _nan, _nan, _nan, 1.0)
     results = []
 
     for cutout, error_cutout, mask in zip(cat._data_cutouts,
@@ -89,7 +90,7 @@ def _reference_centroid_quad_results(cat):
 
         if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
             results.append((float(xidx), float(yidx), _nan, _nan,
-                            _nan))
+                            _nan, 1.0))
             continue
 
         xidx0 = xidx - 1
@@ -122,7 +123,7 @@ def _reference_centroid_quad_results(cat):
             var_x, var_y, cov_xy = _centroid_quad_var(
                 c, xm_rel, ym_rel, pinv, box_var)
 
-        results.append((xm, ym, var_x, var_y, cov_xy))
+        results.append((xm, ym, var_x, var_y, cov_xy, 0.0))
 
     results = np.array(results)
 
@@ -226,12 +227,15 @@ def test_edge_cases():
     assert np.all(box_var[5] == 0.3**2)
     # Edge peaks report the peak position without errors
     assert_allclose(cat._centroid_quad_results[2, :2], peak[2])
-    assert np.all(np.isnan(cat._centroid_quad_results[2, 2:]))
+    assert np.all(np.isnan(cat._centroid_quad_results[2, 2:5]))
     assert_allclose(cat._centroid_quad_results[6, :2], peak[6])
     # The rejected fit falls back to the isophotal centroid
     assert_array_equal(peak[4], [3, 3])
     assert_allclose(cat._centroid_quad_results[4, :2],
                     cat.cutout_centroid[4])
+    # Only the fitted sources are not fallbacks
+    assert_array_equal(cat.centroid_quad_fallback,
+                       ~((status == 0) & ~np.isin(np.arange(7), [4])))
 
 
 def _driver_inputs(cat):

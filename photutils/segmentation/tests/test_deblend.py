@@ -338,8 +338,8 @@ class TestDeblendSources:
         match = 'The deblending mode of one or more source labels from the'
         with pytest.warns(DeblendWarning, match=match):
             segm = deblend_sources(data, self.segm, self.n_pixels)
-        assert list(segm.info) == ['nonposmin_labels']
-        assert_equal(segm.info['nonposmin_labels'], [1])
+        assert list(segm.info) == ['non_positive_min_labels']
+        assert_equal(segm.info['non_positive_min_labels'], [1])
 
     def test_flags_deblended(self):
         """
@@ -363,7 +363,7 @@ class TestDeblendSources:
         with pytest.warns(DeblendWarning, match=match):
             segm = deblend_sources(data, self.segm, self.n_pixels)
         expected = (SEGMENTATION_FLAGS.DEBLENDED
-                    | SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN)
+                    | SEGMENTATION_FLAGS.DEBLEND_NON_POSITIVE_MIN)
         for label in segm.parent_to_deblended_labels[1]:
             idx = segm.get_index(label)
             assert segm.flags[idx] == expected
@@ -384,7 +384,7 @@ class TestDeblendSources:
         match = 'The deblending mode of one or more source labels from the'
         with pytest.warns(DeblendWarning, match=match):
             segm = deblend_sources(data, self.segm, self.n_pixels)
-        assert_equal(segm.info['nonposmin_labels'], [1])
+        assert_equal(segm.info['non_positive_min_labels'], [1])
 
     def test_connectivity(self):
         """
@@ -963,7 +963,7 @@ def test_n_threads_identical():
     with pytest.warns(DeblendWarning, match=match):
         expected = deblend_sources(data, segm, 5)
     assert expected.n_labels == 5
-    assert_equal(expected.info['nonposmin_labels'], [1, 2, 3])
+    assert_equal(expected.info['non_positive_min_labels'], [1, 2, 3])
     for n_threads in (2, 3, 64):
         with pytest.warns(DeblendWarning, match=match) as record:
             result = deblend_sources(data, segm, 5, n_threads=n_threads)
@@ -1523,8 +1523,8 @@ def test_nonposmin_fallback_sinh():
         result = deblend_sources(data, segm, 5, mode='exponential',
                                  contrast=1e-6)
     assert result.n_labels == 2
-    assert_equal(result.info['nonposmin_labels'], [1])
-    bit = SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN
+    assert_equal(result.info['non_positive_min_labels'], [1])
+    bit = SEGMENTATION_FLAGS.DEBLEND_NON_POSITIVE_MIN
     assert_equal(result.flags & bit, [bit, bit])
 
     # The linear mode does not recover this companion, so the sinh
@@ -1633,7 +1633,7 @@ def test_n_markers_fallback():
     match = 'The deblending mode of one or more source labels from the'
     with pytest.warns(DeblendWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
-    assert segm2.info['n_markers_labels'][0] == 1
+    assert segm2.info['too_many_markers_labels'][0] == 1
 
 
 def test_flags_n_markers_fallback():
@@ -1659,7 +1659,7 @@ def test_flags_n_markers_fallback():
     with pytest.warns(DeblendWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
 
-    bit = SEGMENTATION_FLAGS.DEBLEND_N_MARKERS
+    bit = SEGMENTATION_FLAGS.DEBLEND_TOO_MANY_MARKERS
     flagged = segm2.labels[(segm2.flags & bit) > 0]
     assert len(flagged) > 0
     # Every flagged label traces back to input label 1
@@ -1697,7 +1697,7 @@ def test_flags_fallback_without_deblending(relabel):
         segm2 = deblend_sources(data, segm, 5,
                                 relabel=relabel)
 
-    bit = SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN
+    bit = SEGMENTATION_FLAGS.DEBLEND_NON_POSITIVE_MIN
     # Both remaining sources fell back (both have negative minima).
     # Neither splits, so each output label carries the fallback bit
     # but not the deblended bit
@@ -1721,8 +1721,9 @@ def test_nonposmin_astropy_user_warning():
     match = 'The deblending mode of one or more source labels from the'
     with pytest.warns(AstropyUserWarning, match=match):
         segm2 = deblend_sources(data, segm, 5)
-    assert 'nonposmin_labels' in segm2.info
-    assert np.all(segm2.flags & SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN)
+    assert 'non_positive_min_labels' in segm2.info
+    assert np.all(segm2.flags
+                  & SEGMENTATION_FLAGS.DEBLEND_NON_POSITIVE_MIN)
 
 
 def test_n_markers_fallback_returns_none():

@@ -748,7 +748,7 @@ class IterativePSFPhotometry:
         >>> for source_id, flags in photometry.decode_flags().items():
         ...     print(f'Source {source_id}: {flags}')  # doctest: +SKIP
         Source 1: []
-        Source 2: ['negative_flux']
+        Source 2: ['non_positive_flux']
         """
         if self.results is None:
             msg = ('No results available. Please run the '
