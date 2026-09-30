@@ -354,20 +354,6 @@ def test_psf_flags_get_definition():
         PSF_FLAGS.get_definition(3.14)
 
 
-def test_psf_flags_get_definition_deprecated_name():
-    """
-    Test that get_definition resolves a deprecated flag name to its
-    current definition and warns.
-    """
-    match = ("The flag name 'npixfit_partial' is deprecated.*Use "
-             "'n_pixels_fit_partial' instead")
-    with pytest.warns(PhotutilsDeprecationWarning, match=match):
-        deprecated_def = PSF_FLAGS.get_definition('npixfit_partial')
-
-    current_def = PSF_FLAGS.get_definition('n_pixels_fit_partial')
-    assert deprecated_def is current_def
-
-
 @pytest.mark.parametrize(('old_name', 'new_name', 'since'), [
     ('npixfit_partial', 'n_pixels_fit_partial', '3.0'),
     ('outside_bounds', 'position_outside_image', '3.1'),
