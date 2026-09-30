@@ -1742,6 +1742,40 @@ class TestSourceCatalogFlags:
         assert not flags & SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
         assert not flags & SEGMENTATION_FLAGS.NON_FINITE_DATA
 
+    def test_local_bkg_too_few_pixels(self):
+        """
+        Test the local_bkg_too_few_pixels flag, including that it is
+        not set without a local background and that slicing keeps it.
+        """
+        data = np.zeros((31, 31))
+        data[4:7, 4:7] = 100.0
+        data[20:23, 20:23] = 100.0
+        segm_data = np.zeros(data.shape, dtype=int)
+        segm_data[4:7, 4:7] = 1
+        segm_data[20:23, 20:23] = 2
+        segm = SegmentationImage(segm_data)
+        # Mask everything around the first source except its segment
+        # and inner rectangle, leaving no usable annulus pixels
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[:12, :12] = True
+        mask[3:8, 3:8] = False
+        bit = SEGMENTATION_FLAGS.LOCAL_BKG_TOO_FEW_PIXELS
+
+        cat = SourceCatalog(data, segm, mask=mask)
+        assert not np.any(cat.flags & bit)
+
+        cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
+        assert_equal((cat.flags & bit) > 0, [True, False])
+        assert_equal(cat.local_background, [0.0, 0.0])
+
+        # Slicing before and after the flags are computed
+        cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
+        assert cat[0].flags & bit
+        assert not cat[1].flags & bit
+        cat.flags  # noqa: B018
+        assert cat[0].flags & bit
+        assert_equal((cat[[1, 0]].flags & bit) > 0, [False, True])
+
     def test_kron_non_finite_error(self):
         """
         Test the kron_non_finite_error flag for a non-finite error value

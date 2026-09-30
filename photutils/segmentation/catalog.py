@@ -80,6 +80,10 @@ __all__ = ['SourceCatalog']
 # times the segment bounding box size
 _LOCAL_BKG_SCALE = 1.5
 
+# The minimum number of usable local background annulus pixels. The
+# local background of a source with fewer pixels is zero.
+_LOCAL_BKG_MIN_PIXELS = 10
+
 
 class _SegmentValues:
     """
@@ -711,10 +715,12 @@ class SourceCatalog:
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
-    # Cached properties whose values are packed across sources and thus
-    # cannot be sliced per source. __getitem__ drops them from the
-    # sliced catalog, which recomputes them on demand.
-    _recompute_on_slice = ('_flux_radius_optimizer_args',)
+    # Cached properties whose values cannot be sliced per source
+    # (buffers packed across sources or tuples of per-source arrays).
+    # __getitem__ drops them from the sliced catalog, which recomputes
+    # them on demand.
+    _recompute_on_slice = ('_flux_radius_optimizer_args',
+                           '_local_background_batch')
 
     @deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
                                  until='4.0')
@@ -2110,11 +2116,13 @@ class SourceCatalog:
         ``kron_partial_overlap``, ``kron_masked_pixels``,
         ``kron_non_finite_data``, ``kron_non_finite_error``,
         ``kron_neighbor_pixels``, ``kron_uncorrected_pixels``), like the
-        segment-level edge, mask, non-finite, and ``all_masked`` flags,
-        are evaluated on this catalog's own inputs.
+        segment-level edge, mask, non-finite, ``all_masked``, and
+        ``local_bkg_too_few_pixels`` flags, are evaluated on this
+        catalog's own inputs.
 
         Accessing ``flags`` computes the moment, covariance, centroid,
-        and Kron-aperture properties if they have not already
+        local background, and Kron-aperture properties if they have not
+        already
         been computed (the results are cached and reused by those
         properties).
 
@@ -2146,6 +2154,12 @@ class SourceCatalog:
 
         # All pixels within the source segment are masked
         flags[self._all_masked] |= SEGMENTATION_FLAGS.ALL_MASKED
+
+        # Too few usable local background annulus pixels, so the local
+        # background is zero
+        if self.local_bkg_width > 0:
+            too_few = self._local_bkg_n_pixels < _LOCAL_BKG_MIN_PIXELS
+            flags[too_few] |= SEGMENTATION_FLAGS.LOCAL_BKG_TOO_FEW_PIXELS
 
         # Non-positive net flux (the zeroth image moment over the
         # source segment). The moment-derived shape properties are
@@ -4365,6 +4379,30 @@ class SourceCatalog:
         return self._local_background_apertures
 
     @cached_property
+    def _local_background_batch(self):
+        """
+        The local background kernel output.
+
+        A tuple of the local background value (per pixel) and the
+        number of usable annulus pixels of each source. Both are zero
+        if ``local_bkg_width`` is zero.
+        """
+        if self.local_bkg_width == 0:
+            return (np.zeros(self.n_labels),
+                    np.zeros(self.n_labels, dtype=np.intp))
+
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        per_source = {'bbox_iymin': iymin, 'bbox_iymax': iymax,
+                      'bbox_ixmin': ixmin, 'bbox_ixmax': ixmax}
+        return self._threaded_batch(
+            batch_local_background, per_source,
+            merge=_concatenate_arrays, data=arrays['data'],
+            mask=arrays['mask'], segm=arrays['segm'],
+            width=self.local_bkg_width, scale=_LOCAL_BKG_SCALE,
+            sigma=3.0, maxiters=20, min_pixels=_LOCAL_BKG_MIN_PIXELS)
+
+    @cached_property
     def _local_background(self):
         """
         The local background value (per pixel) of each source (see
@@ -4372,21 +4410,17 @@ class SourceCatalog:
 
         This property is always an `~numpy.ndarray` without units.
         """
-        if self.local_bkg_width == 0:
-            local_bkgs = np.zeros(self.n_labels)
-        else:
-            arrays = self._get_batch_arrays()
-            iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-            per_source = {'bbox_iymin': iymin, 'bbox_iymax': iymax,
-                          'bbox_ixmin': ixmin, 'bbox_ixmax': ixmax}
-            local_bkgs = self._threaded_batch(
-                batch_local_background, per_source, data=arrays['data'],
-                mask=arrays['mask'], segm=arrays['segm'],
-                width=self.local_bkg_width, scale=_LOCAL_BKG_SCALE,
-                sigma=3.0, maxiters=20, min_pixels=10)
-
+        local_bkgs = self._local_background_batch[0].copy()
         local_bkgs[self._all_masked] = np.nan
         return local_bkgs
+
+    @cached_property
+    def _local_bkg_n_pixels(self):
+        """
+        The number of usable local background annulus pixels of each
+        source.
+        """
+        return self._local_background_batch[1]
 
     @cached_property
     def local_background(self):
@@ -4402,8 +4436,9 @@ class SourceCatalog:
         estimate of the usable annulus pixel values with a
         ``SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)`` sigma
         clip, matching it to within rounding. It is zero for a source
-        with fewer than 10 usable annulus pixels. The sources are
-        measured concurrently when ``n_threads`` > 1.
+        with fewer than 10 usable annulus pixels, which sets the
+        ``local_bkg_too_few_pixels`` flag (see `flags`). The sources
+        are measured concurrently when ``n_threads`` > 1.
         """
         bkg = self._local_background
         if self._data_unit is not None:

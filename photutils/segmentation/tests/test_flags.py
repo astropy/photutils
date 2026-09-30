@@ -38,6 +38,7 @@ EXPECTED_BITS = {
     'kron_non_finite_error': 262144,
     'kron_neighbor_pixels': 524288,
     'kron_uncorrected_pixels': 1048576,
+    'local_bkg_too_few_pixels': 2097152,
 }
 
 

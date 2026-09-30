@@ -2441,8 +2441,8 @@ cdef double _local_background_source(const real_t *data,
                                      Py_ssize_t width, double scale,
                                      double sigma, Py_ssize_t maxiters,
                                      Py_ssize_t min_pixels, double *values,
-                                     double *kept,
-                                     double *work) noexcept nogil:
+                                     double *kept, double *work,
+                                     Py_ssize_t *n_usable) noexcept nogil:
     """
     Compute the local background of one source.
 
@@ -2502,6 +2502,9 @@ cdef double _local_background_source(const real_t *data,
         the usable values, the values kept by the clipping, and the
         median selection.
 
+    n_usable : Py_ssize_t *
+        Output for the number of usable annulus pixels.
+
     Returns
     -------
     result : double
@@ -2550,6 +2553,7 @@ cdef double _local_background_source(const real_t *data,
             total += v
             n += 1
 
+    n_usable[0] = n
     if n < min_pixels:
         return 0.0
     if n == 0:
@@ -2716,10 +2720,16 @@ def batch_local_background(const real_t[:, ::1] data, *,
     -------
     result : 1D ndarray of float64
         The local background of each source, with shape
-        ``(n_sources,)``. A source with no usable annulus pixels, or
+        ``(n_sources,)``. A source with fewer than ``min_pixels``
+        usable annulus pixels has a zero local background. A source
+        with no usable annulus pixels (when ``min_pixels`` is 0), or
         with no usable value within the final clipping bounds
         (possible only for ``sigma`` below 1), has a NaN local
         background.
+
+    n_pixels : 1D ndarray of intp
+        The number of usable annulus pixels of each source, with shape
+        ``(n_sources,)``.
 
     Raises
     ------
@@ -2746,9 +2756,11 @@ def batch_local_background(const real_t[:, ::1] data, *,
         raise ValueError(msg)
 
     result_arr = np.empty(n_src, dtype=np.float64)
+    n_pixels_arr = np.empty(n_src, dtype=np.intp)
     cdef double[::1] result = result_arr
+    cdef Py_ssize_t[::1] n_pixels = n_pixels_arr
     if n_src == 0:
-        return result_arr
+        return result_arr, n_pixels_arr
 
     # Scratch buffers sized to an upper bound on the annulus bounding
     # box area, capped at the image area. An outer rectangle side is
@@ -2777,5 +2789,5 @@ def batch_local_background(const real_t[:, ::1] data, *,
                 &data[0, 0], &mask[0, 0], &segm[0, 0], nx_data, ny_data,
                 bbox_iymin[i], bbox_iymax[i], bbox_ixmin[i], bbox_ixmax[i],
                 width, scale, sigma, maxiters, min_pixels, &values[0],
-                &kept[0], &work[0])
-    return result_arr
+                &kept[0], &work[0], &n_pixels[i])
+    return result_arr, n_pixels_arr

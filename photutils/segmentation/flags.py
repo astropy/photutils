@@ -299,6 +299,20 @@ class _SegmentationFlags(FlagRegistry):
                                   'mirror pixel was unavailable) and '
                                   'were set to zero instead.'),
         ),
+        FlagDefinition(
+            bit_value=2097152,
+            name='local_bkg_too_few_pixels',
+            description=('too few usable pixels to estimate the local '
+                         'background'),
+            detailed_description=('The local background annulus '
+                                  '(``local_bkg_width`` > 0) contains '
+                                  'fewer than 10 usable pixels (not '
+                                  'masked, finite, and not within any '
+                                  'source segment), so the local '
+                                  'background is set to zero instead '
+                                  'of being estimated (NaN for a '
+                                  'fully masked source).'),
+        ),
     ]
 
     domain: ClassVar = 'segmentation'
