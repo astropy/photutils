@@ -545,16 +545,16 @@ properties are shown below::
         8     441.42      31.26         None ...    742.80           nan   8192
         9     358.54      36.08         None ...    449.14           nan   8192
       ...        ...        ...          ... ...       ...           ...    ...
-       84     208.00     199.45         None ...   1008.23           nan 139296
-       85     220.83     198.24         None ...    546.55           nan 131104
-       86     426.56     211.19         None ...    876.52           nan 401440
-       87     419.52     216.55         None ...    814.66           nan 131104
-       88     302.52     238.92         None ...    505.42           nan 393248
-       89     292.77     244.93         None ...    792.63           nan 131104
-       90      32.66     241.24         None ...    930.77           nan 131104
-       91      42.60     249.43         None ...    580.54           nan 401440
-       92     433.80     280.74         None ...    663.44           nan 139296
-       93     434.03     288.88         None ...    879.64           nan 139296
+       84     208.00     199.45         None ...   1008.23           nan 270368
+       85     220.83     198.24         None ...    546.55           nan 262176
+       86     426.56     211.19         None ...    876.52           nan 794656
+       87     419.52     216.55         None ...    814.66           nan 262176
+       88     302.52     238.92         None ...    505.42           nan 786464
+       89     292.77     244.93         None ...    792.63           nan 262176
+       90      32.66     241.24         None ...    930.77           nan 262176
+       91      42.60     249.43         None ...    580.54           nan 794656
+       92     433.80     280.74         None ...    663.44           nan 270368
+       93     434.03     288.88         None ...    879.64           nan 270368
     Length = 93 rows
 
 The error columns are NaN because we did not input an error array (see
@@ -635,7 +635,7 @@ label numbers in the segmentation image::
        20     347.17      66.45         None ...    855.34           nan   8192
        50     381.02     174.67         None ...    438.55           nan      0
        75      74.44     259.78         None ...    876.02           nan   8192
-       80      14.93      60.06         None ...    878.52           nan 131104
+       80      14.93      60.06         None ...    878.52           nan 262176
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table

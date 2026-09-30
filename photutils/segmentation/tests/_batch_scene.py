@@ -133,7 +133,8 @@ def reference_aperture_data(cat, label, x_centroid, y_centroid,
     data = cat._data[slc_lg].astype(float) - local_background
 
     mask_cutout = None if cat._mask is None else cat._mask[slc_lg]
-    data_mask = ~np.isfinite(data)
+    non_finite_mask = ~np.isfinite(data)
+    data_mask = non_finite_mask.copy()
     if mask_cutout is not None:
         data_mask |= mask_cutout
 
@@ -167,6 +168,8 @@ def reference_aperture_data(cat, label, x_centroid, y_centroid,
                                             mask=mask)
 
     flag_masks = {'data_mask': data_mask,
+                  'input_mask': mask_cutout,
+                  'non_finite_mask': non_finite_mask,
                   'segm_mask': segm_mask,
                   'uncorrected_mask': uncorrected_mask}
 

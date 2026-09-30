@@ -204,6 +204,7 @@ class _SegmentationFlags(FlagRegistry):
                                   '(``kron_no_overlap``, '
                                   '``kron_partial_overlap``, '
                                   '``kron_masked_pixels``, '
+                                  '``kron_non_finite_data``, '
                                   '``kron_neighbor_pixels``, '
                                   '``kron_uncorrected_pixels``) are '
                                   'not evaluated for these sources, '
@@ -245,15 +246,24 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=65536,
             name='kron_masked_pixels',
-            description=('masked or non-finite pixels within the '
-                         'Kron aperture'),
-            detailed_description=('One or more input-masked or '
-                                  'non-finite pixels have nonzero '
+            description='masked pixels within the Kron aperture',
+            detailed_description=('One or more input-masked pixels '
+                                  '(``mask`` keyword) have nonzero '
                                   'aperture weight within the Kron '
                                   'aperture.'),
         ),
         FlagDefinition(
             bit_value=131072,
+            name='kron_non_finite_data',
+            description=('non-finite data values within the Kron '
+                         'aperture'),
+            detailed_description=('One or more data values (NaN or '
+                                  'inf) with nonzero aperture weight '
+                                  'within the Kron aperture are '
+                                  'non-finite.'),
+        ),
+        FlagDefinition(
+            bit_value=262144,
             name='kron_neighbor_pixels',
             description=('neighbor-source pixels within the Kron '
                          'aperture'),
@@ -265,7 +275,7 @@ class _SegmentationFlags(FlagRegistry):
                                   '"mask" or "correct").'),
         ),
         FlagDefinition(
-            bit_value=262144,
+            bit_value=524288,
             name='kron_uncorrected_pixels',
             description=('uncorrectable neighbor pixels within the '
                          'Kron aperture'),

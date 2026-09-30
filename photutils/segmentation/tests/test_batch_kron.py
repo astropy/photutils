@@ -134,8 +134,12 @@ def _reference_kron_photometry(cat, kron_aperture):
             elif n_inside != np.count_nonzero(mask_data):
                 kron_flag |= SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP
 
-        if np.any(flag_masks['data_mask'] & in_aperture):
+        input_mask = flag_masks['input_mask']
+        if input_mask is not None and np.any(input_mask & in_aperture):
             kron_flag |= SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
+
+        if np.any(flag_masks['non_finite_mask'] & in_aperture):
+            kron_flag |= SEGMENTATION_FLAGS.KRON_NON_FINITE_DATA
 
         segm_mask = flag_masks['segm_mask']
         if segm_mask is not None and np.any(segm_mask & in_aperture):
