@@ -382,11 +382,11 @@ PSF Photometry Fit Region Flag
 4096, ``position_outside_fit_region``) that is set when the fitted
 source position is outside the region of fitted data. The region is the
 ``fit_shape`` box around the initial position, trimmed to the input
-image. Such a fit is constrained only by the PSF wings, often because
-it moved toward a neighboring source. Unlike the
-``position_outside_image`` flag (bit 2), which is set only for
-positions outside the input image, this flag also catches fits that
-move away from their data within the image.
+image. Such a fit is constrained only by the PSF wings, often because it
+moved toward a neighboring source. Unlike the ``position_outside_image``
+flag (bit 2), which is set only for positions outside the input image,
+this flag also catches fits that move away from their data within the
+image.
 
 
 Polygon Apertures
@@ -686,18 +686,20 @@ measurement conditions (source touches an image boundary, masked
 or non-finite pixels within the segment, undefined or degenerate
 shape properties, Kron-aperture issues, and a local background with too
 few usable annulus pixels).
-`~photutils.segmentation.SegmentationImage`
-exposes the per-label provenance flags via a new ``flags`` attribute,
-and a new :func:`~photutils.segmentation.decode_segmentation_flags`
-function decodes flag values into names.
+
+`~photutils.segmentation.SegmentationImage` exposes the per-label
+provenance flags via a new ``flags`` attribute, and a new
+:func:`~photutils.segmentation.decode_segmentation_flags` function
+decodes flag values into names.
+
 :meth:`~photutils.segmentation.SourceCatalog.decode_flags` is a
-convenience method that decodes the catalog's own flag values into a
-dictionary keyed by source label. Flags describing the same condition as
-an aperture flag share the aperture flag's name. However, the bit values
-are package-specific, so always decode a flag column with the decoder of
-the package that produced it. The new
-`~photutils.segmentation.SourceCatalog.centroid_win_fallback` and
-`~photutils.segmentation.SourceCatalog.centroid_quad_fallback`
+convenience method that decodes the catalog's own flag values into
+a dictionary keyed by source label. Flags describing the same
+condition as an aperture flag share the aperture flag's name.
+However, the bit values are package-specific, so always decode a
+flag column with the decoder of the package that produced it. The
+new `~photutils.segmentation.SourceCatalog.centroid_win_fallback`
+and `~photutils.segmentation.SourceCatalog.centroid_quad_fallback`
 properties report where the windowed or quadratic centroid was replaced
 by the isophotal centroid or the peak pixel position.
 
@@ -1027,12 +1029,12 @@ from "linear" to "sinh". Like the linear spacing, the sinh spacing is
 well defined for any data values, but it keeps the threshold levels
 concentrated near the source minimum, recovering faint companions of
 bright sources that the linear spacing misses. Deblending results can
-therefore change for the affected sources, which continue to be
-recorded under the ``'non_positive_min_labels'`` key of the ``info``
-attribute and flagged with ``deblend_non_positive_min``. To reproduce
-the previous spacing for such sources, pass ``mode='linear'``. Note
-that this applies the linear spacing to every source, which is the only
-way to obtain the previous behavior.
+therefore change for the affected sources, which continue to be recorded
+under the ``'non_positive_min_labels'`` key of the ``info`` attribute
+and flagged with ``deblend_non_positive_min``. To reproduce the previous
+spacing for such sources, pass ``mode='linear'``. Note that this applies
+the linear spacing to every source, which is the only way to obtain the
+previous behavior.
 
 Covariance Regularization of Unresolved Sources
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1134,9 +1136,9 @@ Deblending Warning Information
 
 `~photutils.segmentation.deblend_sources` now emits a
 `~photutils.utils.DeblendWarning` (a subclass of astropy's
-``AstropyUserWarning``) when the deblending mode is changed
-to a fallback mode for one or more sources. The affected
-input labels are now stored as arrays directly under
-``'non_positive_min_labels'`` and ``'too_many_markers_labels'`` keys
-in the returned `~photutils.segmentation.SegmentationImage` ``info``
-dictionary, replacing the nested ``info['warnings']`` dictionary.
+``AstropyUserWarning``) when the deblending mode is changed to a
+fallback mode for one or more sources. The affected input labels are
+now stored as arrays directly under ``'non_positive_min_labels'``
+and ``'too_many_markers_labels'`` keys in the returned
+`~photutils.segmentation.SegmentationImage` ``info`` dictionary,
+replacing the nested ``info['warnings']`` dictionary.

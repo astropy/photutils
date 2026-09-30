@@ -386,9 +386,8 @@ New Features
 
   - Added ``centroid_win_fallback`` and ``centroid_quad_fallback``
     boolean properties to ``SourceCatalog`` that are ``True`` where the
-    windowed or quadratic centroid is not a windowed or quadratic-fit
-    position (i.e., the isophotal centroid or peak pixel was
-    substituted, or the value is NaN). [#2449]
+    windowed or quadratic centroid was substituted by the isophotal
+    centroid or peak pixel, or the value is NaN. [#2450]
 
 - ``photutils.utils``
 
@@ -1183,12 +1182,12 @@ API Changes
 
   - The following PSF flags have been renamed, along with their
     uppercase constants: ``outside_bounds`` (bit 2) to
-    ``position_outside_image``, ``negative_flux`` (bit 4) to
-    ``non_positive_flux``, ``near_bound`` (bit 32) to
-    ``parameter_near_bound``, and ``non_finite_localbkg`` (bit 2048)
-    to ``non_finite_local_bkg``. The old names are deprecated and will
-    be removed in version 4.0. ``decode_psf_flags`` now returns the new
-    names. [#2449]
+    ``position_outside_image``, ``negative_flux`` (bit 4)
+    to ``non_positive_flux``, ``near_bound`` (bit 32) to
+    ``parameter_near_bound``, and ``non_finite_localbkg`` (bit 2048) to
+    ``non_finite_local_bkg``. The old names are deprecated and will be
+    removed in version 4.0. ``decode_psf_flags`` now returns the new
+    names. [#2450]
 
 - ``photutils.segmentation``
 

@@ -819,9 +819,9 @@ footprint, while the ``'sigma_clipped'``, ``'all_clipped'``, and
 footprint. The ``'undefined_shape'``, ``'singular_covariance'``, and
 ``'centroid_outside_bbox'`` flags are always evaluated. Accessing
 ``flags`` computes the sum, moment, and covariance quantities if they
-have not already been computed (the results are cached and shared
-with the corresponding properties), so the flag values never depend on
-which properties were accessed first.
+have not already been computed (the results are cached and shared with
+the corresponding properties), so the flag values never depend on which
+properties were accessed first.
 
 Because non-finite values are automatically masked in
 both :class:`~photutils.aperture.AperturePhotometry` and
@@ -884,8 +884,8 @@ unbiased. For a faint source the image moments can be too noisy to
 define a shape. The ``'undefined_shape'`` flag is set when the net
 flux is not positive or when the second-order moments are not positive
 semidefinite, in which case the covariance-derived shape properties are
-NaN. The centroid of such a source is not bounded by the aperture,
-and the ``'centroid_outside_bbox'`` flag is set when it lies outside the
+NaN. The centroid of such a source is not bounded by the aperture, and
+the ``'centroid_outside_bbox'`` flag is set when it lies outside the
 aperture bounding box.
 
 The input ``sum_method`` and ``subpixels`` keywords are used to
