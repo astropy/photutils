@@ -267,7 +267,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         of zero is reserved for the background. The ``info`` attribute
         of the returned segmentation image is a dictionary that stores
         the input labels for which the deblending mode was changed
-        to a fallback mode as arrays under ``'nonposmin_labels'``
+        to a fallback mode as arrays under ``'non_positive_min_labels'``
         (non-positive minimum data values, changed to "sinh") and
         ``'too_many_markers_labels'`` (too many potential deblended
         sources, changed to "linear") keys. The dictionary is empty if
@@ -429,10 +429,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                                         counts[deblended],
                                         label_offsets[deblended],
                                         strict=True)}
-    nonposmin_labels = list(labels[nonposmin])
+    non_positive_min_labels = list(labels[nonposmin])
     too_many_markers_labels = list(labels[n_markers_fallback])
 
-    if nonposmin_labels or too_many_markers_labels:
+    if non_positive_min_labels or too_many_markers_labels:
         msg = ('The deblending mode of one or more source labels from the '
                f'input segmentation image was changed from "{mode}" to a '
                'fallback mode. See the "info" attribute of the returned '
@@ -453,14 +453,15 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     # Store the input labels affected by deblending mode fallbacks in
     # the info attribute
-    if nonposmin_labels:
-        segm_img.info['nonposmin_labels'] = np.array(nonposmin_labels)
+    if non_positive_min_labels:
+        segm_img.info['non_positive_min_labels'] = np.array(
+            non_positive_min_labels)
     if too_many_markers_labels:
         segm_img.info['too_many_markers_labels'] = np.array(
             too_many_markers_labels)
 
     segm_img._flags_map = _make_flags_map(
-        deblend_label_map, nonposmin_labels, too_many_markers_labels,
+        deblend_label_map, non_positive_min_labels, too_many_markers_labels,
         relabel_map)
 
     return segm_img
@@ -704,7 +705,7 @@ def _deblend_sources_chunk(data, segm_data,  # noqa: ARG001
                         n_markers_fallback=n_markers_fallback)
 
 
-def _make_flags_map(deblend_label_map, nonposmin_labels,
+def _make_flags_map(deblend_label_map, non_positive_min_labels,
                     too_many_markers_labels, relabel_map):
     """
     Build the per-label flags mapping for a deblended segmentation
@@ -720,7 +721,7 @@ def _make_flags_map(deblend_label_map, nonposmin_labels,
         Mapping of input parent labels to arrays of output child labels,
         in the final (post-relabel) label frame.
 
-    nonposmin_labels, too_many_markers_labels : list of int
+    non_positive_min_labels, too_many_markers_labels : list of int
         Input parent labels affected by each mode fallback.
 
     relabel_map : `~numpy.ndarray` or `None`
@@ -740,7 +741,8 @@ def _make_flags_map(deblend_label_map, nonposmin_labels,
                                 | SEGMENTATION_FLAGS.DEBLENDED)
 
     fallbacks = [
-        (nonposmin_labels, SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN),
+        (non_positive_min_labels,
+         SEGMENTATION_FLAGS.DEBLEND_NON_POSITIVE_MIN),
         (too_many_markers_labels,
          SEGMENTATION_FLAGS.DEBLEND_TOO_MANY_MARKERS),
     ]

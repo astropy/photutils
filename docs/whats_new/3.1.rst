@@ -1020,12 +1020,12 @@ from "linear" to "sinh". Like the linear spacing, the sinh spacing is
 well defined for any data values, but it keeps the threshold levels
 concentrated near the source minimum, recovering faint companions of
 bright sources that the linear spacing misses. Deblending results can
-therefore change for the affected sources, which continue to be recorded
-under the ``'nonposmin_labels'`` key of the ``info`` attribute and
-flagged with ``deblend_nonposmin``. To reproduce the previous spacing
-for such sources, pass ``mode='linear'``. Note that this applies the
-linear spacing to every source, which is the only way to obtain the
-previous behavior.
+therefore change for the affected sources, which continue to be
+recorded under the ``'non_positive_min_labels'`` key of the ``info``
+attribute and flagged with ``deblend_non_positive_min``. To reproduce
+the previous spacing for such sources, pass ``mode='linear'``. Note
+that this applies the linear spacing to every source, which is the only
+way to obtain the previous behavior.
 
 Covariance Regularization of Unresolved Sources
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1130,6 +1130,6 @@ Deblending Warning Information
 ``AstropyUserWarning``) when the deblending mode is changed
 to a fallback mode for one or more sources. The affected
 input labels are now stored as arrays directly under
-``'nonposmin_labels'`` and ``'too_many_markers_labels'`` keys in the
-returned `~photutils.segmentation.SegmentationImage` ``info`` dictionary,
-replacing the nested ``info['warnings']`` dictionary.
+``'non_positive_min_labels'`` and ``'too_many_markers_labels'`` keys
+in the returned `~photutils.segmentation.SegmentationImage` ``info``
+dictionary, replacing the nested ``info['warnings']`` dictionary.

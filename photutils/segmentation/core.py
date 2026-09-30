@@ -150,7 +150,7 @@ class SegmentationImage:
         segmentation image. For example, segmentation images returned
         by :func:`~photutils.segmentation.deblend_sources` store
         the input labels affected by deblending warnings under
-        ``'nonposmin_labels'`` and ``'too_many_markers_labels'``
+        ``'non_positive_min_labels'`` and ``'too_many_markers_labels'``
         keys. The dictionary is empty if there is no auxiliary
         information. It is reset to an empty dictionary when the
         ``data`` attribute is reassigned.

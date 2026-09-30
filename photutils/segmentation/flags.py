@@ -99,7 +99,7 @@ class _SegmentationFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=64,
-            name='deblend_nonposmin',
+            name='deblend_non_positive_min',
             description=('deblending mode changed to sinh: '
                          'non-positive minimum'),
             detailed_description=('The deblending mode for the '

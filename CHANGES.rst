@@ -292,8 +292,8 @@ New Features
   - ``SegmentationImage`` objects now always have an ``info`` attribute,
     a dictionary containing auxiliary information. Segmentation
     images returned by ``deblend_sources`` store the input labels
-    affected by deblending warnings under ``'nonposmin_labels'`` and
-    ``'too_many_markers_labels'`` keys. [#2378]
+    affected by deblending warnings under ``'non_positive_min_labels'``
+    and ``'too_many_markers_labels'`` keys. [#2378]
 
   - Added a ``get_label_mapping`` method to ``SegmentationImage`` to find
     the mapping of labels to another segmentation image defined on the
@@ -1193,7 +1193,7 @@ API Changes
   - The deblending warning information stored by ``deblend_sources``
     in the returned ``SegmentationImage`` ``info`` dictionary has been
     restructured. The affected input labels are now stored as
-    arrays directly under ``'nonposmin_labels'`` and
+    arrays directly under ``'non_positive_min_labels'`` and
     ``'too_many_markers_labels'`` keys. The nested ``info['warnings']``
     dictionary, including its ``'message'`` entries, has been removed.
     The emitted warning is now a ``DeblendWarning`` (a subclass of
@@ -1233,9 +1233,9 @@ API Changes
     spacing keeps the threshold levels concentrated near the source
     minimum, recovering faint companions of bright sources that the
     linear spacing misses, so deblending results can change for the
-    affected sources. The ``'nonposmin_labels'`` info key and the
-    ``deblend_nonposmin`` flag are unchanged and continue to record
-    the affected sources. [#2410]
+    affected sources. The ``'non_positive_min_labels'`` info key and
+    the ``deblend_non_positive_min`` flag are unchanged and continue to
+    record the affected sources. [#2410]
 
   - ``detect_sources`` now emits an ``AstropyUserWarning`` if the
     ``threshold`` is negative or, for a threshold array, has any

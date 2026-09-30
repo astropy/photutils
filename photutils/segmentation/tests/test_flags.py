@@ -23,7 +23,7 @@ EXPECTED_BITS = {
     'all_masked': 8,
     'edge_touch': 16,
     'deblended': 32,
-    'deblend_nonposmin': 64,
+    'deblend_non_positive_min': 64,
     'deblend_too_many_markers': 128,
     'undefined_shape': 256,
     'singular_covariance': 512,

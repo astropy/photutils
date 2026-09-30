@@ -276,13 +276,13 @@ class TestSegmentationImage:
         for relabel in (lambda s: s.relabel_consecutive(),
                         lambda s: s.reassign_label(label=3, new_label=1)):
             segm = SegmentationImage(self.data.copy())
-            segm.info['nonposmin_labels'] = np.array([3, 5])
+            segm.info['non_positive_min_labels'] = np.array([3, 5])
             relabel(segm)
-            assert_equal(segm.info['nonposmin_labels'], [3, 5])
+            assert_equal(segm.info['non_positive_min_labels'], [3, 5])
 
         # Reassigning data does reset info
         segm = SegmentationImage(self.data.copy())
-        segm.info['nonposmin_labels'] = np.array([3, 5])
+        segm.info['non_positive_min_labels'] = np.array([3, 5])
         segm.data = self.data.copy()
         assert segm.info == {}
 
