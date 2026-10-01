@@ -470,6 +470,16 @@ class TestMaskPathParity:
         assert result_batch.flags == stats.flags
         assert_allclose(result_batch.flux, stats.sum, rtol=1e-12)
 
+        # The batch gather kernel (the "center" statistics) must test
+        # finiteness per pixel, including at the mirror pixel of a
+        # corrected neighbor pixel, matching the mask-based path.
+        stats_nobatch = ApertureStats(data, nobatch_aper, **kwargs)
+        assert stats._fast_gather is not None
+        assert stats_nobatch._fast_gather is None
+        for prop in ('mean', 'median', 'center_aper_area'):
+            assert_allclose(getattr(stats, prop), getattr(stats_nobatch, prop),
+                            rtol=1e-12, err_msg=prop)
+
     @pytest.mark.parametrize('nan_pixel', [(12, 13), (12, 10)],
                              ids=['nan_source', 'nan_background'])
     def test_nonfinite_background_only(self, unit_data, nan_pixel):

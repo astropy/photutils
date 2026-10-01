@@ -335,12 +335,12 @@ class TestApertureStatsThreadSafety:
         release_a = threading.Event()
         real_gather = stats_mod.batch_aperture_gather
 
-        def blocking_gather(data_arr, mask, positions, *args):
+        def blocking_gather(data_arr, mask, positions, *args, **kwargs):
             # Block only instance A's gather. B's must run freely
             if positions[0, 0] == 25.0:
                 entered_a.set()
                 assert release_a.wait(timeout=30)
-            return real_gather(data_arr, mask, positions, *args)
+            return real_gather(data_arr, mask, positions, *args, **kwargs)
 
         monkeypatch.setattr(stats_mod, 'batch_aperture_gather',
                             blocking_gather)

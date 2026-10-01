@@ -11,6 +11,7 @@ code paths cannot silently diverge.
 """
 
 import warnings
+from typing import NamedTuple
 
 import astropy.units as u
 import numpy as np
@@ -291,51 +292,42 @@ def batch_image_arrays(*arrays):
             for array in arrays]
 
 
-def batch_mask_plane(data, mask, *, mask_nonfinite):
+def batch_mask_plane(mask):
     """
     Build the uint8 mask plane used by the batch Cython kernels.
 
-    Bit 1 (value 1) marks input-masked pixels and bit 2 (value 2) marks
-    non-finite ``data`` pixels. Any nonzero value excludes the pixel.
-    Folding the non-finite pixels into the plane lets the caller exclude
-    them from the sum, area, and valid-pixel count while still flagging
-    them as ``non_finite_data`` rather than ``masked_pixels``.
+    Bit 1 (value 1) marks input-masked pixels. Non-finite ``data``
+    pixels are not marked in the plane. The kernels test them per pixel
+    (their ``mask_nonfinite`` argument), so no full-image pass is
+    needed.
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
-        The data array.
-
     mask : `~numpy.ndarray` (bool) or `None`
         The input mask.
-
-    mask_nonfinite : bool
-        Whether to fold the non-finite ``data`` values into the plane.
-        When `False`, the non-finite pixels are left in the data so
-        that they corrupt the sum (the 3.0.0 behavior, used by the
-        legacy `~photutils.aperture.aperture_photometry` function).
 
     Returns
     -------
     plane : `~numpy.ndarray` (uint8) or `None`
-        The C-contiguous mask plane, or `None` if no pixels are
-        excluded.
-    """
-    plane = None
-    if mask is not None:
-        plane = mask.astype(np.uint8)
-    if mask_nonfinite and data.dtype.kind == 'f':
-        nonfinite = ~np.isfinite(data)
-        if nonfinite.any():
-            if plane is None:
-                plane = np.zeros(data.shape, dtype=np.uint8)
-                plane[nonfinite] = 2
-            else:
-                plane[nonfinite & (plane == 0)] = 2
+        The C-contiguous mask plane, or `None` if there is no input
+        mask. The plane is a view of a C-contiguous input mask (no
+        copy is made).
 
-    if plane is None:
+    Notes
+    -----
+    The plane is a byte view, so the bytes of the input mask are not
+    normalized to 0 and 1. An ill-formed boolean array whose storage
+    holds other byte values (e.g., a uint8 array viewed as bool)
+    excludes the same pixels, but the kernels interpret its bytes as
+    plane bits, so such a pixel can be counted as non-finite (bit 2)
+    rather than as masked (bit 1). Boolean arrays created by NumPy
+    always hold 0 or 1.
+    """
+    if mask is None:
         return None
-    return np.ascontiguousarray(plane)
+    # A boolean array stores one byte (0 or 1) per element, so it can
+    # be viewed as uint8 without a copy.
+    return np.ascontiguousarray(mask).view(np.uint8)
 
 
 def batch_segmentation_arrays(segmentation, labels, mask_method):
@@ -370,3 +362,136 @@ def batch_segmentation_arrays(segmentation, labels, mask_method):
     return (batch_segmentation_image(segmentation),
             np.ascontiguousarray(labels, dtype=np.intp),
             SEG_METHOD_CODES[mask_method])
+
+
+class BatchInputs(NamedTuple):
+    """
+    The inputs of the batch Cython drivers for one aperture and image
+    (see `batch_driver_inputs`).
+
+    The field names match the corresponding parameters of
+    `~photutils.aperture._batch_photometry.batch_aperture_sums`.
+    """
+
+    data: np.ndarray
+    """The C-contiguous data array."""
+
+    error: np.ndarray | None
+    """The C-contiguous error array, with the same dtype as the
+    data."""
+
+    mask: np.ndarray | None
+    """The uint8 mask plane (see `batch_mask_plane`)."""
+
+    positions: np.ndarray
+    """The ``(n_sources, 2)`` float64 aperture positions."""
+
+    shape_code: int
+    """The aperture shape code."""
+
+    params: np.ndarray
+    """The float64 aperture shape parameters."""
+
+    ext_x: float
+    """The half-extent of the aperture bounding box along x."""
+
+    ext_y: float
+    """The half-extent of the aperture bounding box along y."""
+
+    off_x: float
+    """The x offset of the bounding-box center from the position."""
+
+    off_y: float
+    """The y offset of the bounding-box center from the position."""
+
+    use_exact: int
+    """Whether the exact overlap method is used (1) or not (0)."""
+
+    subpixels: int
+    """The number of subpixels of the subpixel overlap method."""
+
+    segmentation: np.ndarray | None
+    """The C-contiguous segmentation array."""
+
+    labels: np.ndarray | None
+    """The intp source label of each aperture."""
+
+    seg_method: int
+    """The segmentation method code (0 disables masking)."""
+
+
+def batch_driver_inputs(aperture, data, *, error, mask, method, subpixels,
+                        segmentation, labels, mask_method):
+    """
+    Build the inputs of the batch Cython drivers for a pixel aperture.
+
+    Parameters
+    ----------
+    aperture : `~photutils.aperture.PixelAperture`
+        The pixel aperture.
+
+    data : `~numpy.ndarray`
+        The 2D data array, with any units already stripped.
+
+    error : `~numpy.ndarray` or `None`
+        The 2D error array, with any units already stripped.
+
+    mask : `~numpy.ndarray` (bool) or `None`
+        The input mask.
+
+    method : {'exact', 'center', 'subpixel'}
+        The aperture mask method.
+
+    subpixels : int
+        The number of subpixels for the ``'subpixel'`` method.
+
+    segmentation : `~numpy.ndarray` or `None`
+        The validated segmentation array.
+
+    labels : `~numpy.ndarray` or `None`
+        The per-aperture source labels.
+
+    mask_method : {'none', 'mask', 'source_only', 'background_only', \
+            'correct'}
+        The segmentation masking method.
+
+    Returns
+    -------
+    inputs : `BatchInputs` or `None`
+        The driver inputs, or `None` if the batch drivers do not
+        support this aperture or these input arrays (see
+        `batch_inputs_supported`). In that case the caller must use the
+        mask-based code path.
+    """
+    # Use the batch drivers only if the aperture's own class opted
+    # in via the _enable_batch_photometry decorator. Undecorated
+    # subclasses may override other behavior (e.g., to_mask) that the
+    # batch drivers would not honor, so they use the mask-based code
+    # path.
+    if type(aperture)._batch_photometry_class is not type(aperture):
+        return None
+
+    spec = aperture._batch_shape_params()
+    if spec is None:
+        return None
+
+    if not batch_inputs_supported(data, error, mask):
+        return None
+
+    seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
+        segmentation, labels, mask_method)
+    use_exact, subpixels = aperture._translate_mask_method(method, subpixels)
+    shape_code, params = spec
+    ext_x, ext_y = aperture._xy_extents
+    off_x, off_y = aperture._xy_bbox_offset
+    data, error = batch_image_arrays(data, error)
+
+    positions = np.ascontiguousarray(aperture._positions, dtype=np.float64)
+    params = np.array(params, dtype=np.float64)
+
+    # The fields are passed by position, in the `BatchInputs` field
+    # order.
+    return BatchInputs(data, error, batch_mask_plane(mask), positions,
+                       shape_code, params, float(ext_x), float(ext_y),
+                       float(off_x), float(off_y), use_exact, subpixels,
+                       seg_arr, labels_arr, seg_code)

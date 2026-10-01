@@ -26,10 +26,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID, N_FLAG_COLS,
                                                   batch_aperture_sums)
-from photutils.aperture._common import (batch_image_arrays,
-                                        batch_inputs_supported,
-                                        batch_mask_plane,
-                                        batch_segmentation_arrays,
+from photutils.aperture._common import (batch_driver_inputs,
                                         validate_mask_method)
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
@@ -882,7 +879,7 @@ class PixelAperture(Aperture):
                 # exclude them *before* the segmentation handling so
                 # the segmentation counts and the 'correct' mirror
                 # replacement never use non-finite pixels, matching the
-                # batch kernel (mask plane bit 2) and `ApertureStats`.
+                # batch kernels (``mask_nonfinite``) and `ApertureStats`.
                 # When ``mask_nonfinite`` is `False` (the legacy
                 # function), the non-finite pixels are left in the
                 # computation so they corrupt the sum.
@@ -1004,8 +1001,8 @@ class PixelAperture(Aperture):
             into chunks that are processed concurrently. The per-source
             results are independent, so they are identical to the
             single-threaded computation. The per-image preprocessing
-            (e.g., the non-finite mask plane) is computed once and
-            shared read-only across the workers.
+            (e.g., the mask plane) is computed once and shared read-only
+            across the workers.
 
         Returns
         -------
@@ -1021,40 +1018,22 @@ class PixelAperture(Aperture):
             that the caller must resolve to the precise outside-weight
             test (see `_resolve_outside_weights`).
         """
-        # Use the batch driver only if the instance's own class opted
-        # in via the _enable_batch_photometry decorator. Undecorated
-        # subclasses may override other behavior (e.g., to_mask) that
-        # the batch driver would not honor, so they use the mask-based
-        # code path.
-        if type(self)._batch_photometry_class is not type(self):
+        inputs = batch_driver_inputs(
+            self, data, error=error, mask=mask, method=method,
+            subpixels=subpixels, segmentation=segmentation, labels=labels,
+            mask_method=mask_method)
+        if inputs is None:
             return None
-
-        spec = self._batch_shape_params()
-        if spec is None:
-            return None
-
-        if not batch_inputs_supported(data, error, mask):
-            return None
-
-        mask = batch_mask_plane(data, mask, mask_nonfinite=mask_nonfinite)
-        seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
-            segmentation, labels, mask_method)
-
-        use_exact, subpixels = self._translate_mask_method(method, subpixels)
-
-        shape_code, params = spec
-        ext_x, ext_y = self._xy_extents
-        off_x, off_y = self._xy_bbox_offset
-
-        data, error = batch_image_arrays(data, error)
-        positions = np.ascontiguousarray(self._positions, dtype=np.float64)
-        params = np.array(params, dtype=np.float64)
+        positions = inputs.positions
+        labels_arr = inputs.labels
 
         def run_sums(pos, src_labels):
             return batch_aperture_sums(
-                data, error, mask, pos, shape_code, params,
-                float(ext_x), float(ext_y), float(off_x), float(off_y),
-                use_exact, subpixels, seg_arr, src_labels, seg_code)
+                inputs.data, inputs.error, inputs.mask, pos,
+                inputs.shape_code, inputs.params, inputs.ext_x,
+                inputs.ext_y, inputs.off_x, inputs.off_y, inputs.use_exact,
+                inputs.subpixels, inputs.segmentation, src_labels,
+                inputs.seg_method, mask_nonfinite=int(mask_nonfinite))
 
         # The per-source outside-weight indicator of the driver is not
         # used here, because the aperture flags resolve the clipped
@@ -1086,7 +1065,7 @@ class PixelAperture(Aperture):
             overlap = result.overlap
             fcounts = result.flag_counts
 
-        if error is None:
+        if inputs.error is None:
             # Match the mask-based path, which returns an all-NaN error
             # array (with the same length as the fluxes) when error is
             # not input.
