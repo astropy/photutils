@@ -882,7 +882,7 @@ class PixelAperture(Aperture):
                 # exclude them *before* the segmentation handling so
                 # the segmentation counts and the 'correct' mirror
                 # replacement never use non-finite pixels, matching the
-                # batch kernel (mask plane bit 2) and `ApertureStats`.
+                # batch kernels (``mask_nonfinite``) and `ApertureStats`.
                 # When ``mask_nonfinite`` is `False` (the legacy
                 # function), the non-finite pixels are left in the
                 # computation so they corrupt the sum.
@@ -1004,8 +1004,8 @@ class PixelAperture(Aperture):
             into chunks that are processed concurrently. The per-source
             results are independent, so they are identical to the
             single-threaded computation. The per-image preprocessing
-            (e.g., the non-finite mask plane) is computed once and
-            shared read-only across the workers.
+            (e.g., the mask plane) is computed once and shared read-only
+            across the workers.
 
         Returns
         -------
@@ -1036,7 +1036,7 @@ class PixelAperture(Aperture):
         if not batch_inputs_supported(data, error, mask):
             return None
 
-        mask = batch_mask_plane(data, mask, mask_nonfinite=mask_nonfinite)
+        mask = batch_mask_plane(mask)
         seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
             segmentation, labels, mask_method)
 
@@ -1054,7 +1054,8 @@ class PixelAperture(Aperture):
             return batch_aperture_sums(
                 data, error, mask, pos, shape_code, params,
                 float(ext_x), float(ext_y), float(off_x), float(off_y),
-                use_exact, subpixels, seg_arr, src_labels, seg_code)
+                use_exact, subpixels, seg_arr, src_labels, seg_code,
+                mask_nonfinite=int(mask_nonfinite))
 
         # The per-source outside-weight indicator of the driver is not
         # used here, because the aperture flags resolve the clipped

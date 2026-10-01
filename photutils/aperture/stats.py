@@ -1008,12 +1008,11 @@ class ApertureStats:
         if not batch_inputs_supported(data, error, self._mask):
             return None
 
-        # Non-finite ``data`` values are always folded into the mask
-        # plane so the batch kernels can skip the per-pixel finiteness
-        # test (and defer the pixel-value load to contributing pixels
-        # only). This matches the mask-based path, which masks
-        # non-finite data before any segmentation correction.
-        mask = batch_mask_plane(data, self._mask, mask_nonfinite=True)
+        # The batch kernels always exclude non-finite ``data`` values
+        # (``mask_nonfinite=1`` below). This matches the mask-based
+        # path, which masks non-finite data before any segmentation
+        # correction.
+        mask = batch_mask_plane(self._mask)
         seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
             self._segmentation, self._seg_labels, self.mask_method)
 
@@ -1083,7 +1082,8 @@ class ApertureStats:
             (values, lx, ly, starts, counts, overlap,
              flag_counts) = batch_aperture_gather(
                 data, mask, pos, shape_code, params, ext_x, ext_y,
-                off_x, off_y, bkg, seg_arr, labels, seg_code)
+                off_x, off_y, bkg, seg_arr, labels, seg_code,
+                1)  # mask_nonfinite
             gather = _BatchGather(values=values, local_x=lx, local_y=ly,
                                   starts=starts, counts=counts,
                                   overlap=overlap, flag_counts=flag_counts)
@@ -1159,7 +1159,8 @@ class ApertureStats:
             result = batch_aperture_sums(
                 data, error, mask, pos, shape_code, params, ext_x, ext_y,
                 off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
-                labels, seg_code, bkg, emit_sum)
+                labels, seg_code, bkg, emit_sum, None,
+                1)  # params_per_source, mask_nonfinite
             (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
              sum_errsq, scounts, flag_counts) = (
                 result.sums, result.sum_vars, result.areas, result.overlap,

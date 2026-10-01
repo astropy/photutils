@@ -56,6 +56,7 @@ cdef extern from "math.h" nogil:
     double sqrt(double x)
     double fabs(double x)
     double ceil(double x)
+    bint isfinite(double x)
     const double NAN
 
 # Scale factor that converts the median absolute deviation to a robust
@@ -492,7 +493,7 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                           const double[::1] local_bkg=None,
                           const seg_t[:, ::1] segmentation=None,
                           const Py_ssize_t[::1] labels=None,
-                          int seg_method=0):
+                          int seg_method=0, int mask_nonfinite=0):
     """
     Gather the "center"-method pixel values for many source positions.
 
@@ -509,11 +510,10 @@ def batch_aperture_gather(const real_t[:, ::1] data,
     by `~photutils.aperture._batch_photometry.batch_aperture_sums`.
 
     Pixels that are masked or excluded by the segmentation masking are
-    skipped. Non-finite ``data`` pixels are handled by the caller, which
-    folds them into ``mask`` (matching the mask-based path, which masks
-    non-finite data before any segmentation correction). The local
-    background ``local_bkg[k]`` is subtracted from each pixel value of
-    source ``k``.
+    skipped. With ``mask_nonfinite``, non-finite ``data`` pixels are
+    skipped too, before any segmentation correction (matching the
+    mask-based path). The local background ``local_bkg[k]`` is
+    subtracted from each pixel value of source ``k``.
 
     Parameters
     ----------
@@ -521,11 +521,9 @@ def batch_aperture_gather(const real_t[:, ::1] data,
         The data array (background not yet subtracted).
 
     mask : 2D ndarray of uint8 (C-contiguous) or `None`
-        A mask array where nonzero values indicate masked pixels. The
-        caller must also fold non-finite ``data`` pixels into this mask.
-        For the flag counts, bit 1 (value 1) marks input-masked pixels
-        and bit 2 (value 2) marks non-finite data pixels. Any nonzero
-        value excludes the pixel.
+        A mask array where nonzero values indicate masked pixels. Bit 1
+        (value 1) marks input-masked pixels. Any nonzero value excludes
+        the pixel.
 
     positions : 2D ndarray of float64 (C-contiguous)
         The ``(x, y)`` source positions with shape ``(n_sources, 2)``.
@@ -790,9 +788,8 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                 continue
             overlap[k] = 1
 
-            # Non-finite ``data`` pixels are folded into ``mask`` by the
-            # caller, so pixel values are loaded lazily (only for pixels
-            # that actually contribute).
+            # Pixel values are loaded lazily (only for pixels inside
+            # the aperture).
             n_pix = 0
             n_masked = 0
             n_nonfin = 0
@@ -845,32 +842,41 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                         continue
                     n_pix += 1
 
-                    if has_mask:
-                        mbits = mask[iy, ix]
-                        if mbits != 0:
-                            if mbits & 1:
-                                n_masked += 1
-                            elif mbits & 2:
-                                n_nonfin += 1
-                            # Masked pixels never reach the
-                            # segmentation branch below, so count
-                            # masked neighbor-segment pixels (and their
-                            # mirror availability) here for callers
-                            # that treat the mask and neighbor overlays
-                            # independently.
-                            if seg_active:
-                                pix_class = _classify_seg_pixel(
-                                    seg_ptr, mask_ptr, nx_data,
-                                    seg_method, lbl, ix, iy, ix0,
-                                    ix1, iy0, iy1, ccx, ccy, &six,
-                                    &siy)
-                                if pix_class in (_SEG_NEIGHBOR,
-                                                 _SEG_CORRECTED,
-                                                 _SEG_UNCORRECTED):
-                                    n_seg_masked += 1
-                                    if pix_class == _SEG_UNCORRECTED:
-                                        n_unc_masked += 1
-                            continue
+                    # Non-finite data pixels are detected here (bit 2)
+                    # rather than folded into the mask plane by the
+                    # caller, which would cost a full-image pass per
+                    # call.
+                    mbits = mask[iy, ix] if has_mask else 0
+                    if (mask_nonfinite and mbits == 0
+                            and not isfinite(data[iy, ix])):
+                        mbits = 2
+                    if mbits != 0:
+                        if mbits & 1:
+                            n_masked += 1
+                        elif mbits & 2:
+                            n_nonfin += 1
+                        # Masked pixels never reach the segmentation
+                        # branch below, so count masked neighbor-segment
+                        # pixels (and their mirror availability) here
+                        # for callers that treat the mask and neighbor
+                        # overlays independently.
+                        if seg_active:
+                            pix_class = _classify_seg_pixel(
+                                seg_ptr, mask_ptr, nx_data,
+                                seg_method, lbl, ix, iy, ix0,
+                                ix1, iy0, iy1, ccx, ccy, &six,
+                                &siy)
+                            if (pix_class == _SEG_CORRECTED
+                                    and mask_nonfinite
+                                    and not isfinite(data[siy, six])):
+                                pix_class = _SEG_UNCORRECTED
+                            if pix_class in (_SEG_NEIGHBOR,
+                                             _SEG_CORRECTED,
+                                             _SEG_UNCORRECTED):
+                                n_seg_masked += 1
+                                if pix_class == _SEG_UNCORRECTED:
+                                    n_unc_masked += 1
+                        continue
                     six = ix
                     siy = iy
                     if (seg_active
@@ -878,6 +884,12 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                                 seg_ptr, mask_ptr, nx_data, seg_method,
                                 lbl, ix, iy, ix0, ix1, iy0, iy1, ccx,
                                 ccy, &six, &siy, &n_seg_px, &n_uncorr)):
+                        continue
+                    if (mask_nonfinite and (six != ix or siy != iy)
+                            and not isfinite(data[siy, six])):
+                        # A non-finite mirror pixel leaves the neighbor
+                        # pixel uncorrected
+                        n_uncorr += 1
                         continue
 
                     values[pos] = data[siy, six] - lbk

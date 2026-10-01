@@ -291,51 +291,29 @@ def batch_image_arrays(*arrays):
             for array in arrays]
 
 
-def batch_mask_plane(data, mask, *, mask_nonfinite):
+def batch_mask_plane(mask):
     """
     Build the uint8 mask plane used by the batch Cython kernels.
 
-    Bit 1 (value 1) marks input-masked pixels and bit 2 (value 2) marks
-    non-finite ``data`` pixels. Any nonzero value excludes the pixel.
-    Folding the non-finite pixels into the plane lets the caller exclude
-    them from the sum, area, and valid-pixel count while still flagging
-    them as ``non_finite_data`` rather than ``masked_pixels``.
+    Bit 1 (value 1) marks input-masked pixels. Non-finite ``data``
+    pixels are not folded into the plane. The kernels test them per
+    pixel (their ``mask_nonfinite`` argument), which avoids a full-image
+    pass on every call.
 
     Parameters
     ----------
-    data : `~numpy.ndarray`
-        The data array.
-
     mask : `~numpy.ndarray` (bool) or `None`
         The input mask.
-
-    mask_nonfinite : bool
-        Whether to fold the non-finite ``data`` values into the plane.
-        When `False`, the non-finite pixels are left in the data so
-        that they corrupt the sum (the 3.0.0 behavior, used by the
-        legacy `~photutils.aperture.aperture_photometry` function).
 
     Returns
     -------
     plane : `~numpy.ndarray` (uint8) or `None`
-        The C-contiguous mask plane, or `None` if no pixels are
-        excluded.
+        The C-contiguous mask plane, or `None` if there is no input
+        mask.
     """
-    plane = None
-    if mask is not None:
-        plane = mask.astype(np.uint8)
-    if mask_nonfinite and data.dtype.kind == 'f':
-        nonfinite = ~np.isfinite(data)
-        if nonfinite.any():
-            if plane is None:
-                plane = np.zeros(data.shape, dtype=np.uint8)
-                plane[nonfinite] = 2
-            else:
-                plane[nonfinite & (plane == 0)] = 2
-
-    if plane is None:
+    if mask is None:
         return None
-    return np.ascontiguousarray(plane)
+    return np.ascontiguousarray(mask, dtype=np.uint8)
 
 
 def batch_segmentation_arrays(segmentation, labels, mask_method):

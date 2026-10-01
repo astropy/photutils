@@ -151,7 +151,8 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
                         const seg_t[:, ::1] segmentation=None,
                         const Py_ssize_t[::1] labels=None, int seg_method=0,
                         const double[::1] local_bkg=None, int emit_sum=0,
-                        const double[:, ::1] params_per_source=None):
+                        const double[:, ::1] params_per_source=None,
+                        int mask_nonfinite=0):
     """
     Compute aperture sums for many source positions in a single call.
 
@@ -176,10 +177,9 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
 
     mask : 2D ndarray of uint8 (C-contiguous) or `None`
         A mask array where nonzero values indicate masked (excluded)
-        pixels. Must have the same shape as ``data``. For the flag
-        counts, bit 1 (value 1) marks input-masked pixels and bit 2
-        (value 2) marks non-finite data pixels folded into the mask by
-        the caller. Any nonzero value excludes the pixel.
+        pixels. Must have the same shape as ``data``. Bit 1 (value 1)
+        marks input-masked pixels. Any nonzero value excludes the
+        pixel.
 
     positions : 2D ndarray of float64 (C-contiguous)
         The (x, y) source positions with shape ``(n_sources, 2)``.
@@ -350,11 +350,11 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
 
         The ``FLAG_COL_NONFINITE_DATA`` and ``FLAG_COL_NONFINITE_ERROR``
         columns are nonzero when non-finite data or error values
-        contribute to the aperture. Pixels marked non-finite in the mask
-        plane (bit 2) are counted exactly, while unmasked non-finite
-        contributions are detected from the accumulated sums as a 0/1
-        indicator. Rows are all zero where the aperture bounding box
-        does not overlap the data.
+        contribute to the aperture. Non-finite data pixels excluded
+        by ``mask_nonfinite`` are counted exactly, while unmasked
+        non-finite contributions are detected from the accumulated
+        sums as a 0/1 indicator. Rows are all zero where the aperture
+        bounding box does not overlap the data.
 
     weights_out : 1D ndarray of uint8
         A per-source 0/1 indicator of whether the aperture has one
@@ -728,32 +728,41 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
 
                     n_pix += 1
 
-                    if has_mask:
-                        mbits = mask[iy, ix]
-                        if mbits != 0:
-                            if mbits & 1:
-                                n_masked += 1
-                            elif mbits & 2:
-                                n_nonfin += 1
-                            # Masked pixels never reach the
-                            # segmentation branch below, so count
-                            # masked neighbor-segment pixels (and their
-                            # mirror availability) here for callers
-                            # that treat the mask and neighbor overlays
-                            # independently.
-                            if seg_active:
-                                pix_class = _classify_seg_pixel(
-                                    seg_ptr, mask_ptr, nx_data,
-                                    seg_method, lbl, ix, iy, ix0,
-                                    ix1, iy0, iy1, ccx, ccy, &six,
-                                    &siy)
-                                if pix_class in (_SEG_NEIGHBOR,
-                                                 _SEG_CORRECTED,
-                                                 _SEG_UNCORRECTED):
-                                    n_seg_masked += 1
-                                    if pix_class == _SEG_UNCORRECTED:
-                                        n_unc_masked += 1
-                            continue
+                    # Non-finite data pixels are detected here (bit 2)
+                    # rather than folded into the mask plane by the
+                    # caller, which would cost a full-image pass per
+                    # call.
+                    mbits = mask[iy, ix] if has_mask else 0
+                    if (mask_nonfinite and mbits == 0
+                            and not isfinite(data[iy, ix])):
+                        mbits = 2
+                    if mbits != 0:
+                        if mbits & 1:
+                            n_masked += 1
+                        elif mbits & 2:
+                            n_nonfin += 1
+                        # Masked pixels never reach the segmentation
+                        # branch below, so count masked neighbor-segment
+                        # pixels (and their mirror availability) here
+                        # for callers that treat the mask and neighbor
+                        # overlays independently.
+                        if seg_active:
+                            pix_class = _classify_seg_pixel(
+                                seg_ptr, mask_ptr, nx_data,
+                                seg_method, lbl, ix, iy, ix0,
+                                ix1, iy0, iy1, ccx, ccy, &six,
+                                &siy)
+                            if (pix_class == _SEG_CORRECTED
+                                    and mask_nonfinite
+                                    and not isfinite(data[siy, six])):
+                                pix_class = _SEG_UNCORRECTED
+                            if pix_class in (_SEG_NEIGHBOR,
+                                             _SEG_CORRECTED,
+                                             _SEG_UNCORRECTED):
+                                n_seg_masked += 1
+                                if pix_class == _SEG_UNCORRECTED:
+                                    n_unc_masked += 1
+                        continue
                     six = ix
                     siy = iy
                     if (seg_active
@@ -761,6 +770,12 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
                                 seg_ptr, mask_ptr, nx_data, seg_method,
                                 lbl, ix, iy, ix0, ix1, iy0, iy1, ccx,
                                 ccy, &six, &siy, &n_seg_px, &n_uncorr)):
+                        continue
+                    if (mask_nonfinite and (six != ix or siy != iy)
+                            and not isfinite(data[siy, six])):
+                        # A non-finite mirror pixel leaves the neighbor
+                        # pixel uncorrected
+                        n_uncorr += 1
                         continue
 
                     val = data[siy, six] - lbk
@@ -777,11 +792,11 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
                         sum_errsq[spos] = errsq if has_error else 0.0
                         spos += 1
 
-            # Unmasked non-finite data or error values corrupt the
-            # accumulated sums, so their presence is detected from the
-            # final sums (avoiding per-pixel finiteness tests in the hot
-            # loop). Non-finite pixels folded into the mask plane (bit
-            # 2) are counted exactly in the masked branch above.
+            # Non-finite error values, and non-finite data values when
+            # ``mask_nonfinite`` is 0, corrupt the accumulated sums, so
+            # their presence is detected from the final sums. Non-finite
+            # data pixels excluded by ``mask_nonfinite`` are counted
+            # exactly in the masked branch above.
             if not isfinite(sum_val):
                 n_nonfin += 1
             if has_error and not isfinite(var_val):
