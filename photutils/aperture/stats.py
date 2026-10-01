@@ -35,10 +35,7 @@ from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_sigma_clip_sum,
                                              batch_sort_values)
 from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
-                                        batch_image_arrays,
-                                        batch_inputs_supported,
-                                        batch_mask_plane,
-                                        batch_segmentation_arrays,
+                                        batch_driver_inputs,
                                         collapse_scalar_value, unpack_nddata,
                                         validate_array, validate_mask_method)
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
@@ -974,10 +971,12 @@ class ApertureStats:
         """
         The validated inputs for the fast Cython batch driver, or `None`.
 
-        Returns a tuple of the contiguous arrays and scalar parameters
-        shared by the center-value and ``sum_method`` gathers (see
-        `_fast_gather` and `_fast_sum`), together with the fast
-        sigma-clip specification (`None` when no clipping is performed).
+        Returns an ``(inputs, local_bkg, clip_spec)`` tuple of the
+        driver inputs shared by the center-value and ``sum_method``
+        gathers (a `~photutils.aperture._common.BatchInputs`, see
+        `_fast_gather` and `_fast_sum`), the contiguous local background
+        values, and the fast sigma-clip specification (`None` when no
+        clipping is performed).
 
         `None` is returned (and the mask-based code path is used) when
         the aperture or inputs are not supported by the batch driver,
@@ -992,45 +991,18 @@ class ApertureStats:
         if self.sigma_clip is not None and clip_spec is None:
             return None
 
-        aper = self._pixel_aperture
-
-        # Use the batch driver only if the aperture's own class
-        # opted in via the _enable_batch_photometry decorator (see
-        # PixelAperture._batch_photometry).
-        if type(aper)._batch_photometry_class is not type(aper):
-            return None
-        spec = aper._batch_shape_params()
-        if spec is None:
-            return None
-
-        data = self._data
-        error = self._error
-        if not batch_inputs_supported(data, error, self._mask):
+        # The overlap method of the inputs is the ``sum_method``. The
+        # center-value gather always uses the "center" method.
+        inputs = batch_driver_inputs(
+            self._pixel_aperture, self._data, error=self._error,
+            mask=self._mask, method=self.sum_method,
+            subpixels=self.subpixels, segmentation=self._segmentation,
+            labels=self._seg_labels, mask_method=self.mask_method)
+        if inputs is None:
             return None
 
-        # The batch kernels always exclude non-finite ``data`` values
-        # (``mask_nonfinite=1`` below). This matches the mask-based
-        # path, which masks non-finite data before any segmentation
-        # correction.
-        mask = batch_mask_plane(self._mask)
-        seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
-            self._segmentation, self._seg_labels, self.mask_method)
-
-        shape_code, params = spec
-        sum_use_exact, sum_subpixels = aper._translate_mask_method(
-            self.sum_method, self.subpixels)
-        ext_x, ext_y = aper._xy_extents
-        off_x, off_y = aper._xy_bbox_offset
-
-        data, error = batch_image_arrays(data, error)
-
-        return (data, error, mask,
-                np.ascontiguousarray(aper._positions, dtype=np.float64),
-                shape_code, np.array(params, dtype=np.float64),
-                float(ext_x), float(ext_y), float(off_x), float(off_y),
-                sum_use_exact, sum_subpixels,
-                np.ascontiguousarray(self._local_bkg, dtype=np.float64),
-                seg_arr, labels_arr, seg_code, clip_spec)
+        local_bkg = np.ascontiguousarray(self._local_bkg, dtype=np.float64)
+        return inputs, local_bkg, clip_spec
 
     @cached_property
     def _fast_gather(self):
@@ -1072,18 +1044,21 @@ class ApertureStats:
 
         See `_fast_gather` for the returned `_BatchGather`.
         """
-        (data, _error, mask, positions, shape_code, params, ext_x, ext_y,
-         off_x, off_y, _sum_use_exact, _sum_subpixels, local_bkg, seg_arr,
-         labels_arr, seg_code, clip_spec) = self._batch_inputs
+        inputs, local_bkg, clip_spec = self._batch_inputs
         positions, local_bkg, labels_arr = self._index_sources(
-            index, positions, local_bkg, labels_arr)
+            index, inputs.positions, local_bkg, inputs.labels)
 
+        # The batch kernels always exclude non-finite ``data`` values
+        # (``mask_nonfinite=1``). This matches the mask-based path,
+        # which masks non-finite data before any segmentation
+        # correction.
         def gather_chunk(pos, bkg, labels):
             (values, lx, ly, starts, counts, overlap,
              flag_counts) = batch_aperture_gather(
-                data, mask, pos, shape_code, params, ext_x, ext_y,
-                off_x, off_y, bkg, seg_arr, labels, seg_code,
-                mask_nonfinite=1)
+                inputs.data, inputs.mask, pos, inputs.shape_code,
+                inputs.params, inputs.ext_x, inputs.ext_y, inputs.off_x,
+                inputs.off_y, bkg, inputs.segmentation, labels,
+                inputs.seg_method, mask_nonfinite=1)
             gather = _BatchGather(values=values, local_x=lx, local_y=ly,
                                   starts=starts, counts=counts,
                                   overlap=overlap, flag_counts=flag_counts)
@@ -1145,11 +1120,9 @@ class ApertureStats:
 
         See `_fast_sum` for the returned `_BatchGather`.
         """
-        (data, error, mask, positions, shape_code, params, ext_x, ext_y,
-         off_x, off_y, sum_use_exact, sum_subpixels, local_bkg, seg_arr,
-         labels_arr, seg_code, clip_spec) = self._batch_inputs
+        inputs, local_bkg, clip_spec = self._batch_inputs
         positions, local_bkg, labels_arr = self._index_sources(
-            index, positions, local_bkg, labels_arr)
+            index, inputs.positions, local_bkg, inputs.labels)
 
         emit_sum = 1 if clip_spec is not None else 0
 
@@ -1157,9 +1130,11 @@ class ApertureStats:
             # The gather path derives its outside-weight flag elsewhere,
             # so the driver's per-source indicator is not used here.
             result = batch_aperture_sums(
-                data, error, mask, pos, shape_code, params, ext_x, ext_y,
-                off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
-                labels, seg_code, bkg, emit_sum, mask_nonfinite=1)
+                inputs.data, inputs.error, inputs.mask, pos,
+                inputs.shape_code, inputs.params, inputs.ext_x,
+                inputs.ext_y, inputs.off_x, inputs.off_y, inputs.use_exact,
+                inputs.subpixels, inputs.segmentation, labels,
+                inputs.seg_method, bkg, emit_sum, mask_nonfinite=1)
             (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
              sum_errsq, scounts, flag_counts) = (
                 result.sums, result.sum_vars, result.areas, result.overlap,

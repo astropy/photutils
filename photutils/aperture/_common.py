@@ -11,6 +11,7 @@ code paths cannot silently diverge.
 """
 
 import warnings
+from typing import NamedTuple
 
 import astropy.units as u
 import numpy as np
@@ -351,3 +352,136 @@ def batch_segmentation_arrays(segmentation, labels, mask_method):
     return (batch_segmentation_image(segmentation),
             np.ascontiguousarray(labels, dtype=np.intp),
             SEG_METHOD_CODES[mask_method])
+
+
+class BatchInputs(NamedTuple):
+    """
+    The inputs of the batch Cython drivers for one aperture and image
+    (see `batch_driver_inputs`).
+
+    The field names match the corresponding parameters of
+    `~photutils.aperture._batch_photometry.batch_aperture_sums`.
+    """
+
+    data: np.ndarray
+    """The C-contiguous data array."""
+
+    error: np.ndarray | None
+    """The C-contiguous error array, with the same dtype as the
+    data."""
+
+    mask: np.ndarray | None
+    """The uint8 mask plane (see `batch_mask_plane`)."""
+
+    positions: np.ndarray
+    """The ``(n_sources, 2)`` float64 aperture positions."""
+
+    shape_code: int
+    """The aperture shape code."""
+
+    params: np.ndarray
+    """The float64 aperture shape parameters."""
+
+    ext_x: float
+    """The half-extent of the aperture bounding box along x."""
+
+    ext_y: float
+    """The half-extent of the aperture bounding box along y."""
+
+    off_x: float
+    """The x offset of the bounding-box center from the position."""
+
+    off_y: float
+    """The y offset of the bounding-box center from the position."""
+
+    use_exact: int
+    """Whether the exact overlap method is used (1) or not (0)."""
+
+    subpixels: int
+    """The number of subpixels of the subpixel overlap method."""
+
+    segmentation: np.ndarray | None
+    """The C-contiguous segmentation array."""
+
+    labels: np.ndarray | None
+    """The intp source label of each aperture."""
+
+    seg_method: int
+    """The segmentation method code (0 disables masking)."""
+
+
+def batch_driver_inputs(aperture, data, *, error, mask, method, subpixels,
+                        segmentation, labels, mask_method):
+    """
+    Build the inputs of the batch Cython drivers for a pixel aperture.
+
+    Parameters
+    ----------
+    aperture : `~photutils.aperture.PixelAperture`
+        The pixel aperture.
+
+    data : `~numpy.ndarray`
+        The 2D data array, with any units already stripped.
+
+    error : `~numpy.ndarray` or `None`
+        The 2D error array, with any units already stripped.
+
+    mask : `~numpy.ndarray` (bool) or `None`
+        The input mask.
+
+    method : {'exact', 'center', 'subpixel'}
+        The aperture mask method.
+
+    subpixels : int
+        The number of subpixels for the ``'subpixel'`` method.
+
+    segmentation : `~numpy.ndarray` or `None`
+        The validated segmentation array.
+
+    labels : `~numpy.ndarray` or `None`
+        The per-aperture source labels.
+
+    mask_method : {'none', 'mask', 'source_only', 'background_only', \
+            'correct'}
+        The segmentation masking method.
+
+    Returns
+    -------
+    inputs : `BatchInputs` or `None`
+        The driver inputs, or `None` if the batch drivers do not
+        support this aperture or these input arrays (see
+        `batch_inputs_supported`). In that case the caller must use the
+        mask-based code path.
+    """
+    # Use the batch drivers only if the aperture's own class opted
+    # in via the _enable_batch_photometry decorator. Undecorated
+    # subclasses may override other behavior (e.g., to_mask) that the
+    # batch drivers would not honor, so they use the mask-based code
+    # path.
+    if type(aperture)._batch_photometry_class is not type(aperture):
+        return None
+
+    spec = aperture._batch_shape_params()
+    if spec is None:
+        return None
+
+    if not batch_inputs_supported(data, error, mask):
+        return None
+
+    seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
+        segmentation, labels, mask_method)
+    use_exact, subpixels = aperture._translate_mask_method(method, subpixels)
+    shape_code, params = spec
+    ext_x, ext_y = aperture._xy_extents
+    off_x, off_y = aperture._xy_bbox_offset
+    data, error = batch_image_arrays(data, error)
+
+    positions = np.ascontiguousarray(aperture._positions, dtype=np.float64)
+    params = np.array(params, dtype=np.float64)
+
+    # The fields are passed by position (in the `BatchInputs` field
+    # order), which is cheaper than by keyword on this per-call path
+    return BatchInputs(data, error, batch_mask_plane(mask), positions,
+                       shape_code, params, float(ext_x), float(ext_y),
+                       float(off_x), float(off_y), use_exact, subpixels,
+                       seg_arr, labels_arr, seg_code)
