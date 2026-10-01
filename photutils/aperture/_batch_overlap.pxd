@@ -155,7 +155,10 @@ cdef inline int _classify_seg_pixel(const seg_t *segmentation,
     mask : const unsigned char *
         The C-contiguous mask-plane data, or NULL if there is no mask.
         Used only by the symmetric 'correct' method (``seg_method`` 4)
-        to reject mirror pixels that are masked or non-finite.
+        to reject mirror pixels that are marked in the plane (i.e.,
+        input-masked pixels, and non-finite pixels when the caller
+        marks them in the plane). The aperture drivers called with
+        ``mask_nonfinite`` reject non-finite mirror pixels themselves.
 
     nx_data : Py_ssize_t
         The row stride (number of columns) of the data arrays.

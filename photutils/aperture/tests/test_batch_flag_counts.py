@@ -26,7 +26,7 @@ from photutils.aperture.tests.conftest import UNIT_SHAPE
 
 def _sums_fcounts(data, positions, radius, *, error=None, mask=None,
                   use_exact=1, subpixels=5, segmentation=None, labels=None,
-                  seg_method=0):
+                  seg_method=0, mask_nonfinite=0):
     """
     Run ``batch_aperture_sums`` and return the flag-count array.
     """
@@ -36,12 +36,14 @@ def _sums_fcounts(data, positions, radius, *, error=None, mask=None,
     result = batch_aperture_sums(
         np.ascontiguousarray(data, dtype=np.float64), error, mask,
         positions, SHAPE_CIRCLE, params, radius, radius, 0.0, 0.0,
-        use_exact, subpixels, segmentation, labels, seg_method)
+        use_exact, subpixels, segmentation, labels, seg_method,
+        mask_nonfinite=mask_nonfinite)
     return result.flag_counts
 
 
 def _gather_fcounts(data, positions, radius, *, mask=None,
-                    segmentation=None, labels=None, seg_method=0):
+                    segmentation=None, labels=None, seg_method=0,
+                    mask_nonfinite=0):
     """
     Run ``batch_aperture_gather`` and return the flag-count array.
     """
@@ -51,7 +53,7 @@ def _gather_fcounts(data, positions, radius, *, mask=None,
     result = batch_aperture_gather(
         np.ascontiguousarray(data, dtype=np.float64), mask, positions,
         SHAPE_CIRCLE, params, radius, radius, 0.0, 0.0, None,
-        segmentation, labels, seg_method)
+        segmentation, labels, seg_method, mask_nonfinite=mask_nonfinite)
     return result[-1]
 
 
@@ -190,6 +192,90 @@ class TestNonFiniteCounts:
         mask[12, 12] = 1
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, error=error, mask=mask)[0]
         assert fc[FLAG_COL_NONFINITE_ERROR] == 0
+
+
+class TestMaskNonfinite:
+    """
+    Tests for the per-pixel non-finite data handling of the batch
+    drivers (``mask_nonfinite``).
+    """
+
+    @staticmethod
+    def _inputs():
+        """
+        Return the data, segmentation, and labels of a source with one
+        neighbor-segment pixel whose mirror pixel is non-finite.
+        """
+        data = np.ones((11, 11))
+        data[5, 2] = np.nan  # mirror of (5, 8) across the center
+        segm = np.zeros((11, 11), dtype=np.intp)
+        segm[4:7, 4:7] = 1
+        segm[5, 8] = 2  # neighbor pixel
+        labels = np.array([1], dtype=np.intp)
+        return data, segm, labels
+
+    @pytest.mark.parametrize('func', [_sums_fcounts, _gather_fcounts])
+    def test_matches_mask_plane_bit(self, func):
+        """
+        Test that the per-pixel test gives the same counts as marking
+        the non-finite pixels in the mask plane (bit 2), with an
+        input-masked non-finite pixel counted only as masked.
+        """
+        data = np.ones(UNIT_SHAPE)
+        data[12, 13] = np.nan
+        data[11, 12] = np.inf
+        data[13, 12] = np.nan  # also input-masked
+        mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
+        mask[13, 12] = 1
+        mask[12, 12] = 1
+        fc = func(data, (12.0, 12.0), 3.0, mask=mask, mask_nonfinite=1)[0]
+        assert fc[FLAG_COL_MASKED] == 2
+        assert fc[FLAG_COL_NONFINITE_DATA] == 2
+        assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS] - 4
+
+        plane = mask.copy()
+        plane[~np.isfinite(data) & (mask == 0)] = 2
+        fc_plane = func(data, (12.0, 12.0), 3.0, mask=plane)[0]
+        assert_array_equal(fc, fc_plane)
+
+    @pytest.mark.parametrize('func', [_sums_fcounts, _gather_fcounts])
+    def test_nonfinite_mirror(self, func):
+        """
+        Test that a neighbor pixel whose mirror pixel is non-finite is
+        counted as uncorrected by the 'correct' method.
+        """
+        data, segm, labels = self._inputs()
+        kwargs = {'segmentation': segm, 'labels': labels, 'seg_method': 4}
+        fc = func(data, (5.0, 5.0), 4.0, mask_nonfinite=1, **kwargs)[0]
+        assert fc[FLAG_COL_NONFINITE_DATA] == 1
+        assert fc[FLAG_COL_SEG] == 1
+        assert fc[FLAG_COL_UNCORRECTED] == 1
+        assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS] - 2
+
+        # A finite mirror pixel corrects the neighbor pixel
+        data[5, 2] = 1.0
+        fc = func(data, (5.0, 5.0), 4.0, mask_nonfinite=1, **kwargs)[0]
+        assert fc[FLAG_COL_SEG] == 1
+        assert fc[FLAG_COL_UNCORRECTED] == 0
+        assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
+
+    @pytest.mark.parametrize('func', [_sums_fcounts, _gather_fcounts])
+    def test_nonfinite_mirror_masked_neighbor(self, func):
+        """
+        Test that an input-masked neighbor pixel whose mirror pixel is
+        non-finite is counted in the masked uncorrected column.
+        """
+        data, segm, labels = self._inputs()
+        mask = np.zeros((11, 11), dtype=np.uint8)
+        mask[5, 8] = 1  # the neighbor pixel
+        fc = func(data, (5.0, 5.0), 4.0, mask=mask, segmentation=segm,
+                  labels=labels, seg_method=4, mask_nonfinite=1)[0]
+        assert fc[FLAG_COL_MASKED] == 1
+        assert fc[FLAG_COL_NONFINITE_DATA] == 1
+        assert fc[FLAG_COL_SEG] == 0
+        assert fc[FLAG_COL_UNCORRECTED] == 0
+        assert fc[FLAG_COL_SEG_MASKED] == 1
+        assert fc[FLAG_COL_UNCORRECTED_MASKED] == 1
 
 
 class TestBboxClipped:

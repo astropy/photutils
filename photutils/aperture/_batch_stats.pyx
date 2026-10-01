@@ -521,9 +521,11 @@ def batch_aperture_gather(const real_t[:, ::1] data,
         The data array (background not yet subtracted).
 
     mask : 2D ndarray of uint8 (C-contiguous) or `None`
-        A mask array where nonzero values indicate masked pixels. Bit 1
-        (value 1) marks input-masked pixels. Any nonzero value excludes
-        the pixel.
+        A mask array where nonzero values indicate masked pixels. For
+        the flag counts, bit 1 (value 1) marks input-masked pixels. A
+        caller that does not use ``mask_nonfinite`` can set bit 2
+        (value 2) to mark the non-finite data pixels itself. Any
+        nonzero value excludes the pixel.
 
     positions : 2D ndarray of float64 (C-contiguous)
         The ``(x, y)`` source positions with shape ``(n_sources, 2)``.
@@ -553,6 +555,14 @@ def batch_aperture_gather(const real_t[:, ::1] data,
 
     seg_method : int
         The segmentation masking method code (see `_batch_photometry`).
+
+    mask_nonfinite : int, optional
+        If nonzero, non-finite ``data`` pixels are skipped (in addition
+        to the ``mask`` pixels) before the segmentation masking is
+        applied, and they are counted in the ``FLAG_COL_NONFINITE_DATA``
+        column. A method-4 neighbor pixel whose mirror pixel is
+        non-finite is then left uncorrected. When zero (default),
+        non-finite data values are gathered like any other value.
 
     Returns
     -------
@@ -842,10 +852,10 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                         continue
                     n_pix += 1
 
-                    # Non-finite data pixels are detected here (bit 2)
-                    # rather than folded into the mask plane by the
-                    # caller, which would cost a full-image pass per
-                    # call.
+                    # With ``mask_nonfinite``, an unmasked non-finite
+                    # data pixel is treated as mask bit 2. Only the
+                    # aperture pixels are tested, so no full-image pass
+                    # is needed.
                     mbits = mask[iy, ix] if has_mask else 0
                     if (mask_nonfinite and mbits == 0
                             and not isfinite(data[iy, ix])):
@@ -885,10 +895,13 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                                 lbl, ix, iy, ix0, ix1, iy0, iy1, ccx,
                                 ccy, &six, &siy, &n_seg_px, &n_uncorr)):
                         continue
+                    # A corrected neighbor pixel is the only pixel
+                    # read from a different (mirror) pixel. A pixel
+                    # that mirrors onto itself is a neighbor, so it is
+                    # never corrected. A non-finite mirror pixel leaves
+                    # the neighbor pixel uncorrected.
                     if (mask_nonfinite and (six != ix or siy != iy)
                             and not isfinite(data[siy, six])):
-                        # A non-finite mirror pixel leaves the neighbor
-                        # pixel uncorrected
                         n_uncorr += 1
                         continue
 

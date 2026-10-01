@@ -1083,7 +1083,7 @@ class ApertureStats:
              flag_counts) = batch_aperture_gather(
                 data, mask, pos, shape_code, params, ext_x, ext_y,
                 off_x, off_y, bkg, seg_arr, labels, seg_code,
-                1)  # mask_nonfinite
+                mask_nonfinite=1)
             gather = _BatchGather(values=values, local_x=lx, local_y=ly,
                                   starts=starts, counts=counts,
                                   overlap=overlap, flag_counts=flag_counts)
@@ -1159,8 +1159,7 @@ class ApertureStats:
             result = batch_aperture_sums(
                 data, error, mask, pos, shape_code, params, ext_x, ext_y,
                 off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
-                labels, seg_code, bkg, emit_sum, None,
-                1)  # params_per_source, mask_nonfinite
+                labels, seg_code, bkg, emit_sum, mask_nonfinite=1)
             (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
              sum_errsq, scounts, flag_counts) = (
                 result.sums, result.sum_vars, result.areas, result.overlap,

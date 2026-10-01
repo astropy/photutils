@@ -296,9 +296,9 @@ def batch_mask_plane(mask):
     Build the uint8 mask plane used by the batch Cython kernels.
 
     Bit 1 (value 1) marks input-masked pixels. Non-finite ``data``
-    pixels are not folded into the plane. The kernels test them per
-    pixel (their ``mask_nonfinite`` argument), which avoids a full-image
-    pass on every call.
+    pixels are not marked in the plane. The kernels test them per pixel
+    (their ``mask_nonfinite`` argument), so no full-image pass is
+    needed.
 
     Parameters
     ----------
@@ -309,11 +309,14 @@ def batch_mask_plane(mask):
     -------
     plane : `~numpy.ndarray` (uint8) or `None`
         The C-contiguous mask plane, or `None` if there is no input
-        mask.
+        mask. The plane is a view of a C-contiguous input mask (no
+        copy is made).
     """
     if mask is None:
         return None
-    return np.ascontiguousarray(mask, dtype=np.uint8)
+    # A boolean array stores one byte (0 or 1) per element, so it can
+    # be viewed as uint8 without a copy.
+    return np.ascontiguousarray(mask).view(np.uint8)
 
 
 def batch_segmentation_arrays(segmentation, labels, mask_method):
