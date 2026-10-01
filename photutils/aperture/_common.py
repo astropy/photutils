@@ -312,6 +312,16 @@ def batch_mask_plane(mask):
         The C-contiguous mask plane, or `None` if there is no input
         mask. The plane is a view of a C-contiguous input mask (no
         copy is made).
+
+    Notes
+    -----
+    The plane is a byte view, so the bytes of the input mask are not
+    normalized to 0 and 1. An ill-formed boolean array whose storage
+    holds other byte values (e.g., a uint8 array viewed as bool)
+    excludes the same pixels, but the kernels interpret its bytes as
+    plane bits, so such a pixel can be counted as non-finite (bit 2)
+    rather than as masked (bit 1). Boolean arrays created by NumPy
+    always hold 0 or 1.
     """
     if mask is None:
         return None
@@ -479,8 +489,8 @@ def batch_driver_inputs(aperture, data, *, error, mask, method, subpixels,
     positions = np.ascontiguousarray(aperture._positions, dtype=np.float64)
     params = np.array(params, dtype=np.float64)
 
-    # The fields are passed by position (in the `BatchInputs` field
-    # order), which is cheaper than by keyword on this per-call path
+    # The fields are passed by position, in the `BatchInputs` field
+    # order.
     return BatchInputs(data, error, batch_mask_plane(mask), positions,
                        shape_code, params, float(ext_x), float(ext_y),
                        float(off_x), float(off_y), use_exact, subpixels,

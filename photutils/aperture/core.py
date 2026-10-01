@@ -1024,15 +1024,16 @@ class PixelAperture(Aperture):
             mask_method=mask_method)
         if inputs is None:
             return None
-        (data, error, mask, positions, shape_code, params, ext_x, ext_y,
-         off_x, off_y, use_exact, subpixels, seg_arr, labels_arr,
-         seg_code) = inputs
+        positions = inputs.positions
+        labels_arr = inputs.labels
 
         def run_sums(pos, src_labels):
             return batch_aperture_sums(
-                data, error, mask, pos, shape_code, params, ext_x, ext_y,
-                off_x, off_y, use_exact, subpixels, seg_arr, src_labels,
-                seg_code, mask_nonfinite=int(mask_nonfinite))
+                inputs.data, inputs.error, inputs.mask, pos,
+                inputs.shape_code, inputs.params, inputs.ext_x,
+                inputs.ext_y, inputs.off_x, inputs.off_y, inputs.use_exact,
+                inputs.subpixels, inputs.segmentation, src_labels,
+                inputs.seg_method, mask_nonfinite=int(mask_nonfinite))
 
         # The per-source outside-weight indicator of the driver is not
         # used here, because the aperture flags resolve the clipped
@@ -1064,7 +1065,7 @@ class PixelAperture(Aperture):
             overlap = result.overlap
             fcounts = result.flag_counts
 
-        if error is None:
+        if inputs.error is None:
             # Match the mask-based path, which returns an all-NaN error
             # array (with the same length as the fluxes) when error is
             # not input.

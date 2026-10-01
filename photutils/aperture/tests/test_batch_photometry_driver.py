@@ -22,6 +22,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   SHAPE_RECTANGLE,
                                                   SHAPE_RECTANGULAR_ANNULUS,
                                                   batch_aperture_sums)
+from photutils.aperture._common import batch_mask_plane
 
 N_THREADS = 8
 N_CALLS_PER_THREAD = 4
@@ -399,3 +400,41 @@ def test_weights_out_large_aperture(radius, use_exact, subpixels):
     assert result.flag_counts[0, FLAG_COL_N_PIXELS] == data.size
     assert_allclose(result.sums[0], data.sum())
     assert_allclose(result.areas[0], data.size)
+
+
+class TestBatchMaskPlane:
+    """
+    Tests for the uint8 mask plane passed to the batch drivers.
+    """
+
+    def test_none(self):
+        assert batch_mask_plane(None) is None
+
+    def test_contiguous_mask_is_view(self):
+        """
+        Test that a C-contiguous boolean mask is viewed without a copy.
+        """
+        mask = np.zeros((20, 30), dtype=bool)
+        mask[3, 4] = True
+        plane = batch_mask_plane(mask)
+        assert plane.dtype == np.uint8
+        assert plane.flags.c_contiguous
+        assert plane.shape == mask.shape
+        assert np.shares_memory(plane, mask)
+        assert plane[3, 4] == 1
+        assert plane.sum() == 1
+
+    def test_noncontiguous_mask_is_copied(self):
+        """
+        Test that a non-contiguous boolean mask is copied into a
+        C-contiguous plane with the same values.
+        """
+        mask = np.zeros((40, 60), dtype=bool)
+        mask[6, 8] = True
+        view = mask[::2, ::2]
+        assert not view.flags.c_contiguous
+        plane = batch_mask_plane(view)
+        assert plane.dtype == np.uint8
+        assert plane.flags.c_contiguous
+        assert not np.shares_memory(plane, mask)
+        assert_array_equal(plane, view.astype(np.uint8))
