@@ -642,6 +642,32 @@ def test_repr():
     cls_repr = repr(psfphot)
     assert cls_repr.startswith(f'{psfphot.__class__.__name__}(')
     assert 'group_warning_threshold' in cls_repr
+    assert 'n_threads=1' in cls_repr
+
+
+@pytest.mark.usefixtures('gil_disabled')
+def test_n_threads(test_data):
+    """
+    Test that n_threads is passed through to the PSFPhotometry
+    instance and gives the same results as a single thread.
+    """
+    data, error, _ = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    finder = DAOStarFinder(6.0, 2.0)
+    phots = []
+    for n_threads in (1, 2):
+        psfphot = IterativePSFPhotometry(psf_model, (5, 5), finder,
+                                         aperture_radius=4, maxiters=2,
+                                         n_threads=n_threads)
+        assert psfphot._psfphot.n_threads == n_threads
+        phots.append(psfphot(data, error=error))
+    for name in ('x_fit', 'y_fit', 'flux_fit', 'flags', 'iter_detected'):
+        assert_equal(np.asarray(phots[0][name]), np.asarray(phots[1][name]))
+
+    match = 'n_threads must be a positive integer'
+    with pytest.raises(ValueError, match=match):
+        IterativePSFPhotometry(psf_model, (5, 5), finder, aperture_radius=4,
+                               n_threads=0)
 
 
 def test_move_column():

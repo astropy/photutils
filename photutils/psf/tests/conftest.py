@@ -124,3 +124,13 @@ def fixture_public_spline():
             return self._spline.partial_derivative(dx, dy)
 
     return PublicSpline
+
+
+@pytest.fixture(name='gil_disabled')
+def fixture_gil_disabled(monkeypatch):
+    """
+    Make the PSF photometry classes see a free-threaded Python build,
+    so that ``n_threads`` > 1 fits in threads on any build.
+    """
+    monkeypatch.setattr('photutils.psf.photometry._gil_enabled',
+                        lambda: False)
