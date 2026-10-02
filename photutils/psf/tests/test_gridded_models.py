@@ -3,7 +3,12 @@
 Tests for the gridded_models module.
 """
 
+import copy
+import gc
 import os.path as op
+import pickle  # nosec B403
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 from pathlib import Path
 
@@ -173,6 +178,124 @@ class TestGriddedPSFModel:
         model_str = str(psfmodel)
         assert 'Grid positions' in model_str
         assert '...' in model_str
+
+    @pytest.mark.parametrize('ndim', [1, 2])
+    def test_evaluate_matches_splines(self, psfmodel, ndim):
+        """
+        Test that evaluate and fit_deriv match the direct weighted sum
+        of the bounding-plane splines and their derivative splines.
+        """
+        rng = np.random.default_rng(0)
+        x_0, y_0, flux = 71.3, 123.8, 2.5
+        # The points stay inside the ePSF footprint, where no
+        # fill_value applies
+        if ndim == 1:
+            x = rng.uniform(x_0 - 11, x_0 + 11, 200)
+            y = rng.uniform(y_0 - 11, y_0 + 11, 200)
+        else:
+            y, x = np.mgrid[-12:13, -12:13] + np.array([[[y_0]], [[x_0]]])
+            x = x + 0.37
+            y = y - 0.21
+        grid_idx, grid_xy = psfmodel._find_bounding_points(x_0, y_0)
+        weights = psfmodel._calc_bilinear_weights(x_0, y_0, grid_xy)
+        dw_dx, dw_dy = psfmodel._calc_bilinear_weight_derivs(x_0, y_0,
+                                                             grid_xy)
+        xi = psfmodel.oversampling[1] * (x - x_0) + psfmodel.origin[0]
+        yi = psfmodel.oversampling[0] * (y - y_0) + psfmodel.origin[1]
+
+        value = 0.0
+        deriv_x = 0.0
+        deriv_y = 0.0
+        for gidx, w, dwx, dwy in zip(grid_idx, weights, dw_dx, dw_dy,
+                                     strict=True):
+            spline = psfmodel._calc_interpolator(int(gidx))
+            sval = spline(xi, yi, grid=False)
+            value += w * sval
+            deriv_x += (dwx * sval - w * psfmodel.oversampling[1]
+                        * spline.partial_derivative(1, 0)(xi, yi, grid=False))
+            deriv_y += (dwy * sval - w * psfmodel.oversampling[0]
+                        * spline.partial_derivative(0, 1)(xi, yi, grid=False))
+
+        evaluated = psfmodel.evaluate(x, y, flux, x_0, y_0)
+        assert evaluated.shape == x.shape
+        assert_allclose(evaluated, flux * value, rtol=1e-12, atol=1e-14)
+        d_flux, d_x_0, d_y_0 = psfmodel.fit_deriv(x, y, flux, x_0, y_0)
+        assert d_flux.shape == x.shape
+        assert_allclose(d_flux, value, rtol=1e-12, atol=1e-14)
+        assert_allclose(d_x_0, flux * deriv_x, rtol=1e-12, atol=1e-13)
+        assert_allclose(d_y_0, flux * deriv_y, rtol=1e-12, atol=1e-13)
+
+    def test_single_plane_matches_spline(self, psfmodel):
+        """
+        Test that a single-plane model evaluates its one spline, with
+        position derivatives from the spline shift only.
+        """
+        meta = {'grid_xypos': [psfmodel.grid_xypos[0]],
+                'oversampling': psfmodel.oversampling}
+        model = GriddedPSFModel(NDData(psfmodel.data[:1], meta=meta))
+        rng = np.random.default_rng(3)
+        x_0, y_0, flux = 10.2, 20.7, 1.5
+        x = rng.uniform(x_0 - 10, x_0 + 10, 100)
+        y = rng.uniform(y_0 - 10, y_0 + 10, 100)
+        xi = model.oversampling[1] * (x - x_0) + model.origin[0]
+        yi = model.oversampling[0] * (y - y_0) + model.origin[1]
+        spline = model._calc_interpolator(0)
+        sval = spline(xi, yi, grid=False)
+        assert_allclose(model.evaluate(x, y, flux, x_0, y_0), flux * sval,
+                        rtol=1e-12, atol=1e-14)
+        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+        assert_allclose(d_flux, sval, rtol=1e-12, atol=1e-14)
+        assert_allclose(d_x_0, -flux * model.oversampling[1]
+                        * spline.partial_derivative(1, 0)(xi, yi, grid=False),
+                        rtol=1e-12, atol=1e-13)
+        assert_allclose(d_y_0, -flux * model.oversampling[0]
+                        * spline.partial_derivative(0, 1)(xi, yi, grid=False),
+                        rtol=1e-12, atol=1e-13)
+
+    @pytest.mark.parametrize('fill_value', [0.0, None])
+    @pytest.mark.parametrize('shapes', [((5,), ()), ((1, 5), (5, 1)),
+                                        ((3, 5), (5,))])
+    def test_broadcast_inputs(self, psfmodel, fill_value, shapes):
+        """
+        Test that evaluate and fit_deriv broadcast x and y inputs of
+        different shapes against each other.
+        """
+        psfmodel.fill_value = fill_value
+        rng = np.random.default_rng(0)
+        params = (2.5, 71.3, 123.8)
+        # Some of the points are outside the ePSF footprint
+        x = params[1] + rng.uniform(-14.0, 14.0, shapes[0])
+        y = params[2] + rng.uniform(-14.0, 14.0, shapes[1])
+        xb, yb = (np.ascontiguousarray(arr)
+                  for arr in np.broadcast_arrays(x, y))
+
+        result = psfmodel.evaluate(x, y, *params)
+        assert result.shape == xb.shape
+        assert_equal(result, psfmodel.evaluate(xb, yb, *params))
+        for got, expected in zip(psfmodel.fit_deriv(x, y, *params),
+                                 psfmodel.fit_deriv(xb, yb, *params),
+                                 strict=True):
+            assert got.shape == xb.shape
+            assert_equal(got, expected)
+
+    @pytest.mark.parametrize('dtype', [np.float32, np.int32, np.int64])
+    def test_grid_xypos_dtype(self, psfmodel, dtype):
+        """
+        Test that the grid positions can have any real dtype and give
+        the same results as float64 positions.
+        """
+        meta = {'grid_xypos': psfmodel.grid_xypos.astype(dtype),
+                'oversampling': psfmodel.oversampling}
+        model = GriddedPSFModel(NDData(psfmodel.data, meta=meta))
+        params = (2.5, 71.3, 123.8)
+        y, x = np.mgrid[-3:4, -3:4] + np.array([[[params[2]]],
+                                                [[params[1]]]])
+        assert_equal(model.evaluate(x, y, *params),
+                     psfmodel.evaluate(x, y, *params))
+        for got, expected in zip(model.fit_deriv(x, y, *params),
+                                 psfmodel.fit_deriv(x, y, *params),
+                                 strict=True):
+            assert_equal(got, expected)
 
     def test_gridded_psf_model_basic_eval(self, psfmodel):
         assert psfmodel(0, 0) == 1
@@ -448,16 +571,37 @@ class TestGriddedPSFModel:
         # The flux derivative is nonzero at the in-bounds peak position
         assert derivs[0][0] > 0.0
 
-        # With fill_value=None, out-of-bounds derivatives are
-        # extrapolated from the spline fit instead of being zeroed
+    def test_fit_deriv_no_fill_value(self, psfmodel):
+        """
+        Test the derivatives with fill_value=None, where a point outside
+        the ePSF pixel grid takes the spline value at the nearest point
+        on the grid edge. The ePSF then does not shift with the model
+        position along an axis on which the point is outside the grid,
+        and only the bilinear weights change.
+        """
+        # Add a gradient so that the ePSFs are not flat at their edges
+        yy, xx = np.mgrid[0:101, 0:101]
+        data = psfmodel.data + 0.01 * xx + 0.02 * yy
         meta = {'grid_xypos': psfmodel.grid_xypos,
                 'oversampling': psfmodel.oversampling}
-        model = GriddedPSFModel(NDData(psfmodel.data, meta=meta),
-                                fill_value=None)
-        derivs = model.fit_deriv(np.array([x_0 + 14.0]), np.array([y_0]),
-                                 1.0, x_0, y_0)
-        assert np.all(np.isfinite([deriv[0] for deriv in derivs]))
-        assert derivs[1][0] != 0.0
+        model = GriddedPSFModel(NDData(data, meta=meta), fill_value=None)
+        flux, x_0, y_0 = 2.0, 95.3, 87.6
+
+        # The points are outside the ePSF along x, along y, along both,
+        # and along neither
+        x = x_0 + np.array([14.0, 3.0, -20.0, 1.0])
+        y = y_0 + np.array([0.5, -15.0, 20.0, 2.0])
+        _, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+
+        eps = 1e-6
+
+        def ev(a, b):
+            return model.evaluate(x, y, flux, a, b)
+
+        num_x_0 = (ev(x_0 + eps, y_0) - ev(x_0 - eps, y_0)) / (2 * eps)
+        num_y_0 = (ev(x_0, y_0 + eps) - ev(x_0, y_0 - eps)) / (2 * eps)
+        assert_allclose(d_x_0, num_x_0, atol=1e-6)
+        assert_allclose(d_y_0, num_y_0, atol=1e-6)
 
     def test_fit_deriv_scalar(self, psfmodel):
         """
@@ -698,6 +842,251 @@ class TestGriddedPSFModel:
         # The original model must not be affected by the copy
         assert psfmodel.meta['oversampling'] == (4, 4)
         assert_equal(psfmodel.oversampling, [4, 4])
+
+    @staticmethod
+    def _evaluate_all_planes(model):
+        """
+        Evaluate the model and its derivatives in every grid cell, so
+        that the splines of all the grid planes are built, and return
+        the model values.
+        """
+        values = []
+        for x_0, y_0 in product([20.0, 100.0, 180.0], [30.0, 100.0, 170.0]):
+            x = np.array([x_0 - 1.0, x_0, x_0 + 2.0])
+            y = np.array([y_0 + 1.0, y_0, y_0 - 2.0])
+            values.append(model.evaluate(x, y, 1.0, x_0, y_0))
+            model.fit_deriv(x, y, 1.0, x_0, y_0)
+        return np.array(values)
+
+    def test_spline_objects_not_retained(self, psfmodel, spline_builds):
+        """
+        Test that the model keeps only the spline coefficients, not the
+        spline objects, which hold a second copy of the coefficients.
+        """
+        self._evaluate_all_planes(psfmodel)
+        gc.collect()
+        assert spline_builds.count == len(psfmodel.data)
+        assert spline_builds.n_alive == 0
+
+    def test_spline_cache_public_interface(self, psfmodel, monkeypatch,
+                                           public_spline):
+        """
+        Test that the model fills its spline cache using only the
+        public interface of the scipy splines.
+        """
+        meta = {'grid_xypos': psfmodel.grid_xypos,
+                'oversampling': psfmodel.oversampling}
+        reference = GriddedPSFModel(NDData(psfmodel.data, meta=meta))
+        values = self._evaluate_all_planes(reference)
+        monkeypatch.setattr('photutils.psf.gridded_models.RectBivariateSpline',
+                            public_spline)
+        assert_equal(self._evaluate_all_planes(psfmodel), values)
+
+    def test_copies_share_spline_cache(self, psfmodel, spline_builds):
+        """
+        Test that copies of a model that was never evaluated share the
+        spline cache, so that each spline is built only once.
+        """
+        copy1 = psfmodel.copy()
+        copy2 = psfmodel.copy()
+        values = self._evaluate_all_planes(copy1)
+        assert spline_builds.count == len(psfmodel.data)
+        assert_equal(self._evaluate_all_planes(copy2), values)
+        assert_equal(self._evaluate_all_planes(psfmodel), values)
+        assert spline_builds.count == len(psfmodel.data)
+
+    def test_zero_weight_planes_not_built(self, psfmodel, spline_builds):
+        """
+        Test that the spline of a bounding grid plane is not built when
+        the plane does not contribute. For a model position on a grid
+        node, evaluate needs one plane and fit_deriv needs three,
+        because two more planes have nonzero weight derivatives.
+        """
+        meta = {'grid_xypos': psfmodel.grid_xypos,
+                'oversampling': psfmodel.oversampling}
+        reference = GriddedPSFModel(NDData(psfmodel.data, meta=meta))
+        self._evaluate_all_planes(reference)
+
+        spline_builds.count = 0
+        x_0, y_0 = 40.0, 60.0  # a grid node
+        x = x_0 + np.array([-2.0, -0.5, 0.0, 1.5])
+        y = y_0 + np.array([1.0, 0.0, -1.5, 2.0])
+        value = psfmodel.evaluate(x, y, 2.0, x_0, y_0)
+        assert spline_builds.count == 1
+        derivs = psfmodel.fit_deriv(x, y, 2.0, x_0, y_0)
+        assert spline_builds.count == 3
+        assert_equal(value, reference.evaluate(x, y, 2.0, x_0, y_0))
+        for got, expected in zip(derivs,
+                                 reference.fit_deriv(x, y, 2.0, x_0, y_0),
+                                 strict=True):
+            assert_equal(got, expected)
+
+        # A position beyond the grid corner uses only the corner plane
+        x_0, y_0 = 250.0, 260.0
+        value = psfmodel.evaluate(x + 210.0, y + 200.0, 2.0, x_0, y_0)
+        derivs = psfmodel.fit_deriv(x + 210.0, y + 200.0, 2.0, x_0, y_0)
+        assert spline_builds.count == 4
+        assert_equal(value,
+                     reference.evaluate(x + 210.0, y + 200.0, 2.0, x_0, y_0))
+        for got, expected in zip(derivs,
+                                 reference.fit_deriv(x + 210.0, y + 200.0,
+                                                     2.0, x_0, y_0),
+                                 strict=True):
+            assert_equal(got, expected)
+
+    @pytest.mark.parametrize('evaluated', [False, True])
+    def test_pickle_without_spline_cache(self, psfmodel, evaluated):
+        """
+        Test that a pickled model does not include the spline cache,
+        which is as large as the grid data, and that the unpickled model
+        rebuilds it.
+        """
+        if evaluated:
+            self._evaluate_all_planes(psfmodel)
+        pickled = pickle.dumps(psfmodel)
+        assert len(pickled) < 1.1 * psfmodel.data.nbytes
+        model = pickle.loads(pickled)  # noqa: S301  # nosec B301
+        assert_equal(self._evaluate_all_planes(model),
+                     self._evaluate_all_planes(psfmodel))
+
+    def test_unpickle_discards_legacy_spline_objects(self, psfmodel):
+        """
+        Test that the spline objects in the pickle of a model made by
+        an earlier version, which cached them in dictionaries on the
+        model, are not kept on the unpickled model.
+        """
+        spline = psfmodel._calc_interpolator(0)
+        psfmodel.__dict__['_interpolator'] = {0: spline}
+        psfmodel.__dict__['_deriv_interpolators'] = {
+            0: (spline.partial_derivative(1, 0),
+                spline.partial_derivative(0, 1))}
+        model = pickle.loads(  # noqa: S301
+            pickle.dumps(psfmodel))  # nosec B301
+        assert '_interpolator' not in model.__dict__
+        assert '_deriv_interpolators' not in model.__dict__
+        assert_equal(self._evaluate_all_planes(model),
+                     self._evaluate_all_planes(psfmodel))
+
+    def test_deepcopy_copies_spline_cache(self, psfmodel, spline_builds):
+        """
+        Test that a deep copy gets its own copy of the spline cache, so
+        that it does not rebuild the splines that the original model
+        has, and that the two caches are independent afterward. A
+        compound model that contains the model is deep copied for every
+        source in PSF photometry.
+        """
+        # Build the splines of one grid cell (four planes) only
+        x_0, y_0 = 20.0, 30.0
+        x = x_0 + np.array([-1.0, 0.0, 2.0])
+        y = y_0 + np.array([1.0, 0.0, -2.0])
+        value = psfmodel.evaluate(x, y, 1.0, x_0, y_0)
+        assert spline_builds.count == 4
+
+        model = psfmodel.deepcopy()
+        for name in ('_spline_knots', '_spline_coeffs', '_spline_filled',
+                     '_spline_lock'):
+            assert getattr(model, name) is not getattr(psfmodel, name)
+        assert model._spline_filled == psfmodel._spline_filled
+        assert_equal(model.evaluate(x, y, 1.0, x_0, y_0), value)
+        assert spline_builds.count == 4
+
+        # The planes that the deep copy builds are not added to the
+        # cache of the original model
+        values = self._evaluate_all_planes(model)
+        assert spline_builds.count == len(psfmodel.data)
+        assert sum(psfmodel._spline_filled) == 4
+        assert_equal(self._evaluate_all_planes(psfmodel), values)
+
+    def test_deepcopy_subclass_state_methods(self, psfmodel):
+        """
+        Test that a deep copy of a subclass is made with the
+        __getstate__ and __setstate__ methods of the subclass, here for
+        an attribute that cannot be copied.
+        """
+        class LockedGriddedPSFModel(GriddedPSFModel):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.lock = threading.Lock()
+
+            def __getstate__(self):
+                state = super().__getstate__()
+                del state['lock']
+                return state
+
+            def __setstate__(self, state):
+                super().__setstate__(state)
+                self.lock = threading.Lock()
+
+        meta = {'grid_xypos': psfmodel.grid_xypos,
+                'oversampling': psfmodel.oversampling}
+        model = LockedGriddedPSFModel(NDData(psfmodel.data, meta=meta))
+        values = self._evaluate_all_planes(model)
+
+        new_model = model.deepcopy()
+        assert isinstance(new_model.lock, type(model.lock))
+        assert new_model.lock is not model.lock
+        assert new_model.data is not model.data
+        assert new_model._spline_filled == model._spline_filled
+        assert_equal(self._evaluate_all_planes(new_model), values)
+
+        # A shallow copy is made with the same methods
+        new_model = copy.copy(model)
+        assert isinstance(new_model.lock, type(model.lock))
+        assert new_model.lock is not model.lock
+        assert new_model.data is model.data
+
+    def test_shallow_copy_shares_spline_cache(self, psfmodel, spline_builds):
+        """
+        Test that a shallow copy made with copy.copy shares the spline
+        cache, like the other attributes of the model, so that the two
+        models build each spline only once.
+        """
+        # Build the splines of one grid cell (four planes) only
+        x_0, y_0 = 20.0, 30.0
+        x = x_0 + np.array([-1.0, 0.0, 2.0])
+        y = y_0 + np.array([1.0, 0.0, -2.0])
+        psfmodel.evaluate(x, y, 1.0, x_0, y_0)
+        assert spline_builds.count == 4
+
+        model = copy.copy(psfmodel)
+        assert model.data is psfmodel.data
+        values = self._evaluate_all_planes(model)
+        assert spline_builds.count == len(psfmodel.data)
+        assert_equal(self._evaluate_all_planes(psfmodel), values)
+        assert spline_builds.count == len(psfmodel.data)
+        # The copy can still be pickled without the cache
+        assert len(pickle.dumps(model)) < 1.1 * psfmodel.data.nbytes
+
+    @pytest.mark.usefixtures('short_switch_interval')
+    def test_concurrent_first_use(self, psfmodel):
+        """
+        Test that threads that evaluate a model for the first time at
+        the same time, and so fill its spline cache together, get the
+        same values as a model whose cache was filled by one thread.
+        """
+        meta = {'grid_xypos': psfmodel.grid_xypos,
+                'oversampling': psfmodel.oversampling}
+        cells = list(product([20.0, 100.0, 180.0], [30.0, 100.0, 170.0]))
+        yy, xx = np.mgrid[-3:4, -3:4]
+
+        def evaluate(model, cell):
+            x_0, y_0 = cell
+            model = model.copy()
+            values = model.evaluate(xx + x_0, yy + y_0, 2.0, x_0 + 0.3,
+                                    y_0 - 0.2)
+            derivs = model.fit_deriv(xx + x_0, yy + y_0, 2.0, x_0 + 0.3,
+                                     y_0 - 0.2)
+            return np.array([values, *derivs])
+
+        expected = np.array([evaluate(psfmodel, cell) for cell in cells])
+        tasks = cells * 4
+        for _ in range(5):
+            model = GriddedPSFModel(NDData(psfmodel.data, meta=meta))
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                results = list(executor.map(evaluate, [model] * len(tasks),
+                                            tasks))
+            assert_equal(np.array(results), np.tile(expected, (4, 1, 1, 1)))
+            assert all(model._spline_filled)
 
     def test_copy_meta_isolated(self, psfmodel):
         """

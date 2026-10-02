@@ -4,12 +4,15 @@ Common test fixtures for the psf module tests.
 """
 
 import sys
+import threading
+import weakref
 from itertools import product
 
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
+from scipy.interpolate import RectBivariateSpline
 
 from photutils.psf import GriddedPSFModel
 
@@ -44,3 +47,80 @@ def fixture_griddedpsf_data():
 
     nddata = NDData(psfs, meta=meta)
     return GriddedPSFModel(nddata)
+
+
+class SplineBuilds:
+    """
+    A record of the spline objects that the PSF image models build.
+
+    Attributes
+    ----------
+    count : int
+        The number of splines built. A test can reset it to zero.
+    """
+
+    def __init__(self):
+        self.count = 0
+        self._refs = []
+        self._lock = threading.Lock()
+
+    def record(self, spline):
+        """
+        Record a new spline object.
+        """
+        with self._lock:
+            self.count += 1
+            self._refs.append(weakref.ref(spline))
+
+    @property
+    def n_alive(self):
+        """
+        The number of recorded spline objects that still exist.
+        """
+        return sum(ref() is not None for ref in self._refs)
+
+
+@pytest.fixture(name='spline_builds')
+def fixture_spline_builds(monkeypatch):
+    """
+    Fixture that records the `~scipy.interpolate.RectBivariateSpline`
+    objects built by the `ImagePSF` and `GriddedPSFModel` models.
+    """
+    builds = SplineBuilds()
+
+    class CountedSpline(RectBivariateSpline):
+        def __init__(self, *args, **kwargs):
+            builds.record(self)
+            super().__init__(*args, **kwargs)
+
+    for module in ('image_models', 'gridded_models'):
+        monkeypatch.setattr(f'photutils.psf.{module}.RectBivariateSpline',
+                            CountedSpline)
+    return builds
+
+
+@pytest.fixture(name='public_spline')
+def fixture_public_spline():
+    """
+    Fixture that returns a stand-in for
+    `~scipy.interpolate.RectBivariateSpline` that has only its public
+    interface, without the undocumented ``tck`` and ``degrees``
+    attributes.
+    """
+    class PublicSpline:
+        def __init__(self, *args, **kwargs):
+            self._spline = RectBivariateSpline(*args, **kwargs)
+
+        def __call__(self, *args, **kwargs):
+            return self._spline(*args, **kwargs)
+
+        def get_knots(self):
+            return self._spline.get_knots()
+
+        def get_coeffs(self):
+            return self._spline.get_coeffs()
+
+        def partial_derivative(self, dx, dy):
+            return self._spline.partial_derivative(dx, dy)
+
+    return PublicSpline

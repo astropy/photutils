@@ -228,6 +228,15 @@ New Features
     through optimizations that reduce per-evaluation overhead and
     streamline interpolation calculations. [#2289, #2307]
 
+  - ``GriddedPSFModel`` now evaluates its interpolating splines, and
+    the spline derivatives used by ``fit_deriv``, with a compiled
+    kernel instead of separate ``scipy`` spline calls. For fit regions
+    of 5 x 5 to 25 x 25 pixels, evaluation is ~3-8x faster and
+    ``fit_deriv`` is ~6-14x faster. The model also caches only one set
+    of spline coefficients, which is about a third of the memory that
+    the cached splines used when ``fit_deriv`` is evaluated. The cache
+    is no longer included when the model is pickled. [#2455]
+
   - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
     nx)`` shape of the ePSF grid. [#2347]
 
@@ -248,8 +257,10 @@ New Features
   - Added an analytic Jacobian (``fit_deriv``) to ``ImagePSF`` and
     ``GriddedPSFModel``, which allows the fitter to skip the
     finite-difference Jacobian during PSF fitting. This removes
-    roughly 60% of the model evaluations performed during fitting.
-    [#2393]
+    roughly 60% of the model evaluations performed during fitting. For
+    ``GriddedPSFModel`` with ``fill_value=None``, a point outside the
+    PSF image takes the value at the nearest point on the image edge, so
+    its position derivative along that axis is zero. [#2393, #2455]
 
   - Added a ``constrain_fluxes`` method to ``LinkedEPSFStar`` and a
     ``constrain_fluxes`` keyword to ``EPSFBuilder`` (default `True`)
@@ -894,6 +905,12 @@ Bug Fixes
     model instance. Copies fitted at the same time in several threads
     interfered with each other. The parameters of a copy now also
     refer to the copy instead of the original model. [#2453]
+
+  - ``GriddedPSFModel`` now computes the bilinear interpolation weights
+    of the grid PSFs in double precision when ``grid_xypos`` has
+    a single-precision dtype. The weights were computed in single
+    precision, which limited the model values to about 8 significant
+    digits. [#2455]
 
 - ``photutils.psf_matching``
 

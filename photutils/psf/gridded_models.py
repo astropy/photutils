@@ -6,6 +6,7 @@ Gridded PSF models.
 import bisect
 import copy
 import itertools
+import threading
 from functools import cached_property
 
 import numpy as np
@@ -14,16 +15,22 @@ from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
 from scipy.interpolate import RectBivariateSpline
 
+from photutils.psf._bispline import bispline_sum, bispline_sum_deriv
 from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
                                     _read_stdpsf, is_stdpsf, is_webbpsf,
                                     stdpsf_reader, webbpsf_reader)
 from photutils.psf.model_plotting import (_ModelGridPlotter,
                                           _plot_grid_docstring)
-from photutils.psf.utils import _copy_model_sharing_data, _out_of_grid_mask
+from photutils.psf.utils import (_ONE_PLANE, _UNIT_WEIGHT, _ZERO_WEIGHT,
+                                 _copy_model_sharing_data, _out_of_grid_mask)
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GriddedPSFModel', 'STDPSFGrid']
 __doctest_skip__ = ['STDPSFGrid']
+
+# The instance attributes that hold the spline cache of a GriddedPSFModel
+_SPLINE_CACHE_NAMES = ('_spline_knots', '_spline_coeffs', '_spline_filled',
+                       '_spline_lock')
 
 
 class GriddedPSFModel(Fittable2DModel):
@@ -85,8 +92,9 @@ class GriddedPSFModel(Fittable2DModel):
 
     fill_value : float or `None`, optional
         The value used for points outside the input pixel grid. The
-        default is 0.0. If `None`, values outside the input pixel grid
-        are extrapolated from the spline fit.
+        default is 0.0. If `None`, a point outside the input pixel grid
+        takes the value of the spline at the nearest point on the edge
+        of the grid.
 
     Methods
     -------
@@ -124,12 +132,18 @@ class GriddedPSFModel(Fittable2DModel):
     are sorted first by their y detector coordinate and then by their x
     detector coordinate.
 
-    One `~scipy.interpolate.RectBivariateSpline` interpolator per
-    evaluated grid plane is cached on the model and shared across copies
-    made with the `copy` method. The cache roughly doubles the model's
-    memory footprint when every grid plane has been evaluated. Two
-    partial-derivative interpolators per grid plane used by `fit_deriv`
-    are cached in the same way.
+    Each grid plane is interpolated with a bicubic spline
+    (`~scipy.interpolate.RectBivariateSpline` with ``kx=ky=3`` and
+    ``s=0``). The spline coefficients of each evaluated grid plane are
+    cached on the model, in a float64 array of the same shape as the
+    grid data, and shared across copies made with the `copy` method.
+    When every grid plane has been evaluated, the cache roughly doubles
+    the model's memory footprint for float64 grid data and triples it
+    for float32 grid data. The cache is not included when the model is
+    pickled, and a deep copy gets its own copy of it. The splines of
+    the four bounding grid planes are evaluated together by a compiled
+    kernel, which also computes the analytic partial derivatives used by
+    `fit_deriv`.
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
@@ -160,10 +174,96 @@ class GriddedPSFModel(Fittable2DModel):
         # the grid_xypos attribute, regardless of the input form
         self.meta['grid_xypos'] = self.grid_xypos
 
-        self._interpolator = {}
-        self._deriv_interpolators = {}
+        self._init_spline_cache()
 
         super().__init__(flux, x_0, y_0)
+
+    def _init_spline_cache(self):
+        """
+        Create the empty cache of the grid-plane splines.
+
+        The cache holds the knot vectors, which are the same for every
+        grid plane, and the spline coefficients of each grid plane.
+        It is filled on first use by `_fill_spline_coefficients`. The
+        containers are created here rather than lazily so that the model
+        copies made with `copy` share them.
+
+        The knots and the filled flags are kept in lists, not arrays. A
+        list item is replaced atomically, also on free-threaded builds,
+        so a thread that reads a filled flag or the knots without the
+        lock sees values that are completely written.
+        """
+        n_grid, ny, nx = self._data.shape
+        # A one-item holder for the (tx, ty) tuple of knot vectors
+        self._spline_knots = [None]
+        # A bicubic interpolating spline has as many coefficients as
+        # data points
+        self._spline_coeffs = np.empty((n_grid, ny * nx), dtype=float)
+        self._spline_filled = [False] * n_grid
+        self._spline_lock = threading.Lock()
+
+    def __getstate__(self):
+        """
+        Return the model state for pickling, without the spline cache.
+
+        The cache is as large as the grid data and can be rebuilt from
+        it, so it is left out of pickles.
+        """
+        state = self.__dict__.copy()
+        for name in _SPLINE_CACHE_NAMES:
+            del state[name]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # Discard the spline objects that are in the pickles of models
+        # made by earlier versions, which cached them on the model.
+        for name in ('_interpolator', '_deriv_interpolators'):
+            self.__dict__.pop(name, None)
+        self._init_spline_cache()
+
+    def __copy__(self):
+        """
+        Return a shallow copy that shares the spline cache.
+
+        A shallow copy is made from the pickle state by default, which
+        leaves the spline cache out, so it is added to the copy.
+        """
+        new_model = object.__new__(self.__class__)
+        new_model.__setstate__(self.__getstate__())
+        for name in _SPLINE_CACHE_NAMES:
+            new_model.__dict__[name] = self.__dict__[name]
+        return new_model
+
+    def __deepcopy__(self, memo):
+        """
+        Return a deep copy with its own copy of the spline cache.
+
+        The coefficients of the planes that are already cached are
+        copied, so the deep copy does not rebuild their splines. A
+        compound model that contains this model is deep copied for every
+        source in PSF photometry. The caches of the two models are
+        independent afterward.
+
+        The copy is made from the pickle state, so that the
+        ``__getstate__`` and ``__setstate__`` methods of a subclass
+        apply to deep copies as well.
+        """
+        new_model = object.__new__(self.__class__)
+        memo[id(self)] = new_model
+        new_model.__setstate__(copy.deepcopy(self.__getstate__(), memo))
+
+        # A plane that is flagged as filled is completely written and
+        # is never written again, so it can be copied while other
+        # threads fill other planes.
+        filled = list(self._spline_filled)
+        for gidx, is_filled in enumerate(filled):
+            if is_filled:
+                new_model._spline_coeffs[gidx] = self._spline_coeffs[gidx]
+        new_model._spline_filled[:] = filled
+        # The knot vectors are never modified, so they are shared
+        new_model._spline_knots[0] = self._spline_knots[0]
+        return new_model
 
     @staticmethod
     def _validate_data(data):
@@ -395,6 +495,10 @@ class GriddedPSFModel(Fittable2DModel):
         """
         Return a deep copy of this model.
 
+        The deep copy gets its own copy of the cached spline
+        coefficients, so it does not rebuild the splines that this model
+        already has.
+
         Returns
         -------
         result : `GriddedPSFModel`
@@ -507,9 +611,6 @@ class GriddedPSFModel(Fittable2DModel):
         interpolator for an input ePSF image at the given reference (x,
         y) position.
 
-        The resulting interpolator is cached in the `_interpolator`
-        dictionary for reuse.
-
         Parameters
         ----------
         grid_idx : int
@@ -520,58 +621,91 @@ class GriddedPSFModel(Fittable2DModel):
         interp : `~scipy.interpolate.RectBivariateSpline`
             The interpolator for the input ePSF image.
         """
-        # Check if the interpolator is already cached
-        if grid_idx in self._interpolator:
-            return self._interpolator[grid_idx]
-
         # RectBivariateSpline expects the data to be in (x, y) axis order
         data = self.data[grid_idx]
-        interp = RectBivariateSpline(*self._interp_xyidx, data.T, kx=3, ky=3,
-                                     s=0)
+        return RectBivariateSpline(*self._interp_xyidx, data.T, kx=3, ky=3,
+                                   s=0)
 
-        # Cache the interpolator for reuse
-        self._interpolator[grid_idx] = interp
-
-        return interp
-
-    def _calc_deriv_interpolators(self, grid_idx):
+    def _fill_spline_coefficients(self, grid_idx, *weights):
         """
-        Calculate the spline partial-derivative interpolators for an
-        input ePSF image at the given reference (x, y) position.
+        Ensure that the spline knots and the spline coefficients of the
+        given grid planes are in the spline cache.
 
-        The interpolators evaluate the partial derivatives of the
-        `_calc_interpolator` spline with respect to its first (x)
-        and second (y) variables. They are precomputed here because
-        evaluating them is faster than passing ``dx=1`` or ``dy=1`` to
-        the interpolator, which computes the derivative on the fly. They
-        are used by `fit_deriv`.
+        Only the knots and coefficients are kept. The spline object that
+        computes them holds its own copy of the coefficients and is
+        discarded.
 
-        The resulting interpolators are cached in the
-        `_deriv_interpolators` dictionary for reuse.
+        The spline of a plane is not built if all of its weights are
+        zero, because the kernels skip such a plane.
+
+        Several threads may build the spline of the same plane at the
+        same time, but only the first one stores it. A plane that is
+        flagged as filled is never written again, so the threads that
+        evaluate it need no lock.
 
         Parameters
         ----------
-        grid_idx : int
-            The index of the ePSF image in the reference grid.
+        grid_idx : `~numpy.ndarray`
+            The indices of the grid planes.
+
+        *weights : `~numpy.ndarray`
+            The weights of the planes that the kernel is called with
+            (the bilinear weights and, for the derivative kernel, their
+            derivatives).
+        """
+        for i, gidx in enumerate(grid_idx):
+            gidx = int(gidx)
+            if self._spline_filled[gidx]:
+                continue
+            if not any(weight[i] != 0.0 for weight in weights):
+                continue
+            interp = self._calc_interpolator(gidx)
+            tx, ty = interp.get_knots()
+            coeffs = interp.get_coeffs()
+            with self._spline_lock:
+                if self._spline_filled[gidx]:
+                    continue
+                if self._spline_knots[0] is None:
+                    # Every grid plane has the same shape, so the knots
+                    # are the same for all of them
+                    self._spline_knots[0] = (np.ascontiguousarray(tx),
+                                             np.ascontiguousarray(ty))
+                self._spline_coeffs[gidx] = coeffs
+                self._spline_filled[gidx] = True
+
+    def _bounding_weights(self, x_0, y_0, *, derivs=False):
+        """
+        Return the grid indices, bilinear weights, and weight
+        derivatives of the grid planes that bound a model position.
+
+        For a single-plane grid, the one plane has unit weight and zero
+        weight derivatives.
+
+        Parameters
+        ----------
+        x_0, y_0 : float
+            The (x, y) position of the model.
+
+        derivs : bool, optional
+            Whether to calculate the weight derivatives.
 
         Returns
         -------
-        interps : tuple of `~scipy.interpolate.RectBivariateSpline`
-            The x and y partial-derivative interpolators for the input
-            ePSF image.
+        grid_idx, weights, dw_dx, dw_dy : `~numpy.ndarray` or `None`
+            The plane indices and their weights and weight derivatives
+            with respect to the model x and y positions. The weight
+            derivatives are `None` if ``derivs`` is `False`.
         """
-        # Check if the interpolators are already cached
-        if grid_idx in self._deriv_interpolators:
-            return self._deriv_interpolators[grid_idx]
-
-        interp = self._calc_interpolator(grid_idx)
-        derivs = (interp.partial_derivative(1, 0),
-                  interp.partial_derivative(0, 1))
-
-        # Cache the interpolators for reuse
-        self._deriv_interpolators[grid_idx] = derivs
-
-        return derivs
+        if self.data.shape[0] == 1:
+            dw_dx = _ZERO_WEIGHT if derivs else None
+            return _ONE_PLANE, _UNIT_WEIGHT, dw_dx, dw_dx
+        grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
+        grid_idx = np.ascontiguousarray(grid_idx, dtype=np.intp)
+        weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
+        if not derivs:
+            return grid_idx, weights, None, None
+        dw_dx, dw_dy = self._calc_bilinear_weight_derivs(x_0, y_0, grid_xy)
+        return grid_idx, weights, dw_dx, dw_dy
 
     @cached_property
     def _xgrid_list(self):
@@ -654,7 +788,7 @@ class GriddedPSFModel(Fittable2DModel):
             grid. The order is lower-left, lower-right, upper-left,
             upper-right.
 
-        grid_xy : `~numpy.ndarray`
+        grid_xy : tuple of 4 float
             The x and y coordinates of the four bounding points. The
             order is left, right, bottom, top.
         """
@@ -676,13 +810,18 @@ class GriddedPSFModel(Fittable2DModel):
             yidx = 0
         elif yidx > ny - 2:
             yidx = ny - 2
-        x0 = self._xgrid[xidx]
-        x1 = self._xgrid[xidx + 1]
-        y0 = self._ygrid[yidx]
-        y1 = self._ygrid[yidx + 1]
+
+        # The coordinates are taken from the float lists so that the
+        # bilinear weights computed from them are float64 for grid
+        # positions of any dtype, which the spline kernels require. They
+        # are returned as Python floats because the arithmetic of the
+        # weights is faster with them than with NumPy scalars.
+        x0 = self._xgrid_list[xidx]
+        x1 = self._xgrid_list[xidx + 1]
+        y0 = self._ygrid_list[yidx]
+        y1 = self._ygrid_list[yidx + 1]
         grid_idx = self._bounding_lookup[xidx, yidx]
-        grid_xy = np.array((x0, x1, y0, y1))
-        return grid_idx, grid_xy
+        return grid_idx, (x0, x1, y0, y1)
 
     def _calc_bilinear_weights(self, xi, yi, grid_xy):
         """
@@ -697,7 +836,7 @@ class GriddedPSFModel(Fittable2DModel):
         xi, yi : float
             The scalar (x_0, y_0) position of the model.
 
-        grid_xy : `~numpy.ndarray`
+        grid_xy : sequence of 4 float
             The x and y coordinates of the four bounding points. The
             order is left, right, bottom, top.
 
@@ -751,7 +890,7 @@ class GriddedPSFModel(Fittable2DModel):
         xi, yi : float
             The scalar (x_0, y_0) position of the model.
 
-        grid_xy : `~numpy.ndarray`
+        grid_xy : sequence of 4 float
             The x and y coordinates of the four bounding points. The
             order is left, right, bottom, top.
 
@@ -797,30 +936,24 @@ class GriddedPSFModel(Fittable2DModel):
         x_0, y_0 : float
             The (x, y) position of the model.
 
-        xi, yi : float or `~numpy.ndarray`
+        xi, yi : `~numpy.ndarray`
             The input (x, y) coordinates at which the model is
-            evaluated.
+            evaluated. The two arrays must have the same shape.
 
         Returns
         -------
-        result : float or `~numpy.ndarray`
+        result : `~numpy.ndarray`
             The interpolated ePSF model at the input (x_0, y_0)
             coordinate.
         """
-        grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
-        weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
-
-        # Accumulate the weighted interpolator evaluations using a plain
-        # Python loop. This avoids the overhead of building intermediate
-        # arrays and fancy-indexing (np.array, np.where), which is
-        # called once per model evaluation during fitting.
-        result = 0.0
-        for gidx, weight in zip(grid_idx, weights, strict=True):
-            if weight == 0.0:
-                continue
-            interp = self._calc_interpolator(int(gidx))
-            result += interp(xi, yi, grid=False) * weight
-
+        grid_idx, weights, _, _ = self._bounding_weights(x_0, y_0)
+        self._fill_spline_coefficients(grid_idx, weights)
+        tx, ty = self._spline_knots[0]
+        xi = np.ascontiguousarray(xi, dtype=float)
+        yi = np.ascontiguousarray(yi, dtype=float)
+        result = np.empty(xi.shape, dtype=float)
+        bispline_sum(tx, ty, self._spline_coeffs, grid_idx, weights,
+                     xi.ravel(), yi.ravel(), result.ravel())
         return result
 
     def evaluate(self, x, y, flux, x_0, y_0):
@@ -867,14 +1000,10 @@ class GriddedPSFModel(Fittable2DModel):
         yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
         xi += self.origin[0]
         yi += self.origin[1]
+        if xi.shape != yi.shape:
+            xi, yi = np.broadcast_arrays(xi, yi)
 
-        if self.data.shape[0] == 1:
-            # If there is only one ePSF, we do not need to perform
-            # the bilinear interpolation.
-            evaluated_model = flux * self._calc_interpolator(0)(xi, yi,
-                                                                grid=False)
-        else:
-            evaluated_model = flux * self._calc_model_values(x_0, y_0, xi, yi)
+        evaluated_model = flux * self._calc_model_values(x_0, y_0, xi, yi)
 
         if self.fill_value is not None:
             # Set pixels that are outside the input pixel grid to the
@@ -934,48 +1063,29 @@ class GriddedPSFModel(Fittable2DModel):
         yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
         xi += self.origin[0]
         yi += self.origin[1]
+        if xi.shape != yi.shape:
+            xi, yi = np.broadcast_arrays(xi, yi)
 
-        if self.data.shape[0] == 1:
-            # If there is only one ePSF, the model has no dependence
-            # on the (x_0, y_0) position through the bilinear weights
-            dx_interp, dy_interp = self._calc_deriv_interpolators(0)
-            d_flux = self._calc_interpolator(0)(xi, yi, grid=False)
-            deriv_x = -self.oversampling[1] * dx_interp(xi, yi, grid=False)
-            deriv_y = -self.oversampling[0] * dy_interp(xi, yi, grid=False)
-        else:
-            grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
-            weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
-            dw_dx, dw_dy = self._calc_bilinear_weight_derivs(x_0, y_0,
-                                                             grid_xy)
-
-            d_flux = 0.0
-            deriv_x = 0.0
-            deriv_y = 0.0
-            for gidx, weight, dwx, dwy in zip(grid_idx, weights, dw_dx,
-                                              dw_dy, strict=True):
-                if weight == 0.0 and dwx == 0.0 and dwy == 0.0:
-                    continue
-                gidx = int(gidx)
-                value = self._calc_interpolator(gidx)(xi, yi, grid=False)
-
-                # The ePSF value contributes to the flux derivative
-                # through its weight and to the position derivatives
-                # through the weight derivatives
-                d_flux += weight * value
-                deriv_x += dwx * value
-                deriv_y += dwy * value
-
-                # The chain rule gives the shift terms of the position
-                # derivatives from the spline partial derivatives
-                # (dxi/dx_0 = -oversampling[1], dyi/dy_0 =
-                # -oversampling[0])
-                if weight != 0.0:
-                    dx_interp, dy_interp = self._calc_deriv_interpolators(
-                        gidx)
-                    deriv_x -= (weight * self.oversampling[1]
-                                * dx_interp(xi, yi, grid=False))
-                    deriv_y -= (weight * self.oversampling[0]
-                                * dy_interp(xi, yi, grid=False))
+        # The ePSF value contributes to the flux derivative through its
+        # bilinear weight and to the position derivatives through the
+        # weight derivatives. The chain rule adds the shift terms from
+        # the spline partial derivatives (dxi/dx_0 = -oversampling[1],
+        # dyi/dy_0 = -oversampling[0]). The kernel computes all of these
+        # in one pass over the bounding planes.
+        grid_idx, weights, dw_dx, dw_dy = self._bounding_weights(
+            x_0, y_0, derivs=True)
+        self._fill_spline_coefficients(grid_idx, weights, dw_dx, dw_dy)
+        tx, ty = self._spline_knots[0]
+        xi = np.ascontiguousarray(xi, dtype=float)
+        yi = np.ascontiguousarray(yi, dtype=float)
+        d_flux = np.empty(xi.shape, dtype=float)
+        deriv_x = np.empty(xi.shape, dtype=float)
+        deriv_y = np.empty(xi.shape, dtype=float)
+        bispline_sum_deriv(tx, ty, self._spline_coeffs, grid_idx, weights,
+                           dw_dx, dw_dy, float(self.oversampling[1]),
+                           float(self.oversampling[0]), xi.ravel(),
+                           yi.ravel(), d_flux.ravel(), deriv_x.ravel(),
+                           deriv_y.ravel())
 
         d_x_0 = flux * deriv_x
         d_y_0 = flux * deriv_y
