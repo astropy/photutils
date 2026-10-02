@@ -228,14 +228,17 @@ New Features
     through optimizations that reduce per-evaluation overhead and
     streamline interpolation calculations. [#2289, #2307]
 
-  - ``GriddedPSFModel`` now evaluates its interpolating splines, and
-    the spline derivatives used by ``fit_deriv``, with a compiled
-    kernel instead of separate ``scipy`` spline calls. For fit regions
-    of 5 x 5 to 25 x 25 pixels, evaluation is ~3-8x faster and
-    ``fit_deriv`` is ~6-14x faster. The model also caches only one set
-    of spline coefficients, which is about a third of the memory that
-    the cached splines used when ``fit_deriv`` is evaluated. The cache
-    is no longer included when the model is pickled. [#2455]
+  - ``GriddedPSFModel`` and ``ImagePSF`` now evaluate their
+    interpolating splines, and the spline derivatives used by
+    ``fit_deriv``, with a compiled kernel instead of separate ``scipy``
+    spline calls. For fit regions of 5 x 5 to 25 x 25 pixels,
+    ``GriddedPSFModel`` evaluation is ~3-8x faster and its ``fit_deriv``
+    is ~6-14x faster, and ``ImagePSF`` evaluation is ~1.2-3x faster and
+    its ``fit_deriv`` is ~2-5x faster. The models also cache only one
+    set of spline coefficients, which is about a third of the memory
+    that the cached splines used when ``fit_deriv`` is evaluated. The
+    ``GriddedPSFModel`` cache is no longer included when the model is
+    pickled. [#2455, #2456]
 
   - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
     nx)`` shape of the ePSF grid. [#2347]
@@ -256,11 +259,11 @@ New Features
 
   - Added an analytic Jacobian (``fit_deriv``) to ``ImagePSF`` and
     ``GriddedPSFModel``, which allows the fitter to skip the
-    finite-difference Jacobian during PSF fitting. This removes
-    roughly 60% of the model evaluations performed during fitting. For
-    ``GriddedPSFModel`` with ``fill_value=None``, a point outside the
-    PSF image takes the value at the nearest point on the image edge, so
-    its position derivative along that axis is zero. [#2393, #2455]
+    finite-difference Jacobian during PSF fitting. This removes roughly
+    60% of the model evaluations performed during fitting. With
+    ``fill_value=None``, a point outside the PSF image takes the value
+    at the nearest point on the image edge, so its position derivative
+    along that axis is zero. [#2393, #2455]
 
   - Added a ``constrain_fluxes`` method to ``LinkedEPSFStar`` and a
     ``constrain_fluxes`` keyword to ``EPSFBuilder`` (default `True`)
@@ -1112,6 +1115,12 @@ API Changes
     the new aperture and segmentation ``decode_flags`` methods. The
     module-level ``decode_psf_flags`` function is unchanged and still
     returns lists. [#2400]
+
+  - Overriding the ``ImagePSF.interpolator`` attribute in a subclass
+    to define a custom interpolator is now deprecated and will be
+    removed in a future version. A model of such a subclass calls its
+    interpolator as before and does not use the compiled spline kernel.
+    [#2456]
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been
     renamed to ``EPSFBuildResults``. The old ``EPSFBuildResult`` name is

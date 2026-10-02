@@ -2175,10 +2175,11 @@ class EPSFBuilder:
 
         # Recenter the ePSF using an intermediate ePSF that keeps the
         # current epsf's origin. The recentering shifts the ePSF by
-        # evaluating its spline on the shifted grid, so the edge row and
-        # column on one side fall outside the original grid. They are
-        # extrapolated (fill_value=None) rather than set to zero, which
-        # would leave an all-zero row and column at that edge.
+        # evaluating its spline on the shifted grid, so the edge row
+        # and column on one side fall outside the original grid. They
+        # take the spline value at the nearest point on the grid edge
+        # (fill_value=None) rather than being set to zero, which would
+        # leave an all-zero row and column at that edge.
         temp_epsf = ImagePSF(data=smoothed_data,
                              origin=epsf.origin,
                              oversampling=self.oversampling,

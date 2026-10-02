@@ -3,11 +3,20 @@
 Tests for the image_models module.
 """
 
+import copy
+import pickle  # nosec B403
+from functools import cached_property
+
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
+from astropy.table import QTable
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_equal
+from scipy.interpolate import RectBivariateSpline
 
+from photutils.datasets import make_model_image
 from photutils.psf import CircularGaussianPSF, ImagePSF
 
 
@@ -100,14 +109,39 @@ class TestImagePSF:
         # The flux derivative is nonzero at the in-bounds peak position
         assert derivs[0][0] > 0.0
 
-        # With fill_value=None, out-of-bounds derivatives are
-        # extrapolated from the spline fit instead of being zeroed
-        model = ImagePSF(psf_data, flux=1.0, x_0=5.0, y_0=5.0,
-                         fill_value=None)
-        derivs = model.fit_deriv(np.array([12.0]), np.array([5.0]),
-                                 1.0, 5.0, 5.0)
-        assert np.all(np.isfinite([deriv[0] for deriv in derivs]))
-        assert derivs[1][0] != 0.0
+    def test_fit_deriv_no_fill_value(self):
+        """
+        Test the derivatives with fill_value=None, where a point outside
+        the image takes the spline value at the nearest point on the
+        image edge. The model then does not change with the position
+        along an axis on which the point is outside the image.
+        """
+        yy, xx = np.mgrid[0:25, 0:25].astype(float)
+        psf_data = (np.exp(-((xx - 12.0)**2 + (yy - 12.0)**2) / 200.0)
+                    * (1.0 + 0.05 * xx + 0.03 * yy))
+        flux, x_0, y_0 = 2.0, 0.3, -0.2
+        model = ImagePSF(psf_data, origin=(12.0, 12.0), fill_value=None)
+
+        # The points are outside the image along x, along y, along
+        # both, along neither, and along x on the other side
+        x = np.array([14.0, 3.0, 20.0, 1.0, -15.0])
+        y = np.array([0.0, 15.0, 20.0, 2.0, 3.0])
+        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+        assert np.all(d_flux > 0.0)
+        assert np.all(d_x_0[[0, 2, 4]] == 0.0)
+        assert np.all(d_y_0[[1, 2]] == 0.0)
+        assert np.all(d_x_0[[1, 3]] != 0.0)
+        assert np.all(d_y_0[[0, 3, 4]] != 0.0)
+
+        eps = 1e-6
+
+        def ev(a, b):
+            return model.evaluate(x, y, flux, a, b)
+
+        num_x_0 = (ev(x_0 + eps, y_0) - ev(x_0 - eps, y_0)) / (2 * eps)
+        num_y_0 = (ev(x_0, y_0 + eps) - ev(x_0, y_0 - eps)) / (2 * eps)
+        assert_allclose(d_x_0, num_x_0, atol=1e-7)
+        assert_allclose(d_y_0, num_y_0, atol=1e-7)
 
     def test_fit_deriv_scalar(self):
         gaussian_psf = CircularGaussianPSF(flux=1, x_0=5, y_0=5, fwhm=2.0)
@@ -283,6 +317,253 @@ class TestImagePSF:
         model.data = data2
         assert_allclose(model(12.0, 12.0), data2[12, 12])
 
+    @pytest.mark.parametrize('ndim', [1, 2])
+    def test_evaluate_matches_spline(self, ndim):
+        """
+        Test that evaluate and fit_deriv, computed by the compiled
+        kernel, match the direct spline and derivative-spline
+        evaluation, including the fill_value region outside the image.
+        """
+        model = ImagePSF(self._gaussian_image(), flux=3.0, x_0=0.0,
+                         y_0=0.0, origin=(12.0, 12.0), oversampling=(2, 3))
+        x_0, y_0, flux = 30.7, 41.2, 2.5
+        rng = np.random.default_rng(0)
+        if ndim == 1:
+            x = rng.uniform(x_0 - 8, x_0 + 8, 300)
+            y = rng.uniform(y_0 - 8, y_0 + 8, 300)
+        else:
+            y, x = np.mgrid[-7:8, -7:8] + np.array([[[y_0]], [[x_0]]])
+            x = x + 0.37
+            y = y - 0.21
+        xi = model.oversampling[1] * (x - x_0) + model.origin[0]
+        yi = model.oversampling[0] * (y - y_0) + model.origin[1]
+        spline = model.interpolator
+        outside = ((xi < 0) | (xi > model.data.shape[1] - 1)
+                   | (yi < 0) | (yi > model.data.shape[0] - 1))
+        assert outside.any()  # the fill_value branch is exercised
+
+        expected = flux * spline(xi, yi, grid=False)
+        expected[outside] = 0.0
+        evaluated = model.evaluate(x, y, flux, x_0, y_0)
+        assert evaluated.shape == x.shape
+        assert_allclose(evaluated, expected, rtol=1e-12, atol=1e-14)
+
+        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+        exp_flux = spline(xi, yi, grid=False)
+        exp_x = (-flux * model.oversampling[1]
+                 * spline.partial_derivative(1, 0)(xi, yi, grid=False))
+        exp_y = (-flux * model.oversampling[0]
+                 * spline.partial_derivative(0, 1)(xi, yi, grid=False))
+        for arr in (exp_flux, exp_x, exp_y):
+            arr[outside] = 0.0
+        assert_allclose(d_flux, exp_flux, rtol=1e-12, atol=1e-14)
+        assert_allclose(d_x_0, exp_x, rtol=1e-12, atol=1e-13)
+        assert_allclose(d_y_0, exp_y, rtol=1e-12, atol=1e-13)
+
+    @pytest.mark.parametrize('fill_value', [0.0, None])
+    @pytest.mark.parametrize('shapes', [((5,), ()), ((1, 5), (5, 1)),
+                                        ((3, 5), (5,))])
+    def test_broadcast_inputs(self, fill_value, shapes):
+        """
+        Test that evaluate and fit_deriv broadcast x and y inputs of
+        different shapes against each other.
+        """
+        model = ImagePSF(self._gaussian_image(), origin=(12.0, 12.0),
+                         fill_value=fill_value)
+        rng = np.random.default_rng(0)
+        # Some of the points are outside the image
+        x = rng.uniform(-14.0, 14.0, shapes[0])
+        y = rng.uniform(-14.0, 14.0, shapes[1])
+        xb, yb = (np.ascontiguousarray(arr)
+                  for arr in np.broadcast_arrays(x, y))
+        params = (2.0, 0.5, -0.25)
+
+        result = model.evaluate(x, y, *params)
+        assert result.shape == xb.shape
+        assert_equal(result, model.evaluate(xb, yb, *params))
+        for got, expected in zip(model.fit_deriv(x, y, *params),
+                                 model.fit_deriv(xb, yb, *params),
+                                 strict=True):
+            assert got.shape == xb.shape
+            assert_equal(got, expected)
+
+    @pytest.mark.parametrize('fill_value', [0.0, None])
+    def test_flux_units(self, fill_value):
+        """
+        Test that a flux with units gives model values and position
+        derivatives with the same units.
+        """
+        data = self._gaussian_image()
+        model = ImagePSF(data, flux=500.0 * u.Jy, origin=(12.0, 12.0),
+                         fill_value=fill_value)
+        plain = ImagePSF(data, flux=500.0, origin=(12.0, 12.0),
+                         fill_value=fill_value)
+        # Some of the points are outside the image
+        x = np.linspace(-14.0, 14.0, 30)
+        y = np.linspace(-10.0, 10.0, 30)[::-1]
+
+        value = model(x, y)
+        assert value.unit == u.Jy
+        assert_equal(value.value, plain(x, y))
+
+        derivs = model.fit_deriv(x, y, 500.0 * u.Jy, 0.5, -0.25)
+        expected = plain.fit_deriv(x, y, 500.0, 0.5, -0.25)
+        assert_equal(derivs[0], expected[0])
+        for deriv, exp in zip(derivs[1:], expected[1:], strict=True):
+            assert deriv.unit == u.Jy
+            assert_equal(deriv.value, exp)
+
+    def test_flux_units_model_image(self):
+        """
+        Test that a model image can be made from fluxes with units.
+        """
+        model = ImagePSF(self._gaussian_image())
+        params = QTable({'x_0': [20.0, 30.5], 'y_0': [20.0, 15.25],
+                         'flux': [5.0, 3.0] * u.Jy})
+        image = make_model_image((40, 45), model, params,
+                                 model_shape=(9, 9))
+        plain = QTable({'x_0': params['x_0'], 'y_0': params['y_0'],
+                        'flux': params['flux'].value})
+        expected = make_model_image((40, 45), model, plain,
+                                    model_shape=(9, 9))
+        assert image.unit == u.Jy
+        assert_equal(image.value, expected)
+
+    def test_flux_array(self):
+        """
+        Test that a flux array is broadcast against the coordinates.
+        """
+        model = ImagePSF(self._gaussian_image(), origin=(12.0, 12.0),
+                         fill_value=None)
+        x = np.array([0.5])
+        y = np.array([-0.25])
+        fluxes = np.array([1.0, 2.0, 3.0])
+        single = model.evaluate(x, y, 1.0, 0.0, 0.0)
+        assert_allclose(model.evaluate(x, y, fluxes, 0.0, 0.0),
+                        fluxes * single)
+        derivs = model.fit_deriv(x, y, fluxes, 0.0, 0.0)
+        expected = model.fit_deriv(x, y, 1.0, 0.0, 0.0)
+        assert_allclose(derivs[1], fluxes * expected[1])
+        assert_allclose(derivs[2], fluxes * expected[2])
+
+    def test_custom_interpolator(self):
+        """
+        Test that a subclass that overrides the interpolator is
+        deprecated, and that it uses the interpolator and its
+        partial_derivative method instead of the compiled kernel,
+        giving the same results.
+        """
+        data = self._gaussian_image()
+
+        class WrappedSpline:
+            # A custom interpolator with the RectBivariateSpline call
+            # and partial_derivative interface
+            def __init__(self, spline):
+                self.spline = spline
+
+            def __call__(self, xi, yi, grid=False):
+                return self.spline(xi, yi, grid=grid)
+
+            def partial_derivative(self, dx, dy):
+                return self.spline.partial_derivative(dx, dy)
+
+        class CustomImagePSF(ImagePSF):
+            @cached_property
+            def interpolator(self):
+                x = np.arange(self.data.shape[1])
+                y = np.arange(self.data.shape[0])
+                return WrappedSpline(RectBivariateSpline(x, y, self.data.T,
+                                                         kx=3, ky=3, s=0))
+
+        model = ImagePSF(data, origin=(12.0, 12.0))
+        match = 'Overriding the ImagePSF.interpolator attribute'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            custom = CustomImagePSF(data, origin=(12.0, 12.0))
+
+        x = np.linspace(-9.0, 9.0, 50)
+        y = np.linspace(-8.0, 8.0, 50)[::-1]
+        assert_allclose(custom.evaluate(x, y, 2.0, 0.5, -0.25),
+                        model.evaluate(x, y, 2.0, 0.5, -0.25), rtol=1e-12)
+        for got, expected in zip(custom.fit_deriv(x, y, 2.0, 0.5, -0.25),
+                                 model.fit_deriv(x, y, 2.0, 0.5, -0.25),
+                                 strict=True):
+            assert_allclose(got, expected, rtol=1e-12, atol=1e-13)
+
+        # The derivative interpolators are built ahead of fitting only
+        # for a custom interpolator
+        custom._precompute_interpolators()
+        assert '_deriv_interpolators' in custom.__dict__
+        assert '_spline' not in custom.__dict__
+        model._precompute_interpolators()
+        assert '_deriv_interpolators' not in model.__dict__
+        assert '_spline' in model.__dict__
+
+    def test_data_spline_public_interface(self, monkeypatch, public_spline):
+        """
+        Test that the model evaluates the spline that it builds from
+        the data with the compiled kernel using only the public
+        interface of the scipy spline.
+        """
+        data = self._gaussian_image()
+        idx = np.arange(25)
+        spline = RectBivariateSpline(idx, idx, data.T, kx=3, ky=3, s=0)
+        monkeypatch.setattr('photutils.psf.image_models.RectBivariateSpline',
+                            public_spline)
+        model = ImagePSF(data, origin=(12.0, 12.0))
+
+        flux, x_0, y_0 = 2.0, 0.5, -0.25
+        x = np.linspace(-9.0, 9.0, 50)
+        y = np.linspace(-8.0, 8.0, 50)[::-1]
+        xi = x - x_0 + 12.0
+        yi = y - y_0 + 12.0
+        assert_allclose(model.evaluate(x, y, flux, x_0, y_0),
+                        flux * spline(xi, yi, grid=False), rtol=1e-12,
+                        atol=1e-14)
+        d_flux, d_x_0, _ = model.fit_deriv(x, y, flux, x_0, y_0)
+        assert_allclose(d_flux, spline(xi, yi, grid=False), rtol=1e-12,
+                        atol=1e-14)
+        assert_allclose(d_x_0, -flux * spline.partial_derivative(1, 0)(
+            xi, yi, grid=False), rtol=1e-12, atol=1e-13)
+
+    def test_data_setter_clears_spline(self):
+        """
+        Test that setting new data discards the cached spline
+        coefficients used by the compiled kernel.
+        """
+        yy, xx = np.mgrid[0:25, 0:25]
+        data1 = CircularGaussianPSF(x_0=12, y_0=12, fwhm=3.0)(xx, yy)
+        data2 = CircularGaussianPSF(x_0=12, y_0=12, fwhm=8.0)(xx, yy)
+        model = ImagePSF(data1, x_0=12, y_0=12)
+        model.evaluate(np.array([12.0]), np.array([12.0]), 1.0, 12.0, 12.0)
+        assert '_spline' in model.__dict__
+        model.data = data2
+        assert '_spline' not in model.__dict__
+        d_flux = model.fit_deriv(np.array([12.0]), np.array([12.0]), 1.0,
+                                 12.0, 12.0)[0]
+        assert_allclose(d_flux, data2[12, 12])
+
+    @pytest.mark.parametrize('pickled', [False, True])
+    def test_deepcopy_pickle_keep_spline(self, pickled):
+        """
+        Test that a deep copy and an unpickled copy of an evaluated
+        model keep the cached spline and give the same values.
+        """
+        model = ImagePSF(self._gaussian_image(), origin=(12.0, 12.0))
+        x = np.linspace(-9.0, 9.0, 50)
+        y = np.linspace(-8.0, 8.0, 50)[::-1]
+        params = (2.0, 0.5, -0.25)
+        values = model.evaluate(x, y, *params)
+        derivs = model.fit_deriv(x, y, *params)
+
+        if pickled:
+            new_model = pickle.loads(  # noqa: S301
+                pickle.dumps(model))  # nosec B301
+        else:
+            new_model = copy.deepcopy(model)
+        assert '_spline' in new_model.__dict__
+        assert_equal(new_model.evaluate(x, y, *params), values)
+        assert_equal(new_model.fit_deriv(x, y, *params), derivs)
+
     def test_data_setter_validation(self):
         model = ImagePSF(np.ones((10, 10)))
 
@@ -357,6 +638,11 @@ class TestImagePSF:
         model_copy2 = model_copy.copy()
         assert model_copy2.x_0.fixed
         assert model_copy2.fixed == model_copy.fixed
+
+    @staticmethod
+    def _gaussian_image():
+        yy, xx = np.mgrid[0:25, 0:25]
+        return np.exp(-((xx - 12.0)**2 + (yy - 12.0)**2) / 8.0)
 
     def test_repr(self, image_psf):
         model_repr = repr(image_psf)
