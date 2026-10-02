@@ -4,6 +4,7 @@ Tests for the photometry module.
 """
 
 import gc
+from itertools import pairwise
 
 import astropy.units as u
 import numpy as np
@@ -2693,6 +2694,150 @@ def test_invalid_fitter_maxiters(maxiters):
     match = 'fitter_maxiters must be a strictly-positive integer'
     with pytest.raises(ValueError, match=match):
         PSFPhotometry(model, (5, 5), fitter_maxiters=maxiters)
+
+
+def _init_params_with_groups_and_invalid_sources(sources):
+    """
+    Initial parameters from the true sources, with two sources fitted
+    as a group and three invalid sources (a NaN position, a position
+    far outside the image, and a non-finite flux).
+    """
+    init_params = QTable()
+    init_params['x_init'] = [*sources['x_0'], np.nan, 500.0, 40.0]
+    init_params['y_init'] = [*sources['y_0'], 40.0, 500.0, 40.0]
+    init_params['flux_init'] = [*sources['flux'], 500.0, 500.0, np.nan]
+    group_id = np.arange(1, len(init_params) + 1)
+    group_id[1] = group_id[0]
+    init_params['group_id'] = group_id
+    return init_params
+
+
+def _assert_fit_info_equal(info_a, info_b):
+    assert len(info_a) == len(info_b)
+    for fa, fb in zip(info_a, info_b, strict=True):
+        assert fa.keys() == fb.keys()
+        for key in fa:
+            if key == 'param_cov':
+                assert_equal(fa[key], fb[key])
+            else:
+                assert fa[key] == fb[key]
+
+
+def _image_psf_model():
+    yy, xx = np.mgrid[-12:13, -12:13]
+    psf_data = CircularGaussianPRF(flux=1, fwhm=2.7)(xx, yy)
+    return ImagePSF(psf_data)
+
+
+@pytest.mark.parametrize('make_model', [
+    lambda: CircularGaussianPRF(flux=1, fwhm=2.7), _image_psf_model])
+def test_n_threads_identical(test_data, make_model):
+    """
+    Test that fitting in multiple threads gives identical results to
+    the single-threaded fit, including grouped and invalid sources.
+    """
+    data, error, sources = test_data
+    init_params = _init_params_with_groups_and_invalid_sources(sources)
+    phots = []
+    infos = []
+    for n_threads in (1, 3):
+        psfphot = PSFPhotometry(make_model(), (5, 5), aperture_radius=4,
+                                n_threads=n_threads)
+        phots.append(psfphot(data, error=error, init_params=init_params))
+        infos.append(psfphot.fit_info)
+        assert psfphot.n_threads == n_threads
+        assert f'n_threads={n_threads}' in repr(psfphot)
+    phot1, phot2 = phots
+    assert phot1.colnames == phot2.colnames
+    for name in phot1.colnames:
+        assert_equal(np.asarray(phot1[name]), np.asarray(phot2[name]),
+                     err_msg=name)
+    assert phot2['group_size'][0] == 2
+    assert np.all(phot2['flags'][-3:] > 0)
+    assert np.all(np.isfinite(phot2['x_fit'][:-3]))
+    _assert_fit_info_equal(infos[0], infos[1])
+
+
+def test_n_threads_inputs_unchanged(test_data):
+    """
+    Test that the threads fit copies of the PSF model and the fitter,
+    leaving the input objects untouched.
+    """
+    data, error, sources = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fitter = TRFLSQFitter()
+    init_params = _init_params_with_groups_and_invalid_sources(sources)
+    fit_info = fitter.fit_info
+    psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
+                            fitter=fitter, n_threads=2)
+    psfphot(data, error=error, init_params=init_params)
+    assert psfphot.fitter is fitter
+    assert fitter.fit_info is fit_info
+    assert psfphot.psf_model.flux == 1
+
+
+def test_n_threads_progress_bar(test_data):
+    """
+    Test the threaded path with a progress bar and more threads than
+    groups.
+    """
+    data, error, sources = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    init_params = QTable()
+    init_params['x_init'] = sources['x_0'][:2]
+    init_params['y_init'] = sources['y_0'][:2]
+    psfphot1 = PSFPhotometry(psf_model, (5, 5), aperture_radius=4)
+    psfphot2 = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
+                             n_threads=8, progress_bar=True)
+    phot1 = psfphot1(data, error=error, init_params=init_params)
+    phot2 = psfphot2(data, error=error, init_params=init_params)
+    for name in ('x_fit', 'y_fit', 'flux_fit', 'flags', 'qfit'):
+        assert_equal(np.asarray(phot1[name]), np.asarray(phot2[name]))
+
+
+def test_n_threads_fit_error(test_data):
+    """
+    Test that an error raised while fitting in a thread is raised by
+    the call.
+    """
+    data, error, sources = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    init_params = _init_params_with_groups_and_invalid_sources(sources)
+    error = error.copy()
+    error[int(sources['y_0'][3]), int(sources['x_0'][3])] = 0.0
+    psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
+                            n_threads=2)
+    match = 'Error array contains non-positive or non-finite values'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data, error=error, init_params=init_params)
+
+
+@pytest.mark.parametrize('n_threads', [-1, 0, 2.5, 'abc', True])
+def test_invalid_n_threads(n_threads):
+    model = CircularGaussianPRF(fwhm=2.7)
+    match = 'n_threads must be a positive integer'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(model, (5, 5), n_threads=n_threads)
+
+
+def test_chunk_groups():
+    """
+    Test that the group chunks hold complete groups with roughly equal
+    numbers of sources and cover every source once.
+    """
+    init_params = QTable()
+    init_params['_row_index'] = np.arange(20)
+    init_params['group_id'] = np.repeat(np.arange(1, 8), [1, 4, 2, 6, 1, 5, 1])
+    grouped = init_params.group_by('group_id')
+    for n_chunks in (1, 3, 7, 20):
+        chunks = PSFPhotometry._chunk_groups(grouped, n_chunks)
+        assert len(chunks) <= min(n_chunks, 7)
+        rows = np.concatenate([np.asarray(chunk['_row_index'])
+                               for chunk in chunks])
+        assert_equal(np.sort(rows), np.arange(20))
+        chunk_ids = [set(chunk['group_id']) for chunk in chunks]
+        for ids_a, ids_b in pairwise(chunk_ids):
+            assert not ids_a & ids_b
 
 
 def test_valid_fitter_maxiters():

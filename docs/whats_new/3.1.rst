@@ -389,6 +389,28 @@ single-linkage clustering, but grouping now scales to very large source
 lists in both runtime and memory.
 
 
+Multithreaded PSF Photometry
+============================
+
+`~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry` now accept an ``n_threads``
+keyword to fit the source groups using multiple threads. The groups are
+divided into chunks that are fitted concurrently, each thread with its
+own copy of the PSF model and the fitter, producing results identical to
+the single-threaded computation::
+
+    >>> from photutils.psf import CircularGaussianPRF, PSFPhotometry
+    >>> psf_model = CircularGaussianPRF(fwhm=2.7)
+    >>> psfphot = PSFPhotometry(psf_model, (5, 5), n_threads=8)
+
+Unlike the compiled aperture and background code, the PSF fitting runs
+mostly in Python code that holds the Python global interpreter lock
+(GIL). The threads therefore run in parallel only on a free-threaded
+CPython build, where measured speedups are ~1.8x with 2 threads and ~5x
+with 8 threads. On a build with the GIL, multithreaded fitting is slower
+than the default ``n_threads=1``.
+
+
 PSF Photometry Fit Region Flag
 ==============================
 

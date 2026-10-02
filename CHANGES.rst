@@ -250,6 +250,13 @@ New Features
   - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
     nx)`` shape of the ePSF grid. [#2347]
 
+  - Added an ``n_threads`` keyword to ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` to fit the source groups using multiple
+    threads. The results are identical to the single-threaded
+    computation. The fitting holds the Python global interpreter
+    lock (GIL), so multithreading speeds up the fitting only on a
+    free-threaded Python build. [#2457]
+
   - Added a ``GriddedPSFModel.grid_shape`` property returning the
     ``(ny, nx)`` shape of the ePSF grid, matching the ``STDPSFGrid``
     property of the same name. It replaces the ``grid_shape`` metadata

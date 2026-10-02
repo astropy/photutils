@@ -156,6 +156,19 @@ class IterativePSFPhotometry:
         This keyword must be specified if the model does not have a
         ``bounding_box`` attribute.
 
+    n_threads : int, optional
+        The number of threads used to fit the sources. The default is
+        1 (no multithreading). When ``n_threads`` > 1, the source
+        groups are divided into chunks that are fitted concurrently.
+        Each group is fitted independently, so the results are
+        identical to the single-threaded computation. Every thread
+        fits with its own copy of the PSF model and the ``fitter``,
+        so the input ``fitter`` is not called and its ``fit_info`` is
+        not updated. The fitting runs mostly in Python code that
+        holds the global interpreter lock (GIL), so multithreading
+        speeds up the fitting only on a free-threaded Python build.
+        On a build with the GIL it is slower than a single thread.
+
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
         (or groups). The progress bar requires that the `tqdm
@@ -250,7 +263,7 @@ class IterativePSFPhotometry:
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  maxiters=3, mode='new', aperture_radius=None,
                  local_bkg_estimator=None, group_warning_threshold=25,
-                 sub_shape=None, progress_bar=False):
+                 sub_shape=None, n_threads=1, progress_bar=False):
 
         if finder is None:
             msg = 'finder cannot be None for IterativePSFPhotometry'
@@ -268,6 +281,7 @@ class IterativePSFPhotometry:
                                       aperture_radius=aperture_radius,
                                       local_bkg_estimator=local_bkg_estimator,
                                       group_warning_threshold=threshold,
+                                      n_threads=n_threads,
                                       progress_bar=progress_bar)
 
         self.maxiters = self._validate_maxiters(maxiters)
@@ -299,7 +313,8 @@ class IterativePSFPhotometry:
         params = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
                   'fitter_maxiters', 'xy_bounds', 'maxiters', 'mode',
                   'local_bkg_estimator', 'aperture_radius',
-                  'group_warning_threshold', 'sub_shape', 'progress_bar')
+                  'group_warning_threshold', 'sub_shape', 'n_threads',
+                  'progress_bar')
         overrides = {
             'psf_model': self._psfphot.psf_model,
             'fit_shape': self._psfphot.fit_shape,
@@ -312,6 +327,7 @@ class IterativePSFPhotometry:
             'aperture_radius': self._psfphot.aperture_radius,
             'group_warning_threshold':
                 self._psfphot.group_warning_threshold,
+            'n_threads': self._psfphot.n_threads,
             'progress_bar': self._psfphot.progress_bar,
         }
         return make_repr(self, params, overrides=overrides)

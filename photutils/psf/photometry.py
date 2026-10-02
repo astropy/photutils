@@ -5,7 +5,11 @@ Tools for performing PSF-fitting photometry.
 
 import inspect
 import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from copy import deepcopy
 from dataclasses import dataclass, field
+from itertools import pairwise
+from queue import SimpleQueue
 from typing import NamedTuple
 
 import astropy.units as u
@@ -243,8 +247,11 @@ class _FitEngine:
 
     The engine holds the image arrays and the fitting components and
     returns the results of each group as a `_GroupFitResult` without
-    touching any `PSFPhotometry` state, so groups can be fitted in any
-    order.
+    touching any `PSFPhotometry` state, so groups can be fitted in
+    any order. An engine must not be used by two threads at once
+    because the fitter keeps the information of its last fit. With
+    ``n_threads`` > 1, `PSFPhotometry` gives every thread its own engine
+    from `thread_copy`.
 
     Parameters
     ----------
@@ -275,6 +282,48 @@ class _FitEngine:
         self.error = error
         self.y_offsets, self.x_offsets = data_processor.get_fit_offsets()
         self.n_fit_params = len(param_mapper.fitted_param_names)
+
+    def thread_copy(self):
+        """
+        Return an engine that can fit groups in another thread.
+
+        Returns
+        -------
+        engine : `_FitEngine`
+            An engine with its own copies of the PSF model and the
+            fitter, which hold state that is modified during a fit.
+            The image arrays are only read and are shared.
+        """
+        psf_model = self.psf_model.copy()
+        param_mapper = _PSFParameterMapper(psf_model)
+        data_processor = PSFDataProcessor(param_mapper,
+                                          self.data_processor.fit_shape)
+        psf_fitter = PSFFitter(
+            psf_model, param_mapper, fitter=deepcopy(self.psf_fitter.fitter),
+            fitter_maxiters=self.psf_fitter.fitter_maxiters,
+            xy_bounds=self.psf_fitter.xy_bounds)
+        return _FitEngine(psf_model=psf_model, param_mapper=param_mapper,
+                          data_processor=data_processor,
+                          psf_fitter=psf_fitter, data=self.data,
+                          mask=self.mask, error=self.error)
+
+    def fit_groups(self, sources):
+        """
+        Fit the source groups of a table.
+
+        Parameters
+        ----------
+        sources : `~astropy.table.Table`
+            The initial parameters of the sources, which must hold only
+            complete groups.
+
+        Returns
+        -------
+        results : list of `_GroupFitResult`
+            One result per group.
+        """
+        return [self.fit_group(group)
+                for group in sources.group_by('group_id').groups]
 
     def _fitter_residuals(self):
         """
@@ -582,6 +631,19 @@ class PSFPhotometry:
         groups may take a long time and be error-prone. The default is
         25 sources.
 
+    n_threads : int, optional
+        The number of threads used to fit the sources. The default is
+        1 (no multithreading). When ``n_threads`` > 1, the source
+        groups are divided into chunks that are fitted concurrently.
+        Each group is fitted independently, so the results are
+        identical to the single-threaded computation. Every thread
+        fits with its own copy of the PSF model and the ``fitter``,
+        so the input ``fitter`` is not called and its ``fit_info`` is
+        not updated. The fitting runs mostly in Python code that
+        holds the global interpreter lock (GIL), so multithreading
+        speeds up the fitting only on a free-threaded Python build.
+        On a build with the GIL it is slower than a single thread.
+
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
         (or groups). The progress bar requires that the `tqdm
@@ -681,7 +743,8 @@ class PSFPhotometry:
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  aperture_radius=None, local_bkg_estimator=None,
-                 group_warning_threshold=25, progress_bar=False):
+                 group_warning_threshold=25, n_threads=1,
+                 progress_bar=False):
 
         self.psf_model = _validate_psf_model(psf_model)
         self._param_mapper = _PSFParameterMapper(self.psf_model)
@@ -700,6 +763,12 @@ class PSFPhotometry:
             local_bkg_estimator, 'local_bkg_estimator')
         self.group_warning_threshold = self._validate_group_threshold(
             group_warning_threshold)
+        if (isinstance(n_threads, bool)
+                or not isinstance(n_threads, (int, np.integer))
+                or n_threads < 1):
+            msg = 'n_threads must be a positive integer'
+            raise ValueError(msg)
+        self.n_threads = int(n_threads)
         self.progress_bar = progress_bar
 
         self._data_processor = PSFDataProcessor(
@@ -721,7 +790,7 @@ class PSFPhotometry:
         self._attrs = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
                        'fitter_maxiters', 'xy_bounds', 'aperture_radius',
                        'local_bkg_estimator', 'group_warning_threshold',
-                       'progress_bar')
+                       'n_threads', 'progress_bar')
 
         self._reset_results()
 
@@ -1284,8 +1353,9 @@ class PSFPhotometry:
         """
         Fit the source groups and store the per-source results.
 
-        The groups are fitted by a `_FitEngine` and each group's results
-        are scattered into the state container by `_store_group_result`.
+        The groups are fitted by a `_FitEngine`, or by one engine per
+        thread when ``n_threads`` > 1, and each group's results are
+        scattered into the state container by `_store_group_result`.
 
         Parameters
         ----------
@@ -1307,11 +1377,87 @@ class PSFPhotometry:
                             data_processor=self._data_processor,
                             psf_fitter=self._psf_fitter, data=data,
                             mask=mask, error=error)
-        groups = init_params.group_by('group_id').groups
-        if self.progress_bar:
-            groups = add_progress_bar(groups, desc='Fit source/group')
-        for group in groups:
-            self._store_group_result(engine.fit_group(group))
+        grouped = init_params.group_by('group_id')
+        n_threads = min(self.n_threads, len(grouped.groups))
+
+        if n_threads == 1:
+            groups = grouped.groups
+            if self.progress_bar:
+                groups = add_progress_bar(groups, desc='Fit source/group')
+            for group in groups:
+                self._store_group_result(engine.fit_group(group))
+            return
+
+        # Every chunk borrows one of n_threads engines, so no engine
+        # is ever used by two threads at once.
+        engines = SimpleQueue()
+        for _ in range(n_threads):
+            engines.put(engine.thread_copy())
+
+        def fit_chunk(chunk):
+            thread_engine = engines.get()
+            try:
+                return thread_engine.fit_groups(chunk)
+            finally:
+                engines.put(thread_engine)
+
+        # Several chunks per thread balance the uneven group costs.
+        # The warning filter set by the fitting code in each thread is
+        # process-wide on some Python builds, where concurrent threads
+        # can restore the filters in the wrong order. Setting the same
+        # filter here keeps it in place while the threads run and
+        # restores the caller's filters afterward.
+        chunks = self._chunk_groups(grouped, 4 * n_threads)
+        with (warnings.catch_warnings(),
+              ThreadPoolExecutor(max_workers=n_threads) as executor):
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            futures = [executor.submit(fit_chunk, chunk) for chunk in chunks]
+            completed = as_completed(futures)
+            if self.progress_bar:
+                completed = add_progress_bar(completed,
+                                             desc='Fit source chunk',
+                                             total=len(futures))
+            try:
+                for future in completed:
+                    for result in future.result():
+                        self._store_group_result(result)
+            except BaseException:
+                # Do not fit the remaining chunks after a failure
+                executor.shutdown(cancel_futures=True)
+                raise
+
+    @staticmethod
+    def _chunk_groups(grouped, n_chunks):
+        """
+        Split a grouped table into chunks of whole groups with roughly
+        equal numbers of sources.
+
+        Parameters
+        ----------
+        grouped : `~astropy.table.Table`
+            The sources grouped by ``group_id``.
+
+        n_chunks : int
+            The requested number of chunks. Fewer are returned when
+            there are fewer groups.
+
+        Returns
+        -------
+        chunks : list of `~astropy.table.Table`
+            The chunks, each holding one or more complete groups.
+        """
+        indices = grouped.groups.indices
+        n_sources = len(grouped)
+        n_chunks = min(n_chunks, len(indices) - 1)
+        bounds = [0]
+        for k in range(1, n_chunks):
+            # The first group boundary at or after the ideal cut
+            cut = int(indices[np.searchsorted(indices, k * n_sources
+                                              / n_chunks)])
+            if bounds[-1] < cut < n_sources:
+                bounds.append(cut)
+        bounds.append(n_sources)
+        return [grouped[start:end] for start, end in pairwise(bounds)]
 
     def _store_group_result(self, result):
         """
