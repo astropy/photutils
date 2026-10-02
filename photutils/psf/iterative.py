@@ -167,7 +167,8 @@ class IterativePSFPhotometry:
         not updated. The fitting runs mostly in Python code that
         holds the global interpreter lock (GIL), so multithreading
         speeds up the fitting only on a free-threaded Python build.
-        On a build with the GIL it is slower than a single thread.
+        When the GIL is enabled, a warning is issued and the sources
+        are fitted in a single thread.
 
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources

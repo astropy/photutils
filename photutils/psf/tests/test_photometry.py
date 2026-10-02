@@ -4,7 +4,10 @@ Tests for the photometry module.
 """
 
 import gc
+import sys
+import warnings
 from itertools import pairwise
+from types import MappingProxyType
 
 import astropy.units as u
 import numpy as np
@@ -2729,6 +2732,7 @@ def _image_psf_model():
     return ImagePSF(psf_data)
 
 
+@pytest.mark.usefixtures('gil_disabled')
 @pytest.mark.parametrize('make_model', [
     lambda: CircularGaussianPRF(flux=1, fwhm=2.7), _image_psf_model])
 def test_n_threads_identical(test_data, make_model):
@@ -2758,6 +2762,7 @@ def test_n_threads_identical(test_data, make_model):
     _assert_fit_info_equal(infos[0], infos[1])
 
 
+@pytest.mark.usefixtures('gil_disabled')
 def test_n_threads_inputs_unchanged(test_data):
     """
     Test that the threads fit copies of the PSF model and the fitter,
@@ -2776,6 +2781,7 @@ def test_n_threads_inputs_unchanged(test_data):
     assert psfphot.psf_model.flux == 1
 
 
+@pytest.mark.usefixtures('gil_disabled')
 def test_n_threads_progress_bar(test_data):
     """
     Test the threaded path with a progress bar and more threads than
@@ -2795,6 +2801,7 @@ def test_n_threads_progress_bar(test_data):
         assert_equal(np.asarray(phot1[name]), np.asarray(phot2[name]))
 
 
+@pytest.mark.usefixtures('gil_disabled')
 def test_n_threads_fit_error(test_data):
     """
     Test that an error raised while fitting in a thread is raised by
@@ -2810,6 +2817,103 @@ def test_n_threads_fit_error(test_data):
     match = 'Error array contains non-positive or non-finite values'
     with pytest.raises(ValueError, match=match):
         psfphot(data, error=error, init_params=init_params)
+
+
+def test_n_threads_gil_fallback(test_data, monkeypatch):
+    """
+    Test that n_threads > 1 warns and fits in a single thread when the
+    GIL is enabled.
+    """
+    data, error, sources = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    init_params = _init_params_with_groups_and_invalid_sources(sources)
+    psfphot1 = PSFPhotometry(psf_model, (5, 5), aperture_radius=4)
+    phot1 = psfphot1(data, error=error, init_params=init_params)
+
+    fitter = TRFLSQFitter()
+    psfphot2 = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
+                             fitter=fitter, n_threads=4)
+    monkeypatch.setattr('photutils.psf.photometry._gil_enabled',
+                        lambda: True)
+    match = 'the sources are fitted in a single thread'
+    with pytest.warns(AstropyUserWarning, match=match):
+        phot2 = psfphot2(data, error=error, init_params=init_params)
+    assert psfphot2.n_threads == 4
+    for name in phot1.colnames:
+        assert_equal(np.asarray(phot1[name]), np.asarray(phot2[name]),
+                     err_msg=name)
+
+    # The single-threaded fit calls the input fitter
+    assert fitter.fit_info is not None
+
+
+def test_n_threads_gil_fallback_single_group(test_data, monkeypatch):
+    """
+    Test that the fallback warning is not issued when there is only
+    one group to fit.
+    """
+    data, error, sources = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    init_params = QTable()
+    init_params['x_init'] = sources['x_0'][:1]
+    init_params['y_init'] = sources['y_0'][:1]
+    monkeypatch.setattr('photutils.psf.photometry._gil_enabled',
+                        lambda: True)
+    psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
+                            n_threads=4)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        phot = psfphot(data, error=error, init_params=init_params)
+    assert np.isfinite(phot['x_fit'][0])
+
+
+def test_n_threads_build_detection(test_data):
+    """
+    Test that the fallback warning is issued only on a Python build
+    with the GIL enabled.
+    """
+    data, error, sources = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    init_params = QTable()
+    init_params['x_init'] = sources['x_0'][:4]
+    init_params['y_init'] = sources['y_0'][:4]
+    psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
+                            n_threads=2)
+    gil_enabled = getattr(sys, '_is_gil_enabled', lambda: True)()
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter('always')
+        phot = psfphot(data, error=error, init_params=init_params)
+    messages = [str(record.message) for record in records]
+    fell_back = any('fitted in a single thread' in msg for msg in messages)
+    assert fell_back == gil_enabled
+    assert np.all(np.isfinite(phot['x_fit']))
+
+
+def test_fitter_non_dict_fit_info(test_data):
+    """
+    Test that a fitter whose fit_info is not a dictionary gives NaN
+    residual-based fit metrics.
+    """
+    class MappingFitInfoFitter(TRFLSQFitter):
+        def __call__(self, model, x, y, z, *, weights=None, maxiter=100,
+                     inplace=False):
+            fit_model = super().__call__(model, x, y, z, weights=weights,
+                                         maxiter=maxiter, inplace=inplace)
+            self.fit_info = MappingProxyType(dict(self.fit_info))
+            return fit_model
+
+    data, error, sources = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    init_params = QTable()
+    init_params['x_init'] = sources['x_0'][:3]
+    init_params['y_init'] = sources['y_0'][:3]
+    psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
+                            fitter=MappingFitInfoFitter())
+    phot = psfphot(data, error=error, init_params=init_params)
+    assert np.all(np.isfinite(phot['x_fit']))
+    assert np.all(np.isfinite(phot['flux_err']))
+    for name in ('qfit', 'cfit', 'reduced_chi2'):
+        assert np.all(np.isnan(phot[name]))
 
 
 @pytest.mark.parametrize('n_threads', [-1, 0, 2.5, 'abc', True])

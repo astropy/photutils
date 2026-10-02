@@ -407,8 +407,9 @@ Unlike the compiled aperture and background code, the PSF fitting runs
 mostly in Python code that holds the Python global interpreter lock
 (GIL). The threads therefore run in parallel only on a free-threaded
 CPython build, where measured speedups are ~1.8x with 2 threads and ~5x
-with 8 threads. On a build with the GIL, multithreaded fitting is slower
-than the default ``n_threads=1``.
+with 8 threads. When the GIL is enabled, threads would be slower than a
+single thread, so a warning is issued and the sources are fitted in a
+single thread.
 
 
 PSF Photometry Fit Region Flag

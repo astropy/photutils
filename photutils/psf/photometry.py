@@ -4,6 +4,7 @@ Tools for performing PSF-fitting photometry.
 """
 
 import inspect
+import sys
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
@@ -217,6 +218,19 @@ class _PSFParameterMapper:
                 if found_col != target_col:
                     table.rename_column(found_col, target_col)
         return table
+
+
+def _gil_enabled():
+    """
+    Return whether the Python global interpreter lock (GIL) is enabled.
+
+    Returns
+    -------
+    result : bool
+        `False` only on a free-threaded Python build running with the
+        GIL disabled.
+    """
+    return getattr(sys, '_is_gil_enabled', lambda: True)()
 
 
 class _GroupFitResult(NamedTuple):
@@ -642,7 +656,8 @@ class PSFPhotometry:
         not updated. The fitting runs mostly in Python code that
         holds the global interpreter lock (GIL), so multithreading
         speeds up the fitting only on a free-threaded Python build.
-        On a build with the GIL it is slower than a single thread.
+        When the GIL is enabled, a warning is issued and the sources
+        are fitted in a single thread.
 
     progress_bar : bool, optional
         Whether to display a progress bar when fitting the sources
@@ -1354,8 +1369,9 @@ class PSFPhotometry:
         Fit the source groups and store the per-source results.
 
         The groups are fitted by a `_FitEngine`, or by one engine per
-        thread when ``n_threads`` > 1, and each group's results are
-        scattered into the state container by `_store_group_result`.
+        thread when ``n_threads`` > 1 and the GIL is disabled, and
+        each group's results are scattered into the state container by
+        `_store_group_result`.
 
         Parameters
         ----------
@@ -1379,6 +1395,14 @@ class PSFPhotometry:
                             mask=mask, error=error)
         grouped = init_params.group_by('group_id')
         n_threads = min(self.n_threads, len(grouped.groups))
+
+        # Threads holding the GIL would be slower than a single thread
+        if n_threads > 1 and _gil_enabled():
+            msg = ('n_threads > 1 speeds up the PSF fitting only on a '
+                   'free-threaded Python build. The GIL is enabled, so '
+                   'the sources are fitted in a single thread.')
+            warnings.warn(msg, AstropyUserWarning)
+            n_threads = 1
 
         if n_threads == 1:
             groups = grouped.groups

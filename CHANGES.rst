@@ -255,7 +255,8 @@ New Features
     threads. The results are identical to the single-threaded
     computation. The fitting holds the Python global interpreter
     lock (GIL), so multithreading speeds up the fitting only on a
-    free-threaded Python build. [#2457]
+    free-threaded Python build. When the GIL is enabled, a warning is
+    issued and the sources are fitted in a single thread. [#2457]
 
   - Added a ``GriddedPSFModel.grid_shape`` property returning the
     ``(ny, nx)`` shape of the ePSF grid, matching the ``STDPSFGrid``

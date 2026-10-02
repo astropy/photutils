@@ -645,6 +645,7 @@ def test_repr():
     assert 'n_threads=1' in cls_repr
 
 
+@pytest.mark.usefixtures('gil_disabled')
 def test_n_threads(test_data):
     """
     Test that n_threads is passed through to the PSFPhotometry
