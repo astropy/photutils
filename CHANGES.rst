@@ -888,6 +888,13 @@ Bug Fixes
     the fitting region. A star whose fitting region is fully masked is
     now treated as a fit failure instead of raising an error. [#2423]
 
+  - Fixed the ``copy`` methods of ``ImagePSF`` and ``GriddedPSFModel``
+    so that the copies no longer share the parameter array, the
+    constraints, and the constraints cache that astropy keeps on each
+    model instance. Copies fitted at the same time in several threads
+    interfered with each other. The parameters of a copy now also
+    refer to the copy instead of the original model. [#2453]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

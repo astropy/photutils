@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
 from astropy.table import QTable
 from numpy.testing import assert_allclose, assert_equal
@@ -79,25 +78,6 @@ def _reference_calc_model_values(model, x_0, y_0, xi, yi):
     for interp, weight in zip(interpolators, weights, strict=True):
         result += interp(xi, yi, grid=False) * weight
     return result
-
-
-@pytest.fixture(name='psfmodel')
-def fixture_griddedpsf_data():
-    psfs = []
-    yy, xx = np.mgrid[0:101, 0:101]
-    for i in range(16):
-        theta = np.deg2rad(i * 10.0)
-        gmodel = Gaussian2D(1, 50, 50, 10, 5, theta=theta)
-        psfs.append(gmodel(xx, yy))
-
-    xgrid = [0, 40, 160, 200]
-    ygrid = [0, 60, 140, 200]
-    meta = {}
-    meta['grid_xypos'] = list(product(xgrid, ygrid))
-    meta['oversampling'] = 4
-
-    nddata = NDData(psfs, meta=meta)
-    return GriddedPSFModel(nddata)
 
 
 class TestGriddedPSFModel:
