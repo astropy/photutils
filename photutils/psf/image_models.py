@@ -207,6 +207,10 @@ class ImagePSF(Fittable2DModel):
         the model parameters in a model copy. It is used in the PSF
         photometry classes during model fitting.
 
+        The cached spline is one of the shared attributes. It is built
+        on this model first, if it is not already cached, so that every
+        copy shares it instead of building its own.
+
         Use the `deepcopy` method if you want to copy all the model
         attributes, including the PSF image data.
 
@@ -215,6 +219,8 @@ class ImagePSF(Fittable2DModel):
         result : `ImagePSF`
             A copy of this model with only the model parameters copied.
         """
+        if not self._has_custom_interpolator:
+            _ = self._spline
         return _copy_model_sharing_data(self)
 
     def deepcopy(self):
@@ -237,6 +243,11 @@ class ImagePSF(Fittable2DModel):
         the cached `interpolator`. The `origin` is not updated, so it
         should be reset explicitly if the new image has a different
         shape or a different reference pixel.
+
+        The cached `interpolator` is not updated if the array is
+        modified in place (e.g., ``model.data[:] = values``) after the
+        model has been evaluated or copied with `copy`. Assign a new
+        array to this attribute instead.
         """
         return self._data
 

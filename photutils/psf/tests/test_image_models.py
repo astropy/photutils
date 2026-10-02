@@ -639,6 +639,31 @@ class TestImagePSF:
         assert model_copy2.x_0.fixed
         assert model_copy2.fixed == model_copy.fixed
 
+    @pytest.mark.parametrize('unpickled', [False, True])
+    def test_copies_share_spline(self, spline_builds, unpickled):
+        """
+        Test that the copies of a model that was never evaluated share
+        one spline instead of each building their own, including for
+        a model that was unpickled (e.g., in a worker process), which
+        never has a cached spline.
+        """
+        model = ImagePSF(self._gaussian_image(), origin=(12.0, 12.0))
+        if unpickled:
+            model = pickle.loads(  # noqa: S301
+                pickle.dumps(model))  # nosec B301
+        x = np.linspace(-9.0, 9.0, 50)
+        y = np.linspace(-8.0, 8.0, 50)[::-1]
+        params = (2.0, 0.5, -0.25)
+
+        copies = [model.copy() for _ in range(3)]
+        for model_copy in copies:
+            model_copy.evaluate(x, y, *params)
+            model_copy.fit_deriv(x, y, *params)
+        assert spline_builds.count == 1
+        assert_equal(copies[2].evaluate(x, y, *params),
+                     model.evaluate(x, y, *params))
+        assert spline_builds.count == 1
+
     @staticmethod
     def _gaussian_image():
         yy, xx = np.mgrid[0:25, 0:25]

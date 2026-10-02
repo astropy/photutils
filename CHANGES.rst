@@ -240,6 +240,13 @@ New Features
     ``GriddedPSFModel`` cache is no longer included when the model is
     pickled. [#2455, #2456]
 
+  - The ``ImagePSF.copy`` method now builds the cached interpolating
+    spline on the model before copying it, so that the copies share
+    the spline instead of each building their own. ``PSFPhotometry``
+    and ``IterativePSFPhotometry`` copy the model for every source and
+    rebuilt the spline each time. PSF photometry with a 361 x 361
+    pixel PSF image is ~6x faster. [#2456]
+
   - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
     nx)`` shape of the ePSF grid. [#2347]
 
