@@ -4,12 +4,16 @@ Image-based PSF models.
 """
 
 import copy
+import warnings
 from functools import cached_property
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from scipy.interpolate import RectBivariateSpline
 
+from photutils.psf._bispline import bispline_sum, bispline_sum_deriv
+from photutils.psf._bispline_inputs import ONE_PLANE, UNIT_WEIGHT, ZERO_WEIGHT
 from photutils.psf.utils import _copy_model_sharing_data, _out_of_grid_mask
 from photutils.utils._parameters import as_pair
 
@@ -68,9 +72,10 @@ class ImagePSF(Fittable2DModel):
         provided, they must be in ``(y, x)`` order.
 
     fill_value : float or `None`, optional
-        The value used for points outside the input pixel grid. The default
-        is 0.0. If `None`, values outside the input pixel grid are
-        extrapolated from the spline fit.
+        The value used for points outside the input pixel grid. The
+        default is 0.0. If `None`, a point outside the input pixel grid
+        takes the value of the spline at the nearest point on the edge
+        of the grid.
 
     **kwargs : dict, optional
         Additional keyword arguments passed to the
@@ -145,7 +150,24 @@ class ImagePSF(Fittable2DModel):
         self.oversampling = oversampling
         self.fill_value = fill_value
 
+        if type(self).interpolator is not ImagePSF.interpolator:
+            msg = ('Overriding the ImagePSF.interpolator attribute in a '
+                   'subclass is deprecated since version 3.1 and will be '
+                   'removed in version 4.0.')
+            warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+
         super().__init__(flux, x_0, y_0, **kwargs)
+
+    def __setattr__(self, name, value):
+        if name == 'interpolator':
+            msg = ('Assigning a custom interpolator to the '
+                   'ImagePSF.interpolator attribute is deprecated since '
+                   'version 3.1 and will be removed in version 4.0.')
+            warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+            # The model calls an assigned interpolator instead of
+            # evaluating the spline of the image data with the kernel.
+            self.__dict__['_interpolator_assigned'] = True
+        super().__setattr__(name, value)
 
     @staticmethod
     def _validate_data(data):
@@ -196,6 +218,10 @@ class ImagePSF(Fittable2DModel):
         the model parameters in a model copy. It is used in the PSF
         photometry classes during model fitting.
 
+        The cached spline is one of the shared attributes. It is built
+        on this model first, if it is not already cached, so that every
+        copy shares it instead of building its own.
+
         Use the `deepcopy` method if you want to copy all the model
         attributes, including the PSF image data.
 
@@ -204,6 +230,8 @@ class ImagePSF(Fittable2DModel):
         result : `ImagePSF`
             A copy of this model with only the model parameters copied.
         """
+        if not self._has_custom_interpolator:
+            _ = self._spline
         return _copy_model_sharing_data(self)
 
     def deepcopy(self):
@@ -226,6 +254,11 @@ class ImagePSF(Fittable2DModel):
         the cached `interpolator`. The `origin` is not updated, so it
         should be reset explicitly if the new image has a different
         shape or a different reference pixel.
+
+        The cached `interpolator` is not updated if the array is
+        modified in place (e.g., ``model.data[:] = values``) after the
+        model has been evaluated or copied with `copy`. Assign a new
+        array to this attribute instead.
         """
         return self._data
 
@@ -242,9 +275,11 @@ class ImagePSF(Fittable2DModel):
         self._validate_data(value)
         self._data = value
         # Discard the cached interpolators, which are tied to the old
-        # data
+        # data. That includes an interpolator assigned to the model.
         self.__dict__.pop('interpolator', None)
+        self.__dict__.pop('_interpolator_assigned', None)
         self.__dict__.pop('_deriv_interpolators', None)
+        self.__dict__.pop('_spline', None)
 
     @property
     def shape(self):
@@ -332,22 +367,63 @@ class ImagePSF(Fittable2DModel):
 
         Notes
         -----
-        This property can be overridden in a subclass to define
-        custom interpolators. A custom interpolator must provide
-        a `~scipy.interpolate.RectBivariateSpline`-compatible
-        ``partial_derivative`` method to support `fit_deriv`. Otherwise,
-        the subclass should also set ``fit_deriv = None`` to fall back
-        to the fitter's finite-difference Jacobian.
+        The model evaluates the knots and coefficients of this spline
+        with a compiled kernel, which also computes the partial
+        derivatives for `fit_deriv`. The spline object itself is not
+        called.
+
+        .. deprecated:: 3.1
+            Defining a custom interpolator, either by overriding this
+            property in a subclass or by assigning an interpolator
+            to this attribute of a model, is deprecated and will
+            be removed in version 4.0. A model with a custom
+            interpolator calls it instead of using the compiled
+            kernel. An assigned interpolator is discarded when
+            `data` is set. The custom interpolator must provide a
+            `~scipy.interpolate.RectBivariateSpline`-compatible
+            ``partial_derivative`` method to support `fit_deriv`.
+            Otherwise, ``fit_deriv`` should also be set to `None` to
+            fall back to the fitter's finite-difference Jacobian.
         """
         x = np.arange(self.data.shape[1])
         y = np.arange(self.data.shape[0])
         # RectBivariateSpline expects the data to be in (x, y) axis order
         return RectBivariateSpline(x, y, self.data.T, kx=3, ky=3, s=0)
 
+    @property
+    def _has_custom_interpolator(self):
+        """
+        Whether this model has a custom interpolator.
+
+        A custom interpolator is one defined by a subclass that
+        overrides `interpolator`, or one that was assigned to the
+        ``interpolator`` attribute of this model. Such a model calls its
+        interpolator. Otherwise, the spline built from the image data is
+        evaluated by the compiled kernel.
+        """
+        return (type(self).interpolator is not ImagePSF.interpolator
+                or self.__dict__.get('_interpolator_assigned', False))
+
+    @cached_property
+    def _spline(self):
+        """
+        The knots and coefficients of the `interpolator` spline, as
+        the ``(tx, ty, coeffs)`` tuple that the compiled kernel takes.
+
+        The arrays are the ones that the spline object holds, not
+        copies of them.
+        """
+        interp = self.interpolator
+        tx, ty = interp.get_knots()
+        return (np.ascontiguousarray(tx, dtype=float),
+                np.ascontiguousarray(ty, dtype=float),
+                np.ascontiguousarray(interp.get_coeffs(), dtype=float))
+
     @cached_property
     def _deriv_interpolators(self):
         """
-        The spline partial-derivative interpolators.
+        The spline partial-derivative interpolators of a custom
+        interpolator.
 
         The interpolators evaluate the partial derivatives of
         `interpolator` with respect to its first (x) and second (y)
@@ -361,14 +437,19 @@ class ImagePSF(Fittable2DModel):
 
     def _precompute_interpolators(self):
         """
-        Compute and cache the spline interpolators.
+        Compute and cache the interpolators of a custom interpolator.
 
         The cached interpolators are shared by the model copies made
         with `copy` (e.g., by the fitters), so calling this method
         before fitting the model to many sources builds the splines
         once instead of once per copy. The derivative interpolators are
         computed only when `fit_deriv` is enabled.
+
+        A model without a custom interpolator needs no such step,
+        because `copy` builds its spline.
         """
+        if not self._has_custom_interpolator:
+            return
         _ = self.interpolator
         if self.fit_deriv is not None:
             _ = self._deriv_interpolators
@@ -443,15 +524,27 @@ class ImagePSF(Fittable2DModel):
         """
         # Promote scalar inputs to 1D arrays so that the interpolator
         # returns an array that supports masked assignment below,
-        # regardless of the scipy version
+        # regardless of the scipy version.
         x = np.atleast_1d(np.asarray(x, dtype=float))
         y = np.atleast_1d(np.asarray(y, dtype=float))
         xi = self.oversampling[1] * (x - x_0)
         yi = self.oversampling[0] * (y - y_0)
         xi += self._origin[0]
         yi += self._origin[1]
+        if xi.shape != yi.shape:
+            xi, yi = np.broadcast_arrays(xi, yi)
 
-        evaluated_model = flux * self.interpolator(xi, yi, grid=False)
+        if self._has_custom_interpolator:
+            evaluated_model = flux * self.interpolator(xi, yi, grid=False)
+        else:
+            tx, ty, coeffs = self._spline
+            values = np.empty(xi.shape, dtype=float)
+            bispline_sum(tx, ty, coeffs[np.newaxis], ONE_PLANE,
+                         UNIT_WEIGHT, xi.ravel(), yi.ravel(),
+                         values.ravel())
+            # The flux may have units or be an array, so the product
+            # cannot be stored in the plain array of the kernel output
+            evaluated_model = flux * values
 
         if self.fill_value is not None:
             # Set pixels that are outside the input pixel grid to the
@@ -498,17 +591,35 @@ class ImagePSF(Fittable2DModel):
         yi = self.oversampling[0] * (y - y_0)
         xi += self._origin[0]
         yi += self._origin[1]
+        if xi.shape != yi.shape:
+            xi, yi = np.broadcast_arrays(xi, yi)
 
         # The spline interpolation is linear in flux, and the chain rule
         # gives the x_0 and y_0 derivatives from the spline partial
         # derivatives (dxi/dx_0 = -oversampling[1], dyi/dy_0 =
         # -oversampling[0])
-        dx_interp, dy_interp = self._deriv_interpolators
-        d_flux = self.interpolator(xi, yi, grid=False)
-        d_x_0 = (-flux * self.oversampling[1]
-                 * dx_interp(xi, yi, grid=False))
-        d_y_0 = (-flux * self.oversampling[0]
-                 * dy_interp(xi, yi, grid=False))
+        if self._has_custom_interpolator:
+            dx_interp, dy_interp = self._deriv_interpolators
+            d_flux = self.interpolator(xi, yi, grid=False)
+            d_x_0 = (-flux * self.oversampling[1]
+                     * dx_interp(xi, yi, grid=False))
+            d_y_0 = (-flux * self.oversampling[0]
+                     * dy_interp(xi, yi, grid=False))
+        else:
+            tx, ty, coeffs = self._spline
+            d_flux = np.empty(xi.shape, dtype=float)
+            deriv_x = np.empty(xi.shape, dtype=float)
+            deriv_y = np.empty(xi.shape, dtype=float)
+            bispline_sum_deriv(tx, ty, coeffs[np.newaxis], ONE_PLANE,
+                               UNIT_WEIGHT, ZERO_WEIGHT, ZERO_WEIGHT,
+                               float(self.oversampling[1]),
+                               float(self.oversampling[0]),
+                               xi.ravel(), yi.ravel(), d_flux.ravel(),
+                               deriv_x.ravel(), deriv_y.ravel())
+            # The flux may have units or be an array, so the products
+            # cannot be stored in the plain arrays of the kernel output
+            d_x_0 = flux * deriv_x
+            d_y_0 = flux * deriv_y
 
         if self.fill_value is not None:
             # Outside the input pixel grid the model is constant

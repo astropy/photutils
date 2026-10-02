@@ -738,7 +738,10 @@ class TestEPSFStar:
         tbl['y'] = [12]
         stars = extract_stars(NDData(data), tbl, size=23)
         residual = stars[0].compute_residual_image(epsf)
-        assert_allclose(np.sum(residual), 0.0)
+        # The star flux is the sum of the cutout, which can differ from
+        # the input flux by rounding, so the residual is not exactly
+        # zero on every platform.
+        assert_allclose(residual, 0.0, atol=1e-12)
 
 
 class TestEPSFStars:

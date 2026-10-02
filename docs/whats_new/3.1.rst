@@ -355,20 +355,28 @@ approximations of the parameter derivatives. This eliminates roughly
 photometry with these models with no change in the fitted results.
 
 
-``GriddedPSFModel`` Performance Improvements
-============================================
+``GriddedPSFModel`` and ``ImagePSF`` Performance Improvements
+=============================================================
 
-`~photutils.psf.GriddedPSFModel` evaluations are now significantly
-faster. The model evaluates its interpolating splines, and the spline
-derivatives of its analytic Jacobian, with a compiled kernel instead
-of separate spline calls. For fit regions of 5 x 5 to 25 x 25 pixels,
-evaluations are about 3 to 8 times faster and Jacobian evaluations
-about 6 to 14 times faster. This improves the runtime of PSF photometry
-workflows.
+`~photutils.psf.GriddedPSFModel` and `~photutils.psf.ImagePSF`
+evaluations are now significantly faster. Both models evaluate their
+interpolating splines, and the spline derivatives of their analytic
+Jacobians, with a compiled kernel instead of separate spline calls. For
+fit regions of 5 x 5 to 25 x 25 pixels, `~photutils.psf.GriddedPSFModel`
+evaluations are about 3 to 8 times faster and its Jacobian evaluations
+about 6 to 14 times faster. `~photutils.psf.ImagePSF` evaluations are
+about 1.2 to 3 times faster and its Jacobian evaluations about 2 to 5
+times faster. This improves the runtime of PSF photometry workflows.
 
-The model also uses less memory. It caches a single set of spline
+The models also use less memory. They cache a single set of spline
 coefficients, which is about a third of the memory that the cached
 splines used when the Jacobian is evaluated.
+
+Defining a custom interpolator for `~photutils.psf.ImagePSF`, by
+overriding its ``interpolator`` attribute in a subclass or by assigning
+an interpolator to it, is now deprecated and will be removed in version
+4.0. A model with a custom interpolator calls it as before and does not
+use the compiled kernel.
 
 
 Scalable Source Grouping

@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import (LevMarLSQFitter, LMLSQFitter,
                                       SimplexLSQFitter, TRFLSQFitter)
-from astropy.modeling.models import Gaussian1D, Gaussian2D
+from astropy.modeling.models import Const2D, Gaussian1D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
@@ -851,6 +851,68 @@ def test_grouped_fit_two_image_psfs():
                             rtol=1e-3)
     finally:
         gc.enable()
+
+
+def test_image_psf_spline_built_once(spline_builds):
+    """
+    Test that PSF photometry builds the spline of an ImagePSF model
+    once, instead of once for every source.
+    """
+
+    yy, xx = np.mgrid[:21, :21]
+    psf_data = np.exp(-((xx - 10.0)**2 + (yy - 10.0)**2) / 8.0)
+    psf_data /= psf_data.sum()
+
+    # Four isolated sources and one group of two sources
+    xpos = np.array([20.0, 60.0, 20.0, 60.0, 40.0, 44.0])
+    ypos = np.array([20.0, 20.0, 60.0, 60.0, 40.0, 42.0])
+    fluxes = np.array([500.0, 300.0, 400.0, 600.0, 450.0, 350.0])
+    yy, xx = np.mgrid[:81, :81]
+    data = np.zeros((81, 81))
+    scene_psf = ImagePSF(psf_data)
+    for xval, yval, flux in zip(xpos, ypos, fluxes, strict=True):
+        data += scene_psf.evaluate(xx, yy, flux, xval, yval)
+    init = Table({'x': xpos + 0.2, 'y': ypos - 0.1, 'flux': 0.9 * fluxes,
+                  'group_id': [1, 2, 3, 4, 5, 5]})
+
+    psf_model = ImagePSF(psf_data)
+    spline_builds.count = 0
+    phot = PSFPhotometry(psf_model, (11, 11))
+    result = phot(data, init_params=init)
+    assert spline_builds.count == 1
+    assert_allclose(result['flux_fit'], fluxes, rtol=1e-3)
+
+
+def test_compound_image_psf_spline_not_rebuilt(spline_builds):
+    """
+    Test that PSF photometry with a compound model that contains an
+    ImagePSF does not build the ImagePSF spline for every source. The
+    copies of a compound model are deep copies.
+    """
+
+    yy, xx = np.mgrid[:21, :21]
+    psf_data = np.exp(-((xx - 10.0)**2 + (yy - 10.0)**2) / 8.0)
+    psf_data /= psf_data.sum()
+    xpos = np.array([20.0, 60.0, 20.0, 60.0, 40.0])
+    ypos = np.array([20.0, 20.0, 60.0, 60.0, 40.0])
+    fluxes = np.array([500.0, 300.0, 400.0, 600.0, 450.0])
+    yy, xx = np.mgrid[:81, :81]
+    data = np.zeros((81, 81))
+    scene_psf = ImagePSF(psf_data)
+    for xval, yval, flux in zip(xpos, ypos, fluxes, strict=True):
+        data += scene_psf.evaluate(xx, yy, flux, xval, yval)
+    init = Table({'x': xpos + 0.2, 'y': ypos - 0.1, 'flux': 0.9 * fluxes})
+
+    psf_model = make_psf_model(ImagePSF(psf_data) + Const2D(0.0),
+                               x_name='x_0_0', y_name='y_0_0',
+                               flux_name='flux_0')
+    psf_model.amplitude_3.fixed = True
+    psf_model(20.0, 20.0)
+    spline_builds.count = 0
+    phot = PSFPhotometry(psf_model, (11, 11))
+    result = phot(data, init_params=init)
+    assert spline_builds.count == 0
+    assert_allclose(result['flux_fit'], fluxes, rtol=1e-3)
 
 
 def test_parameter_near_bound_flag_grouped():
