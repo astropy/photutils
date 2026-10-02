@@ -23,16 +23,6 @@ from photutils.utils._parameters import as_pair
 
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
 
-# The single-plane inputs of the compiled spline kernels: one
-# coefficient row with unit weight and no weight derivatives
-_ONE_PLANE = np.zeros(1, dtype=np.intp)
-_UNIT_WEIGHT = np.ones(1)
-_ZERO_WEIGHT = np.zeros(1)
-# Every model shares these arrays, so they must never be modified
-_ONE_PLANE.setflags(write=False)
-_UNIT_WEIGHT.setflags(write=False)
-_ZERO_WEIGHT.setflags(write=False)
-
 
 def _copy_model_sharing_data(model):
     """

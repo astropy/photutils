@@ -260,9 +260,11 @@ def bispline_sum_deriv(const double[::1] tx, const double[::1] ty,
     * ``out_dx = sum_g dw_dx[g] * S_g - scale_x * weights[g] * dS_g/dx``
     * ``out_dy = sum_g dw_dy[g] * S_g - scale_y * weights[g] * dS_g/dy``
 
-    where ``scale_x`` and ``scale_y`` are the factors that convert a
-    model position shift to a shift of the spline coordinates (the
-    oversampling), with the sign of the shift already included.
+    where ``scale_x`` and ``scale_y`` are the positive factors that
+    convert a model position shift to a shift of the spline coordinates
+    (the oversampling). A shift of the model position moves the spline
+    coordinates the opposite way, which is the minus sign in the
+    formulas.
 
     The coordinates are clamped to the knot range, so ``dS_g/dx`` is
     zero for a point beyond the knot range along x, and likewise for

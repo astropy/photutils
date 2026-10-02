@@ -16,13 +16,13 @@ from astropy.nddata import NDData
 from scipy.interpolate import RectBivariateSpline
 
 from photutils.psf._bispline import bispline_sum, bispline_sum_deriv
+from photutils.psf._bispline_inputs import ONE_PLANE, UNIT_WEIGHT, ZERO_WEIGHT
 from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
                                     _read_stdpsf, is_stdpsf, is_webbpsf,
                                     stdpsf_reader, webbpsf_reader)
 from photutils.psf.model_plotting import (_ModelGridPlotter,
                                           _plot_grid_docstring)
-from photutils.psf.utils import (_ONE_PLANE, _UNIT_WEIGHT, _ZERO_WEIGHT,
-                                 _copy_model_sharing_data, _out_of_grid_mask)
+from photutils.psf.utils import _copy_model_sharing_data, _out_of_grid_mask
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GriddedPSFModel', 'STDPSFGrid']
@@ -697,10 +697,9 @@ class GriddedPSFModel(Fittable2DModel):
             derivatives are `None` if ``derivs`` is `False`.
         """
         if self.data.shape[0] == 1:
-            dw_dx = _ZERO_WEIGHT if derivs else None
-            return _ONE_PLANE, _UNIT_WEIGHT, dw_dx, dw_dx
+            dw_dx = ZERO_WEIGHT if derivs else None
+            return ONE_PLANE, UNIT_WEIGHT, dw_dx, dw_dx
         grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
-        grid_idx = np.ascontiguousarray(grid_idx, dtype=np.intp)
         weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
         if not derivs:
             return grid_idx, weights, None, None
@@ -733,7 +732,7 @@ class GriddedPSFModel(Fittable2DModel):
         A precomputed lookup table mapping grid-cell indices to the
         source indices of the four bounding ePSF models.
 
-        The array has shape ``(nx - 1, ny - 1, 4)`` and dtype int64,
+        The array has shape ``(nx - 1, ny - 1, 4)`` and dtype intp,
         where ``nx`` and ``ny`` are the number of unique x and y grid
         positions, respectively. For a grid cell ``(xidx, yidx)``, the
         last axis contains the source indices of the four bounding ePSFs
@@ -751,7 +750,8 @@ class GriddedPSFModel(Fittable2DModel):
         pos_to_idx = {(float(x), float(y)): idx
                       for idx, (x, y) in enumerate(self.grid_xypos)}
 
-        out = np.empty((nx - 1, ny - 1, 4), dtype=np.int64)
+        # The spline kernels take the indices as intp
+        out = np.empty((nx - 1, ny - 1, 4), dtype=np.intp)
         for ix in range(nx - 1):
             x0 = float(self._xgrid[ix])
             x1 = float(self._xgrid[ix + 1])
