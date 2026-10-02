@@ -489,14 +489,58 @@ class TestImagePSF:
                                  strict=True):
             assert_allclose(got, expected, rtol=1e-12, atol=1e-13)
 
-        # The derivative interpolators are built ahead of fitting only
-        # for a custom interpolator
+        # The interpolators are built ahead of fitting only for a
+        # custom interpolator. The copy method builds the spline of
+        # the other models.
         custom._precompute_interpolators()
         assert '_deriv_interpolators' in custom.__dict__
         assert '_spline' not in custom.__dict__
+        model = ImagePSF(data, origin=(12.0, 12.0))
         model._precompute_interpolators()
         assert '_deriv_interpolators' not in model.__dict__
+        assert '_spline' not in model.__dict__
+        model.copy()
         assert '_spline' in model.__dict__
+
+    @pytest.mark.parametrize('evaluate_first', [False, True])
+    @pytest.mark.parametrize('degree', [2, 3])
+    def test_assigned_interpolator(self, evaluate_first, degree):
+        """
+        Test that assigning an interpolator to a model is deprecated,
+        and that the model and its copies call the assigned
+        interpolator, whether it is assigned before or after the model
+        is first evaluated, until the data are set.
+        """
+        data = self._gaussian_image()
+        x = np.linspace(-9.0, 9.0, 50)
+        y = np.linspace(-8.0, 8.0, 50)[::-1]
+        params = (2.0, 0.5, -0.25)
+        model = ImagePSF(data, origin=(12.0, 12.0))
+        reference = model.evaluate(x, y, *params)
+        if not evaluate_first:
+            model = ImagePSF(data, origin=(12.0, 12.0))
+
+        idx = np.arange(25)
+        spline = RectBivariateSpline(idx, idx, 3.0 * data.T, kx=degree,
+                                     ky=degree, s=0)
+        match = 'Assigning a custom interpolator'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            model.interpolator = spline
+        xi = x - 0.5 + 12.0
+        yi = y + 0.25 + 12.0
+        expected = 2.0 * spline(xi, yi, grid=False)
+        d_x = spline.partial_derivative(1, 0)(xi, yi, grid=False)
+        for psf in (model, model.copy()):
+            assert psf.interpolator is spline
+            assert_allclose(psf.evaluate(x, y, *params), expected,
+                            rtol=1e-12)
+            derivs = psf.fit_deriv(x, y, *params)
+            assert_allclose(derivs[0], expected / 2.0, rtol=1e-12)
+            assert_allclose(derivs[1], -2.0 * d_x, rtol=1e-12, atol=1e-13)
+
+        # Setting the data discards the assigned interpolator
+        model.data = data.copy()
+        assert_allclose(model.evaluate(x, y, *params), reference, rtol=1e-12)
 
     def test_data_spline_public_interface(self, monkeypatch, public_spline):
         """

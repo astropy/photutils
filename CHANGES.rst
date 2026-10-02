@@ -270,7 +270,7 @@ New Features
     60% of the model evaluations performed during fitting. With
     ``fill_value=None``, a point outside the PSF image takes the value
     at the nearest point on the image edge, so its position derivative
-    along that axis is zero. [#2393, #2455]
+    along that axis is zero. [#2393, #2455, #2456]
 
   - Added a ``constrain_fluxes`` method to ``LinkedEPSFStar`` and a
     ``constrain_fluxes`` keyword to ``EPSFBuilder`` (default `True`)
@@ -1123,10 +1123,11 @@ API Changes
     module-level ``decode_psf_flags`` function is unchanged and still
     returns lists. [#2400]
 
-  - Overriding the ``ImagePSF.interpolator`` attribute in a subclass
-    to define a custom interpolator is now deprecated and will be
-    removed in a future version. A model of such a subclass calls its
-    interpolator as before and does not use the compiled spline kernel.
+  - Defining a custom interpolator for ``ImagePSF``, either by
+    overriding the ``interpolator`` attribute in a subclass or by
+    assigning an interpolator to it on a model, is now deprecated and
+    will be removed in version 4.0. A model with a custom interpolator
+    calls it as before and does not use the compiled spline kernel.
     [#2456]
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been

@@ -2285,9 +2285,9 @@ class EPSFBuilder:
             msg = 'The input epsf must be an ImagePSF'
             raise TypeError(msg)
 
-        # Build the cached spline interpolators once so that the model
-        # copies made by the fitter for every star share them instead
-        # of each rebuilding the spline.
+        # Build the cached interpolators of a custom interpolator once
+        # so that the model copies made by the fitter for every star
+        # share them instead of each rebuilding them.
         epsf._precompute_interpolators()
 
         fitted_stars = []

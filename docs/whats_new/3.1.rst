@@ -372,6 +372,12 @@ The models also use less memory. They cache a single set of spline
 coefficients, which is about a third of the memory that the cached
 splines used when the Jacobian is evaluated.
 
+Defining a custom interpolator for `~photutils.psf.ImagePSF`, by
+overriding its ``interpolator`` attribute in a subclass or by assigning
+an interpolator to it, is now deprecated and will be removed in version
+4.0. A model with a custom interpolator calls it as before and does not
+use the compiled kernel.
+
 
 Scalable Source Grouping
 ========================

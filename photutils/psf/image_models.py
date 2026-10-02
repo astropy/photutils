@@ -150,13 +150,24 @@ class ImagePSF(Fittable2DModel):
         self.oversampling = oversampling
         self.fill_value = fill_value
 
-        if self._has_custom_interpolator:
+        if type(self).interpolator is not ImagePSF.interpolator:
             msg = ('Overriding the ImagePSF.interpolator attribute in a '
                    'subclass is deprecated since version 3.1 and will be '
-                   'removed in a future version.')
+                   'removed in version 4.0.')
             warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
 
         super().__init__(flux, x_0, y_0, **kwargs)
+
+    def __setattr__(self, name, value):
+        if name == 'interpolator':
+            msg = ('Assigning a custom interpolator to the '
+                   'ImagePSF.interpolator attribute is deprecated since '
+                   'version 3.1 and will be removed in version 4.0.')
+            warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+            # The model calls an assigned interpolator instead of
+            # evaluating the spline of the image data with the kernel.
+            self.__dict__['_interpolator_assigned'] = True
+        super().__setattr__(name, value)
 
     @staticmethod
     def _validate_data(data):
@@ -264,8 +275,9 @@ class ImagePSF(Fittable2DModel):
         self._validate_data(value)
         self._data = value
         # Discard the cached interpolators, which are tied to the old
-        # data
+        # data. That includes an interpolator assigned to the model.
         self.__dict__.pop('interpolator', None)
+        self.__dict__.pop('_interpolator_assigned', None)
         self.__dict__.pop('_deriv_interpolators', None)
         self.__dict__.pop('_spline', None)
 
@@ -358,18 +370,20 @@ class ImagePSF(Fittable2DModel):
         The model evaluates the knots and coefficients of this spline
         with a compiled kernel, which also computes the partial
         derivatives for `fit_deriv`. The spline object itself is not
-        called, so assigning a different interpolator to this attribute
-        of a model instance has no effect.
+        called.
 
         .. deprecated:: 3.1
-            Overriding this property in a subclass to define a
-            custom interpolator is deprecated. A model of such a
-            subclass calls its interpolator instead of using the
-            compiled kernel. The custom interpolator must provide
-            a `~scipy.interpolate.RectBivariateSpline`-compatible
+            Defining a custom interpolator, either by overriding this
+            property in a subclass or by assigning an interpolator
+            to this attribute of a model, is deprecated and will
+            be removed in version 4.0. A model with a custom
+            interpolator calls it instead of using the compiled
+            kernel. An assigned interpolator is discarded when
+            `data` is set. The custom interpolator must provide a
+            `~scipy.interpolate.RectBivariateSpline`-compatible
             ``partial_derivative`` method to support `fit_deriv`.
-            Otherwise, the subclass should also set ``fit_deriv = None``
-            to fall back to the fitter's finite-difference Jacobian.
+            Otherwise, ``fit_deriv`` should also be set to `None` to
+            fall back to the fitter's finite-difference Jacobian.
         """
         x = np.arange(self.data.shape[1])
         y = np.arange(self.data.shape[0])
@@ -379,12 +393,16 @@ class ImagePSF(Fittable2DModel):
     @property
     def _has_custom_interpolator(self):
         """
-        Whether the class of this model overrides `interpolator`.
+        Whether this model has a custom interpolator.
 
-        Such a model calls its interpolator. Otherwise, the spline
-        built from the image data is evaluated by the compiled kernel.
+        A custom interpolator is one defined by a subclass that
+        overrides `interpolator`, or one that was assigned to the
+        ``interpolator`` attribute of this model. Such a model calls its
+        interpolator. Otherwise, the spline built from the image data is
+        evaluated by the compiled kernel.
         """
-        return type(self).interpolator is not ImagePSF.interpolator
+        return (type(self).interpolator is not ImagePSF.interpolator
+                or self.__dict__.get('_interpolator_assigned', False))
 
     @cached_property
     def _spline(self):
@@ -419,17 +437,18 @@ class ImagePSF(Fittable2DModel):
 
     def _precompute_interpolators(self):
         """
-        Compute and cache the spline interpolators.
+        Compute and cache the interpolators of a custom interpolator.
 
         The cached interpolators are shared by the model copies made
         with `copy` (e.g., by the fitters), so calling this method
         before fitting the model to many sources builds the splines
-        once instead of once per copy. For a custom interpolator, the
-        derivative interpolators are computed only when `fit_deriv` is
-        enabled.
+        once instead of once per copy. The derivative interpolators are
+        computed only when `fit_deriv` is enabled.
+
+        A model without a custom interpolator needs no such step,
+        because `copy` builds its spline.
         """
         if not self._has_custom_interpolator:
-            _ = self._spline
             return
         _ = self.interpolator
         if self.fit_deriv is not None:
@@ -505,7 +524,7 @@ class ImagePSF(Fittable2DModel):
         """
         # Promote scalar inputs to 1D arrays so that the interpolator
         # returns an array that supports masked assignment below,
-        # regardless of the scipy version
+        # regardless of the scipy version.
         x = np.atleast_1d(np.asarray(x, dtype=float))
         y = np.atleast_1d(np.asarray(y, dtype=float))
         xi = self.oversampling[1] * (x - x_0)
