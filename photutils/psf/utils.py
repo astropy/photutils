@@ -3,6 +3,7 @@
 Tools for PSF-fitting photometry.
 """
 
+import copy
 import warnings
 from collections.abc import Iterator
 
@@ -21,6 +22,60 @@ from photutils.utils._flags import define_flag_docstring
 from photutils.utils._parameters import as_pair
 
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
+
+
+def _copy_model_sharing_data(model):
+    """
+    Return a copy of a model that shares every attribute but the
+    model parameters and astropy's parameter and constraint state.
+
+    The PSF image models use this for their `copy` methods so that
+    the (possibly large) image data and the cached interpolators are
+    shared by the copies that the fitters make for every source.
+    The model parameters are copied, and so are the attributes in
+    which astropy keeps the parameter array (``_parameters``), the
+    model constraints (``_mconstraints``), and the constraints cache
+    (``_constraints_cache``), which the fitters update in place. Sharing
+    them would let copies fitted concurrently in several threads
+    interfere with each other. The cache entries are bound to the model
+    instance that created them, so the copy starts with an empty cache.
+
+    The copy is made for every fitted source, so each attribute is
+    copied in the cheapest way that isolates it. In particular,
+    the parameters are copied shallowly, since a deep copy of a
+    `~astropy.modeling.Parameter` is many times slower. The copied
+    parameters are then bound to the copy of the model.
+
+    Parameters
+    ----------
+    model : `~astropy.modeling.Model`
+        The model to copy.
+
+    Returns
+    -------
+    result : `~astropy.modeling.Model`
+        The copy.
+    """
+    new_model = object.__new__(model.__class__)
+    param_names = model.param_names
+    # Snapshot so concurrent cached_property fills cannot resize the
+    # dict during iteration
+    for key, val in dict(model.__dict__).items():
+        if key in param_names:
+            param = copy.copy(val)
+            # The parameter passes its model to the parameter validator
+            param._model = new_model
+            new_model.__dict__[key] = param
+        elif key == '_parameters':
+            new_model.__dict__[key] = val.copy()
+        elif key == '_mconstraints':
+            new_model.__dict__[key] = {name: list(items)
+                                       for name, items in val.items()}
+        elif key == '_constraints_cache':
+            new_model.__dict__[key] = {}
+        else:
+            new_model.__dict__[key] = val
+    return new_model
 
 
 def _make_mask(image, mask):

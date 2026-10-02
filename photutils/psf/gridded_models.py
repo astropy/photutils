@@ -19,7 +19,7 @@ from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
                                     stdpsf_reader, webbpsf_reader)
 from photutils.psf.model_plotting import (_ModelGridPlotter,
                                           _plot_grid_docstring)
-from photutils.psf.utils import _out_of_grid_mask
+from photutils.psf.utils import _copy_model_sharing_data, _out_of_grid_mask
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GriddedPSFModel', 'STDPSFGrid']
@@ -383,21 +383,13 @@ class GriddedPSFModel(Fittable2DModel):
         result : `GriddedPSFModel`
             A copy of this model with only the model parameters copied.
         """
-        newcls = object.__new__(self.__class__)
-
-        # Snapshot so concurrent cached_property fills cannot resize
-        # the dict during iteration
-        for key, val in dict(self.__dict__).items():
-            if key in self.param_names:  # copy only the parameter values
-                newcls.__dict__[key] = copy.copy(val)
-            else:
-                newcls.__dict__[key] = val
+        new_model = _copy_model_sharing_data(self)
 
         # Give the copy its own meta dictionary so that setting the
         # oversampling on the copy does not mutate the original meta
-        newcls._meta = dict(self._meta)
+        new_model._meta = dict(self._meta)
 
-        return newcls
+        return new_model
 
     def deepcopy(self):
         """

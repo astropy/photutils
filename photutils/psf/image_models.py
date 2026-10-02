@@ -10,7 +10,7 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from scipy.interpolate import RectBivariateSpline
 
-from photutils.psf.utils import _out_of_grid_mask
+from photutils.psf.utils import _copy_model_sharing_data, _out_of_grid_mask
 from photutils.utils._parameters import as_pair
 
 __all__ = ['ImagePSF']
@@ -204,17 +204,7 @@ class ImagePSF(Fittable2DModel):
         result : `ImagePSF`
             A copy of this model with only the model parameters copied.
         """
-        newcls = object.__new__(self.__class__)
-
-        # Snapshot so concurrent cached_property fills cannot resize
-        # the dict during iteration
-        for key, val in dict(self.__dict__).items():
-            if key in self.param_names:  # copy only the parameter values
-                newcls.__dict__[key] = copy.copy(val)
-            else:
-                newcls.__dict__[key] = val
-
-        return newcls
+        return _copy_model_sharing_data(self)
 
     def deepcopy(self):
         """
