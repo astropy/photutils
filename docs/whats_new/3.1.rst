@@ -359,9 +359,16 @@ photometry with these models with no change in the fitted results.
 ============================================
 
 `~photutils.psf.GriddedPSFModel` evaluations are now significantly
-faster, with typical performance improvements of approximately 20–25%.
-The optimizations reduce the overhead of PSF interpolation, improving
-the runtime of PSF photometry workflows.
+faster. The model evaluates its interpolating splines, and the spline
+derivatives of its analytic Jacobian, with a compiled kernel instead
+of separate spline calls. For fit regions of 5 x 5 to 25 x 25 pixels,
+evaluations are about 3 to 8 times faster and Jacobian evaluations
+about 6 to 14 times faster. This improves the runtime of PSF photometry
+workflows.
+
+The model also uses less memory. It caches a single set of spline
+coefficients, which is about a third of the memory that the cached
+splines used when the Jacobian is evaluated.
 
 
 Scalable Source Grouping
