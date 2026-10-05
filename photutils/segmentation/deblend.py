@@ -19,6 +19,7 @@ from photutils.segmentation._deblend_watershed import (apply_relabel_map,
                                                        find_present_labels,
                                                        write_deblended_labels)
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
+                                         _make_relabel_map,
                                          _remap_deblend_label_map)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
@@ -867,10 +868,10 @@ def _create_relabel_map(array, *, start_label=1):
 
     Returns
     -------
-    relabel_map : 1D `~numpy.ndarray` or None
-        The array mapping the original labels to the new labels. If the
-        labels are already consecutive starting from ``start_label``,
-        then `None` is returned.
+    relabel_map : 1D `~numpy.ndarray`, `_SparseRelabelMap`, or None
+        The map from the original labels to the new labels (see
+        ``_make_relabel_map``). If the labels are already consecutive
+        starting from ``start_label``, then `None` is returned.
     """
     labels = _get_labels(array)
 
@@ -880,8 +881,6 @@ def _create_relabel_map(array, *, start_label=1):
             and (labels[-1] - start_label + 1) == len(labels)):
         return None
 
-    # Create an array to map old labels to new labels
-    relabel_map = np.zeros(labels.max() + 1, dtype=array.dtype)
-    relabel_map[labels] = np.arange(len(labels)) + start_label
-
-    return relabel_map
+    # Create the map from the old labels to the new labels
+    new_labels = (np.arange(len(labels)) + start_label).astype(array.dtype)
+    return _make_relabel_map(labels, new_labels, array.size)

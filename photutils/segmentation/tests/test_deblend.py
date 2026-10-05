@@ -1957,3 +1957,30 @@ def test_read_only_inputs(dtype, contrast_method, n_threads):
     assert_equal(result, expected)
     for arr, original in zip(arrays, originals, strict=True):
         assert_equal(arr, original)
+
+
+@pytest.mark.parametrize('relabel', [True, False])
+def test_huge_labels(relabel):
+    """
+    Regression test that an image with huge label values is deblended
+    with memory set by the number of labels, giving the same segments
+    as the same image with ordinary labels.
+    """
+    data, segm = make_multipeak_source()
+    offset = 2**40
+    huge = np.where(segm.data > 0, segm.data.astype(np.int64) + offset, 0)
+    segm_huge = SegmentationImage(huge)
+
+    expected = deblend_sources(data, segm, 5, relabel=relabel)
+    result = deblend_sources(data, segm_huge, 5, relabel=relabel)
+    assert result.n_labels == expected.n_labels > 1
+    assert_equal(result.areas, expected.areas)
+    assert result.slices == expected.slices
+    if relabel:
+        assert_equal(result.data, expected.data)
+    else:
+        assert_equal(result.labels,
+                     expected.labels.astype(np.int64) + offset)
+    children = result.parent_to_deblended_labels[1 + offset]
+    assert_equal(children, result.labels)
+    assert_equal(result.flags, expected.flags)

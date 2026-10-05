@@ -26,11 +26,11 @@ from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['Segment', 'SegmentationImage']
 
-# The compiled label measurement allocates arrays that are indexed by
-# the label value. An array whose largest label exceeds both this value
-# and a quarter of its number of pixels is first mapped to consecutive
-# labels, so that the memory used does not depend on the size of the
-# labels.
+# The label measurement and the relabeling maps use arrays that are
+# indexed by the label value. An array whose largest label exceeds both
+# this value and a quarter of its number of pixels is instead handled
+# through the positions of its labels in the sorted labels, so that the
+# memory used does not depend on the size of the labels.
 _MIN_MAX_LABEL_LIMIT = 65536
 
 # Remove in 4.0
@@ -136,6 +136,72 @@ def _get_label_stats(array):
     return labels, areas, bounds
 
 
+class _SparseRelabelMap:
+    """
+    A map from label values to new label values that is indexed like
+    the dense relabeling array, but that stores only the labels.
+
+    A value that is not one of the labels, including the background,
+    maps to zero.
+
+    Parameters
+    ----------
+    labels : 1D int `~numpy.ndarray`
+        The sorted positive label values.
+
+    new_labels : 1D int `~numpy.ndarray`
+        The new value of each label.
+    """
+
+    def __init__(self, labels, new_labels):
+        self._labels = np.concatenate((np.zeros(1, dtype=labels.dtype),
+                                       labels))
+        self._new_labels = np.concatenate(
+            (np.zeros(1, dtype=new_labels.dtype), new_labels))
+
+    def __getitem__(self, index):
+        # The cast keeps the search in the integer dtype of the labels.
+        # NumPy would compare mixed signed and unsigned 64-bit integers
+        # as floats, which cannot represent every large label.
+        index = np.asarray(index).astype(self._labels.dtype, copy=False)
+        idx = np.searchsorted(self._labels, index)
+        idx = np.minimum(idx, len(self._labels) - 1)
+        return np.where(self._labels[idx] == index, self._new_labels[idx],
+                        0).astype(self._new_labels.dtype, copy=False)
+
+
+def _make_relabel_map(labels, new_labels, n_pixels):
+    """
+    Make the map from label values to new label values.
+
+    Parameters
+    ----------
+    labels : 1D int `~numpy.ndarray`
+        The sorted positive label values. It must not be empty.
+
+    new_labels : 1D int `~numpy.ndarray`
+        The new value of each label.
+
+    n_pixels : int
+        The number of pixels of the segmentation array.
+
+    Returns
+    -------
+    relabel_map : 1D `~numpy.ndarray` or `_SparseRelabelMap`
+        An object that returns the new values when it is indexed with
+        label values. It is an array with one element per label value
+        up to the largest label, or a `_SparseRelabelMap` for very
+        large labels.
+    """
+    max_label = int(labels[-1])
+    if max_label > max(n_pixels // 4, _MIN_MAX_LABEL_LIMIT):
+        return _SparseRelabelMap(labels, new_labels)
+
+    relabel_map = np.zeros(max_label + 1, dtype=new_labels.dtype)
+    relabel_map[labels] = new_labels
+    return relabel_map
+
+
 def _remap_deblend_label_map(deblend_label_map, relabel_map):
     """
     Return a new deblend label map with remapped child labels.
@@ -146,9 +212,9 @@ def _remap_deblend_label_map(deblend_label_map, relabel_map):
         The mapping of parent label numbers to arrays of deblended
         (child) label numbers.
 
-    relabel_map : 1D `~numpy.ndarray`
-        An array mapping the original label numbers to the new label
-        numbers.
+    relabel_map : 1D `~numpy.ndarray` or `_SparseRelabelMap`
+        The map from the original label numbers to the new label
+        numbers (see ``_make_relabel_map``).
 
     Returns
     -------
@@ -172,9 +238,9 @@ def _remap_flags_map(flags_map, relabel_map):
     flags_map : dict
         The mapping of label numbers to bitwise flag values.
 
-    relabel_map : 1D `~numpy.ndarray`
-        An array mapping the original label numbers to the new label
-        numbers.
+    relabel_map : 1D `~numpy.ndarray` or `_SparseRelabelMap`
+        The map from the original label numbers to the new label
+        numbers (see ``_make_relabel_map``).
 
     Returns
     -------
@@ -1249,18 +1315,18 @@ class SegmentationImage:
         if labels.size == 0:
             return
 
-        dtype = self.data.dtype  # keep the original dtype
-        relabel_map = np.zeros(self.max_label + 1, dtype=dtype)
-        relabel_map[self.labels] = self.labels
-        relabel_map[labels] = new_label  # reassign labels
+        # The new value of every label, in the original dtype
+        new_labels = self.labels.astype(self.data.dtype, copy=True)
+        new_labels[self.get_indices(labels)] = new_label  # reassign labels
 
         if relabel:
-            labels = np.unique(relabel_map[relabel_map != 0])
-            if len(labels) != 0:
-                map2 = np.zeros(max(labels) + 1, dtype=dtype)
-                map2[labels] = np.arange(len(labels), dtype=dtype) + 1
-                relabel_map = map2[relabel_map]
+            keep = new_labels != 0
+            unique_labels = np.unique(new_labels[keep])
+            new_labels[keep] = np.searchsorted(unique_labels,
+                                               new_labels[keep]) + 1
 
+        relabel_map = _make_relabel_map(self.labels, new_labels,
+                                        self._data.size)
         data_new = relabel_map[self.data]
         # Relabeling is an in-place change, not a data reassignment,
         # so the auxiliary info, the deblending provenance, and the
@@ -1322,9 +1388,8 @@ class SegmentationImage:
         old_areas = self.__dict__.get('areas', None)
         dtype = self.data.dtype  # keep the original dtype
         new_labels = np.arange(self.n_labels, dtype=dtype) + start_label
-        new_label_map = np.zeros(self.max_label + 1, dtype=dtype)
-        new_label_map[self.labels] = new_labels
-
+        new_label_map = _make_relabel_map(self.labels, new_labels,
+                                          self._data.size)
         data_new = new_label_map[self.data]
         # Relabeling is an in-place change, not a data reassignment,
         # so the auxiliary info, the deblending provenance, and the

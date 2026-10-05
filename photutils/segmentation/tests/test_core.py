@@ -2429,6 +2429,119 @@ def test_huge_labels(dtype):
         assert segment.area == expected.areas[1]
 
 
+def _make_huge_label_pair(dtype):
+    """
+    Return a segmentation image with ordinary labels and one with the
+    same segments but with labels near 2**40, in the same order.
+    """
+    data = _make_label_array()
+    huge = data.astype(dtype)
+    for label in np.unique(data[data != 0]):
+        huge[data == label] = 2**40 + 1000 * int(label)
+    return SegmentationImage(data), SegmentationImage(huge)
+
+
+@pytest.mark.parametrize('dtype', [np.int64, np.uint64])
+def test_huge_labels_relabel(dtype):
+    """
+    Regression test that the relabeling methods work for an image with
+    huge label values, with memory set by the number of labels.
+
+    The relabeling maps were arrays with one element for every label
+    value up to the maximum, so they ran out of memory for such labels.
+    """
+    ref, segm = _make_huge_label_pair(dtype)
+    ref_labels = ref.labels
+    labels = segm.labels
+
+    segm.relabel_consecutive()
+    ref.relabel_consecutive()
+    assert_equal(segm.data, ref.data)
+    assert segm.data.dtype == dtype
+    assert segm.slices == ref.slices
+
+    ref, segm = _make_huge_label_pair(dtype)
+    segm.relabel_consecutive(start_label=2**41)
+    assert_equal(segm.labels, 2**41 + np.arange(len(labels)))
+    assert_equal(segm.areas, ref.areas)
+
+    for relabel in (False, True):
+        ref, segm = _make_huge_label_pair(dtype)
+        segm.reassign_labels(labels[[1, 2]], new_label=int(labels[0]),
+                             relabel=relabel)
+        ref.reassign_labels(ref_labels[[1, 2]], new_label=int(ref_labels[0]),
+                            relabel=relabel)
+        assert_equal(segm.data != 0, ref.data != 0)
+        assert_equal(segm.areas, ref.areas)
+        if relabel:
+            assert_equal(segm.data, ref.data)
+        else:
+            assert_equal(segm.labels, labels[[0, 3, 4, 5]])
+
+        ref, segm = _make_huge_label_pair(dtype)
+        segm.remove_labels(labels[::2], relabel=relabel)
+        ref.remove_labels(ref_labels[::2], relabel=relabel)
+        assert_equal(segm.areas, ref.areas)
+        assert_equal(segm.labels,
+                     ref.labels if relabel else labels[1::2])
+
+        ref, segm = _make_huge_label_pair(dtype)
+        segm.keep_labels(labels[::2], relabel=relabel)
+        ref.keep_labels(ref_labels[::2], relabel=relabel)
+        assert_equal(segm.areas, ref.areas)
+        assert_equal(segm.labels, ref.labels if relabel else labels[::2])
+
+
+def test_huge_labels_relabel_maps():
+    """
+    Test that relabeling an image with huge label values translates the
+    deblending label map and the per-label flags.
+    """
+    ref, segm = _make_huge_label_pair(np.int64)
+    labels = segm.labels
+    segm._deblend_label_map = {5: labels[[1, 4]]}
+    segm._flags_map = {int(labels[1]): 1, int(labels[4]): 3,
+                       int(labels[5]): 4}
+    segm.relabel_consecutive()
+    assert_equal(segm._deblend_label_map[5], [2, 5])
+    assert segm._flags_map == {2: 1, 5: 3, 6: 4}
+    assert_equal(segm.data, _relabel_reference(ref))
+
+
+def _relabel_reference(segm):
+    segm.relabel_consecutive()
+    return segm.data
+
+
+@pytest.mark.parametrize('dtype', [np.int32, np.int64, np.uint64])
+def test_sparse_relabel_map(dtype):
+    """
+    Test that the sparse relabeling map returns the same values as the
+    dense array for labels, and zero for every other value.
+    """
+    labels = np.array([3, 4, 17, 250, 60000], dtype=dtype)
+    new_labels = np.array([9, 1, 0, 7, 2], dtype=dtype)
+    dense = segm_core._make_relabel_map(labels, new_labels, 10**7)
+    assert isinstance(dense, np.ndarray)
+    sparse = segm_core._SparseRelabelMap(labels, new_labels)
+
+    index = np.array([[0, 3, 4], [17, 250, 60000], [5, 1, 59999]],
+                     dtype=dtype)
+    result = sparse[index]
+    assert_equal(result, dense[index])
+    assert result.dtype == dtype
+    assert result.shape == index.shape
+    for label in (0, 3, 250, 60000, 2):
+        assert int(sparse[label]) == int(dense[label])
+    assert int(sparse[60001]) == 0
+    assert_equal(sparse[labels.astype(np.int64)], new_labels)
+
+    # a small array with large labels gets the sparse map
+    sparse = segm_core._make_relabel_map(labels + 2**20, new_labels, 100)
+    assert isinstance(sparse, segm_core._SparseRelabelMap)
+    assert_equal(sparse[labels + 2**20], new_labels)
+
+
 def test_label_stats_reset_on_reassignment():
     """
     Test that the slices follow the data when it is reassigned or
