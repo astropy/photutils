@@ -1005,6 +1005,10 @@ Bug Fixes
     label value. They now use memory in proportion to the number of
     labels. [#2464]
 
+  - Fixed a ``ValueError`` when getting the ``slices`` attribute of a
+    zero-size ``SegmentationImage``. An empty list is now returned.
+    [#2464]
+
 - ``photutils.utils``
 
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the

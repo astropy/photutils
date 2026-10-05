@@ -2408,6 +2408,23 @@ def test_label_stats_fallback():
     assert segm.slices == []
 
 
+@pytest.mark.parametrize('dtype', [np.int32, np.int64, np.uint64])
+@pytest.mark.parametrize('shape', [(0, 5), (5, 0), (0, 0), (0, 4, 5)])
+def test_zero_size_array(dtype, shape):
+    """
+    Regression test that a zero-size segmentation array has no labels,
+    areas, or slices.
+
+    scipy find_objects raises an error for a zero-size array.
+    """
+    data = np.zeros(shape, dtype=dtype)
+    for segm in (SegmentationImage(data),
+                 SegmentationImage._from_data(data)):
+        assert segm.n_labels == 0
+        assert len(segm.areas) == 0
+        assert segm.slices == []
+
+
 def test_label_stats_uint64_small_labels(monkeypatch):
     """
     Test that an unsigned 64-bit array whose labels fit in the per-label

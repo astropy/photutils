@@ -759,6 +759,9 @@ class SegmentationImage:
         """
         bounds = self._label_stats[2]
         if bounds is None:
+            # find_objects raises an error for a zero-size array
+            if self._data.size == 0:
+                return []
             return [slc for slc in find_objects(self._data)
                     if slc is not None]
         return [(slice(ymin, ymax), slice(xmin, xmax))
