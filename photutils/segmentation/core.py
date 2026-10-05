@@ -28,8 +28,9 @@ __all__ = ['Segment', 'SegmentationImage']
 
 # The compiled label measurement allocates arrays that are indexed by
 # the label value. An array whose largest label exceeds both this value
-# and a quarter of its number of pixels is measured with the sort-based
-# method instead, which does not depend on the size of the labels.
+# and a quarter of its number of pixels is first mapped to consecutive
+# labels, so that the memory used does not depend on the size of the
+# labels.
 _MIN_MAX_LABEL_LIMIT = 65536
 
 # Remove in 4.0
@@ -78,10 +79,13 @@ def _get_label_stats(array):
     Return the labels of a segmentation array with their areas and
     bounding boxes.
 
-    A 2D array is measured in a single pass by compiled code. An array
-    of another dimension, or one with negative labels, unsigned 64-bit
-    labels, or very large labels, is measured with `numpy.unique`, which
-    does not give the bounding boxes.
+    A 2D array is measured in a single pass by compiled code. A 2D
+    array with unsigned 64-bit labels or very large labels is first
+    mapped to consecutive labels, which costs a sort of the labeled
+    pixels and a search of every pixel, so that the memory used is set
+    by the number of labels and not by their size. An array of another
+    dimension, or one with negative labels, is measured with
+    `numpy.unique`, which does not give the bounding boxes.
 
     Parameters
     ----------
@@ -118,7 +122,18 @@ def _get_label_stats(array):
             return idx.astype(array.dtype), counts[idx], bounds
 
     labels, areas = _get_labels(array, return_counts=True)
-    return labels, areas, None
+    if array.ndim != 2 or labels.size == 0 or labels[0] < 0:
+        return labels, areas, None
+
+    # Replace every label by its position in the sorted labels (plus
+    # one, keeping zero as the background) and measure that array
+    values = np.concatenate((np.zeros(1, dtype=labels.dtype), labels))
+    compact = np.searchsorted(values, array).astype(np.int64, copy=False)
+    (_, _, _, ymin, ymax, xmin, xmax) = label_stats(
+        np.ascontiguousarray(compact), len(labels))
+    bounds = np.column_stack((ymin[1:], ymax[1:] + 1,
+                              xmin[1:], xmax[1:] + 1))
+    return labels, areas, bounds
 
 
 def _remap_deblend_label_map(deblend_label_map, relabel_map):

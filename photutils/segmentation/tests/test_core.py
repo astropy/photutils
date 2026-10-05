@@ -2353,40 +2353,35 @@ def test_label_stats_kernel(dtype):
 
 def test_label_stats_fallback():
     """
-    Test that arrays the kernel does not measure (very large labels,
-    unsigned 64-bit labels, and arrays that are not 2D) give the same
-    labels, areas, and slices from the sort-based method.
+    Test that arrays the kernel does not measure directly (very large
+    labels, unsigned 64-bit labels, and arrays that are not 2D) give
+    the same labels, areas, and slices.
     """
     data = _make_label_array()
     labels, areas = np.unique(data[data != 0], return_counts=True)
     slices = [slc for slc in find_objects(data) if slc is not None]
 
-    # the kernel measures the array
-    assert SegmentationImage(data)._label_stats[2] is not None
-
     # a label above the limit of the kernel
     large = data.astype(np.int32)
     large[large == 120] = 70000
     segm = SegmentationImage(large)
-    assert segm._label_stats[2] is None
     assert_equal(segm.labels, [1, 3, 7, 12, 90, 70000])
+    assert segm.labels.dtype == np.int32
     assert_equal(segm.areas, areas)
     assert segm.slices == [slc for slc in find_objects(large)
                            if slc is not None]
 
-    # a label too large for the per-label arrays
-    huge = data.astype(np.int64)
-    huge[huge == 120] = 2**40
-    segm = SegmentationImage(huge)
-    assert segm._label_stats[2] is None
-    assert_equal(segm.labels, [1, 3, 7, 12, 90, 2**40])
-    assert_equal(segm.areas, [1, 138, 24, 40, 12, 30])
-
-    # unsigned 64-bit labels
-    segm = SegmentationImage(data.astype(np.uint64))
-    assert segm._label_stats[2] is None
+    # unsigned 64-bit labels, including one above the int64 range
+    data_u8 = data.astype(np.uint64)
+    segm = SegmentationImage(data_u8)
     assert_equal(segm.labels, labels)
     assert segm.labels.dtype == np.uint64
+    assert_equal(segm.areas, areas)
+    assert segm.slices == slices
+    data_u8[data_u8 == 120] = 2**64 - 1
+    segm = SegmentationImage(data_u8)
+    assert segm.labels[-1] == 2**64 - 1
+    assert_equal(segm.areas, areas)
     assert segm.slices == slices
 
     # a 3D array
@@ -2403,6 +2398,35 @@ def test_label_stats_fallback():
     assert segm.n_labels == 0
     assert len(segm.areas) == 0
     assert segm.slices == []
+
+
+@pytest.mark.parametrize('dtype', [np.int64, np.uint64])
+def test_huge_labels(dtype):
+    """
+    Regression test that the slices of an image with huge label values
+    are measured with memory set by the number of labels.
+
+    scipy find_objects allocates one entry for every label value up to
+    the maximum, so it runs out of memory for such labels.
+    """
+    data = _make_label_array()
+    expected = SegmentationImage(data)
+    # the label order is kept, so the slices order is unchanged
+    huge = data.astype(dtype)
+    for label in expected.labels:
+        huge[data == label] = 2**40 + 1000 * int(label)
+
+    for segm in (SegmentationImage(huge),
+                 SegmentationImage._from_data(huge)):
+        assert_equal(segm.labels, 2**40 + 1000 * expected.labels)
+        assert segm.labels.dtype == dtype
+        assert_equal(segm.areas, expected.areas)
+        assert segm.slices == expected.slices
+        assert type(segm.slices[0][0].start) is int
+        assert [bbox.shape for bbox in segm.bbox] == [
+            bbox.shape for bbox in expected.bbox]
+        segment = segm.get_segment(int(segm.labels[1]))
+        assert segment.area == expected.areas[1]
 
 
 def test_label_stats_reset_on_reassignment():
