@@ -17,6 +17,7 @@ from scipy.signal import fftconvolve
 
 from photutils.aperture import BoundingBox
 from photutils.aperture.region_converters import _shapely_polygon_to_region
+from photutils.segmentation._label_stats import label_stats
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_positional_kwargs)
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
@@ -24,6 +25,12 @@ from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['Segment', 'SegmentationImage']
+
+# The compiled label measurement allocates arrays that are indexed by
+# the label value. An array whose largest label exceeds both this value
+# and a quarter of its number of pixels is measured with the sort-based
+# method instead, which does not depend on the size of the labels.
+_MIN_MAX_LABEL_LIMIT = 65536
 
 # Remove in 4.0
 _SEGM_DEPRECATED_ATTRIBUTES = {
@@ -64,6 +71,54 @@ def _get_labels(array, *, return_counts=False):
         ``labels``. Only returned if ``return_counts`` is `True`.
     """
     return np.unique(array[array != 0], return_counts=return_counts)
+
+
+def _get_label_stats(array):
+    """
+    Return the labels of a segmentation array with their areas and
+    bounding boxes.
+
+    A 2D array is measured in a single pass by compiled code. An array
+    of another dimension, or one with negative labels, unsigned 64-bit
+    labels, or very large labels, is measured with `numpy.unique`, which
+    does not give the bounding boxes.
+
+    Parameters
+    ----------
+    array : int `~numpy.ndarray`
+        The segmentation array.
+
+    Returns
+    -------
+    labels : 1D `~numpy.ndarray`
+        The sorted non-zero values in ``array``, with its dtype.
+
+    areas : 1D intp `~numpy.ndarray`
+        The number of pixels of each label.
+
+    bounds : 2D intp `~numpy.ndarray` or `None`
+        The ``(ymin, ymax, xmin, xmax)`` bounds of the minimal bounding
+        box of each label, one row per label, where the maximum bounds
+        are exclusive. `None` if the bounding boxes were not measured.
+    """
+    dtype = array.dtype
+    if (array.ndim == 2 and dtype.kind in 'iu'
+            and not (dtype.kind == 'u' and dtype.itemsize == 8)):
+        # The kernel takes native int32 or int64 arrays. Other integer
+        # arrays are cast to the smallest of the two that holds them.
+        if not (dtype.isnative and dtype.type in (np.int32, np.int64)):
+            dtype = np.int32 if dtype.itemsize < 4 else np.int64
+        max_label_limit = max(array.size // 4, _MIN_MAX_LABEL_LIMIT)
+        (_, _, counts, ymin, ymax, xmin, xmax) = label_stats(
+            np.ascontiguousarray(array, dtype=dtype), max_label_limit)
+        if counts is not None:
+            idx = np.flatnonzero(counts)
+            bounds = np.column_stack((ymin[idx], ymax[idx] + 1,
+                                      xmin[idx], xmax[idx] + 1))
+            return idx.astype(array.dtype), counts[idx], bounds
+
+    labels, areas = _get_labels(array, return_counts=True)
+    return labels, areas, None
 
 
 def _remap_deblend_label_map(deblend_label_map, relabel_map):
@@ -394,7 +449,7 @@ class SegmentationImage:
             self.__dict__.pop(key, None)
 
     def _set_data(self, data, *, labels=None, areas=None, slices=None,
-                  preserve_info=False):
+                  label_stats=None, preserve_info=False):
         """
         Set the segmentation array and seed its derived properties.
 
@@ -422,6 +477,10 @@ class SegmentationImage:
             The minimal bounding slices of each label, in the same
             order as ``labels``.
 
+        label_stats : tuple, optional
+            The ``(labels, areas, bounds)`` tuple returned by
+            ``_get_label_stats`` for ``data``.
+
         preserve_info : bool, optional
             If `True`, keep the current ``info`` dictionary instead of
             resetting it to an empty one. This is used by the
@@ -441,7 +500,8 @@ class SegmentationImage:
         # returned as-is and an absent one falls through to the
         # property body.
         for name, value in (('labels', labels), ('areas', areas),
-                            ('slices', slices)):
+                            ('slices', slices),
+                            ('_label_stats', label_stats)):
             if value is not None:
                 self.__dict__[name] = value
 
@@ -466,9 +526,10 @@ class SegmentationImage:
             msg = 'data must have integer type'
             raise TypeError(msg)
 
-        # A single pass over the non-zero pixels yields both the
-        # sorted labels and their pixel areas
-        labels, areas = _get_labels(value, return_counts=True)
+        # A single pass over the array yields the sorted labels, their
+        # pixel areas, and their bounding boxes
+        label_stats = _get_label_stats(value)
+        labels, areas, _ = label_stats
 
         # labels is sorted, so only the first element can be negative.
         # The size check also covers all-zero and zero-size arrays.
@@ -476,7 +537,8 @@ class SegmentationImage:
             msg = 'The segmentation image cannot contain negative integers.'
             raise ValueError(msg)
 
-        self._set_data(value, labels=labels, areas=areas)
+        self._set_data(value, labels=labels, areas=areas,
+                       label_stats=label_stats)
 
     @cached_property
     def data_masked(self):
@@ -494,13 +556,23 @@ class SegmentationImage:
         return self._data.shape
 
     @cached_property
+    def _label_stats(self):
+        """
+        The ``(labels, areas, bounds)`` tuple of the segmentation array
+        (see ``_get_label_stats``).
+        """
+        # Seeded by _set_data when the data attribute is assigned. This
+        # runs only when the array was set without validation.
+        return _get_label_stats(self._data)
+
+    @cached_property
     def labels(self):
         """
         The sorted non-zero labels in the segmentation array.
         """
         # Normally seeded by _set_data. This runs only when the array
         # was set without known labels.
-        return _get_labels(self._data)
+        return self._label_stats[0]
 
     @cached_property
     def n_labels(self):
@@ -579,8 +651,12 @@ class SegmentationImage:
         a length equal to the number of labels and matches the order of
         the ``labels`` attribute.
         """
-        return [slc for slc in find_objects(self._data)
-                if slc is not None]
+        bounds = self._label_stats[2]
+        if bounds is None:
+            return [slc for slc in find_objects(self._data)
+                    if slc is not None]
+        return [(slice(ymin, ymax), slice(xmin, xmax))
+                for ymin, ymax, xmin, xmax in bounds.tolist()]
 
     def _get_slice(self, label):
         """
@@ -637,7 +713,7 @@ class SegmentationImage:
         # Normally seeded by _set_data from the same single pass that
         # produces the labels. This runs only when the array was set
         # without known areas.
-        return _get_labels(self._data, return_counts=True)[1]
+        return self._label_stats[1]
 
     def get_area(self, label):
         """

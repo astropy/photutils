@@ -14,8 +14,10 @@ import numpy as np
 import pytest
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
+from scipy.ndimage import find_objects
 
 import photutils.segmentation.core as segm_core
+from photutils.segmentation._label_stats import label_stats
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
@@ -234,23 +236,23 @@ class TestSegmentationImage:
             idx = segm.get_index(label)
             assert segm._get_slice(label) == segm.slices[idx]
 
-    def test_find_objects_called_once(self, monkeypatch):
+    def test_label_stats_called_once(self, monkeypatch):
         """
-        Test that the bounding slices are computed only once, even
-        when both slices and per-label segments are used.
+        Test that the labels, areas, and bounding slices are measured by
+        a single pass over the array, even when the slices and the
+        per-label segments are used.
         """
         calls = []
-        original = segm_core.find_objects
+        original = segm_core.label_stats
 
-        def counting_find_objects(*args, **kwargs):
+        def counting_label_stats(*args, **kwargs):
             calls.append(1)
             return original(*args, **kwargs)
 
-        monkeypatch.setattr(segm_core, 'find_objects',
-                            counting_find_objects)
+        monkeypatch.setattr(segm_core, 'label_stats', counting_label_stats)
 
         segm = SegmentationImage(self.data.copy())
-        _ = segm.slices
+        _ = segm.labels, segm.areas, segm.slices
         _ = segm.get_segment(int(segm.labels[0]))
         assert len(calls) == 1
 
@@ -1339,9 +1341,9 @@ def test_subclass(segm_data):
                       [70, 70, 0, 0],
                       [70, 70, 0, 1]])
     segm.data = data2
-    # Only _data, labels, areas, _deblend_label_map, _flags_map, and
-    # info remain
-    assert len(segm.__dict__) == 6
+    # Only _data, labels, areas, _label_stats, _deblend_label_map,
+    # _flags_map, and info remain
+    assert len(segm.__dict__) == 7
     assert_equal(segm.areas, [1, 2, 2, 4])
 
 
@@ -2260,3 +2262,168 @@ def test_segment_deprecations(segm_data):
     match = 'attribute was deprecated'
     with pytest.warns(PhotutilsDeprecationWarning, match=match):
         _ = segments[0].data_ma
+
+
+def _make_label_array():
+    """
+    Make a segmentation array with non-consecutive labels, labels that
+    touch every edge, a label split into two regions, and a label that
+    surrounds another.
+    """
+    data = np.zeros((40, 50), dtype=int)
+    data[0:3, 0:4] = 7
+    data[37:40, 46:50] = 7  # second region of label 7
+    data[10:20, 10:25] = 3
+    data[13:16, 14:18] = 90  # inside label 3
+    data[30, 5:45] = 12
+    data[5:35, 49] = 120
+    data[22, 30] = 1
+    return data
+
+
+@pytest.mark.parametrize('dtype', ['i1', 'u1', 'i2', 'u2', 'i4', 'u4', 'i8',
+                                   'u8', '>i4', '>i8'])
+@pytest.mark.parametrize('layout', ['C', 'F', 'strided', 'read-only'])
+def test_label_stats_matches_numpy(dtype, layout):
+    """
+    Test that the labels, areas, and slices of a segmentation image
+    are identical to those of numpy.unique and scipy find_objects for
+    every integer dtype and memory layout, both for a validated and a
+    pre-validated array.
+    """
+    data = _make_label_array().astype(dtype)
+    if layout == 'F':
+        data = np.asfortranarray(data)
+    elif layout == 'strided':
+        data = np.repeat(np.repeat(data, 2, axis=0), 2, axis=1)[::2, ::2]
+    elif layout == 'read-only':
+        data.setflags(write=False)
+
+    labels, areas = np.unique(data[data != 0], return_counts=True)
+    slices = [slc for slc in find_objects(data) if slc is not None]
+
+    for segm in (SegmentationImage(data),
+                 SegmentationImage._from_data(data)):
+        assert_equal(segm.labels, labels)
+        assert segm.labels.dtype == labels.dtype
+        assert_equal(segm.areas, areas)
+        assert segm.areas.dtype == areas.dtype
+        assert segm.slices == slices
+        for slc in segm.slices:
+            for item in slc:
+                assert type(item.start) is int
+                assert type(item.stop) is int
+                assert item.step is None
+
+
+@pytest.mark.parametrize('dtype', [np.int32, np.int64])
+def test_label_stats_kernel(dtype):
+    """
+    Test the per-label counts and bounding boxes of the kernel, and
+    that it declines arrays with negative or too-large labels.
+    """
+    data = _make_label_array().astype(dtype)
+    vmin, vmax, counts, ymin, ymax, xmin, xmax = label_stats(data, 1000)
+    assert (vmin, vmax) == (0, 120)
+    assert_equal(counts, np.bincount(data.ravel(), minlength=121)
+                 * (np.arange(121) > 0))
+    for label, slc in enumerate(find_objects(data), start=1):
+        if slc is None:
+            assert counts[label] == 0
+            continue
+        assert (ymin[label], ymax[label] + 1) == (slc[0].start, slc[0].stop)
+        assert (xmin[label], xmax[label] + 1) == (slc[1].start, slc[1].stop)
+
+    # a label above the limit
+    result = label_stats(data, 119)
+    assert result[:2] == (0, 120)
+    assert all(item is None for item in result[2:])
+
+    # a negative value
+    data[0, 10] = -4
+    result = label_stats(data, 1000)
+    assert result[:2] == (-4, 120)
+    assert all(item is None for item in result[2:])
+
+    # a zero-size array
+    result = label_stats(np.zeros((0, 5), dtype=dtype), 1000)
+    assert result[:2] == (0, 0)
+    assert all(item is None for item in result[2:])
+
+
+def test_label_stats_fallback():
+    """
+    Test that arrays the kernel does not measure (very large labels,
+    unsigned 64-bit labels, and arrays that are not 2D) give the same
+    labels, areas, and slices from the sort-based method.
+    """
+    data = _make_label_array()
+    labels, areas = np.unique(data[data != 0], return_counts=True)
+    slices = [slc for slc in find_objects(data) if slc is not None]
+
+    # the kernel measures the array
+    assert SegmentationImage(data)._label_stats[2] is not None
+
+    # a label above the limit of the kernel
+    large = data.astype(np.int32)
+    large[large == 120] = 70000
+    segm = SegmentationImage(large)
+    assert segm._label_stats[2] is None
+    assert_equal(segm.labels, [1, 3, 7, 12, 90, 70000])
+    assert_equal(segm.areas, areas)
+    assert segm.slices == [slc for slc in find_objects(large)
+                           if slc is not None]
+
+    # a label too large for the per-label arrays
+    huge = data.astype(np.int64)
+    huge[huge == 120] = 2**40
+    segm = SegmentationImage(huge)
+    assert segm._label_stats[2] is None
+    assert_equal(segm.labels, [1, 3, 7, 12, 90, 2**40])
+    assert_equal(segm.areas, [1, 138, 24, 40, 12, 30])
+
+    # unsigned 64-bit labels
+    segm = SegmentationImage(data.astype(np.uint64))
+    assert segm._label_stats[2] is None
+    assert_equal(segm.labels, labels)
+    assert segm.labels.dtype == np.uint64
+    assert segm.slices == slices
+
+    # a 3D array
+    cube = np.stack((data, data, np.zeros_like(data)))
+    segm = SegmentationImage(cube)
+    assert segm._label_stats[2] is None
+    assert_equal(segm.labels, labels)
+    assert_equal(segm.areas, 2 * areas)
+    assert segm.slices == [slc for slc in find_objects(cube)
+                           if slc is not None]
+
+    # an array with no labels
+    segm = SegmentationImage(np.zeros((4, 5), dtype=int))
+    assert segm.n_labels == 0
+    assert len(segm.areas) == 0
+    assert segm.slices == []
+
+
+def test_label_stats_reset_on_reassignment():
+    """
+    Test that the slices follow the data when it is reassigned or
+    relabeled.
+    """
+    data = _make_label_array()
+    segm = SegmentationImage(data)
+    _ = segm.slices
+
+    data2 = np.zeros_like(data)
+    data2[5:9, 6:11] = 4
+    segm.data = data2
+    assert_equal(segm.labels, [4])
+    assert segm.slices == [(slice(5, 9), slice(6, 11))]
+
+    segm = SegmentationImage(data)
+    expected = SegmentationImage(data).slices
+    segm.relabel_consecutive()
+    assert segm.slices == expected
+    segm.remove_label(1)
+    assert segm.slices == [slc for slc in find_objects(segm.data)
+                           if slc is not None]
