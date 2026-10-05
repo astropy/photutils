@@ -985,6 +985,9 @@ Bug Fixes
     It is now calculated in ``float64``, as are all of the other source
     properties. [#2446]
 
+  - Fixed a crash in ``deblend_sources`` when the input
+    ``SegmentationImage`` has a ``uint64`` data type. [#2462]
+
 - ``photutils.utils``
 
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the

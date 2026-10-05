@@ -410,7 +410,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     counts = np.where(deblended, n_labels, 0)
     label_offsets = np.zeros(len(labels), dtype=np.int64)
     np.cumsum(counts[:-1], out=label_offsets[1:])
-    label_offsets += segmentation_image.max_label
+    label_offsets += int(segmentation_image.max_label)
 
     segm_out = driver_segm.copy()
     for indices, result in chunk_results:
