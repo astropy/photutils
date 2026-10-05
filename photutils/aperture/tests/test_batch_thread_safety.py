@@ -311,6 +311,45 @@ class TestApertureStatsThreadSafety:
                 assert_array_equal(values, np.asarray(getattr(expected,
                                                               name)))
 
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    def test_shared_instance_all_properties(self, use_sigma_clip):
+        """
+        Regression test that threads reading every property of one
+        shared ApertureStats instance never fail while another thread
+        adds results to the shared block-reduction cache.
+
+        Each thread reads all of the properties, starting from a
+        different one, so that some threads look up the cache while
+        others fill it. On a free-threaded build this raised
+        "dictionary changed size during iteration".
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 1.0, (150, 150))
+        aperture = CircularAperture(rng.uniform(20, 130, (6, 2)), r=6.0)
+        sigma_clip = SigmaClip(sigma=3.0) if use_sigma_clip else None
+        names = (*_STATS_PROPERTIES, 'moments_central', 'flags',
+                 'center_aper_area')
+
+        expected_stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
+        expected = {name: np.asarray(getattr(expected_stats, name))
+                    for name in names}
+
+        for _ in range(50):
+            stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
+            barrier = threading.Barrier(N_THREADS)
+
+            def read(start, stats=stats, barrier=barrier):
+                barrier.wait()
+                order = names[start:] + names[:start]
+                return {name: np.asarray(getattr(stats, name))
+                        for name in order}
+
+            with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
+                results = list(ex.map(read, range(N_THREADS)))
+            for result in results:
+                for name, values in result.items():
+                    assert_array_equal(values, expected[name])
+
     def test_no_cross_instance_serialization(self, monkeypatch):
         """
         Test that computing a cached property on one instance does not

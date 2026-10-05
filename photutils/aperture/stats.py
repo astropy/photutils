@@ -1261,8 +1261,10 @@ class ApertureStats:
 
         # Sigma clipping returns the sorted surviving values.
         clipped = self._batch_inputs[-1] is not None
+        # The cache is tested by key, never iterated, because another
+        # thread may add results to it at the same time.
         need_sorted = any(_BLOCK_REDUCTIONS[key][1] == 'sorted'
-                          for key in names - cache.keys())
+                          for key in names if key not in cache)
         if not single_block:
             names.add('order_stats' if clipped or need_sorted else 'minmax')
         names = [key for key in _BLOCK_REDUCTIONS
