@@ -641,8 +641,11 @@ class ApertureStats:
         else:
             newcls._seg_labels = np.atleast_1d(self._seg_labels[index])
 
-        # Slice evaluated cached-property objects
-        keys = set(self.__dict__.keys()) & set(self._cached_properties)
+        # Slice evaluated cached-property objects. The instance dict is
+        # copied into the set in one step, not iterated through a keys
+        # view, because another thread may add a cached property to it
+        # at the same time.
+        keys = set(self.__dict__) & set(self._cached_properties)
         keys.add('_local_bkg')  # iterable defined in __init__
         # The packed gather buffers and their reductions are not
         # per-source sliceable. The sliced object recomputes them
@@ -1261,8 +1264,10 @@ class ApertureStats:
 
         # Sigma clipping returns the sorted surviving values.
         clipped = self._batch_inputs[-1] is not None
+        # The cache is tested by key, never iterated, because another
+        # thread may add results to it at the same time.
         need_sorted = any(_BLOCK_REDUCTIONS[key][1] == 'sorted'
-                          for key in names - cache.keys())
+                          for key in names if key not in cache)
         if not single_block:
             names.add('order_stats' if clipped or need_sorted else 'minmax')
         names = [key for key in _BLOCK_REDUCTIONS

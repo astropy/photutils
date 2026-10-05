@@ -1028,14 +1028,16 @@ class SourceCatalog:
 
         # Slice the flux_radius cache values. Like the other private
         # per-source attributes, the cached arrays keep a length-1
-        # leading axis for a scalar catalog.
+        # leading axis for a scalar catalog. The cache and the instance
+        # dict below are copied in one step before they are iterated,
+        # because another thread may add to them at the same time.
         cache_index = [index] if newcls.isscalar else index
-        newcls._flux_radius_cache = {key: value[cache_index]
-                                     for key, value
-                                     in self._flux_radius_cache.items()}
+        newcls._flux_radius_cache = {
+            key: value[cache_index]
+            for key, value in dict(self._flux_radius_cache).items()}
 
         # Evaluated cached-property objects and extra properties
-        keys = (set(self.__dict__.keys())
+        keys = (set(self.__dict__)
                 & (set(self._cached_properties)
                    | set(self._custom_properties)))
         # The packed caches are recomputed by the sliced catalog on

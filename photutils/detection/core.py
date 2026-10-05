@@ -303,7 +303,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         setattr(newcls, attr, getattr(self, attr)[index])
 
         # Index/slice the remaining attributes
-        keys = set(self.__dict__.keys()) & set(self._cached_properties)
+        keys = set(self.__dict__) & set(self._cached_properties)
         keys.add('id')
         for key in keys:
             value = self.__dict__[key]
