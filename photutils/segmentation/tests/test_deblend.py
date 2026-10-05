@@ -19,12 +19,15 @@ from photutils.segmentation import deblend_sources, detect_sources
 from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
                                                      deblend_source_stats)
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
-from photutils.segmentation._deblend_watershed import (deblend_contrast_chunk,
+from photutils.segmentation._deblend_watershed import (apply_relabel_map,
+                                                       deblend_contrast_chunk,
                                                        deblend_watershed,
+                                                       find_present_labels,
                                                        write_deblended_labels)
 from photutils.segmentation.deblend import (_ChunkResult, _compute_thresholds,
                                             _create_relabel_map,
-                                            _DeblendParams)
+                                            _DeblendParams,
+                                            _relabel_consecutive)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils.exceptions import (DeblendWarning,
@@ -1266,6 +1269,144 @@ def test_write_deblended_labels(dtype):
     expected[1, 2] = 12
     assert_equal(segm_out, expected)
     assert segm_out.dtype == dtype
+
+
+@pytest.mark.parametrize('dtype', [np.int32, np.int64])
+def test_relabel_kernels(dtype):
+    """
+    Test that the relabel kernels mark the labels that are present and
+    rewrite the array in place through the relabeling map.
+    """
+    segm = np.array([[0, 5, 5, 0],
+                     [9, 0, 2, 2],
+                     [9, 9, 0, 5]], dtype=dtype)
+    present = np.zeros(11, dtype=np.uint8)
+    present[7] = 1  # the elements of absent labels are left unchanged
+    find_present_labels(segm, present)
+    assert_equal(np.flatnonzero(present), [0, 2, 5, 7, 9])
+
+    relabel_map = np.zeros(11, dtype=np.int64)
+    relabel_map[[2, 5, 9]] = [1, 2, 3]
+    expected = relabel_map[segm]
+    apply_relabel_map(segm, relabel_map)
+    assert_equal(segm, expected)
+    assert segm.dtype == dtype
+
+    # empty arrays are accepted
+    empty = np.zeros((0, 4), dtype=dtype)
+    find_present_labels(empty, present)
+    apply_relabel_map(empty, relabel_map)
+
+
+@pytest.mark.parametrize('dtype', [np.int32, np.int64])
+@pytest.mark.parametrize('value', [-1, 4])
+def test_relabel_kernels_invalid_values(dtype, value):
+    """
+    Test that the relabel kernels raise an error for a label that
+    cannot index the per-label array.
+    """
+    segm = np.array([[0, 1], [value, 3]], dtype=dtype)
+
+    match = 'segm contains a value outside the range of present'
+    with pytest.raises(ValueError, match=match):
+        find_present_labels(segm, np.zeros(4, dtype=np.uint8))
+    match = 'present must not be empty'
+    with pytest.raises(ValueError, match=match):
+        find_present_labels(segm, np.zeros(0, dtype=np.uint8))
+
+    match = 'segm contains a value outside the range of relabel_map'
+    with pytest.raises(ValueError, match=match):
+        apply_relabel_map(segm, np.arange(4, dtype=np.int64))
+    match = 'relabel_map must not be empty'
+    with pytest.raises(ValueError, match=match):
+        apply_relabel_map(segm, np.zeros(0, dtype=np.int64))
+
+
+@pytest.mark.parametrize('dtype', [np.int32, np.int64])
+@pytest.mark.parametrize('n_threads', [1, 2, 3, 8, 50])
+def test_relabel_consecutive(dtype, n_threads):
+    """
+    Test that the in-place consecutive relabeling matches the NumPy
+    relabeling map for any number of threads, including more threads
+    than image rows.
+    """
+    rng = np.random.default_rng(0)
+    labels = np.array([0, 0, 0, 3, 4, 17, 250, 251, 999])
+    segm = rng.choice(labels, size=(31, 40)).astype(dtype)
+    expected_map = _create_relabel_map(segm)
+    expected = expected_map[segm]
+
+    relabel_map = _relabel_consecutive(segm, 1200, n_threads)
+    assert_equal(segm, expected)
+    assert segm.dtype == dtype
+    assert_equal(relabel_map[:1000], expected_map)
+    assert_equal(relabel_map[1000:], 0)
+
+    # consecutive labels are left unchanged
+    original = segm.copy()
+    assert _relabel_consecutive(segm, 1200, n_threads) is None
+    assert_equal(segm, original)
+
+    # an array with no labels is left unchanged
+    zeros = np.zeros((5, 4), dtype=dtype)
+    assert _relabel_consecutive(zeros, 10, n_threads) is None
+    assert_equal(zeros, 0)
+
+
+@pytest.mark.parametrize('n_threads', [1, 4])
+def test_relabel_nonconsecutive_input(n_threads):
+    """
+    Test that deblending relabels a segmentation image with
+    non-consecutive input labels identically to relabeling the
+    non-relabeled result.
+    """
+    data, segm = make_multipeak_source()
+    segm_data = segm.data.copy()
+    segm_data[segm_data > 0] = 1000
+    segm_data[0:3, 0:3] = 40
+    segm = SegmentationImage(segm_data)
+
+    raw = deblend_sources(data, segm, 5, relabel=False,
+                          n_threads=n_threads)
+    result = deblend_sources(data, segm, 5, n_threads=n_threads)
+    relabel_map = _create_relabel_map(raw.data)
+    assert_equal(result.data, relabel_map[raw.data])
+    assert result.is_consecutive
+    assert result.data.dtype == segm_data.dtype
+    result_map = result.parent_to_deblended_labels
+    for parent, children in raw.parent_to_deblended_labels.items():
+        assert_equal(result_map[parent], relabel_map[children])
+
+
+@pytest.mark.parametrize('n_threads', [1, 4])
+def test_relabel_large_labels(n_threads, monkeypatch):
+    """
+    Test that an image with labels too large for the compiled relabeling
+    is relabeled with the sort-based method, giving the same result as
+    the same image with small labels.
+    """
+    data, segm = make_multipeak_source()
+    expected = deblend_sources(data, segm, 5, n_threads=n_threads)
+
+    offset = 70000  # above the limit for an image of this size
+    segm_data = np.where(segm.data > 0, segm.data + offset, 0)
+    segm_large = SegmentationImage(segm_data)
+
+    def fail(*args, **kwargs):  # noqa: ARG001
+        msg = 'the compiled relabeling must not be used'
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(deblend_module, '_relabel_consecutive', fail)
+    result = deblend_sources(data, segm_large, 5, n_threads=n_threads)
+    assert_equal(result.data, expected.data)
+    assert result.data.dtype == segm_data.dtype
+    children = result.parent_to_deblended_labels[1 + offset]
+    assert_equal(children, result.labels)
+    assert children.dtype == segm_data.dtype
+
+    raw = deblend_sources(data, segm_large, 5, relabel=False,
+                          n_threads=n_threads)
+    assert_equal(raw.labels, offset + 1 + np.arange(1, raw.n_labels + 1))
 
 
 def test_chunk_kernels_validate_inputs():

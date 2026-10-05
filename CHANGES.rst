@@ -389,7 +389,7 @@ New Features
     results. The multithreshold watershed markers are now built by
     compiled code. Deblending is typically ~7-30 times faster, both for
     fields of many small blended sources and for large segments with
-    many markers. [#2408, #2413]
+    many markers. [#2408, #2413, #2463]
 
   - Added an ``n_threads`` keyword to ``deblend_sources`` and
     ``SourceFinder`` to deblend the sources using multiple threads.
