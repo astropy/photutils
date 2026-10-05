@@ -1022,6 +1022,27 @@ def test_deblend_segm_dtype():
     assert_equal(result.data, expected.data)
 
 
+@pytest.mark.parametrize('dtype', [np.uint16, np.uint32, np.uint64])
+def test_deblend_segm_unsigned_dtype(dtype):
+    """
+    Test that deblending a segmentation image with an unsigned integer
+    dtype gives the same result as the int32 one and keeps the input
+    dtype.
+    """
+    data, segm = make_multipeak_source()
+    expected = deblend_sources(data, segm, 5)
+    segm_unsigned = SegmentationImage(segm.data.astype(dtype))
+    result = deblend_sources(data, segm_unsigned, 5)
+    assert result.data.dtype == dtype
+    assert_equal(result.data, expected.data)
+    expected_map = expected._deblend_label_map
+    assert result._deblend_label_map.keys() == expected_map.keys()
+    for label, children in result._deblend_label_map.items():
+        assert children.dtype == dtype
+        assert_equal(children, expected_map[label])
+    assert result._flags_map == expected._flags_map
+
+
 def test_deblend_byte_order():
     """
     Test that non-native byte order data and segmentation images give
