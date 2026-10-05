@@ -742,6 +742,16 @@ and `~photutils.segmentation.SourceCatalog.centroid_quad_fallback`
 properties report where the windowed or quadratic centroid was replaced
 by the isophotal centroid or the peak pixel position.
 
+The ``kron_minimum_radius`` flag marks sources whose
+`~photutils.segmentation.SourceCatalog.kron_radius` was
+set to the minimum Kron radius or replaced by the minimum
+circular aperture. This is common for compact sources because
+the unscaled Kron radius of a Gaussian source is about
+1.25, which is below the default minimum of 1.4. The new
+`~photutils.segmentation.SourceCatalog.kron_radius_measured` property
+returns the measured Kron radius before the ``kron_params`` minimum
+values are applied.
+
 
 Faster Source Catalog Measurements
 ==================================

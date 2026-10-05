@@ -755,6 +755,33 @@ class TestSourceCatalog:
         cat = SourceCatalog(self.data - 10, self.segm)
         assert_allclose(cat.kron_radius.value, cat.kron_params[1])
 
+    def test_kron_radius_measured_negative(self):
+        """
+        Test that the measured Kron radius is NaN when the Kron sums
+        are not positive, while the minimum Kron radius is applied.
+        """
+        cat = SourceCatalog(self.data - 10, self.segm)
+        assert np.all(np.isnan(cat.kron_radius_measured))
+        assert_equal(cat.kron_radius.value, cat.kron_params[1])
+
+    def test_kron_radius_measured_detection_catalog(self):
+        """
+        Test that the measured Kron radius comes from the detection
+        catalog.
+        """
+        cat = SourceCatalog(self.data * 2.0 + 1.0, self.segm,
+                            detection_catalog=self.cat)
+        assert_equal(cat.kron_radius_measured,
+                     self.cat.kron_radius_measured)
+
+    def test_kron_radius_measured_scalar(self):
+        """
+        Test the measured Kron radius of a scalar catalog.
+        """
+        obj = self.cat[1]
+        assert obj.kron_radius_measured.isscalar
+        assert obj.kron_radius_measured == self.cat.kron_radius_measured[1]
+
     def test_kron_photometry(self):
         """
         Test kron photometry.
@@ -2211,6 +2238,15 @@ def test_kron_params():
     rh = cat.flux_radius(0.5)
     assert_allclose(rh.value.min(), 1.293722, rtol=1e-6)
 
+    # The measured Kron radius is not clipped to the minimum
+    measured = cat.kron_radius_measured
+    assert measured.unit == u.pix
+    assert_allclose(measured.value.min(), 0.677399, rtol=1e-6)
+    clipped = measured.value < minrad
+    assert np.count_nonzero(clipped) == 48
+    assert_equal(cat.kron_radius.value[clipped], minrad)
+    assert_equal(cat.kron_radius[~clipped], measured[~clipped])
+
     minrad = 1.2
     kron_params = (2.5, minrad, 0.0)
     cat = SourceCatalog(data, segm, convolved_data=convolved_data,
@@ -2228,6 +2264,12 @@ def test_kron_params():
     assert_allclose(cat.kron_flux.min(), 264.775307)
     rh = cat.flux_radius(0.5)
     assert_allclose(rh.value.min(), 1.232554)
+
+    # The measured Kron radius does not depend on the minimum values
+    for kron_params in ((2.5, 1.4, 0.0), (2.5, 1.4, 7.0)):
+        cat2 = SourceCatalog(data, segm, convolved_data=convolved_data,
+                             kron_params=kron_params)
+        assert_equal(cat2.kron_radius_measured, cat.kron_radius)
 
     kron_params = (2.5, 1.4, 7.0)
     cat = SourceCatalog(data, segm, convolved_data=convolved_data,
@@ -2631,6 +2673,9 @@ def test_kron_radius_max(gauss_101_catalog):
                           lambda _self: np.array([100.0]))):
         cat2 = SourceCatalog(data, segm)
         assert np.isnan(cat2.kron_radius.value)
+
+        # The measured value is reported as is
+        assert cat2.kron_radius_measured.value == 100.0
 
         # Downstream properties should also be NaN / None
         assert cat2.kron_aperture[0] is None

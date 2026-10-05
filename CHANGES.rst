@@ -419,6 +419,10 @@ New Features
     windowed or quadratic centroid was substituted by the isophotal
     centroid or peak pixel, or the value is NaN. [#2450]
 
+  - Added a ``kron_radius_measured`` property to ``SourceCatalog`` that
+    returns the measured unscaled Kron radius before the ``kron_params``
+    minimum values are applied. [#2459]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
