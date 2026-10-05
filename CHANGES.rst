@@ -423,6 +423,14 @@ New Features
     returns the measured unscaled Kron radius before the ``kron_params``
     minimum values are applied. [#2459]
 
+  - Significantly improved the performance of creating a
+    ``SegmentationImage`` and of its ``labels``, ``areas``, and
+    ``slices`` attributes, producing identical results. They are now
+    measured by compiled code in a single pass over the segmentation
+    array. Creating a ``SegmentationImage`` and getting its slices is
+    typically ~4-15 times faster, depending on the fraction of labeled
+    pixels. [#2464]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
@@ -987,6 +995,15 @@ Bug Fixes
 
   - Fixed a crash in ``deblend_sources`` when the input
     ``SegmentationImage`` has a ``uint64`` data type. [#2462]
+
+  - Fixed ``SegmentationImage`` and ``deblend_sources`` running out of
+    memory for a 2D segmentation image with very large label values
+    (e.g., ``2**40``). The ``slices``, ``bbox``, and ``segments``
+    attributes, the ``relabel_consecutive``, ``reassign_labels``,
+    ``keep_labels``, and ``remove_labels`` methods, and the relabeling
+    in ``deblend_sources`` allocated memory in proportion to the largest
+    label value. They now use memory in proportion to the number of
+    labels. [#2464]
 
 - ``photutils.utils``
 
