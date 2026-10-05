@@ -7,7 +7,7 @@ import sys
 import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from functools import cached_property
+from functools import cached_property, partial
 from unittest.mock import PropertyMock, patch
 
 import numpy as np
@@ -2580,6 +2580,68 @@ def test_huge_labels_relabel(dtype):
         ref.keep_labels(ref_labels[::2], relabel=relabel)
         assert_equal(segm.areas, ref.areas)
         assert_equal(segm.labels, ref.labels if relabel else labels[::2])
+
+
+# The offsets of the labels of _make_label_array that fit in each dtype
+_RELABEL_DTYPE_OFFSETS = [
+    (dtype, offset)
+    for dtype in ('i2', 'u4', 'i8', 'u8', '>i2', '>i4', '>u4', '>i8', '>u8')
+    for offset in (0, 10000, 10**6, 2**40)
+    if offset + 120 <= np.iinfo(dtype).max]
+
+
+@pytest.mark.parametrize(('dtype', 'offset'), _RELABEL_DTYPE_OFFSETS)
+def test_relabel_preserves_dtype(dtype, offset):
+    """
+    Test that the relabeling methods keep the dtype of the segmentation
+    array, including its byte order, both for labels that are relabeled
+    with an array indexed by the label value and for larger labels.
+    """
+    dtype = np.dtype(dtype)
+    data = _make_label_array()
+    ref_labels = SegmentationImage(data).labels
+    data = np.where(data > 0, data + offset, 0).astype(dtype)
+    labels = SegmentationImage(data).labels
+    assert labels.dtype == dtype
+
+    def relabel_consecutive(segm, ref):
+        segm.relabel_consecutive()
+        ref.relabel_consecutive()
+
+    def relabel_consecutive_start(segm, ref):
+        segm.relabel_consecutive(start_label=5)
+        ref.relabel_consecutive(start_label=5)
+
+    def reassign_labels(segm, ref, relabel):
+        segm.reassign_labels(labels[[1, 2]], new_label=int(labels[0]),
+                             relabel=relabel)
+        ref.reassign_labels(ref_labels[[1, 2]],
+                            new_label=int(ref_labels[0]), relabel=relabel)
+
+    def keep_labels(segm, ref, relabel):
+        segm.keep_labels(labels[::2], relabel=relabel)
+        ref.keep_labels(ref_labels[::2], relabel=relabel)
+
+    def remove_labels(segm, ref, relabel):
+        segm.remove_labels(labels[::2], relabel=relabel)
+        ref.remove_labels(ref_labels[::2], relabel=relabel)
+
+    funcs = [relabel_consecutive, relabel_consecutive_start]
+    for func in (reassign_labels, keep_labels, remove_labels):
+        funcs.extend([partial(func, relabel=False),
+                      partial(func, relabel=True)])
+
+    for func in funcs:
+        segm = SegmentationImage(data.copy())
+        ref = SegmentationImage(_make_label_array())
+        func(segm, ref)
+        assert segm.data.dtype == dtype
+        assert segm.data.dtype.byteorder == dtype.byteorder
+        assert segm.labels.dtype == dtype
+        assert segm.labels.dtype.byteorder == dtype.byteorder
+        assert_equal(segm.data != 0, ref.data != 0)
+        assert_equal(segm.areas, ref.areas)
+        assert segm.slices == ref.slices
 
 
 def test_huge_labels_relabel_maps():

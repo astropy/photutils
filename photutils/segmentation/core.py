@@ -173,10 +173,14 @@ class _SparseRelabelMap:
         The sorted positive label values.
 
     new_labels : 1D int `~numpy.ndarray`
-        The new value of each label.
+        The new value of each label. The values returned by the map
+        have its dtype.
     """
 
     def __init__(self, labels, new_labels):
+        # numpy.concatenate returns arrays with the native byte order,
+        # so the dtype of the new labels is kept for the output
+        self._dtype = new_labels.dtype
         self._labels = np.concatenate((np.zeros(1, dtype=labels.dtype),
                                        labels))
         self._new_labels = np.concatenate(
@@ -193,7 +197,7 @@ class _SparseRelabelMap:
         idx = np.searchsorted(self._labels, index)
         idx = np.minimum(idx, len(self._labels) - 1)
         return np.where(self._labels[idx] == index, self._new_labels[idx],
-                        0).astype(self._new_labels.dtype, copy=False)
+                        0).astype(self._dtype, copy=False)
 
 
 def _make_relabel_map(labels, new_labels, n_pixels):
@@ -1415,7 +1419,10 @@ class SegmentationImage:
         old_slices = self.__dict__.get('slices', None)
         old_areas = self.__dict__.get('areas', None)
         dtype = self.data.dtype  # keep the original dtype
-        new_labels = np.arange(self.n_labels, dtype=dtype) + start_label
+        # The cast keeps a non-native byte order, which the addition
+        # does not
+        new_labels = (np.arange(self.n_labels, dtype=dtype)
+                      + start_label).astype(dtype, copy=False)
         new_label_map = _make_relabel_map(self.labels, new_labels,
                                           self._data.size)
         data_new = new_label_map[self.data]

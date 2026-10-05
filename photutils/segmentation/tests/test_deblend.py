@@ -1984,3 +1984,28 @@ def test_huge_labels(relabel):
     children = result.parent_to_deblended_labels[1 + offset]
     assert_equal(children, result.labels)
     assert_equal(result.flags, expected.flags)
+
+
+@pytest.mark.parametrize('dtype', ['>i4', '>i8', '>u8'])
+@pytest.mark.parametrize('offset', [0, 10**6])
+@pytest.mark.parametrize('relabel', [True, False])
+def test_non_native_byte_order(dtype, offset, relabel):
+    """
+    Test that a segmentation image with a non-native byte order, such
+    as one read from a FITS file, is deblended to an image with the
+    same dtype, for small and large labels.
+    """
+    data, segm = make_multipeak_source()
+    dtype = np.dtype(dtype)
+    segm_data = np.where(segm.data > 0, segm.data.astype(np.int64) + offset,
+                         0).astype(dtype)
+
+    expected = deblend_sources(data, segm, 5, relabel=relabel)
+    result = deblend_sources(data, SegmentationImage(segm_data), 5,
+                             relabel=relabel)
+    assert result.data.dtype == dtype
+    assert result.data.dtype.byteorder == dtype.byteorder
+    assert result.labels.dtype.byteorder == dtype.byteorder
+    assert result.n_labels == expected.n_labels > 1
+    assert_equal(result.areas, expected.areas)
+    assert result.slices == expected.slices
