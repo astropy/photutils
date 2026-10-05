@@ -20,6 +20,9 @@ has a SEP analogue ('none' and 'mask'):
      kernel (``filter_type='conv'``)
    * ``kron_radius`` against ``sep.kron_radius``
    * ``kron_flux`` against ``sep.sum_ellipse`` in the Kron aperture
+   * the ``kron_minimum_radius``, ``kron_partial_overlap``, and
+     ``kron_neighbor_pixels`` flags against the ``sep.kron_radius``
+     and ``sep.sum_ellipse`` flags
    * ``flux_radius`` against ``sep.flux_radius``
    * ``centroid_win`` against ``sep.winpos``
    * ``circular_photometry`` against ``sep.sum_circle``
@@ -61,6 +64,15 @@ The following conventions make the two packages comparable:
   above the 6.0 measurement scale), while ``sep.kron_radius`` returns
   the raw measurement. The same limits are applied to the SEP value
   before it is compared and before it defines the SEP Kron aperture.
+* SEP has no minimum Kron radius flag. The SEP equivalent of
+  ``kron_minimum_radius`` is a raw ``sep.kron_radius`` value below
+  ``kron_params[1]`` or the SEP ``APER_NONPOSITIVE`` flag, for which
+  ``SourceCatalog`` also uses the minimum radius.
+* SEP sets ``APER_TRUNC`` from an aperture bounding box whose lower
+  limits are truncated toward zero, so it misses an aperture that
+  extends less than one pixel past the left or bottom edge of the
+  image. ``kron_partial_overlap`` is therefore only required to be set
+  wherever ``APER_TRUNC`` is set.
 * ``sep.flux_radius`` measures the flux in 256 annuli out to the
   maximum radius and linearly interpolates the cumulative profile,
   whereas ``SourceCatalog.flux_radius`` solves for the exact-overlap
@@ -436,6 +448,53 @@ def run_sep_kron_flux(scene, shape, kron_radius, seg_kwargs):
     return np.where(valid, flux, np.nan)
 
 
+def run_sep_kron_flags(scene, shape, seg_kwargs):
+    """
+    Return the SEP equivalents of the ``SourceCatalog`` Kron flags.
+
+    Parameters
+    ----------
+    scene : dict
+        The scene from ``make_scene``.
+
+    shape : tuple of `~numpy.ndarray`
+        The ``(x, y, a, b, theta)`` arrays from ``sep_shape_inputs``.
+
+    seg_kwargs : dict
+        The SEP ``segmap``/``seg_id`` keyword arguments.
+
+    Returns
+    -------
+    result : dict of `~numpy.ndarray`
+        The boolean SEP flags keyed by the ``SourceCatalog`` flag name.
+        The ``kron_neighbor_pixels`` flag is included only when SEP is
+        given a segmentation map.
+    """
+    x, y, a, b, theta = shape
+    raw, radius_flag = sep.kron_radius(scene['data'], x, y, a, b, theta,
+                                       MAX_KRON_RADIUS, **seg_kwargs)
+    raw = np.asarray(raw, dtype=float)
+    kron_radius = np.where(raw > MAX_KRON_RADIUS, np.nan,
+                           np.maximum(raw, KRON_PARAMS[1]))
+    valid = np.isfinite(kron_radius)
+    scale = np.where(valid, KRON_PARAMS[0] * kron_radius, 1.0)
+    _, _, flux_flag = sep.sum_ellipse(scene['data'], x, y, a, b, theta,
+                                      scale, err=scene['error'], subpix=0,
+                                      **seg_kwargs)
+
+    flags = {
+        'kron_minimum_radius': ((raw < KRON_PARAMS[1])
+                                | ((radius_flag & sep.APER_NONPOSITIVE) > 0)),
+        'kron_partial_overlap': valid & ((flux_flag & sep.APER_TRUNC) > 0),
+    }
+    if seg_kwargs:
+        # The scene has no input mask, so the only masked pixels are
+        # those of neighboring sources
+        flags['kron_neighbor_pixels'] = (
+            valid & ((flux_flag & sep.APER_HASMASKED) > 0))
+    return flags
+
+
 def run_sep_flux_radius(scene, shape, kron_radius, kron_flux, seg_kwargs):
     """
     Run ``sep.flux_radius`` normalized by the Kron flux.
@@ -641,6 +700,39 @@ def _check(name, phot, ref, *, rtol, atol, exact=False):
     return ok
 
 
+def _check_flag(name, phot, ref, *, superset=False):
+    """
+    Compare a photutils flag with its SEP equivalent and print one
+    validation row.
+
+    Parameters
+    ----------
+    name : str
+        The ``SourceCatalog`` flag name.
+
+    phot, ref : `~numpy.ndarray` (bool)
+        The photutils and SEP flags.
+
+    superset : bool, optional
+        Whether photutils may flag sources that SEP does not. If
+        `False`, the flags must be identical.
+
+    Returns
+    -------
+    ok : bool
+        Whether the comparison passed.
+    """
+    n_phot_only = np.count_nonzero(phot & ~ref)
+    n_sep_only = np.count_nonzero(~phot & ref)
+    ok = n_sep_only == 0 and (superset or n_phot_only == 0)
+
+    status = 'ok  ' if ok else 'FAIL'
+    print(f'  {name + " flag":26s} {status}  n={phot.size:5d}  '
+          f'photutils {np.count_nonzero(phot)}  SEP {np.count_nonzero(ref)}  '
+          f'photutils only {n_phot_only}  SEP only {n_sep_only}')
+    return ok
+
+
 def validate(scene, scenarios):
     """
     Validate the ``SourceCatalog`` properties against SEP.
@@ -699,6 +791,14 @@ def validate(scene, scenarios):
         ok = _check('kron_flux', catalog.kron_flux, kron_flux,
                     rtol=SEP_RTOL, atol=SEP_ATOL)
         n_fail += not ok
+
+        catalog_flags = np.atleast_1d(catalog.flags)
+        sep_flags = run_sep_kron_flags(scene, shape, seg_kwargs)
+        for name, sep_flag in sep_flags.items():
+            bit = getattr(SEGMENTATION_FLAGS, name.upper())
+            ok = _check_flag(name, (catalog_flags & bit) > 0, sep_flag,
+                             superset=name == 'kron_partial_overlap')
+            n_fail += not ok
 
         half_light = catalog.flux_radius(FRACTION).value
         sep_half_light = run_sep_flux_radius(scene, shape, kron_radius,
