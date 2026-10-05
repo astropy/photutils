@@ -19,6 +19,7 @@ from photutils.segmentation._deblend_watershed import (apply_relabel_map,
                                                        find_present_labels,
                                                        write_deblended_labels)
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
+                                         _make_relabel_map, _max_dense_label,
                                          _remap_deblend_label_map)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
@@ -31,12 +32,6 @@ __all__ = ['deblend_sources']
 # linearly spaced threshold levels, which have fewer levels at low
 # thresholds. The value is arbitrary but works well in practice
 _MAX_MARKERS = 200
-
-# The compiled relabeling allocates arrays that are indexed by the label
-# value. An image whose largest label exceeds both this value and a
-# quarter of its number of pixels is relabeled with the sort-based
-# method instead.
-_MIN_MAX_LABEL_LIMIT = 65536
 
 
 def _validate_deblend_kwargs(*, n_levels, contrast, contrast_method, mode,
@@ -433,7 +428,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     # labels are too large for its per-label arrays
     relabel_map = None
     max_label = int(segmentation_image.max_label) + int(counts.sum())
-    use_kernel = max_label <= max(segm_out.size // 4, _MIN_MAX_LABEL_LIMIT)
+    use_kernel = max_label <= _max_dense_label(segm_out.size)
     if relabel and use_kernel:
         relabel_map = _relabel_consecutive(segm_out, max_label,
                                            int(n_threads))
@@ -464,6 +459,8 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         if relabel_map is not None:
             segm_deblended = relabel_map[segm_deblended]
     elif relabel_map is not None:
+        # This is the map of the compiled relabeling, which is always
+        # an array and never a _SparseRelabelMap
         relabel_map = relabel_map.astype(segm_deblended.dtype, copy=False)
     if relabel_map is not None:
         deblend_label_map = _remap_deblend_label_map(deblend_label_map,
@@ -867,10 +864,10 @@ def _create_relabel_map(array, *, start_label=1):
 
     Returns
     -------
-    relabel_map : 1D `~numpy.ndarray` or None
-        The array mapping the original labels to the new labels. If the
-        labels are already consecutive starting from ``start_label``,
-        then `None` is returned.
+    relabel_map : 1D `~numpy.ndarray`, `_SparseRelabelMap`, or None
+        The map from the original labels to the new labels (see
+        ``_make_relabel_map``). If the labels are already consecutive
+        starting from ``start_label``, then `None` is returned.
     """
     labels = _get_labels(array)
 
@@ -880,8 +877,6 @@ def _create_relabel_map(array, *, start_label=1):
             and (labels[-1] - start_label + 1) == len(labels)):
         return None
 
-    # Create an array to map old labels to new labels
-    relabel_map = np.zeros(labels.max() + 1, dtype=array.dtype)
-    relabel_map[labels] = np.arange(len(labels)) + start_label
-
-    return relabel_map
+    # Create the map from the old labels to the new labels
+    new_labels = (np.arange(len(labels)) + start_label).astype(array.dtype)
+    return _make_relabel_map(labels, new_labels, array.size)

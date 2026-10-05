@@ -17,6 +17,7 @@ from scipy.signal import fftconvolve
 
 from photutils.aperture import BoundingBox
 from photutils.aperture.region_converters import _shapely_polygon_to_region
+from photutils.segmentation._label_stats import label_stats
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_positional_kwargs)
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
@@ -24,6 +25,15 @@ from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['Segment', 'SegmentationImage']
+
+# The label measurement and the relabeling maps use arrays that are
+# indexed by the label value. An array whose largest label exceeds both
+# this value and a quarter of its number of pixels is instead handled
+# through the positions of its labels in the sorted labels, so that the
+# memory used does not depend on the size of the labels. The five
+# per-label arrays of the label measurement use at most 10 bytes per
+# pixel for an array above the minimum limit.
+_MIN_MAX_LABEL_LIMIT = 65536
 
 # Remove in 4.0
 _SEGM_DEPRECATED_ATTRIBUTES = {
@@ -66,6 +76,162 @@ def _get_labels(array, *, return_counts=False):
     return np.unique(array[array != 0], return_counts=return_counts)
 
 
+def _max_dense_label(n_pixels):
+    """
+    Return the largest label of an array with ``n_pixels`` pixels that
+    is handled with arrays indexed by the label value.
+    """
+    return max(n_pixels // 4, _MIN_MAX_LABEL_LIMIT)
+
+
+def _get_label_stats(array):
+    """
+    Return the labels of a segmentation array with their areas and
+    bounding boxes.
+
+    A 2D array is measured in a single pass by compiled code. A 2D
+    array with very large labels is first mapped to consecutive labels,
+    which costs a sort of the labeled pixels, so that the memory used
+    is set by the number of labels and not by their size. An array of
+    another dimension, or one with negative labels, is measured with
+    `numpy.unique`, which does not give the bounding boxes.
+
+    Parameters
+    ----------
+    array : int `~numpy.ndarray`
+        The segmentation array.
+
+    Returns
+    -------
+    labels : 1D `~numpy.ndarray`
+        The sorted non-zero values in ``array``, with its dtype.
+
+    areas : 1D intp `~numpy.ndarray`
+        The number of pixels of each label.
+
+    bounds : 2D intp `~numpy.ndarray` or `None`
+        The ``(ymin, ymax, xmin, xmax)`` bounds of the minimal bounding
+        box of each label, one row per label, where the maximum bounds
+        are exclusive. `None` if the bounding boxes were not measured.
+    """
+    dtype = array.dtype
+    max_label_limit = _max_dense_label(array.size)
+    use_kernel = array.ndim == 2 and dtype.kind in 'iu'
+    if use_kernel and dtype.kind == 'u' and dtype.itemsize == 8:
+        # An unsigned 64-bit array is cast to int64 for the kernel,
+        # which is safe only if its labels are below the limit. The
+        # size check is needed because an empty array has no maximum.
+        use_kernel = array.size > 0 and array.max() <= max_label_limit
+    if use_kernel:
+        # The kernel takes native int32 or int64 arrays. Other integer
+        # arrays are cast to the smallest of the two that holds them.
+        if not (dtype.isnative and dtype.type in (np.int32, np.int64)):
+            fits_int32 = (dtype.itemsize < 4
+                          or (dtype.kind == 'i' and dtype.itemsize == 4))
+            dtype = np.int32 if fits_int32 else np.int64
+        (_, _, counts, ymin, ymax, xmin, xmax) = label_stats(
+            np.ascontiguousarray(array, dtype=dtype), max_label_limit)
+        if counts is not None:
+            idx = np.flatnonzero(counts)
+            bounds = np.column_stack((ymin[idx], ymax[idx] + 1,
+                                      xmin[idx], xmax[idx] + 1))
+            return idx.astype(array.dtype), counts[idx], bounds
+
+    if array.ndim != 2:
+        labels, areas = _get_labels(array, return_counts=True)
+        return labels, areas, None
+
+    # The sort that finds the labels also gives the position of the
+    # label of every labeled pixel in the sorted labels
+    mask = array != 0
+    labels, inverse, areas = np.unique(array[mask], return_inverse=True,
+                                       return_counts=True)
+    if labels.size == 0 or labels[0] < 0:
+        return labels, areas, None
+
+    # Replace every label by its position in the sorted labels (plus
+    # one, keeping zero as the background) and measure that array
+    compact = np.zeros(array.shape, dtype=np.int64)
+    compact[mask] = inverse + 1
+    (_, _, _, ymin, ymax, xmin, xmax) = label_stats(compact, len(labels))
+    bounds = np.column_stack((ymin[1:], ymax[1:] + 1,
+                              xmin[1:], xmax[1:] + 1))
+    return labels, areas, bounds
+
+
+class _SparseRelabelMap:
+    """
+    A map from label values to new label values that is indexed like
+    the dense relabeling array, but that stores only the labels.
+
+    A value that is not one of the labels, including the background,
+    maps to zero.
+
+    Parameters
+    ----------
+    labels : 1D int `~numpy.ndarray`
+        The sorted positive label values.
+
+    new_labels : 1D int `~numpy.ndarray`
+        The new value of each label. The values returned by the map
+        have its dtype.
+    """
+
+    def __init__(self, labels, new_labels):
+        # numpy.concatenate returns arrays with the native byte order,
+        # so the dtype of the new labels is kept for the output
+        self._dtype = new_labels.dtype
+        self._labels = np.concatenate((np.zeros(1, dtype=labels.dtype),
+                                       labels))
+        self._new_labels = np.concatenate(
+            (np.zeros(1, dtype=new_labels.dtype), new_labels))
+
+    def __getitem__(self, index):
+        # The cast keeps the search in the integer dtype of the labels.
+        # NumPy would compare mixed signed and unsigned 64-bit integers
+        # as floats, which cannot represent every large label. The
+        # index values must be representable in the dtype of the
+        # labels, as the labels and the pixels of the array are. A
+        # value that is not would wrap and is not detected.
+        index = np.asarray(index).astype(self._labels.dtype, copy=False)
+        idx = np.searchsorted(self._labels, index)
+        idx = np.minimum(idx, len(self._labels) - 1)
+        return np.where(self._labels[idx] == index, self._new_labels[idx],
+                        0).astype(self._dtype, copy=False)
+
+
+def _make_relabel_map(labels, new_labels, n_pixels):
+    """
+    Make the map from label values to new label values.
+
+    Parameters
+    ----------
+    labels : 1D int `~numpy.ndarray`
+        The sorted positive label values. It must not be empty.
+
+    new_labels : 1D int `~numpy.ndarray`
+        The new value of each label.
+
+    n_pixels : int
+        The number of pixels of the segmentation array.
+
+    Returns
+    -------
+    relabel_map : 1D `~numpy.ndarray` or `_SparseRelabelMap`
+        An object that returns the new values when it is indexed with
+        label values. It is an array with one element per label value
+        up to the largest label, or a `_SparseRelabelMap` for very
+        large labels.
+    """
+    max_label = int(labels[-1])
+    if max_label > _max_dense_label(n_pixels):
+        return _SparseRelabelMap(labels, new_labels)
+
+    relabel_map = np.zeros(max_label + 1, dtype=new_labels.dtype)
+    relabel_map[labels] = new_labels
+    return relabel_map
+
+
 def _remap_deblend_label_map(deblend_label_map, relabel_map):
     """
     Return a new deblend label map with remapped child labels.
@@ -76,9 +242,9 @@ def _remap_deblend_label_map(deblend_label_map, relabel_map):
         The mapping of parent label numbers to arrays of deblended
         (child) label numbers.
 
-    relabel_map : 1D `~numpy.ndarray`
-        An array mapping the original label numbers to the new label
-        numbers.
+    relabel_map : 1D `~numpy.ndarray` or `_SparseRelabelMap`
+        The map from the original label numbers to the new label
+        numbers (see ``_make_relabel_map``).
 
     Returns
     -------
@@ -102,9 +268,9 @@ def _remap_flags_map(flags_map, relabel_map):
     flags_map : dict
         The mapping of label numbers to bitwise flag values.
 
-    relabel_map : 1D `~numpy.ndarray`
-        An array mapping the original label numbers to the new label
-        numbers.
+    relabel_map : 1D `~numpy.ndarray` or `_SparseRelabelMap`
+        The map from the original label numbers to the new label
+        numbers (see ``_make_relabel_map``).
 
     Returns
     -------
@@ -394,7 +560,7 @@ class SegmentationImage:
             self.__dict__.pop(key, None)
 
     def _set_data(self, data, *, labels=None, areas=None, slices=None,
-                  preserve_info=False):
+                  stats=None, preserve_info=False):
         """
         Set the segmentation array and seed its derived properties.
 
@@ -422,6 +588,10 @@ class SegmentationImage:
             The minimal bounding slices of each label, in the same
             order as ``labels``.
 
+        stats : tuple, optional
+            The ``(labels, areas, bounds)`` tuple returned by
+            ``_get_label_stats`` for ``data``.
+
         preserve_info : bool, optional
             If `True`, keep the current ``info`` dictionary instead of
             resetting it to an empty one. This is used by the
@@ -441,7 +611,8 @@ class SegmentationImage:
         # returned as-is and an absent one falls through to the
         # property body.
         for name, value in (('labels', labels), ('areas', areas),
-                            ('slices', slices)):
+                            ('slices', slices),
+                            ('_label_stats', stats)):
             if value is not None:
                 self.__dict__[name] = value
 
@@ -466,9 +637,10 @@ class SegmentationImage:
             msg = 'data must have integer type'
             raise TypeError(msg)
 
-        # A single pass over the non-zero pixels yields both the
-        # sorted labels and their pixel areas
-        labels, areas = _get_labels(value, return_counts=True)
+        # A single pass over the array yields the sorted labels, their
+        # pixel areas, and their bounding boxes
+        stats = _get_label_stats(value)
+        labels, areas, _ = stats
 
         # labels is sorted, so only the first element can be negative.
         # The size check also covers all-zero and zero-size arrays.
@@ -476,7 +648,7 @@ class SegmentationImage:
             msg = 'The segmentation image cannot contain negative integers.'
             raise ValueError(msg)
 
-        self._set_data(value, labels=labels, areas=areas)
+        self._set_data(value, labels=labels, areas=areas, stats=stats)
 
     @cached_property
     def data_masked(self):
@@ -494,13 +666,23 @@ class SegmentationImage:
         return self._data.shape
 
     @cached_property
+    def _label_stats(self):
+        """
+        The ``(labels, areas, bounds)`` tuple of the segmentation array
+        (see ``_get_label_stats``).
+        """
+        # Seeded by _set_data when the data attribute is assigned. This
+        # runs only when the array was set without validation.
+        return _get_label_stats(self._data)
+
+    @cached_property
     def labels(self):
         """
         The sorted non-zero labels in the segmentation array.
         """
         # Normally seeded by _set_data. This runs only when the array
         # was set without known labels.
-        return _get_labels(self._data)
+        return self._label_stats[0]
 
     @cached_property
     def n_labels(self):
@@ -579,8 +761,15 @@ class SegmentationImage:
         a length equal to the number of labels and matches the order of
         the ``labels`` attribute.
         """
-        return [slc for slc in find_objects(self._data)
-                if slc is not None]
+        bounds = self._label_stats[2]
+        if bounds is None:
+            # find_objects raises an error for a zero-size array
+            if self._data.size == 0:
+                return []
+            return [slc for slc in find_objects(self._data)
+                    if slc is not None]
+        return [(slice(ymin, ymax), slice(xmin, xmax))
+                for ymin, ymax, xmin, xmax in bounds.tolist()]
 
     def _get_slice(self, label):
         """
@@ -637,7 +826,7 @@ class SegmentationImage:
         # Normally seeded by _set_data from the same single pass that
         # produces the labels. This runs only when the array was set
         # without known areas.
-        return _get_labels(self._data, return_counts=True)[1]
+        return self._label_stats[1]
 
     def get_area(self, label):
         """
@@ -1158,18 +1347,18 @@ class SegmentationImage:
         if labels.size == 0:
             return
 
-        dtype = self.data.dtype  # keep the original dtype
-        relabel_map = np.zeros(self.max_label + 1, dtype=dtype)
-        relabel_map[self.labels] = self.labels
-        relabel_map[labels] = new_label  # reassign labels
+        # The new value of every label, in the original dtype
+        new_labels = self.labels.astype(self.data.dtype, copy=True)
+        new_labels[self.get_indices(labels)] = new_label  # reassign labels
 
         if relabel:
-            labels = np.unique(relabel_map[relabel_map != 0])
-            if len(labels) != 0:
-                map2 = np.zeros(max(labels) + 1, dtype=dtype)
-                map2[labels] = np.arange(len(labels), dtype=dtype) + 1
-                relabel_map = map2[relabel_map]
+            keep = new_labels != 0
+            unique_labels = np.unique(new_labels[keep])
+            new_labels[keep] = np.searchsorted(unique_labels,
+                                               new_labels[keep]) + 1
 
+        relabel_map = _make_relabel_map(self.labels, new_labels,
+                                        self._data.size)
         data_new = relabel_map[self.data]
         # Relabeling is an in-place change, not a data reassignment,
         # so the auxiliary info, the deblending provenance, and the
@@ -1230,10 +1419,12 @@ class SegmentationImage:
         old_slices = self.__dict__.get('slices', None)
         old_areas = self.__dict__.get('areas', None)
         dtype = self.data.dtype  # keep the original dtype
-        new_labels = np.arange(self.n_labels, dtype=dtype) + start_label
-        new_label_map = np.zeros(self.max_label + 1, dtype=dtype)
-        new_label_map[self.labels] = new_labels
-
+        # The cast keeps a non-native byte order, which the addition
+        # does not
+        new_labels = (np.arange(self.n_labels, dtype=dtype)
+                      + start_label).astype(dtype, copy=False)
+        new_label_map = _make_relabel_map(self.labels, new_labels,
+                                          self._data.size)
         data_new = new_label_map[self.data]
         # Relabeling is an in-place change, not a data reassignment,
         # so the auxiliary info, the deblending provenance, and the
