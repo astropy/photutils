@@ -894,6 +894,20 @@ source label::
     1 []
     2 ['edge_touch', 'kron_partial_overlap']
 
+The ``kron_minimum_radius`` flag (bit value 2048) is commonly set and
+does not indicate a problem with the measurement. It marks sources
+whose measured unscaled Kron radius was below the minimum value
+(``kron_params[1]``, 1.4 by default), so that the minimum was used
+to define the Kron aperture. The unscaled Kron radius of a Gaussian
+source is about 1.25, so compact sources are routinely flagged. For
+these sources, `~photutils.segmentation.SourceCatalog.kron_radius`
+is the minimum value and the Kron aperture remains
+an ellipse. The measured value is available in
+`~photutils.segmentation.SourceCatalog.kron_radius_measured`.
+The flag is also set where the minimum circular aperture
+(``kron_params[2]``) was used instead of the Kron ellipse, in which case
+`~photutils.segmentation.SourceCatalog.kron_radius` is zero.
+
 
 Memory Usage
 ------------
