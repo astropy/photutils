@@ -1357,6 +1357,37 @@ def test_relabel_nonconsecutive_input(n_threads):
         assert_equal(result_map[parent], relabel_map[children])
 
 
+@pytest.mark.parametrize('n_threads', [1, 4])
+def test_relabel_large_labels(n_threads, monkeypatch):
+    """
+    Test that an image with labels too large for the compiled relabeling
+    is relabeled with the sort-based method, giving the same result as
+    the same image with small labels.
+    """
+    data, segm = make_multipeak_source()
+    expected = deblend_sources(data, segm, 5, n_threads=n_threads)
+
+    offset = 70000  # above the limit for an image of this size
+    segm_data = np.where(segm.data > 0, segm.data + offset, 0)
+    segm_large = SegmentationImage(segm_data)
+
+    def fail(*args, **kwargs):  # noqa: ARG001
+        msg = 'the compiled relabeling must not be used'
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(deblend_module, '_relabel_consecutive', fail)
+    result = deblend_sources(data, segm_large, 5, n_threads=n_threads)
+    assert_equal(result.data, expected.data)
+    assert result.data.dtype == segm_data.dtype
+    children = result.parent_to_deblended_labels[1 + offset]
+    assert_equal(children, result.labels)
+    assert children.dtype == segm_data.dtype
+
+    raw = deblend_sources(data, segm_large, 5, relabel=False,
+                          n_threads=n_threads)
+    assert_equal(raw.labels, offset + 1 + np.arange(1, raw.n_labels + 1))
+
+
 def test_chunk_kernels_validate_inputs():
     """
     Test that the chunk kernels reject per-source arrays with the wrong

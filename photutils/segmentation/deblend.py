@@ -32,6 +32,12 @@ __all__ = ['deblend_sources']
 # thresholds. The value is arbitrary but works well in practice
 _MAX_MARKERS = 200
 
+# The compiled relabeling allocates arrays that are indexed by the label
+# value. An image whose largest label exceeds both this value and a
+# quarter of its number of pixels is relabeled with the sort-based
+# method instead.
+_MIN_MAX_LABEL_LIMIT = 65536
+
 
 def _validate_deblend_kwargs(*, n_levels, contrast, contrast_method, mode,
                              connectivity, n_threads):
@@ -422,11 +428,13 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                                result.y1, result.x0, result.x1,
                                result.n_labels, label_offsets[indices])
 
-    # The labels are made consecutive in place, before the cast to the
-    # dtype of the input segmentation image
+    # The labels are made consecutive in place by compiled code, before
+    # the cast to the dtype of the input segmentation image, unless the
+    # labels are too large for its per-label arrays
     relabel_map = None
-    if relabel:
-        max_label = int(segmentation_image.max_label + counts.sum())
+    max_label = int(segmentation_image.max_label) + int(counts.sum())
+    use_kernel = max_label <= max(segm_out.size // 4, _MIN_MAX_LABEL_LIMIT)
+    if relabel and use_kernel:
         relabel_map = _relabel_consecutive(segm_out, max_label,
                                            int(n_threads))
     segm_deblended = segm_out.astype(segm_data.dtype, copy=False)
@@ -451,8 +459,13 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                '"mode" documentation for the fallback rules.')
         warnings.warn(msg, DeblendWarning)
 
-    if relabel_map is not None:
+    if relabel and not use_kernel:
+        relabel_map = _create_relabel_map(segm_deblended, start_label=1)
+        if relabel_map is not None:
+            segm_deblended = relabel_map[segm_deblended]
+    elif relabel_map is not None:
         relabel_map = relabel_map.astype(segm_deblended.dtype, copy=False)
+    if relabel_map is not None:
         deblend_label_map = _remap_deblend_label_map(deblend_label_map,
                                                      relabel_map)
 
