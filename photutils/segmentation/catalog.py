@@ -4689,13 +4689,12 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
-    def _measured_kron_radius(self):
-        r"""
-        The *unscaled* first-moment Kron radius, always as an array
-        (without units).
+    def _kron_radius_sums(self):
+        """
+        The numerator and denominator sums of the first-moment Kron
+        radius, as an array of shape ``(n_labels, 2)``.
 
-        The returned value is the measured Kron radius without applying
-        any minimum Kron or circular radius.
+        The sums are NaN for sources with no measured Kron radius.
         """
         scale = 6.0
         xcen = np.ascontiguousarray(self._array('x_centroid'),
@@ -4723,12 +4722,11 @@ class SourceCatalog:
                 | ~np.isfinite(semiminor * scale)
                 | ~np.isfinite(theta)).astype(np.uint8)
 
-        kron_min = self.kron_params[1]
         min_circ_radius = (self.kron_params[2]
                            if len(self.kron_params) == 3 else 0.0)
 
         arrays = self._get_batch_arrays()
-        sums = self._threaded_batch(
+        return self._threaded_batch(
             batch_kron_radius,
             {'labels': self._batch_labels(), 'xcen': xcen, 'ycen': ycen,
              'semimajor': semimajor, 'semiminor': semiminor,
@@ -4738,8 +4736,21 @@ class SourceCatalog:
             seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
             scale=scale, min_circ_radius=min_circ_radius,
             max_aper_size=max(self._data.size, 1_000_000))
-        flux_numer = sums[:, 0]
-        flux_denom = sums[:, 1]
+
+    @cached_property
+    @use_detcat
+    def _measured_kron_radius(self):
+        r"""
+        The *unscaled* first-moment Kron radius, always as an array
+        (without units).
+
+        The returned value is the measured Kron radius without applying
+        any minimum Kron or circular radius, except that it is the
+        minimum Kron radius where the Kron numerator or denominator is
+        not positive.
+        """
+        flux_numer, flux_denom = self._kron_radius_sums.T
+        kron_min = self.kron_params[1]
 
         # Ignore RuntimeWarning from undefined (NaN) sums and from a
         # zero denominator
@@ -4748,7 +4759,7 @@ class SourceCatalog:
             kron_radius = flux_numer / flux_denom
             # Set the Kron radius to the minimum Kron radius if the
             # numerator or denominator is not positive (NaN comparisons
-            # are False, so undefined sources stay NaN)
+            # are False, so undefined sources stay NaN).
             kron_radius[(flux_numer <= 0) | (flux_denom <= 0)] = kron_min
 
         return kron_radius
@@ -4786,11 +4797,47 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
+    def kron_radius_measured(self):
+        r"""
+        The measured *unscaled* first-moment Kron radius.
+
+        This is the first-moment Kron radius as measured from the data
+        (see `kron_radius` for the definition), before any of the
+        ``kron_params`` minimum values are applied. It is not multiplied
+        by the ``kron_params[0]`` scaling parameter.
+
+        The `kron_radius` property is the value used to define the
+        Kron aperture. The two differ for sources that have the
+        ``kron_minimum_radius`` flag set, where `kron_radius` is either
+        the minimum unscaled Kron radius (``kron_params[1]``) or zero
+        (if the minimum circular aperture is used). They also differ
+        where the measured value exceeds 6.0 (the measurement aperture
+        scale factor). The measured value is returned here, while
+        `kron_radius` is ``np.nan``.
+
+        If either the numerator or denominator of the first-moment Kron
+        radius is less than or equal to 0, then the measured Kron radius
+        is undefined and ``np.nan`` will be returned.
+
+        If the source is completely masked, then ``np.nan`` will be
+        returned.
+
+        If a ``detection_catalog`` was input to `SourceCatalog`, then
+        its ``kron_radius_measured`` will be returned.
+        """
+        kron_radius = self._measured_kron_radius.copy()
+        flux_numer, flux_denom = self._kron_radius_sums.T
+        kron_radius[(flux_numer <= 0) | (flux_denom <= 0)] = np.nan
+        return kron_radius << u.pix
+
+    @cached_property
+    @use_detcat
     def kron_radius(self):
         r"""
-        The *unscaled* first-moment Kron radius.
+        The *unscaled* first-moment Kron radius used to define the Kron
+        aperture.
 
-        The *unscaled* first-moment Kron radius is given by:
+        The measured *unscaled* first-moment Kron radius is given by:
 
         .. math::
 
@@ -4814,28 +4861,36 @@ class SourceCatalog:
         `centroid` and the coefficients are based on image moments
         (`ellipse_cxx`, `ellipse_cxy`, and `ellipse_cyy`).
 
-        The `kron_radius` value is the unscaled moment value. The
-        minimum unscaled radius can be set using the second element of
-        the `SourceCatalog` ``kron_params`` keyword. If the measured
-        unscaled Kron radius exceeds 6.0 (the measurement aperture
-        scale factor), ``np.nan`` will be returned. Such values are
-        unphysical, typically caused by near-cancellation in the
-        denominator of the Kron formula due to outlier pixels or noise.
+        The `kron_radius` value is unscaled, meaning that it is not
+        multiplied by the ``kron_params[0]`` scaling parameter. It is
+        the measured value given above after the following adjustments
+        are applied. The measured value without these adjustments is
+        available in `kron_radius_measured`.
 
-        If either the numerator or denominator above is less than
-        or equal to 0, then the minimum unscaled Kron radius
-        (``kron_params[1]``) will be used.
+        * If the measured value is less than the minimum unscaled Kron
+          radius (``kron_params[1]``), or if either the numerator or
+          denominator above is less than or equal to 0, then
+          `kron_radius` is set to the minimum unscaled Kron radius.
+
+        * If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_axis`
+          * `semiminor_axis`) is less than or equal to the minimum
+          circular radius (``kron_params[2]``), then `kron_radius` is
+          set to zero and the Kron aperture will be a circle with this
+          minimum radius.
+
+        * If the measured value exceeds 6.0 (the measurement aperture
+          scale factor), then `kron_radius` is set to ``np.nan``. Such
+          values are unphysical, typically caused by near-cancellation
+          in the denominator of the Kron formula due to outlier pixels
+          or noise.
+
+        Sources affected by either of the first two adjustments have the
+        ``kron_minimum_radius`` flag set in `flags`.
 
         The Kron aperture is calculated for each source using its shape
         parameters, `kron_radius`, and the ``kron_params`` scaling and
         minimum values input into `SourceCatalog`. The Kron aperture is
         used to compute the Kron photometry.
-
-        If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_axis` *
-        `semiminor_axis`) is less than or equal to the minimum circular
-        radius (``kron_params[2]``), then the Kron radius will be set to
-        zero and the Kron aperture will be a circle with this minimum
-        radius.
 
         If the source is completely masked, then ``np.nan`` will be
         returned for both the Kron radius and Kron flux (the Kron
