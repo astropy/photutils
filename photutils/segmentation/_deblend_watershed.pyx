@@ -31,7 +31,8 @@ import numpy as np
 from libc.math cimport INFINITY, isnan
 from libc.stdlib cimport free, malloc
 
-__all__ = ['deblend_contrast_chunk', 'deblend_watershed',
+__all__ = ['apply_relabel_map', 'deblend_contrast_chunk',
+           'deblend_watershed', 'find_present_labels',
            'write_deblended_labels']
 
 ctypedef fused data_t:
@@ -711,3 +712,114 @@ def write_deblended_labels(segm_t[:, ::1] segm_out,
                     if value != 0:
                         idx = (y0[isrc] + iy) * img_nx + x0[isrc] + ix
                         out_ptr[idx] = <segm_t>(value + label_offsets[isrc])
+
+
+def find_present_labels(const segm_t[:, ::1] segm,
+                        unsigned char[::1] present):
+    """
+    Mark the label values that are present in a segmentation array.
+
+    The array is scanned once without the GIL. Disjoint row bands of
+    an image can be scanned concurrently, each with its own ``present``
+    array, and the results combined with a logical OR.
+
+    Parameters
+    ----------
+    segm : 2D int `~numpy.ndarray`
+        The segmentation array (or a band of its rows). Every value
+        must be in the range ``[0, len(present) - 1]``.
+
+    present : 1D uint8 `~numpy.ndarray`
+        The array, indexed by label value, in which the element of
+        every value found in ``segm`` is set to 1. The other elements
+        are left unchanged.
+
+    Raises
+    ------
+    ValueError
+        If a value in ``segm`` is negative or is too large to index
+        ``present``.
+    """
+    cdef Py_ssize_t n_pix = segm.shape[0] * segm.shape[1]
+    cdef Py_ssize_t n_present = present.shape[0]
+    cdef Py_ssize_t i
+    cdef long long value
+    cdef bint invalid = False
+    cdef const segm_t* segm_ptr
+    cdef unsigned char* present_ptr
+
+    if n_pix == 0:
+        return
+    if n_present == 0:
+        msg = 'present must not be empty'
+        raise ValueError(msg)
+    segm_ptr = &segm[0, 0]
+    present_ptr = &present[0]
+
+    with nogil:
+        for i in range(n_pix):
+            value = segm_ptr[i]
+            if value < 0 or value >= n_present:
+                invalid = True
+                break
+            present_ptr[value] = 1
+
+    if invalid:
+        msg = 'segm contains a value outside the range of present'
+        raise ValueError(msg)
+
+
+def apply_relabel_map(segm_t[:, ::1] segm,
+                      const long long[::1] relabel_map):
+    """
+    Replace every value of a segmentation array, in place, by its entry
+    in a relabeling map.
+
+    The array is rewritten once without the GIL. Disjoint row bands of
+    an image can be rewritten concurrently.
+
+    Parameters
+    ----------
+    segm : 2D int `~numpy.ndarray`
+        The segmentation array (or a band of its rows) to relabel in
+        place. Every value must be in the range
+        ``[0, len(relabel_map) - 1]``.
+
+    relabel_map : 1D int64 `~numpy.ndarray`
+        The array mapping the original label values to the new label
+        values.
+
+    Raises
+    ------
+    ValueError
+        If a value in ``segm`` is negative or is too large to index
+        ``relabel_map``. The values before the invalid one have then
+        already been relabeled.
+    """
+    cdef Py_ssize_t n_pix = segm.shape[0] * segm.shape[1]
+    cdef Py_ssize_t n_map = relabel_map.shape[0]
+    cdef Py_ssize_t i
+    cdef long long value
+    cdef bint invalid = False
+    cdef segm_t* segm_ptr
+    cdef const long long* map_ptr
+
+    if n_pix == 0:
+        return
+    if n_map == 0:
+        msg = 'relabel_map must not be empty'
+        raise ValueError(msg)
+    segm_ptr = &segm[0, 0]
+    map_ptr = &relabel_map[0]
+
+    with nogil:
+        for i in range(n_pix):
+            value = segm_ptr[i]
+            if value < 0 or value >= n_map:
+                invalid = True
+                break
+            segm_ptr[i] = <segm_t>map_ptr[value]
+
+    if invalid:
+        msg = 'segm contains a value outside the range of relabel_map'
+        raise ValueError(msg)

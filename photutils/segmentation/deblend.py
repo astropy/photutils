@@ -7,13 +7,16 @@ image.
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from itertools import pairwise
 
 import numpy as np
 from astropy.units import Quantity
 
 from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
                                                      deblend_source_stats)
-from photutils.segmentation._deblend_watershed import (deblend_contrast_chunk,
+from photutils.segmentation._deblend_watershed import (apply_relabel_map,
+                                                       deblend_contrast_chunk,
+                                                       find_present_labels,
                                                        write_deblended_labels)
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
@@ -418,6 +421,14 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                                result.offsets[:-1], result.y0,
                                result.y1, result.x0, result.x1,
                                result.n_labels, label_offsets[indices])
+
+    # The labels are made consecutive in place, before the cast to the
+    # dtype of the input segmentation image
+    relabel_map = None
+    if relabel:
+        max_label = int(segmentation_image.max_label + counts.sum())
+        relabel_map = _relabel_consecutive(segm_out, max_label,
+                                           int(n_threads))
     segm_deblended = segm_out.astype(segm_data.dtype, copy=False)
 
     # The child labels carry the dtype of the output segmentation
@@ -440,13 +451,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                '"mode" documentation for the fallback rules.')
         warnings.warn(msg, DeblendWarning)
 
-    relabel_map = None
-    if relabel:
-        relabel_map = _create_relabel_map(segm_deblended, start_label=1)
-        if relabel_map is not None:
-            segm_deblended = relabel_map[segm_deblended]
-            deblend_label_map = _remap_deblend_label_map(deblend_label_map,
-                                                         relabel_map)
+    if relabel_map is not None:
+        relabel_map = relabel_map.astype(segm_deblended.dtype, copy=False)
+        deblend_label_map = _remap_deblend_label_map(deblend_label_map,
+                                                     relabel_map)
 
     segm_img = SegmentationImage._from_data(
         segm_deblended, deblend_label_map=deblend_label_map)
@@ -764,6 +772,69 @@ def _make_flags_map(deblend_label_map, non_positive_min_labels,
             for target in targets:
                 flags_map[target] = flags_map.get(target, 0) | bit
     return flags_map
+
+
+def _relabel_consecutive(segm, max_label, n_threads):
+    """
+    Relabel a segmentation array in place so that its labels are
+    consecutive integers starting from 1, keeping their order.
+
+    The labels that are present are found, and the array is then
+    rewritten, by compiled code that releases the GIL. When
+    ``n_threads`` > 1, the image is divided into bands of rows that are
+    processed concurrently. The result is identical to the
+    single-threaded computation.
+
+    Parameters
+    ----------
+    segm : 2D int32 or int64 `~numpy.ndarray`
+        The C-contiguous segmentation array to relabel in place.
+
+    max_label : int
+        An upper limit of the label values in ``segm``.
+
+    n_threads : int
+        The number of threads.
+
+    Returns
+    -------
+    relabel_map : 1D int64 `~numpy.ndarray` or None
+        The array mapping the original labels to the new labels. If the
+        labels are already consecutive starting from 1, then ``segm`` is
+        left unchanged and `None` is returned.
+    """
+    n_bands = max(min(n_threads, segm.shape[0]), 1)
+    edges = np.arange(n_bands + 1) * segm.shape[0] // n_bands
+    bands = [segm[i0:i1] for i0, i1 in pairwise(edges)]
+
+    def find_present(band):
+        present = np.zeros(max_label + 1, dtype=np.uint8)
+        find_present_labels(band, present)
+        return present
+
+    def get_relabel_map(present):
+        present[0] = 0  # the background is not a label
+        labels = np.flatnonzero(present)
+        if len(labels) == 0 or labels[-1] == len(labels):
+            return None  # already consecutive
+        relabel_map = np.zeros(max_label + 1, dtype=np.int64)
+        relabel_map[labels] = np.arange(1, len(labels) + 1)
+        return relabel_map
+
+    if n_bands == 1:
+        relabel_map = get_relabel_map(find_present(segm))
+        if relabel_map is not None:
+            apply_relabel_map(segm, relabel_map)
+        return relabel_map
+
+    with ThreadPoolExecutor(max_workers=n_bands) as executor:
+        present = np.bitwise_or.reduce(
+            list(executor.map(find_present, bands)))
+        relabel_map = get_relabel_map(present)
+        if relabel_map is not None:
+            list(executor.map(lambda band: apply_relabel_map(
+                band, relabel_map), bands))
+    return relabel_map
 
 
 def _create_relabel_map(array, *, start_label=1):
