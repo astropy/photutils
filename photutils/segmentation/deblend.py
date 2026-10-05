@@ -18,7 +18,8 @@ from photutils.segmentation._deblend_watershed import (apply_relabel_map,
                                                        deblend_contrast_chunk,
                                                        find_present_labels,
                                                        write_deblended_labels)
-from photutils.segmentation.core import (SegmentationImage, _get_labels,
+from photutils.segmentation.core import (_MIN_MAX_LABEL_LIMIT,
+                                         SegmentationImage, _get_labels,
                                          _make_relabel_map,
                                          _remap_deblend_label_map)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
@@ -32,12 +33,6 @@ __all__ = ['deblend_sources']
 # linearly spaced threshold levels, which have fewer levels at low
 # thresholds. The value is arbitrary but works well in practice
 _MAX_MARKERS = 200
-
-# The compiled relabeling allocates arrays that are indexed by the label
-# value. An image whose largest label exceeds both this value and a
-# quarter of its number of pixels is relabeled with the sort-based
-# method instead.
-_MIN_MAX_LABEL_LIMIT = 65536
 
 
 def _validate_deblend_kwargs(*, n_levels, contrast, contrast_method, mode,
