@@ -428,8 +428,8 @@ New Features
     ``slices`` attributes, producing identical results. They are now
     measured by compiled code in a single pass over the segmentation
     array. Creating a ``SegmentationImage`` and getting its slices is
-    typically ~4-15 times faster, depending on the fraction of labeled
-    pixels. [#2464]
+    typically ~3-15 times faster, depending on the number of labels and
+    the fraction of labeled pixels. [#2464]
 
 - ``photutils.utils``
 

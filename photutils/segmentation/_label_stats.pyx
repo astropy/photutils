@@ -62,7 +62,7 @@ def label_stats(const segm_t[:, ::1] segm, long long max_label_limit):
     cdef Py_ssize_t ny = segm.shape[0]
     cdef Py_ssize_t nx = segm.shape[1]
     cdef Py_ssize_t n_pix = ny * nx
-    cdef Py_ssize_t i, y, x, x0
+    cdef Py_ssize_t i, y, x, x0, n_values
     cdef segm_t value, vmin, vmax
     cdef const segm_t* segm_ptr
     cdef const segm_t* row
@@ -84,11 +84,13 @@ def label_stats(const segm_t[:, ::1] segm, long long max_label_limit):
     if vmin < 0 or vmax > max_label_limit:
         return int(vmin), int(vmax), None, None, None, None, None
 
-    counts_arr = np.zeros(vmax + 1, dtype=np.intp)
-    ymin_arr = np.empty(vmax + 1, dtype=np.intp)
-    ymax_arr = np.empty(vmax + 1, dtype=np.intp)
-    xmin_arr = np.full(vmax + 1, nx, dtype=np.intp)
-    xmax_arr = np.full(vmax + 1, -1, dtype=np.intp)
+    # The cast avoids an overflow of the 32-bit label type
+    n_values = <Py_ssize_t>vmax + 1
+    counts_arr = np.zeros(n_values, dtype=np.intp)
+    ymin_arr = np.empty(n_values, dtype=np.intp)
+    ymax_arr = np.empty(n_values, dtype=np.intp)
+    xmin_arr = np.full(n_values, nx, dtype=np.intp)
+    xmax_arr = np.full(n_values, -1, dtype=np.intp)
     cdef Py_ssize_t[::1] counts = counts_arr
     cdef Py_ssize_t[::1] ymin = ymin_arr
     cdef Py_ssize_t[::1] ymax = ymax_arr

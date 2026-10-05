@@ -1573,7 +1573,7 @@ class TestGetLabelMapping:
         self.parent = SegmentationImage(segm_data)
         # A deblend-like version of segm_data with the identical
         # non-zero footprint. Label 5 is split into labels 8 and 9,
-        # and label 7 is split into labels 10 and 11
+        # and label 7 is split into labels 10 and 11.
         child_data = np.array([[1, 1, 0, 0, 4, 4],
                                [0, 0, 0, 0, 0, 4],
                                [0, 0, 3, 3, 0, 0],
@@ -2334,18 +2334,26 @@ def test_label_stats_kernel(dtype):
         assert (ymin[label], ymax[label] + 1) == (slc[0].start, slc[0].stop)
         assert (xmin[label], xmax[label] + 1) == (slc[1].start, slc[1].stop)
 
-    # a label above the limit
+    # A label equal to the limit
+    result = label_stats(data, 120)
+    assert result[:2] == (0, 120)
+    assert_equal(result[2], counts)
+    for item, expected in zip(result[3:], (ymin, ymax, xmin, xmax),
+                              strict=True):
+        assert_equal(item[counts > 0], expected[counts > 0])
+
+    # A label above the limit
     result = label_stats(data, 119)
     assert result[:2] == (0, 120)
     assert all(item is None for item in result[2:])
 
-    # a negative value
+    # A negative value
     data[0, 10] = -4
     result = label_stats(data, 1000)
     assert result[:2] == (-4, 120)
     assert all(item is None for item in result[2:])
 
-    # a zero-size array
+    # A zero-size array
     result = label_stats(np.zeros((0, 5), dtype=dtype), 1000)
     assert result[:2] == (0, 0)
     assert all(item is None for item in result[2:])
@@ -2361,7 +2369,7 @@ def test_label_stats_fallback():
     labels, areas = np.unique(data[data != 0], return_counts=True)
     slices = [slc for slc in find_objects(data) if slc is not None]
 
-    # a label above the limit of the kernel
+    # A label above the limit of the kernel
     large = data.astype(np.int32)
     large[large == 120] = 70000
     segm = SegmentationImage(large)
@@ -2371,7 +2379,7 @@ def test_label_stats_fallback():
     assert segm.slices == [slc for slc in find_objects(large)
                            if slc is not None]
 
-    # unsigned 64-bit labels, including one above the int64 range
+    # Unsigned 64-bit labels, including one above the int64 range
     data_u8 = data.astype(np.uint64)
     segm = SegmentationImage(data_u8)
     assert_equal(segm.labels, labels)
@@ -2384,7 +2392,7 @@ def test_label_stats_fallback():
     assert_equal(segm.areas, areas)
     assert segm.slices == slices
 
-    # a 3D array
+    # A 3D array
     cube = np.stack((data, data, np.zeros_like(data)))
     segm = SegmentationImage(cube)
     assert segm._label_stats[2] is None
@@ -2393,7 +2401,7 @@ def test_label_stats_fallback():
     assert segm.slices == [slc for slc in find_objects(cube)
                            if slc is not None]
 
-    # an array with no labels
+    # An array with no labels
     segm = SegmentationImage(np.zeros((4, 5), dtype=int))
     assert segm.n_labels == 0
     assert len(segm.areas) == 0
@@ -2426,10 +2434,30 @@ def test_label_stats_uint64_small_labels(monkeypatch):
     assert_equal(segm.areas, expected.areas)
     assert segm.slices == expected.slices
 
-    # a zero-size array has no maximum value
+    # A zero-size array has no maximum value
     segm = SegmentationImage._from_data(np.zeros((0, 5), dtype=np.uint64))
     assert segm.n_labels == 0
     assert len(segm.areas) == 0
+
+    # Other arrays are cast to the smallest kernel dtype that holds them
+    for dtype, kernel_dtype in (('u2', np.int32), ('>i4', np.int32),
+                                ('u4', np.int64), ('>i8', np.int64)):
+        calls.clear()
+        segm = SegmentationImage(data.astype(dtype))
+        assert calls == [(np.dtype(kernel_dtype), 65536)]
+        assert_equal(segm.labels, expected.labels)
+
+
+def _make_huge_label_pair(dtype):
+    """
+    Return a segmentation image with ordinary labels and one with the
+    same segments but with labels near 2**40, in the same order.
+    """
+    data = _make_label_array()
+    huge = data.astype(dtype)
+    for label in np.unique(data[data != 0]):
+        huge[data == label] = 2**40 + 1000 * int(label)
+    return SegmentationImage(data), SegmentationImage(huge)
 
 
 @pytest.mark.parametrize('dtype', [np.int64, np.uint64])
@@ -2441,12 +2469,9 @@ def test_huge_labels(dtype):
     scipy find_objects allocates one entry for every label value up to
     the maximum, so it runs out of memory for such labels.
     """
-    data = _make_label_array()
-    expected = SegmentationImage(data)
-    # the label order is kept, so the slices order is unchanged
-    huge = data.astype(dtype)
-    for label in expected.labels:
-        huge[data == label] = 2**40 + 1000 * int(label)
+    # The label order is kept, so the slices order is unchanged
+    expected, segm_huge = _make_huge_label_pair(dtype)
+    huge = segm_huge.data
 
     for segm in (SegmentationImage(huge),
                  SegmentationImage._from_data(huge)):
@@ -2487,18 +2512,6 @@ def test_large_labels_layout(dtype, layout):
         assert_equal(segm.areas, expected.areas)
         assert segm.areas.dtype == expected.areas.dtype
         assert segm.slices == expected.slices
-
-
-def _make_huge_label_pair(dtype):
-    """
-    Return a segmentation image with ordinary labels and one with the
-    same segments but with labels near 2**40, in the same order.
-    """
-    data = _make_label_array()
-    huge = data.astype(dtype)
-    for label in np.unique(data[data != 0]):
-        huge[data == label] = 2**40 + 1000 * int(label)
-    return SegmentationImage(data), SegmentationImage(huge)
 
 
 @pytest.mark.parametrize('dtype', [np.int64, np.uint64])
@@ -2565,12 +2578,8 @@ def test_huge_labels_relabel_maps():
     segm.relabel_consecutive()
     assert_equal(segm._deblend_label_map[5], [2, 5])
     assert segm._flags_map == {2: 1, 5: 3, 6: 4}
-    assert_equal(segm.data, _relabel_reference(ref))
-
-
-def _relabel_reference(segm):
-    segm.relabel_consecutive()
-    return segm.data
+    ref.relabel_consecutive()
+    assert_equal(segm.data, ref.data)
 
 
 @pytest.mark.parametrize('dtype', [np.int32, np.int64, np.uint64])
@@ -2596,7 +2605,7 @@ def test_sparse_relabel_map(dtype):
     assert int(sparse[60001]) == 0
     assert_equal(sparse[labels.astype(np.int64)], new_labels)
 
-    # a small array with large labels gets the sparse map
+    # A small array with large labels gets the sparse map
     sparse = segm_core._make_relabel_map(labels + 2**20, new_labels, 100)
     assert isinstance(sparse, segm_core._SparseRelabelMap)
     assert_equal(sparse[labels + 2**20], new_labels)

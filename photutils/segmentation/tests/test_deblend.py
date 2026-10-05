@@ -1342,12 +1342,12 @@ def test_relabel_consecutive(dtype, n_threads):
     assert_equal(relabel_map[:1000], expected_map)
     assert_equal(relabel_map[1000:], 0)
 
-    # consecutive labels are left unchanged
+    # Consecutive labels are left unchanged
     original = segm.copy()
     assert _relabel_consecutive(segm, 1200, n_threads) is None
     assert_equal(segm, original)
 
-    # an array with no labels is left unchanged
+    # An array with no labels is left unchanged
     zeros = np.zeros((5, 4), dtype=dtype)
     assert _relabel_consecutive(zeros, 10, n_threads) is None
     assert_equal(zeros, 0)

@@ -30,7 +30,9 @@ __all__ = ['Segment', 'SegmentationImage']
 # indexed by the label value. An array whose largest label exceeds both
 # this value and a quarter of its number of pixels is instead handled
 # through the positions of its labels in the sorted labels, so that the
-# memory used does not depend on the size of the labels.
+# memory used does not depend on the size of the labels. The five
+# per-label arrays of the label measurement use at most 10 bytes per
+# pixel for an array above the minimum limit.
 _MIN_MAX_LABEL_LIMIT = 65536
 
 # Remove in 4.0
@@ -74,6 +76,14 @@ def _get_labels(array, *, return_counts=False):
     return np.unique(array[array != 0], return_counts=return_counts)
 
 
+def _max_dense_label(n_pixels):
+    """
+    Return the largest label of an array with ``n_pixels`` pixels that
+    is handled with arrays indexed by the label value.
+    """
+    return max(n_pixels // 4, _MIN_MAX_LABEL_LIMIT)
+
+
 def _get_label_stats(array):
     """
     Return the labels of a segmentation array with their areas and
@@ -105,7 +115,7 @@ def _get_label_stats(array):
         are exclusive. `None` if the bounding boxes were not measured.
     """
     dtype = array.dtype
-    max_label_limit = max(array.size // 4, _MIN_MAX_LABEL_LIMIT)
+    max_label_limit = _max_dense_label(array.size)
     use_kernel = array.ndim == 2 and dtype.kind in 'iu'
     if use_kernel and dtype.kind == 'u' and dtype.itemsize == 8:
         # An unsigned 64-bit array is cast to int64 for the kernel,
@@ -116,7 +126,9 @@ def _get_label_stats(array):
         # The kernel takes native int32 or int64 arrays. Other integer
         # arrays are cast to the smallest of the two that holds them.
         if not (dtype.isnative and dtype.type in (np.int32, np.int64)):
-            dtype = np.int32 if dtype.itemsize < 4 else np.int64
+            fits_int32 = (dtype.itemsize < 4
+                          or (dtype.kind == 'i' and dtype.itemsize == 4))
+            dtype = np.int32 if fits_int32 else np.int64
         (_, _, counts, ymin, ymax, xmin, xmax) = label_stats(
             np.ascontiguousarray(array, dtype=dtype), max_label_limit)
         if counts is not None:
@@ -173,7 +185,10 @@ class _SparseRelabelMap:
     def __getitem__(self, index):
         # The cast keeps the search in the integer dtype of the labels.
         # NumPy would compare mixed signed and unsigned 64-bit integers
-        # as floats, which cannot represent every large label.
+        # as floats, which cannot represent every large label. The
+        # index values must be representable in the dtype of the
+        # labels, as the labels and the pixels of the array are. A
+        # value that is not would wrap and is not detected.
         index = np.asarray(index).astype(self._labels.dtype, copy=False)
         idx = np.searchsorted(self._labels, index)
         idx = np.minimum(idx, len(self._labels) - 1)
@@ -205,7 +220,7 @@ def _make_relabel_map(labels, new_labels, n_pixels):
         large labels.
     """
     max_label = int(labels[-1])
-    if max_label > max(n_pixels // 4, _MIN_MAX_LABEL_LIMIT):
+    if max_label > _max_dense_label(n_pixels):
         return _SparseRelabelMap(labels, new_labels)
 
     relabel_map = np.zeros(max_label + 1, dtype=new_labels.dtype)
@@ -541,7 +556,7 @@ class SegmentationImage:
             self.__dict__.pop(key, None)
 
     def _set_data(self, data, *, labels=None, areas=None, slices=None,
-                  label_stats=None, preserve_info=False):
+                  stats=None, preserve_info=False):
         """
         Set the segmentation array and seed its derived properties.
 
@@ -569,7 +584,7 @@ class SegmentationImage:
             The minimal bounding slices of each label, in the same
             order as ``labels``.
 
-        label_stats : tuple, optional
+        stats : tuple, optional
             The ``(labels, areas, bounds)`` tuple returned by
             ``_get_label_stats`` for ``data``.
 
@@ -593,7 +608,7 @@ class SegmentationImage:
         # property body.
         for name, value in (('labels', labels), ('areas', areas),
                             ('slices', slices),
-                            ('_label_stats', label_stats)):
+                            ('_label_stats', stats)):
             if value is not None:
                 self.__dict__[name] = value
 
@@ -620,8 +635,8 @@ class SegmentationImage:
 
         # A single pass over the array yields the sorted labels, their
         # pixel areas, and their bounding boxes
-        label_stats = _get_label_stats(value)
-        labels, areas, _ = label_stats
+        stats = _get_label_stats(value)
+        labels, areas, _ = stats
 
         # labels is sorted, so only the first element can be negative.
         # The size check also covers all-zero and zero-size arrays.
@@ -629,8 +644,7 @@ class SegmentationImage:
             msg = 'The segmentation image cannot contain negative integers.'
             raise ValueError(msg)
 
-        self._set_data(value, labels=labels, areas=areas,
-                       label_stats=label_stats)
+        self._set_data(value, labels=labels, areas=areas, stats=stats)
 
     @cached_property
     def data_masked(self):
