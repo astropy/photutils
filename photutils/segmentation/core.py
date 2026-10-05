@@ -79,13 +79,12 @@ def _get_label_stats(array):
     Return the labels of a segmentation array with their areas and
     bounding boxes.
 
-    A 2D array is measured in a single pass by compiled code. A 2D array
-    with very large labels is first mapped to consecutive labels, which
-    costs a sort of the labeled pixels and a search of every pixel, so
-    that the memory used is set by the number of labels and not by their
-    size. An array of another dimension, or one with negative labels,
-    is measured with `numpy.unique`, which does not give the bounding
-    boxes.
+    A 2D array is measured in a single pass by compiled code. A 2D
+    array with very large labels is first mapped to consecutive labels,
+    which costs a sort of the labeled pixels, so that the memory used
+    is set by the number of labels and not by their size. An array of
+    another dimension, or one with negative labels, is measured with
+    `numpy.unique`, which does not give the bounding boxes.
 
     Parameters
     ----------
@@ -126,16 +125,23 @@ def _get_label_stats(array):
                                       xmin[idx], xmax[idx] + 1))
             return idx.astype(array.dtype), counts[idx], bounds
 
-    labels, areas = _get_labels(array, return_counts=True)
-    if array.ndim != 2 or labels.size == 0 or labels[0] < 0:
+    if array.ndim != 2:
+        labels, areas = _get_labels(array, return_counts=True)
+        return labels, areas, None
+
+    # The sort that finds the labels also gives the position of the
+    # label of every labeled pixel in the sorted labels
+    mask = array != 0
+    labels, inverse, areas = np.unique(array[mask], return_inverse=True,
+                                       return_counts=True)
+    if labels.size == 0 or labels[0] < 0:
         return labels, areas, None
 
     # Replace every label by its position in the sorted labels (plus
     # one, keeping zero as the background) and measure that array
-    values = np.concatenate((np.zeros(1, dtype=labels.dtype), labels))
-    compact = np.searchsorted(values, array).astype(np.int64, copy=False)
-    (_, _, _, ymin, ymax, xmin, xmax) = label_stats(
-        np.ascontiguousarray(compact), len(labels))
+    compact = np.zeros(array.shape, dtype=np.int64)
+    compact[mask] = inverse + 1
+    (_, _, _, ymin, ymax, xmin, xmax) = label_stats(compact, len(labels))
     bounds = np.column_stack((ymin[1:], ymax[1:] + 1,
                               xmin[1:], xmax[1:] + 1))
     return labels, areas, bounds

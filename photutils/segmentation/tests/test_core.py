@@ -2461,6 +2461,34 @@ def test_huge_labels(dtype):
         assert segment.area == expected.areas[1]
 
 
+@pytest.mark.parametrize('dtype', [np.int32, np.int64, np.uint64])
+@pytest.mark.parametrize('layout', ['C', 'F', 'strided', 'read-only'])
+def test_large_labels_layout(dtype, layout):
+    """
+    Test that an array whose labels are mapped to consecutive labels
+    before it is measured gives the labels, areas, and slices of the
+    same array with small labels, for every memory layout.
+    """
+    data = _make_label_array()
+    expected = SegmentationImage(data)
+    offset = 10**6
+    large = np.where(data > 0, data + offset, 0).astype(dtype)
+    if layout == 'F':
+        large = np.asfortranarray(large)
+    elif layout == 'strided':
+        large = np.repeat(np.repeat(large, 2, axis=0), 2, axis=1)[::2, ::2]
+    elif layout == 'read-only':
+        large.setflags(write=False)
+
+    for segm in (SegmentationImage(large),
+                 SegmentationImage._from_data(large)):
+        assert_equal(segm.labels, expected.labels + offset)
+        assert segm.labels.dtype == dtype
+        assert_equal(segm.areas, expected.areas)
+        assert segm.areas.dtype == expected.areas.dtype
+        assert segm.slices == expected.slices
+
+
 def _make_huge_label_pair(dtype):
     """
     Return a segmentation image with ordinary labels and one with the
