@@ -314,3 +314,32 @@ class TestFastLocalBackground:
         for n_threads in (0, -1, 2.5, True):
             with pytest.raises(ValueError, match=match):
                 LocalBackground(5, 10, n_threads=n_threads)
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('bkg_estimator', [None, MeanBackground(),
+                                           BiweightLocationBackground()])
+def test_read_only_inputs(dtype, bkg_estimator):
+    """
+    Regression test that read-only (non-writeable) input arrays are
+    accepted, are not modified, and give results identical to writeable
+    arrays.
+    """
+    rng = np.random.default_rng(0)
+    data = rng.normal(10.0, 1.0, (51, 51)).astype(dtype)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[20:23, 30:33] = True
+    x = np.array([25.2, 3.0, 40.7])
+    y = np.array([24.6, 47.0, 10.1])
+    arrays = (data, mask, x, y)
+    originals = [arr.copy() for arr in arrays]
+
+    local_bkg = LocalBackground(5, 10, bkg_estimator=bkg_estimator)
+    expected = local_bkg(data, x, y, mask=mask)
+    for arr in arrays:
+        arr.setflags(write=False)
+    result = local_bkg(data, x, y, mask=mask)
+
+    assert_equal(result, expected)
+    for arr, original in zip(arrays, originals, strict=True):
+        assert_equal(arr, original)

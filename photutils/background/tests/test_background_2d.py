@@ -1444,3 +1444,43 @@ class TestFastBoxStatistics:
         data_nomask = np.ma.MaskedArray(np.ones((100, 100)))
         bkg = Background2D(data_nomask, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background_mesh, 1.0)
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize(('bkg_estimator', 'bkg_rms_estimator'),
+                         [(MedianBackground(), StdBackgroundRMS()),
+                          (SExtractorBackground(), MADStdBackgroundRMS()),
+                          (BiweightLocationBackground(),
+                           BiweightScaleBackgroundRMS())])
+def test_read_only_inputs(dtype, bkg_estimator, bkg_rms_estimator):
+    """
+    Regression test that read-only (non-writeable) input arrays are
+    accepted, are not modified, and give results identical to writeable
+    arrays.
+    """
+    rng = np.random.default_rng(0)
+    data = rng.normal(10.0, 1.0, (100, 100)).astype(dtype)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[10:20, 30:40] = True
+    coverage_mask = np.zeros(data.shape, dtype=bool)
+    coverage_mask[:, :5] = True
+    arrays = (data, mask, coverage_mask)
+    originals = [arr.copy() for arr in arrays]
+
+    def compute():
+        bkg = Background2D(data, (25, 25), mask=mask,
+                           coverage_mask=coverage_mask,
+                           bkg_estimator=bkg_estimator,
+                           bkg_rms_estimator=bkg_rms_estimator)
+        return (bkg.background, bkg.background_rms, bkg.background_mesh,
+                bkg.background_rms_mesh)
+
+    expected = compute()
+    for arr in arrays:
+        arr.setflags(write=False)
+    result = compute()
+
+    for res, exp in zip(result, expected, strict=True):
+        assert_equal(res, exp)
+    for arr, original in zip(arrays, originals, strict=True):
+        assert_equal(arr, original)

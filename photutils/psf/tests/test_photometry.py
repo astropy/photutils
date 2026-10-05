@@ -3065,3 +3065,54 @@ def test_error_weights_message_has_source_context():
     match = 'centered near'
     with pytest.raises(ValueError, match=match):
         psfphot(data, error=error, init_params=init)
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('grouped', [False, True])
+def test_read_only_inputs(dtype, grouped):
+    """
+    Regression test that read-only (non-writeable) input arrays are
+    accepted, are not modified, and give results identical to writeable
+    arrays.
+    """
+    yy, xx = np.mgrid[-12:13, -12:13]
+    psf_data = CircularGaussianPRF(fwhm=5.4)(xx, yy)
+    psf_model = ImagePSF(psf_data, oversampling=2)
+
+    params = Table({'x_0': [20.3, 25.1, 50.7], 'y_0': [20.6, 23.2, 40.2],
+                    'flux': [500.0, 300.0, 800.0]})
+    shape = (61, 71)
+    data = make_model_image(shape, psf_model, params, model_shape=(11, 11))
+    data += make_noise_image(shape, mean=0, stddev=0.5, seed=0)
+    data = data.astype(dtype)
+    error = np.full(shape, 0.5, dtype=dtype)
+    mask = np.zeros(shape, dtype=bool)
+    mask[40, 52] = True
+    x_init = np.array(params['x_0']) + 0.2
+    y_init = np.array(params['y_0']) - 0.1
+    arrays = (psf_data, data, error, mask, x_init, y_init)
+    originals = [arr.copy() for arr in arrays]
+
+    def compute():
+        model = ImagePSF(psf_data, oversampling=2)
+        grouper = SourceGrouper(10) if grouped else None
+        psfphot = PSFPhotometry(model, (7, 7), grouper=grouper,
+                                aperture_radius=4,
+                                local_bkg_estimator=LocalBackground(6, 10))
+        init_params = Table({'x': x_init, 'y': y_init})
+        phot = psfphot(data, error=error, mask=mask,
+                       init_params=init_params)
+        result = [np.asarray(phot[name]) for name in phot.colnames]
+        result.append(psfphot.make_model_image(shape))
+        result.append(psfphot.make_residual_image(data))
+        return result
+
+    expected = compute()
+    for arr in arrays:
+        arr.setflags(write=False)
+    result = compute()
+
+    for res, exp in zip(result, expected, strict=True):
+        assert_equal(res, exp)
+    for arr, original in zip(arrays, originals, strict=True):
+        assert_equal(arr, original)

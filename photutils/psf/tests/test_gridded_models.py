@@ -1229,3 +1229,34 @@ class TestSTDPSFGridFromASDF:
         match = "property 'oversampling' of 'STDPSFGrid' object has no setter"
         with pytest.raises(AttributeError, match=match):
             psfgrid.oversampling = (4, 5)
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+def test_read_only_inputs(psfmodel, dtype):
+    """
+    Regression test that read-only (non-writeable) input arrays are
+    accepted, are not modified, and give results identical to writeable
+    arrays.
+    """
+    psf_data = psfmodel.data.astype(dtype)
+    meta = {'grid_xypos': psfmodel.grid_xypos, 'oversampling': 4}
+    y = np.linspace(95, 105, 21)
+    x = np.linspace(40, 50, 21)
+    arrays = (psf_data, x, y)
+    originals = [arr.copy() for arr in arrays]
+
+    def compute():
+        model = GriddedPSFModel(NDData(psf_data, meta=meta), flux=10,
+                                x_0=45.3, y_0=100.2)
+        return (model(x, y), *model.fit_deriv(x, y, 10, 45.3, 100.2),
+                model.copy()(x, y))
+
+    expected = compute()
+    for arr in arrays:
+        arr.setflags(write=False)
+    result = compute()
+
+    for res, exp in zip(result, expected, strict=True):
+        assert_equal(res, exp)
+    for arr, original in zip(arrays, originals, strict=True):
+        assert_equal(arr, original)
