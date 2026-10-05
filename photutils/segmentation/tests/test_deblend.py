@@ -1763,3 +1763,35 @@ def test_n_markers_fallback_returns_none():
         result = deblender.deblend_source()
 
     assert result is None
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('contrast_method', ['basin', 'saddle'])
+@pytest.mark.parametrize('n_threads', [1, 2])
+def test_read_only_inputs(dtype, contrast_method, n_threads):
+    """
+    Regression test that read-only (non-writeable) input arrays are
+    accepted, are not modified, and give results identical to writeable
+    arrays.
+    """
+    data, segm = make_multipeak_source()
+    data = data.astype(dtype)
+    segm_data = segm.data.copy()
+    arrays = (data, segm_data)
+    originals = [arr.copy() for arr in arrays]
+
+    def compute():
+        return deblend_sources(data, SegmentationImage(segm_data), 5,
+                               contrast=0.01,
+                               contrast_method=contrast_method,
+                               n_threads=n_threads).data
+
+    expected = compute()
+    assert expected.max() > 1
+    for arr in arrays:
+        arr.setflags(write=False)
+    result = compute()
+
+    assert_equal(result, expected)
+    for arr, original in zip(arrays, originals, strict=True):
+        assert_equal(arr, original)

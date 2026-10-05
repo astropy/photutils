@@ -30,6 +30,7 @@ from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
+from photutils.segmentation.tests._batch_scene import make_batch_scene
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
@@ -4530,3 +4531,48 @@ class TestNThreads:
         for n_threads in (0, -1, 2.5, True):
             with pytest.raises(ValueError, match=match):
                 SourceCatalog(data, segm, n_threads=n_threads)
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('local_bkg_width', [0, 8])
+def test_read_only_inputs(dtype, local_bkg_width):
+    """
+    Regression test that read-only (non-writeable) input arrays are
+    accepted, are not modified, and give results identical to writeable
+    arrays.
+    """
+    scene = make_batch_scene()
+    data = scene['data'].astype(dtype)
+    error = scene['error'].astype(dtype)
+    mask = scene['mask']
+    segm_data = scene['segm'].data.copy()
+    background = np.full(data.shape, 0.5, dtype=dtype)
+    arrays = (data, error, mask, segm_data, background)
+    originals = [arr.copy() for arr in arrays]
+
+    def compute():
+        cat = SourceCatalog(data, SegmentationImage(segm_data), error=error,
+                            mask=mask, background=background,
+                            local_bkg_width=local_bkg_width)
+        result = {}
+        for name in cat.properties:
+            if name.startswith('sky'):
+                continue
+            value = getattr(cat, name)
+            if isinstance(value, (np.ndarray, u.Quantity)):
+                result[name] = np.asarray(value)
+        result['flux_radius'] = np.asarray(cat.flux_radius(0.5))
+        result['circular'] = np.asarray(cat.circular_photometry(5.0))
+        result['kron'] = np.asarray(cat.kron_photometry((2.0, 1.2, 0.0)))
+        return result
+
+    expected = compute()
+    for arr in arrays:
+        arr.setflags(write=False)
+    result = compute()
+
+    assert len(expected) > 50
+    for name, value in expected.items():
+        assert_equal(result[name], value)
+    for arr, original in zip(arrays, originals, strict=True):
+        assert_equal(arr, original)

@@ -728,3 +728,35 @@ class TestImagePSF:
             assert key in model_str
         for param in image_psf.param_names:
             assert param in model_str
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('oversampling', [1, 2])
+def test_read_only_inputs(gaussian_psf, dtype, oversampling):
+    """
+    Regression test that read-only (non-writeable) input arrays are
+    accepted, are not modified, and give results identical to writeable
+    arrays.
+    """
+    yy, xx = np.mgrid[-10:11, -10:11]
+    psf_data = gaussian_psf(xx, yy).astype(dtype)
+    y = np.linspace(-3, 3, 13)
+    x = np.linspace(-2.5, 3.5, 13)
+    arrays = (psf_data, x, y)
+    originals = [arr.copy() for arr in arrays]
+
+    def compute():
+        model = ImagePSF(psf_data, flux=10, x_0=0.3, y_0=-0.2,
+                         oversampling=oversampling)
+        return (model(x, y), *model.fit_deriv(x, y, 10, 0.3, -0.2),
+                model.copy()(x, y))
+
+    expected = compute()
+    for arr in arrays:
+        arr.setflags(write=False)
+    result = compute()
+
+    for res, exp in zip(result, expected, strict=True):
+        assert_equal(res, exp)
+    for arr, original in zip(arrays, originals, strict=True):
+        assert_equal(arr, original)
