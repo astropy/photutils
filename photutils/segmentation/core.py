@@ -79,13 +79,13 @@ def _get_label_stats(array):
     Return the labels of a segmentation array with their areas and
     bounding boxes.
 
-    A 2D array is measured in a single pass by compiled code. A 2D
-    array with unsigned 64-bit labels or very large labels is first
-    mapped to consecutive labels, which costs a sort of the labeled
-    pixels and a search of every pixel, so that the memory used is set
-    by the number of labels and not by their size. An array of another
-    dimension, or one with negative labels, is measured with
-    `numpy.unique`, which does not give the bounding boxes.
+    A 2D array is measured in a single pass by compiled code. A 2D array
+    with very large labels is first mapped to consecutive labels, which
+    costs a sort of the labeled pixels and a search of every pixel, so
+    that the memory used is set by the number of labels and not by their
+    size. An array of another dimension, or one with negative labels,
+    is measured with `numpy.unique`, which does not give the bounding
+    boxes.
 
     Parameters
     ----------
@@ -106,13 +106,18 @@ def _get_label_stats(array):
         are exclusive. `None` if the bounding boxes were not measured.
     """
     dtype = array.dtype
-    if (array.ndim == 2 and dtype.kind in 'iu'
-            and not (dtype.kind == 'u' and dtype.itemsize == 8)):
+    max_label_limit = max(array.size // 4, _MIN_MAX_LABEL_LIMIT)
+    use_kernel = array.ndim == 2 and dtype.kind in 'iu'
+    if use_kernel and dtype.kind == 'u' and dtype.itemsize == 8:
+        # An unsigned 64-bit array is cast to int64 for the kernel,
+        # which is safe only if its labels are below the limit. The
+        # size check is needed because an empty array has no maximum.
+        use_kernel = array.size > 0 and array.max() <= max_label_limit
+    if use_kernel:
         # The kernel takes native int32 or int64 arrays. Other integer
         # arrays are cast to the smallest of the two that holds them.
         if not (dtype.isnative and dtype.type in (np.int32, np.int64)):
             dtype = np.int32 if dtype.itemsize < 4 else np.int64
-        max_label_limit = max(array.size // 4, _MIN_MAX_LABEL_LIMIT)
         (_, _, counts, ymin, ymax, xmin, xmax) = label_stats(
             np.ascontiguousarray(array, dtype=dtype), max_label_limit)
         if counts is not None:

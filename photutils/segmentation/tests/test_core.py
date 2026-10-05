@@ -2400,6 +2400,38 @@ def test_label_stats_fallback():
     assert segm.slices == []
 
 
+def test_label_stats_uint64_small_labels(monkeypatch):
+    """
+    Test that an unsigned 64-bit array whose labels fit in the per-label
+    arrays is measured directly by the kernel, without first being
+    mapped to consecutive labels.
+    """
+    calls = []
+    original = segm_core.label_stats
+
+    def recording_label_stats(segm, max_label_limit):
+        calls.append((segm.dtype, max_label_limit))
+        return original(segm, max_label_limit)
+
+    monkeypatch.setattr(segm_core, 'label_stats', recording_label_stats)
+
+    data = _make_label_array()
+    expected = SegmentationImage(data)
+    calls.clear()
+
+    segm = SegmentationImage(data.astype(np.uint64))
+    assert calls == [(np.dtype(np.int64), 65536)]
+    assert_equal(segm.labels, expected.labels)
+    assert segm.labels.dtype == np.uint64
+    assert_equal(segm.areas, expected.areas)
+    assert segm.slices == expected.slices
+
+    # a zero-size array has no maximum value
+    segm = SegmentationImage._from_data(np.zeros((0, 5), dtype=np.uint64))
+    assert segm.n_labels == 0
+    assert len(segm.areas) == 0
+
+
 @pytest.mark.parametrize('dtype', [np.int64, np.uint64])
 def test_huge_labels(dtype):
     """
