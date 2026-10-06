@@ -44,6 +44,29 @@ _AUTO_KERNEL_MIN_SIZE = 5
 _AUTO_FIT_FWHM_FRACTION = 2.0
 _AUTO_FIT_MIN_SIZE = 5
 
+# Half width (in detector pixels) of the box around each oversampled
+# grid point within which star pixels contribute to that grid point.
+# The half width is never smaller than one grid spacing.
+_DEPOSIT_HALF_WIDTH = 0.375
+
+# Passband of the alias low-pass filter. It ends at the smaller of
+# _ALIAS_PASS cycles per input pixel and _ALIAS_PASS_NYQUIST times the
+# Nyquist frequency of the oversampled grid.
+_ALIAS_PASS = 0.8
+_ALIAS_PASS_NYQUIST = 0.7
+
+# Low-pass filter of the refinement iterations (cycles per input pixel),
+# used only along axes with at least the minimum oversampling factor.
+# The gain falls to zero at the first zero of the transfer function of
+# the residual deposit box, which is 1 / (2 * _DEPOSIT_HALF_WIDTH). The
+# star residuals do not constrain the ePSF at and above that frequency.
+# Each refinement iteration updates the ePSF _REFINE_STEPS times with
+# the star centers and fluxes fixed and then refits the stars.
+_REFINE_PASS = 1.1
+_REFINE_STOP = 1.0 / (2.0 * _DEPOSIT_HALF_WIDTH)
+_REFINE_MIN_OVERSAMPLING = 4
+_REFINE_STEPS = 5
+
 
 def _fitter_accepts_weights(fitter):
     """
@@ -66,10 +89,52 @@ def _fitter_accepts_weights(fitter):
                    for p in spec.parameters.values()))
 
 
-def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
+def _alias_filter_band(oversampling, *, nu_pass=None, refine=False):
     """
-    Low-pass filter an oversampled ePSF above the input pixel sampling
-    frequency.
+    Return the passband and stopband of the alias low-pass filter along
+    one axis.
+
+    Parameters
+    ----------
+    oversampling : int
+        The oversampling factor along the axis.
+
+    nu_pass : float or `None`, optional
+        The end of the passband of the filter of the building iterations
+        in cycles per input pixel. If `None`, it is the smaller of 0.8
+        cycles per input pixel and 70% of the Nyquist frequency of the
+        oversampled grid (0.7 cycles per input pixel for an oversampling
+        factor of 2).
+
+    refine : bool, optional
+        If `True`, return the band of the filter of the refinement
+        iterations, which has unit gain up to 1.1 cycles per input pixel
+        and zero gain at and above 1.33 cycles per input pixel. That
+        filter does not remove the signal of the ePSF near one cycle per
+        input pixel, so it leaves no ripple pattern. It removes only
+        the frequencies that the star residuals do not constrain. It is
+        used only for an oversampling factor of at least 4. For smaller
+        factors those frequencies are too close to the Nyquist frequency
+        of the oversampled grid, and the band of the building iterations
+        is returned.
+
+    Returns
+    -------
+    nu_pass, nu_stop : float
+        The end of the passband and the start of the stopband in cycles
+        per input pixel.
+    """
+    if refine and oversampling >= _REFINE_MIN_OVERSAMPLING:
+        return _REFINE_PASS, _REFINE_STOP
+    if nu_pass is None:
+        nu_pass = min(_ALIAS_PASS, _ALIAS_PASS_NYQUIST * oversampling / 2)
+    return float(nu_pass), 1.0
+
+
+def _suppress_alias_modes(data, oversampling, *, nu_pass=None, nu_stop=1.0):
+    """
+    Low-pass filter an oversampled ePSF near and above the input pixel
+    sampling frequency.
 
     The filter is applied independently along each axis with an
     oversampling factor greater than one. It has unit gain up to
@@ -77,10 +142,22 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
     transition, and zero gain at and above ``nu_stop`` cycles per input
     pixel. Frequencies at integer cycles per input pixel are the zeros
     of the pixel response, so a pixel-integrated PSF has essentially no
-    power there or above. However, those are exactly the frequencies at
-    which the star-pixel sampling lattice aliases onto the oversampled
-    grid, so noise at those frequencies can grow into a checkerboard
-    pattern during the ePSF build iterations.
+    power there. However, those are exactly the frequencies at which
+    the star-pixel sampling lattice aliases onto the oversampled grid,
+    so noise at those frequencies can grow into a checkerboard pattern
+    during the ePSF build iterations.
+
+    The default passband is a compromise. The ePSF of an undersampled
+    detector has real power just below one cycle per input pixel. For
+    example, about 10% of the Fourier amplitude of the HST WFC3/IR F110W
+    ePSF lies between 0.7 and 1.0 cycles per pixel. A lower ``nu_pass``
+    removes that power, which lowers the peak of the ePSF and leaves
+    ripples around its core. On the other hand, a star sampled once
+    per pixel constrains those frequencies only weakly, so a higher
+    ``nu_pass`` slows the convergence of the build, especially for
+    small star samples. The passband is also limited to 70% of the
+    Nyquist frequency of the oversampled grid, which matters only for an
+    oversampling factor of 2.
 
     Parameters
     ----------
@@ -90,11 +167,16 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
     oversampling : tuple of int
         The (y, x) oversampling factors.
 
-    nu_pass : float, optional
-        The end of the passband in cycles per input pixel.
+    nu_pass : float, tuple of 2 floats, or `None`, optional
+        The end of the passband in cycles per input pixel, as a single
+        value or as the (y, x) values. If `None`, the passband along
+        each axis ends at the smaller of 0.8 cycles per input pixel and
+        70% of the Nyquist frequency of the oversampled grid (0.7 cycles
+        per input pixel for an oversampling factor of 2).
 
-    nu_stop : float, optional
-        The start of the stopband in cycles per input pixel.
+    nu_stop : float or tuple of 2 floats, optional
+        The start of the stopband in cycles per input pixel, as a single
+        value or as the (y, x) values.
 
     Returns
     -------
@@ -108,10 +190,16 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
         if factor < 2:
             continue
 
+        if nu_pass is None:
+            axis_pass = _alias_filter_band(factor)[0]
+        else:
+            axis_pass = np.broadcast_to(nu_pass, 2)[axis]
+        axis_stop = np.broadcast_to(nu_stop, 2)[axis]
+
         npts = data.shape[axis]
         # Frequency in cycles per input (undersampled) pixel
         nu = np.abs(np.fft.fftfreq(npts)) * factor
-        frac = np.clip((nu - nu_pass) / (nu_stop - nu_pass), 0.0, 1.0)
+        frac = np.clip((nu - axis_pass) / (axis_stop - axis_pass), 0.0, 1.0)
         gain = 0.5 * (1.0 + np.cos(np.pi * frac))
         shape = [1, 1]
         shape[axis] = npts
@@ -849,6 +937,10 @@ class _ProgressReporter:
     maxiters : int
         Maximum number of iterations for progress tracking.
 
+    desc : str or `None`, optional
+        The description of the progress bar. If `None`, the description
+        of the building iterations is used.
+
     Attributes
     ----------
     enabled : bool
@@ -857,11 +949,14 @@ class _ProgressReporter:
     maxiters : int
         Maximum iterations for progress bar setup.
 
+    desc : str
+        The description of the progress bar.
+
     _pbar : progress bar or `None`
         The underlying progress bar instance.
     """
 
-    def __init__(self, enabled, maxiters):
+    def __init__(self, enabled, maxiters, *, desc=None):
         """
         Initialize a _ProgressReporter.
 
@@ -872,9 +967,15 @@ class _ProgressReporter:
 
         maxiters : int
             The maximum number of iterations.
+
+        desc : str or `None`, optional
+            The description of the progress bar.
         """
         self.enabled = enabled
         self.maxiters = maxiters
+        if desc is None:
+            desc = f'EPSFBuilder ({maxiters} maxiters)'
+        self.desc = desc
         self._pbar = None
 
     def setup(self):
@@ -893,9 +994,8 @@ class _ProgressReporter:
             self._pbar = None
             return self
 
-        desc = f'EPSFBuilder ({self.maxiters} maxiters)'
         self._pbar = add_progress_bar(total=self.maxiters,
-                                      desc=desc)
+                                      desc=self.desc)
         return self
 
     def update(self):
@@ -918,9 +1018,9 @@ class _ProgressReporter:
             The iteration number at which convergence occurred.
         """
         if self._pbar is not None:
-            self._pbar.write(f'EPSFBuilder converged after {iteration} '
-                             f'iterations (of {self.maxiters} maximum '
-                             'iterations)')
+            self._pbar.write('EPSFBuilder building iterations converged '
+                             f'after {iteration} iterations (of '
+                             f'{self.maxiters} maximum iterations)')
 
     def close(self):
         """
@@ -953,15 +1053,30 @@ class EPSFBuildResults:
         fitting the final ePSF.
 
     iterations : int
-        The number of iterations performed during the building process.
-        This will be <= maxiters specified in EPSFBuilder.
+        The number of building iterations performed. This will be <=
+        maxiters specified in EPSFBuilder. The refinement iterations are
+        not counted.
 
     converged : bool
         Whether the building process converged based on the
         center accuracy criterion. `True` if at least the
-        ``converged_fraction`` of the successfully fitted stars moved
-        by less than the specified center accuracy between the final
-        iterations.
+        ``converged_fraction`` of the successfully fitted stars
+        moved by less than the specified center accuracy between the
+        final iterations. If the ePSF was refined, ``converged``,
+        ``final_center_accuracy``, and ``final_converged_fraction``
+        are measured in the last refinement iteration, so that they
+        describe the returned ``fitted_stars``. A build whose building
+        iterations converged can therefore report `False`. The first
+        refit of the refinement moves some stars by more than the center
+        accuracy, because the ePSF changes when the refinement restores
+        its signal near one cycle per pixel. This mostly happens with
+        a single refinement iteration (``refinement_iters=1``). The
+        star centers settle again within a few refinement iterations.
+        With different oversampling factors along the two axes they can
+        need more refinement iterations than the default (about 10 in
+        tests). If ``iterations`` is less than the ``maxiters`` of the
+        builder, the building iterations converged, whatever the value
+        of ``converged``.
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
@@ -1333,23 +1448,90 @@ class EPSFBuilder:
     smoothing_kernel : {'auto', 'quartic', 'quadratic'}, 2D array, or `None`
         The smoothing kernel to apply to the ePSF during each iteration
         step. If ``'auto'``, a least-squares quartic polynomial kernel
-        (see Notes) whose width is 0.7 times the FWHM of the current
-        ePSF in oversampled grid points is used, and no smoothing
-        is applied if that width is less than 5 grid points, i.e.,
-        for heavily undersampled ePSFs. The kernel is square and the
-        FWHM is measured in each iteration along the narrowest axis
-        of the ePSF, so with anisotropic oversampling the axis with
-        the fewer grid points per FWHM sets the kernel size. If the
-        FWHM cannot be measured, the ``'quartic'`` kernel is used
+        (see Notes) whose width is the largest odd number of oversampled
+        grid points that is not larger than 0.7 times the FWHM of the
+        current ePSF is used, and no smoothing is applied if that
+        width is less than 5 grid points, i.e., for ePSFs with fewer
+        than about 7 grid points per FWHM. The kernel is square and
+        the FWHM is measured in each iteration along the narrowest
+        axis of the ePSF, so with anisotropic oversampling the axis
+        with the fewer grid points per FWHM sets the kernel size. If
+        the FWHM cannot be measured, the ``'quartic'`` kernel is used
         and a warning is emitted. The predefined ``'quartic'`` and
         ``'quadratic'`` kernels are 5x5 kernels (in oversampled grid
         points) derived from fourth and second degree polynomials,
         respectively. Alternatively, a custom 2D array can be input.
         If `None` then no smoothing will be performed. The kernels are
         applied on the oversampled grid, so the physical width of a
-        fixed kernel depends on the oversampling factor. Power at and
-        above one cycle per input pixel is always removed from the ePSF
-        along oversampled axes, independently of this parameter.
+        fixed kernel depends on the oversampling factor. Structure that
+        repeats with a period of about one input pixel or shorter is
+        removed from the ePSF along oversampled axes independently of
+        this parameter (see ``alias_passband``).
+
+    alias_passband : {'auto'}, float, or `None`, optional
+        The end of the passband, in cycles per detector pixel, of the
+        low-pass filter that is applied to the ePSF in each iteration
+        along the axes with an oversampling factor greater than
+        one. A spatial frequency of one cycle per pixel describes
+        structure that repeats with a period of one detector pixel,
+        and a frequency of 0.5 cycles per pixel describes structure
+        that repeats every two pixels. The filter has unit gain up to
+        ``alias_passband``, a raised-cosine transition, and zero gain
+        at and above one cycle per pixel. It removes the frequencies
+        at which the star-pixel sampling lattice aliases onto the
+        oversampled grid, which otherwise can grow into a checkerboard
+        pattern (see Notes). The value must be greater than 0 and less
+        than 1.
+
+        If ``'auto'`` (default), the passband ends at 0.8 cycles per
+        pixel, or at 0.7 cycles per pixel for an oversampling factor of
+        2 (70% of the Nyquist frequency of the oversampled grid).
+
+        The default is the best choice for most data. A different value
+        can help in two cases, which are distinguished by the optical
+        cutoff frequency of the telescope in cycles per pixel, ``cutoff
+        = D * pixel_scale / wavelength``, with the telescope diameter
+        ``D`` and the mean ``wavelength`` of the bandpass in the same
+        units and the ``pixel_scale`` in radians per pixel:
+
+        * ``cutoff`` greater than about 1 (strongly undersampled,
+          e.g., HST WFC3/IR F110W, JWST NIRCam F070W, or Roman WFI F062
+          and F106): the ePSF has real signal up to nearly one cycle per
+          pixel. In tests the default recovered the peak of such ePSFs
+          to within about 1 percent, except for the sharpest ones, whose
+          peak was 3 percent low. A value of 0.9 recovered that peak to
+          within 0.2 percent, but it increased the noise in the core of
+          the other ePSFs by 10 to 65 percent. Try 0.9 if the default
+          ePSF is too broad, i.e., if the stars have positive residuals
+          at their centers after the fitted ePSF is subtracted. It needs
+          a large star sample (a few hundred stars) and more iterations
+          (``maxiters`` of 20 or more).
+
+        * ``cutoff`` less than about 0.9 (e.g., JWST NIRCam F115W and
+          redder, JWST MIRI, or most ground-based data): the ePSF has
+          no signal to preserve near one cycle per pixel. A value of
+          0.7 rejects more noise (10 to 40 percent lower residuals in
+          the core in tests) and converges in fewer iterations. It
+          leaves the peak of a strongly undersampled ePSF low by 2 to 6
+          percent, so use it only when ``cutoff`` is known.
+
+        A value larger than needed makes the build converge more slowly,
+        because a star sampled once per pixel constrains the frequencies
+        near one cycle per pixel only weakly, and it is not recommended
+        for small star samples or for an oversampling factor of 2.
+
+        If `None`, the filter is not applied. This is rarely
+        appropriate. Without the filter, noise at the alias frequencies
+        accumulates over the iterations, the build can stall before it
+        converges, and heterogeneous or contaminated star samples can
+        grow a checkerboard pattern. In tests with simulated HST, JWST,
+        and Roman star fields, the unfiltered ePSF was less accurate
+        than the filtered one in nearly every case, even for large,
+        clean, and homogeneous star samples. The option is provided for
+        experimentation, e.g., to check how much the filter changes
+        a particular ePSF. Always compare the result with a filtered
+        build. The filter is never applied along an axis with an
+        oversampling factor of 1.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -1444,6 +1626,41 @@ class EPSFBuilder:
     maxiters : int, optional
         The maximum number of ePSF building iterations to perform.
 
+    refinement_iters : int, optional
+        The number of refinement iterations to perform after the
+        building iterations. The alias low-pass filter of the building
+        iterations (see ``alias_passband``) removes some real signal of
+        an undersampled ePSF just below one cycle per pixel. The filter
+        acts separately along each axis, so the missing signal shows as
+        a ripple pattern with a period of about one pixel along the row
+        and the column through the center of the ePSF. The refinement
+        iterations restore that signal. In each refinement iteration,
+        the ePSF is updated five times from the star residuals with
+        the star centers and fluxes held fixed, and the stars are then
+        refit with the updated ePSF. The ePSF is recentered in each
+        update, as in the building iterations, which keeps the ePSF and
+        the star centers from drifting together. The low-pass filter of
+        these updates has unit gain up to 1.1 cycles per pixel and zero
+        gain at and above 1.33 cycles per pixel, so it does not remove
+        signal near one cycle per pixel. It removes only the frequencies
+        that the star residuals do not constrain. Such a wide filter
+        cannot be used from the start of the build, because the build
+        then converges slowly and is more sensitive to the initial star
+        centers. The refinement is not performed if ``refinement_iters``
+        is 0, if ``alias_passband`` is `None`, or if the oversampling
+        factor is less than 4 along both axes. It roughly doubles the
+        run time of a build.
+
+        The ``converged`` attribute of the results describes the
+        last refinement iteration. The first refit of the refinement
+        moves some stars by more than ``center_accuracy``, so with
+        ``refinement_iters=1`` a build whose building iterations
+        converged can report ``converged=False``. The star centers
+        settle again within a few refinement iterations. With
+        different oversampling factors along the two axes they can
+        need more refinement iterations than the default (about 10 in
+        tests).
+
     progress_bar : bool, optional
         Whether to print the progress bar during the build
         iterations. The progress bar requires that the `tqdm
@@ -1452,19 +1669,29 @@ class EPSFBuilder:
     Notes
     -----
     In each build iteration, the residual between each star and the
-    current ePSF model is deposited on every oversampled grid point
-    inside the footprint of each star pixel, so that every star
-    contributes to every grid point regardless of its subpixel phase.
-    After the residuals are combined and the ePSF is smoothed, power
-    at and above one cycle per input pixel is removed along each
-    oversampled axis. A pixel-integrated PSF has essentially no power
-    there, but those are the frequencies at which the star-pixel
-    sampling lattice aliases onto the oversampled grid. Without
-    these two measures, noise in the ePSF grid from heterogeneous
-    or contaminated stars can bias the fitted star centers toward
-    particular subpixel phases and grow into a checkerboard pattern in
-    the ePSF. A warning is emitted if the subpixel phases of the fitted
-    star centers are strongly non-uniform at the end of the build.
+    current ePSF model is deposited on the oversampled grid points
+    within 0.375 detector pixel (and at least one grid spacing) of each
+    star pixel center along each axis. Each grid point is therefore
+    estimated from the star pixels in a box three quarters of a pixel
+    wide around it, and every star contributes to both parities of the
+    grid regardless of its subpixel phase. Anderson and King (2000)
+    combined the pixels within 0.25 pixel of each grid point of an ePSF
+    with an oversampling factor of 4. That narrower box gives a slightly
+    sharper ePSF for clean star samples, but it grows a checkerboard
+    pattern for heterogeneous or contaminated ones. After the residuals
+    are combined and the ePSF is smoothed, power is removed along each
+    oversampled axis with a low-pass filter that by default has unit
+    gain up to 0.8 cycles per input pixel (0.7 for an oversampling
+    factor of 2) and zero gain at and above one cycle per input pixel
+    (see ``alias_passband``). A pixel-integrated PSF has essentially no
+    power at one cycle per input pixel, but that is the frequency at
+    which the star-pixel sampling lattice aliases onto the oversampled
+    grid. Without these two measures, noise in the ePSF grid from
+    heterogeneous or contaminated stars can bias the fitted star centers
+    toward particular subpixel phases and grow into a checkerboard
+    pattern in the ePSF. A warning is emitted if the subpixel phases of
+    the fitted star centers are strongly non-uniform at the end of the
+    build.
 
     The default ``smoothing_kernel='auto'`` and ``fit_shape='auto'``
     scale the smoothing kernel and the fitting box with the FWHM of the
@@ -1494,12 +1721,13 @@ class EPSFBuilder:
         warning_type=PhotutilsDeprecationWarning)
 
     def __init__(self, *, oversampling=4, shape=None,
-                 smoothing_kernel='auto', sigma_clip=SIGMA_CLIP,
+                 smoothing_kernel='auto', alias_passband='auto',
+                 sigma_clip=SIGMA_CLIP,
                  recentering_func=centroid_com, recentering_boxsize=(5, 5),
                  recentering_maxiters=20, center_accuracy=1.0e-3,
                  converged_fraction=0.95, fitter=None, fit_shape='auto',
                  fitter_maxiters=100, constrain_fluxes=True, maxiters=10,
-                 progress_bar=True):
+                 refinement_iters=5, progress_bar=True):
 
         # Validate and store oversampling using the validator
         self.oversampling = _EPSFValidator.validate_oversampling(
@@ -1521,11 +1749,11 @@ class EPSFBuilder:
         self.shape = shape
 
         self.recentering_func = recentering_func
+        msg = 'recentering_maxiters must be a strictly-positive integer'
         if (isinstance(recentering_maxiters, bool)
-                or not isinstance(recentering_maxiters, numbers.Integral)
-                or recentering_maxiters <= 0):
-            msg = ('recentering_maxiters must be a strictly-positive '
-                   'integer')
+                or not isinstance(recentering_maxiters, numbers.Integral)):
+            raise TypeError(msg)
+        if recentering_maxiters <= 0:
             raise ValueError(msg)
         self.recentering_maxiters = int(recentering_maxiters)
         self.recentering_boxsize = as_pair('recentering_boxsize',
@@ -1542,6 +1770,18 @@ class EPSFBuilder:
             # instead of in the middle of a build.
             _SmoothingKernel.get_kernel(smoothing_kernel)
         self.smoothing_kernel = smoothing_kernel
+
+        if not (alias_passband is None or self._is_auto(alias_passband)):
+            msg = ("alias_passband must be 'auto', a number between "
+                   '0 and 1 (exclusive), or None')
+            if (isinstance(alias_passband, bool)
+                    or not isinstance(alias_passband, (str, numbers.Real))):
+                raise TypeError(msg)
+            if (isinstance(alias_passband, str)
+                    or not 0.0 < alias_passband < 1.0):
+                raise ValueError(msg)
+            alias_passband = float(alias_passband)
+        self.alias_passband = alias_passband
 
         # Per-call state for the automatic smoothing kernel and fit
         # shape (reset in build_epsf and updated in each iteration).
@@ -1591,6 +1831,9 @@ class EPSFBuilder:
         self._fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
         self._fitter_accepts_weights = _fitter_accepts_weights(self.fitter)
 
+        if not isinstance(constrain_fluxes, (bool, np.bool_)):
+            msg = 'constrain_fluxes must be a bool'
+            raise TypeError(msg)
         self.constrain_fluxes = bool(constrain_fluxes)
 
         # Validate center accuracy using the validator
@@ -1604,6 +1847,14 @@ class EPSFBuilder:
         # Validate maxiters using the validator
         _EPSFValidator.validate_maxiters(maxiters)
         self.maxiters = maxiters
+
+        msg = 'refinement_iters must be a non-negative integer'
+        if (isinstance(refinement_iters, bool)
+                or not isinstance(refinement_iters, numbers.Integral)):
+            raise TypeError(msg)
+        if refinement_iters < 0:
+            raise ValueError(msg)
+        self.refinement_iters = int(refinement_iters)
 
         self.progress_bar = progress_bar
 
@@ -1674,8 +1925,9 @@ class EPSFBuilder:
         Choose the smoothing kernel and fit shape from the FWHM of the
         current ePSF.
 
-        The smoothing window is ``_AUTO_KERNEL_FWHM_FRACTION`` times
-        the FWHM in oversampled grid points (no smoothing below
+        The smoothing window is the largest odd size that is not
+        larger than ``_AUTO_KERNEL_FWHM_FRACTION`` times the FWHM
+        in oversampled grid points (no smoothing below
         ``_AUTO_KERNEL_MIN_SIZE``), and the fit shape is
         ``_AUTO_FIT_FWHM_FRACTION`` times the FWHM in detector pixels
         (at least ``_AUTO_FIT_MIN_SIZE`` and at most the smallest star
@@ -1704,7 +1956,11 @@ class EPSFBuilder:
         # Cap the kernel at the largest odd size smaller than the ePSF.
         # A kernel as large as the ePSF would fit every grid value
         # mostly to edge-reflected data.
-        size = _odd_size(_AUTO_KERNEL_FWHM_FRACTION * fwhm_grid)
+        # The window is rounded down to an odd size so that the kernel
+        # is never wider than the requested fraction of the FWHM
+        size = int(_AUTO_KERNEL_FWHM_FRACTION * fwhm_grid)
+        if size % 2 == 0:
+            size -= 1
         size = min(size, _odd_size(min(epsf_data.shape)) - 2)
         if size >= _AUTO_KERNEL_MIN_SIZE:
             kernel = _SmoothingKernel.make_polynomial_kernel(size, degree=4)
@@ -1820,11 +2076,19 @@ class EPSFBuilder:
         star at the location of the star in the undersampled grid.
         The normalized residual image is then resampled from the
         undersampled star grid to the oversampled ePSF grid by
-        depositing each star pixel value on every oversampled grid
-        point inside the footprint of that pixel. Every star therefore
-        contributes to every grid point that its cutout covers,
-        regardless of its subpixel phase. For an oversampling factor of
-        one along an axis, this reduces to the nearest grid point.
+        depositing each star pixel value on the oversampled grid points
+        within 0.375 detector pixel (and at least one grid spacing)
+        of the pixel center along each axis. Each grid point is
+        therefore estimated from the star pixels in a box three
+        quarters of a pixel wide around it. Anderson and King (2000)
+        used a box half a pixel wide (pixels within 0.25 pixel of each
+        grid point of an ePSF with an oversampling factor of 4). The
+        wider box is needed for heterogeneous or contaminated star
+        samples, which grow a checkerboard pattern with the narrower
+        one. Every star contributes to both parities of the grid along
+        each axis, regardless of its subpixel phase. For an
+        oversampling factor of one along an axis, this reduces to the
+        nearest grid point.
 
         Parameters
         ----------
@@ -1860,6 +2124,32 @@ class EPSFBuilder:
 
         return epsf_resid
 
+    @staticmethod
+    def _deposit_half_width(oversampling):
+        """
+        Return the half width, in oversampled grid spacings, of the box
+        around each star pixel center within which the pixel is
+        deposited on the ePSF grid points along one axis.
+
+        The half width is ``_DEPOSIT_HALF_WIDTH`` detector pixels, but
+        at least one grid spacing so that every star pixel reaches both
+        parities of the grid. For an oversampling factor of one it is
+        half a grid spacing, i.e., the nearest grid point.
+
+        Parameters
+        ----------
+        oversampling : int
+            The oversampling factor along the axis.
+
+        Returns
+        -------
+        half_width : float
+            The half width in oversampled grid spacings.
+        """
+        if oversampling < 2:
+            return 0.5
+        return max(_DEPOSIT_HALF_WIDTH * oversampling, 1.0)
+
     def _deposit_residuals(self, stars, epsf, epsf_resid):
         """
         Deposit the normalized residuals of the input stars into a
@@ -1882,7 +2172,7 @@ class EPSFBuilder:
 
         # Gather the unmasked pixels of all stars so that the ePSF model
         # is evaluated once and the residuals are deposited with a
-        # single indexed assignment per footprint offset.
+        # single indexed assignment per grid offset.
         star_index = []
         xidx_centered = []
         yidx_centered = []
@@ -1903,32 +2193,38 @@ class EPSFBuilder:
         residuals -= epsf.evaluate(x=xidx_centered, y=yidx_centered,
                                    flux=1.0, x_0=0.0, y_0=0.0)
 
-        # Each star pixel covers the oversampled grid points k with
-        # x_over - os / 2 < k <= x_over + os / 2 along each axis, where
-        # x_over is the pixel center in the oversampled ePSF grid.
-        # Compute the first covered grid point along each axis.
+        # Each star pixel is deposited on the oversampled grid points
+        # k with x_over - w < k <= x_over + w along each axis, where
+        # x_over is the pixel center in the oversampled ePSF grid and w
+        # is the deposit half width in grid spacings. Compute the first
+        # of these grid points and the largest number of them along
+        # each axis.
         ny_over, nx_over = self.oversampling
+        y_width = self._deposit_half_width(ny_over)
+        x_width = self._deposit_half_width(nx_over)
         x_over, y_over = self._coord_transformer.undersampled_to_oversampled(
             xidx_centered, yidx_centered)
-        x_first = np.floor(x_over + epsf.origin[0] - nx_over / 2.0)
-        y_first = np.floor(y_over + epsf.origin[1] - ny_over / 2.0)
-        x_first = x_first.astype(int) + 1
-        y_first = y_first.astype(int) + 1
+        x_over = x_over + epsf.origin[0]
+        y_over = y_over + epsf.origin[1]
+        x_first = np.floor(x_over - x_width).astype(int) + 1
+        y_first = np.floor(y_over - y_width).astype(int) + 1
+        ny_deposit = int(np.ceil(2 * y_width))
+        nx_deposit = int(np.ceil(2 * x_width))
 
-        # Deposit each pixel residual on every grid point inside the
-        # pixel footprint through a flat index into the stack, which
-        # needs only two masked copies per footprint offset. The
-        # in-bounds masks along the x axis are the same for every row
-        # offset, so they are computed once.
+        # Deposit each pixel residual on these grid points through a
+        # flat index into the stack, which needs only two masked copies
+        # per grid offset. The masks along the x axis are the same for
+        # every row offset, so they are computed once.
         epsf_resid_flat = epsf_resid.reshape(-1)
         star_offset = star_index * (ny * nx)
         x_masks = [((x_first + i) >= 0) & ((x_first + i) < nx)
-                   for i in range(nx_over)]
-        for j in range(ny_over):
+                   & ((x_first + i) <= x_over + x_width)
+                   for i in range(nx_deposit)]
+        for j in range(ny_deposit):
             yidx = y_first + j
-            y_mask = (yidx >= 0) & (yidx < ny)
+            y_mask = (yidx >= 0) & (yidx < ny) & (yidx <= y_over + y_width)
             row_index = star_offset + yidx * nx
-            for i in range(nx_over):
+            for i in range(nx_deposit):
                 mask = y_mask & x_masks[i]
                 flat_index = row_index + (x_first + i)
                 epsf_resid_flat[flat_index[mask]] = residuals[mask]
@@ -2117,7 +2413,7 @@ class EPSFBuilder:
 
         return epsf_data
 
-    def _build_epsf_step(self, stars, *, epsf=None):
+    def _build_epsf_step(self, stars, *, epsf=None, refine=False):
         """
         A single iteration of improving an ePSF.
 
@@ -2129,6 +2425,10 @@ class EPSFBuilder:
         epsf : `ImagePSF` object, optional
             The initial ePSF model. If not input, then the ePSF will be
             built from scratch.
+
+        refine : bool, optional
+            Whether this is an update of a refinement iteration. The
+            alias low-pass filter then uses the wider refinement filter.
 
         Returns
         -------
@@ -2168,10 +2468,20 @@ class EPSFBuilder:
         # Smooth the ePSF
         smoothed_data = self._smooth_epsf(new_epsf)
 
-        # Remove power at and above the input pixel sampling frequency
+        # Remove power near and above the input pixel sampling frequency
         # along oversampled axes, where the star-pixel lattice aliases
         # onto the ePSF grid.
-        smoothed_data = _suppress_alias_modes(smoothed_data, self.oversampling)
+        if self.alias_passband is not None:
+            nu_pass = None
+            if not self._is_auto(self.alias_passband):
+                nu_pass = self.alias_passband
+            bands = [_alias_filter_band(factor, nu_pass=nu_pass,
+                                        refine=refine)
+                     for factor in self.oversampling]
+            smoothed_data = _suppress_alias_modes(
+                smoothed_data, self.oversampling,
+                nu_pass=(bands[0][0], bands[1][0]),
+                nu_stop=(bands[0][1], bands[1][1]))
 
         # Recenter the ePSF using an intermediate ePSF that keeps the
         # current epsf's origin. The recentering shifts the ePSF by
@@ -2441,9 +2751,9 @@ class EPSFBuilder:
 
         return star
 
-    def _process_iteration(self, stars, epsf, iter_num):
+    def _process_iteration(self, stars, epsf, iter_num, *, refine=False):
         """
-        Process a single iteration of ePSF building.
+        Process a single building or refinement iteration.
 
         Parameters
         ----------
@@ -2454,7 +2764,14 @@ class EPSFBuilder:
             Current ePSF model.
 
         iter_num : int
-            Current iteration number.
+            Current iteration number, counting the building and the
+            refinement iterations.
+
+        refine : bool, optional
+            Whether this is a refinement iteration, in which the ePSF is
+            updated ``_REFINE_STEPS`` times with the refinement filter
+            and the star centers and fluxes held fixed before the stars
+            are refit.
 
         Returns
         -------
@@ -2468,7 +2785,9 @@ class EPSFBuilder:
             Boolean array tracking failed fits.
         """
         # Build/improve the ePSF
-        epsf = self._build_epsf_step(stars, epsf=epsf)
+        n_steps = _REFINE_STEPS if refine else 1
+        for _ in range(n_steps):
+            epsf = self._build_epsf_step(stars, epsf=epsf, refine=refine)
 
         # Fit the new ePSF to the stars to find improved centers
         with warnings.catch_warnings():
@@ -2563,8 +2882,8 @@ class EPSFBuilder:
                    'star sample or a lower oversampling factor.')
             warnings.warn(msg, AstropyUserWarning)
 
-    def _finalize_build(self, epsf, stars, progress_reporter, iter_num,
-                        converged, final_center_accuracy,
+    def _finalize_build(self, epsf, stars, iter_num, converged,
+                        final_center_accuracy,
                         final_converged_fraction=None):
         """
         Finalize the ePSF building process and create result object.
@@ -2579,9 +2898,6 @@ class EPSFBuilder:
 
         stars : `EPSFStars` object
             Final fitted stars.
-
-        progress_reporter : `_ProgressReporter`
-            Progress reporter instance for handling completion messages.
 
         iter_num : int
             Number of completed iterations.
@@ -2603,11 +2919,6 @@ class EPSFBuilder:
             Structured result containing ePSF, stars, and build
             diagnostics.
         """
-        # Handle progress reporting completion
-        if iter_num < self.maxiters:
-            progress_reporter.write_convergence_message(iter_num)
-        progress_reporter.close()
-
         excluded_star_indices = [i for i, star
                                  in enumerate(stars.all_stars)
                                  if star._excluded_from_fit]
@@ -2742,9 +3053,34 @@ class EPSFBuilder:
 
         final_center_accuracy = float(max_center_dist_sq ** 0.5)
 
+        # Finish the progress reporting of the building iterations
+        # before the refinement, which has its own progress bar.
+        if iter_num < self.maxiters:
+            progress_reporter.write_convergence_message(iter_num)
+        progress_reporter.close()
+
+        # Refine the ePSF. Each refinement iteration updates the ePSF
+        # with the star centers and fluxes fixed and then refits the
+        # stars with the updated ePSF. The convergence diagnostics then
+        # describe the refit of the last refinement iteration, so that
+        # they match the returned stars.
+        if (self.refinement_iters > 0 and self.alias_passband is not None
+                and np.any(self.oversampling >= _REFINE_MIN_OVERSAMPLING)):
+            refine_reporter = _ProgressReporter(
+                self.progress_bar, self.refinement_iters,
+                desc='EPSFBuilder refinement').setup()
+            for refine_num in range(1, self.refinement_iters + 1):
+                epsf, stars, fit_failed = self._process_iteration(
+                    stars, epsf, iter_num + refine_num, refine=True)
+                (converged, converged_fraction, max_center_dist_sq,
+                 centers) = self._check_convergence(stars, centers,
+                                                    fit_failed)
+                refine_reporter.update()
+            refine_reporter.close()
+            final_center_accuracy = float(max_center_dist_sq ** 0.5)
+
         # Finalize and return structured results
-        return self._finalize_build(epsf, stars, progress_reporter,
-                                    iter_num, converged,
+        return self._finalize_build(epsf, stars, iter_num, converged,
                                     final_center_accuracy,
                                     converged_fraction)
 

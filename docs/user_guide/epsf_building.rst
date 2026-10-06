@@ -173,11 +173,31 @@ as the background level. If the background in the image varies
 across the image, one should use more sophisticated methods (e.g.,
 `~photutils.background.Background2D`).
 
-Let's subtract the background from the image::
+The background level must be measured from pixels that are free of star
+light. The extended wings of the stars cover a large fraction of this
+image, and sigma clipping does not remove them. The median of the whole
+image is therefore biased high by about 0.35 counts. That is a small
+fraction of the noise, but summed over a 25 x 25 pixel cutout it is
+about 3% of the flux of a typical star in this image, and subtracting it
+would make the ePSF too concentrated. To avoid this bias, we first mask
+the pixels within 18 pixels of each detected star::
+
+    >>> import numpy as np
+    >>> from photutils.utils import circular_footprint
+    >>> from scipy.ndimage import binary_dilation
+    >>> star_mask = np.zeros(data.shape, dtype=bool)  # doctest: +REMOTE_DATA
+    >>> yidx = np.round(sources['y_centroid']).astype(int)  # doctest: +REMOTE_DATA
+    >>> xidx = np.round(sources['x_centroid']).astype(int)  # doctest: +REMOTE_DATA
+    >>> star_mask[yidx, xidx] = True  # doctest: +REMOTE_DATA
+    >>> star_mask = binary_dilation(
+    ...     star_mask, structure=circular_footprint(18))  # doctest: +REMOTE_DATA
+
+Now let's subtract the background, measured from the unmasked pixels,
+from the image::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> mean_val, median_val, std_val = sigma_clipped_stats(
-    ...     data, sigma=2.0)  # doctest: +REMOTE_DATA
+    ...     data, sigma=2.0, mask=star_mask)  # doctest: +REMOTE_DATA
     >>> data -= median_val  # doctest: +REMOTE_DATA
 
 The :func:`~photutils.psf.extract_stars` function requires the input
@@ -226,6 +246,7 @@ show the first 25 of them:
 .. plot::
 
     import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
@@ -234,6 +255,8 @@ show the first 25 of them:
                                     make_noise_image)
     from photutils.detection import DAOStarFinder
     from photutils.psf import extract_stars
+    from photutils.utils import circular_footprint
+    from scipy.ndimage import binary_dilation
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
@@ -252,7 +275,13 @@ show the first 25 of them:
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
 
-    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0)
+    star_mask = np.zeros(data.shape, dtype=bool)
+    yidx = np.round(sources['y_centroid']).astype(int)
+    xidx = np.round(sources['x_centroid']).astype(int)
+    star_mask[yidx, xidx] = True
+    star_mask = binary_dilation(star_mask, structure=circular_footprint(18))
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0,
+                                                        mask=star_mask)
     data -= median_val
 
     nddata = NDData(data=data)
@@ -273,23 +302,25 @@ Constructing the ePSF
 ---------------------
 
 With the star cutouts, we are ready to construct the ePSF with the
-:class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF
-with an oversampling factor of 4, which is appropriate for these
-undersampled stars (a FWHM of about 1.5 pixels). Here we limit
-the maximum number of iterations to 3 (to limit its run time).
-In practice the default of 10 iterations is usually enough, and
-the build stops early once the star centers have converged. The
-:class:`~photutils.psf.EPSFBuilder` class has many options to control
-the ePSF build process, including the smoothing kernel, the fitting box,
-the recentering function, and the convergence criterion. Please see the
-:class:`~photutils.psf.EPSFBuilder` documentation for further details.
+:class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF with an
+oversampling factor of 4, which is appropriate for these undersampled
+stars (a FWHM of about 1.5 pixels). We use the default maximum of
+10 iterations (``maxiters=10``). The build stops early once the
+star centers have converged. Do not stop the build after only a few
+iterations. An ePSF that has not converged can differ from the true ePSF
+by a few percent of its peak, and the fitted star positions are less
+accurate. The :class:`~photutils.psf.EPSFBuilder` class has many options
+to control the ePSF build process, including the smoothing kernel, the
+fitting box, the recentering function, and the convergence criterion.
+Please see the :class:`~photutils.psf.EPSFBuilder` documentation for
+further details.
 
 We first initialize an :class:`~photutils.psf.EPSFBuilder` instance with
 our desired parameters and then input the cutouts of our selected stars
 to the instance::
 
     >>> from photutils.psf import EPSFBuilder
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
     >>> result = epsf_builder(stars)  # doctest: +REMOTE_DATA
 
@@ -309,9 +340,9 @@ The `~photutils.psf.EPSFBuildResults` object provides useful diagnostic
 information about the build process::
 
     >>> result.converged  # doctest: +REMOTE_DATA
-    False
+    True
     >>> result.iterations  # doctest: +REMOTE_DATA
-    3
+    10
     >>> result.n_excluded_stars  # doctest: +REMOTE_DATA
     0
 
@@ -339,6 +370,7 @@ Finally, let's show the constructed ePSF:
 .. plot::
 
     import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
@@ -347,6 +379,8 @@ Finally, let's show the constructed ePSF:
                                     make_noise_image)
     from photutils.detection import DAOStarFinder
     from photutils.psf import EPSFBuilder, extract_stars
+    from photutils.utils import circular_footprint
+    from scipy.ndimage import binary_dilation
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
@@ -366,15 +400,20 @@ Finally, let's show the constructed ePSF:
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
 
-    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0)
+    star_mask = np.zeros(data.shape, dtype=bool)
+    yidx = np.round(sources['y_centroid']).astype(int)
+    xidx = np.round(sources['x_centroid']).astype(int)
+    star_mask[yidx, xidx] = True
+    star_mask = binary_dilation(star_mask, structure=circular_footprint(18))
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0,
+                                                        mask=star_mask)
     data -= median_val
 
     nddata = NDData(data=data)
 
     stars = extract_stars(nddata, stars_tbl, size=25)
 
-    epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
-                               progress_bar=False)
+    epsf_builder = EPSFBuilder(oversampling=4, progress_bar=False)
     epsf, fitted_stars = epsf_builder(stars)
 
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -408,16 +447,15 @@ polynomial shape of the ePSF within the kernel window.
 The default is ``'auto'``, which uses a quartic (fourth-degree)
 polynomial kernel whose width is 0.7 times the FWHM of the ePSF in
 oversampled grid points, measured in each iteration along its narrowest
-axis. The width is rounded to an odd number of grid points, and no
+axis. The width is rounded down to an odd number of grid points, and no
 smoothing is applied when it would be smaller than 5 grid points, i.e.,
-for heavily undersampled ePSFs with fewer than about 5 grid points per
-FWHM, where a fixed 5x5 kernel would lower the peak of the ePSF. The
-kernel is square, so with anisotropic oversampling the axis with the
-fewer grid points per FWHM sets its size. The chosen kernel is reported
-in the ``smoothing_kernel`` attribute of the results, and it can be
-input as a fixed ``smoothing_kernel`` to reproduce the build. If the
-FWHM cannot be measured, the ``'quartic'`` kernel is used and a warning
-is emitted.
+for undersampled ePSFs with fewer than about 7 grid points per FWHM,
+where a fixed 5x5 kernel would lower the peak of the ePSF. The kernel is
+square, so with anisotropic oversampling the axis with the fewer grid
+points per FWHM sets its size. The chosen kernel is reported in the
+``smoothing_kernel`` attribute of the results, and it can be input as a
+fixed ``smoothing_kernel`` to reproduce the build. If the FWHM cannot be
+measured, the ``'quartic'`` kernel is used and a warning is emitted.
 
 You can also use ``'quartic'`` or ``'quadratic'`` for the fixed 5x5
 fourth- and second-degree polynomial kernels of `Anderson and King 2000
@@ -425,29 +463,145 @@ fourth- and second-degree polynomial kernels of `Anderson and King 2000
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_,
 provide a custom 2D array, or set it to `None` for no smoothing::
 
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            smoothing_kernel='quadratic',
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
 The fixed kernels are applied on the oversampled grid, so their physical
 width is ``5 / oversampling`` detector pixels. The 5x5 quartic kernel
-was developed for HST data with an oversampling factor of 4, where
-it is about 0.7 FWHM wide. When using a fixed kernel for a heavily
-undersampled ePSF with fewer than about five grid points per FWHM, the
-kernel lowers the peak of the ePSF, and ``smoothing_kernel=None`` is
-a better choice, especially when the stars have high signal-to-noise.
-Smoothing is most useful for well-sampled ePSFs built from noisy or few
-stars.
+was developed for HST data with an oversampling factor of 4, where it
+is about 0.7 FWHM wide. When using a fixed kernel for an undersampled
+ePSF with fewer than about seven grid points per FWHM, the kernel lowers
+the peak of the ePSF, and ``smoothing_kernel=None`` is a better choice,
+especially when the stars have high signal-to-noise. Smoothing is most
+useful for well-sampled ePSFs built from noisy or few stars.
 
-Independently of the smoothing kernel, when the oversampling factor
-is greater than one the builder also applies a low-pass filter to the
-ePSF in every iteration. The filter removes only the finest-scale
-structure on the oversampled grid, which a real pixel-integrated PSF
-cannot contain, so it does not blur the ePSF. Together with depositing
-each star pixel residual over its full footprint on the oversampled
-grid, this prevents noise from heterogeneous, contaminated, or low
-signal-to-noise stars from growing into a checkerboard pattern in the
-ePSF. If the subpixel phases of the fitted star centers are strongly
+Alias Filter Passband
+^^^^^^^^^^^^^^^^^^^^^
+
+Independently of the smoothing kernel, when the oversampling factor is
+greater than one the builder applies a low-pass filter to the ePSF in
+every iteration. The filter has unit gain up to a passband frequency,
+a smooth transition, and zero gain at and above one cycle per detector
+pixel. Here a spatial frequency of one cycle per pixel describes
+structure that repeats with a period of one detector pixel, and a
+frequency of 0.5 cycles per pixel describes structure that repeats every
+two pixels. A pixel-integrated PSF has essentially no signal at one
+cycle per pixel, but that is the frequency at which the pixel sampling
+of the stars aliases onto the oversampled grid. Together with depositing
+each star pixel residual on the oversampled grid points within 0.375
+pixel of the pixel center along each axis, the filter prevents noise
+from heterogeneous, contaminated, or low signal-to-noise stars from
+growing into a checkerboard pattern in the ePSF.
+
+The ``alias_passband`` parameter sets the end of the passband in cycles
+per detector pixel. The default (``'auto'``) is 0.8 cycles per pixel, or
+0.7 for an oversampling factor of 2. The default is the best choice for
+most data. A different value can help in two cases, which depend on how
+much real signal the ePSF has just below one cycle per pixel. That is
+set by the optical cutoff frequency of the telescope expressed in cycles
+per pixel:
+
+.. math::
+
+    \nu_c = \frac{D \, p}{\lambda}
+
+where :math:`D` is the telescope diameter, :math:`\lambda` is the
+mean wavelength of the bandpass (in the same units as :math:`D`), and
+:math:`p` is the pixel scale in radians per pixel. A telescope transmits
+no signal above this frequency. For example, for HST (:math:`D = 2.4`
+m) WFC3/IR (0.13 arcsec per pixel) at 1.1 microns, :math:`\nu_c = 2.4
+\times 6.3 \times 10^{-7} / 1.1 \times 10^{-6} = 1.4` cycles per pixel.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 22 33 45
+
+    * - :math:`\nu_c` (cycles/pixel)
+      - Examples
+      - Guidance for ``alias_passband``
+    * - greater than about 1
+      - HST WFC3/IR F110W, JWST NIRCam F070W, JWST NIRISS F090W, Roman
+        WFI F062 and F106
+      - The default, or 0.9. The ePSF has real signal up to nearly one
+        cycle per pixel. In tests the default recovered the peak of
+        these ePSFs to within about 1 percent, except for HST WFC3/IR
+        F110W (3 percent low), which 0.9 recovered to within 0.2
+        percent. For the others 0.9 increased the noise in the core by
+        10 to 65 percent.
+    * - about 0.9 to 1
+      - HST WFC3/IR F160W
+      - The default (0.8)
+    * - less than about 0.9
+      - JWST NIRCam F115W and redder, JWST MIRI, Roman WFI F158 and
+        F213, most ground-based data
+      - The default, or 0.7. There is no signal to preserve near one
+        cycle per pixel. In tests 0.7 lowered the residuals in the core
+        by 10 to 40 percent and converged in fewer iterations.
+
+Try 0.9 for a strongly undersampled detector if the default ePSF is too
+broad, i.e., if the stars have positive residuals at their centers after
+the fitted ePSF is subtracted::
+
+    >>> epsf_builder = EPSFBuilder(oversampling=4, alias_passband=0.9,
+    ...                            maxiters=20,
+    ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
+Do not use 0.7 unless the cutoff frequency is known to be low. It leaves
+the peak of a strongly undersampled ePSF low by 2 to 6 percent.
+
+A passband that is wider than needed has a cost. A star that is sampled
+once per pixel constrains the frequencies near one cycle per pixel only
+weakly, because a small shift of the star center has nearly the same
+effect on its pixel values. A wider passband therefore makes the build
+converge more slowly and makes it more sensitive to noise. Use 0.9 only
+with a large star sample (a few hundred stars), allow more iterations
+(``maxiters`` of 20 or more), and check that the build converged. Do not
+use it with an oversampling factor of 2.
+
+The filter acts separately along the x and y axes. The signal that it
+removes from an undersampled ePSF therefore shows as a faint ripple
+pattern, with a period of about one pixel, along the row and the
+column through the center of the ePSF. To remove this pattern, the
+builder refines the ePSF after the building iterations. Each refinement
+iteration (``refinement_iters``, 5 by default) updates the ePSF five
+times with the star centers and fluxes held fixed and then refits the
+stars with the updated ePSF. The ePSF is recentered in each update,
+as in the building iterations. These updates use a wider and smoother
+low-pass filter, with unit gain up to 1.1 cycles per pixel and zero
+gain at and above 1.33 cycles per pixel. It does not remove signal near
+one cycle per pixel, so it leaves no ripple pattern. It removes only
+the frequencies that the star residuals do not constrain. Such a filter
+cannot be used from the start of the build, because the build then
+converges slowly and is more sensitive to the initial star centers.
+
+The refinement is applied only for an oversampling factor of 4 or
+larger, and it roughly doubles the run time of the build. For a
+well-sampled ePSF it has little to restore and it adds a small amount
+of noise (up to about 15 percent of the residual of the ePSF). Set
+``refinement_iters=0`` to skip it. More refinement iterations than the
+default improve the most strongly undersampled ePSFs only slightly and
+add more noise to the well-sampled ones.
+
+The ``converged``, ``final_center_accuracy``, and
+``final_converged_fraction`` attributes of the results describe the last
+refinement iteration when the ePSF was refined, so that they match the
+returned stars. The ``iterations`` attribute counts only the building
+iterations.
+
+Setting ``alias_passband=None`` turns the filter off. This is rarely
+appropriate. Without the filter, noise at the alias frequencies
+accumulates over the iterations, the build can stall before it
+converges, and heterogeneous or contaminated star samples can grow a
+checkerboard pattern. In tests with simulated HST, JWST, and Roman star
+fields, the unfiltered ePSF was less accurate than the filtered one in
+nearly every case, even for large, clean, and homogeneous star samples.
+The option is provided for experimentation, e.g., to check how much
+the filter changes a particular ePSF. Always compare the result with
+a filtered build. The filter is never applied along an axis with an
+oversampling factor of 1.
+
+If the subpixel phases of the fitted star centers are strongly
 non-uniform at the end of the build, which indicates biased star
 centers, a warning is emitted. In that case the star sample should be
 inspected for stars with different PSFs, saturated or contaminated
@@ -474,7 +628,7 @@ into the ePSF. The flux constraint assumes that the linked images have
 the same flux scale (e.g., the same exposure time and throughput). If
 they do not, set ``constrain_fluxes=False``::
 
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            constrain_fluxes=False,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
@@ -508,7 +662,7 @@ from converging. The 5-pixel box of Anderson and King is about 2.5 FWHM
 wide for HST data but only about 1 FWHM wide for a star with a FWHM of 5
 pixels::
 
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            fit_shape=7,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
@@ -517,7 +671,7 @@ You can also customize the fitter itself by passing a
 
     >>> from astropy.modeling.fitting import LMLSQFitter
     >>> fitter = LMLSQFitter()  # doctest: +REMOTE_DATA
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            fitter=fitter, fit_shape=7,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
@@ -531,7 +685,7 @@ own `~astropy.stats.SigmaClip` instance to customize this behavior::
 
     >>> from astropy.stats import SigmaClip
     >>> sigclip = SigmaClip(sigma=2.5, maxiters=5)  # doctest: +REMOTE_DATA
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            sigma_clip=sigclip,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 

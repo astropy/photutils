@@ -293,6 +293,30 @@ New Features
     ``EPSFBuildResults`` that report the smoothing kernel and fitting
     box used in the final iteration. [#2421]
 
+  - Added an ``alias_passband`` keyword to ``EPSFBuilder`` that
+    controls the low-pass filter that is applied to an oversampled
+    ePSF in each iteration. The filter removes structure that repeats
+    with a period of one detector pixel or shorter. The keyword sets
+    the highest spatial frequency that the filter leaves unchanged, in
+    cycles per detector pixel, which corresponds to a period of ``1 /
+    alias_passband`` detector pixels. A value of 0.9 recovers the peak
+    of the ePSF of a strongly undersampled detector, 0.7 rejects more
+    noise for better-sampled data, and `None` turns the filter off.
+    [#2465]
+
+  - Added a ``refinement_iters`` keyword to ``EPSFBuilder`` (default
+    5). After the building iterations, the ePSF is refined for an
+    oversampling factor of 4 or larger. Each refinement iteration
+    updates the ePSF with the star centers and fluxes held fixed, using
+    a weaker low-pass filter that keeps structure that repeats with
+    a period of about one detector pixel, and then refits the stars.
+    This restores the real signal of an undersampled ePSF that the
+    alias low-pass filter of the building iterations removes, which
+    otherwise shows as a ripple pattern along the row and the column
+    through the center of the ePSF. The convergence attributes of
+    ``EPSFBuildResults`` then describe the last refinement iteration.
+    [#2465]
+
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose
     centers must change by less than ``center_accuracy`` between
@@ -917,12 +941,14 @@ Bug Fixes
 
   - Fixed a checkerboard pattern in ePSFs built by ``EPSFBuilder``
     with ``oversampling`` greater than one from heterogeneous or
-    contaminated stars. Each star pixel residual is now deposited on
-    every oversampled grid point inside its footprint, so that every
-    star contributes to every grid point regardless of its subpixel
-    phase. A warning is now emitted if the subpixel phases of the fitted
-    star centers are strongly non-uniform, which indicates biased star
-    centers. [#2419]
+    contaminated stars. Each star pixel residual is now deposited on the
+    oversampled grid points within 0.375 pixel (and at least one grid
+    spacing) of the pixel center, so that every star contributes to both
+    parities of the grid regardless of its subpixel phase, and structure
+    that repeats with a period of about one input pixel or shorter is
+    removed from the ePSF in each iteration. A warning is now emitted
+    if the subpixel phases of the fitted star centers are strongly
+    non-uniform, which indicates biased star centers. [#2419, #2465]
 
   - Fixed a bug where ``EPSFBuilder`` raised ``NonFiniteValueError``
     when a star cutout contained a non-finite (e.g., NaN) pixel inside
@@ -1242,21 +1268,22 @@ API Changes
 
   - The default ``smoothing_kernel`` and ``fit_shape`` of
     ``EPSFBuilder`` are now ``'auto'``. The smoothing kernel is a
-    least-squares quartic polynomial kernel whose width is 0.7 times
-    the FWHM of the ePSF in oversampled grid points (no smoothing
-    below 5 grid points), and the fitting box is twice the FWHM of the
-    ePSF in detector pixels (at least 5 pixels and at most the star
-    cutout size). The FWHM is measured in each iteration along the
-    narrowest axis of the ePSF. The previous fixed 5x5 ``'quartic'``
-    kernel (in oversampled grid points) and 5-pixel fitting box (in
-    detector pixels) were designed for HST images with an oversampling
-    factor of 4. A fixed kernel oversmooths heavily undersampled
-    ePSFs, and a fixed 5-pixel fitting box applied to a well-sampled
-    star uses only its flat core, which biases the fitted centers and
-    can prevent convergence. The previous behavior is available with
-    ``smoothing_kernel='quartic'`` and ``fit_shape=5``. An invalid
-    string value for either parameter now raises a ``ValueError``.
-    [#2421]
+    least-squares quartic polynomial kernel whose width is the largest
+    odd number of oversampled grid points that is not larger than 0.7
+    times the FWHM of the ePSF (no smoothing below 5 grid points, i.e.,
+    for fewer than about 7 grid points per FWHM), and the fitting
+    box is twice the FWHM of the ePSF in detector pixels (at least 5
+    pixels and at most the star cutout size). The FWHM is measured in
+    each iteration along the narrowest axis of the ePSF. The previous
+    fixed 5x5 ``'quartic'`` kernel (in oversampled grid points) and
+    5-pixel fitting box (in detector pixels) were designed for HST
+    images with an oversampling factor of 4. A fixed kernel oversmooths
+    heavily undersampled ePSFs, and a fixed 5-pixel fitting box applied
+    to a well-sampled star uses only its flat core, which biases
+    the fitted centers and can prevent convergence. The previous
+    behavior is available with ``smoothing_kernel='quartic'`` and
+    ``fit_shape=5``. An invalid string value for either parameter now
+    raises a ``ValueError``. [#2421, #2465]
 
   - The following PSF flags have been renamed, along with their
     uppercase constants: ``outside_bounds`` (bit 2) to
