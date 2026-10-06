@@ -1018,9 +1018,9 @@ class _ProgressReporter:
             The iteration number at which convergence occurred.
         """
         if self._pbar is not None:
-            self._pbar.write(f'EPSFBuilder converged after {iteration} '
-                             f'iterations (of {self.maxiters} maximum '
-                             'iterations)')
+            self._pbar.write('EPSFBuilder building iterations converged '
+                             f'after {iteration} iterations (of '
+                             f'{self.maxiters} maximum iterations)')
 
     def close(self):
         """
@@ -1061,20 +1061,22 @@ class EPSFBuildResults:
         Whether the building process converged based on the
         center accuracy criterion. `True` if at least the
         ``converged_fraction`` of the successfully fitted stars
-        moved by less than the specified center accuracy between
-        the final iterations. If the ePSF was refined, the final
-        iteration of ``converged``, ``final_center_accuracy``, and
-        ``final_converged_fraction`` is the last refinement iteration,
-        so that they describe the returned ``fitted_stars``. A build
-        whose building iterations converged can therefore report
-        `False`. The first refit of the refinement moves some stars
-        by more than the center accuracy, because the ePSF changes
-        when the refinement restores its signal near one cycle per
-        pixel. This mostly happens with a single refinement iteration
-        (``refinement_iters=1``). The star centers settle again within
-        a few refinement iterations. If ``iterations`` is less than the
-        ``maxiters`` of the builder, the building iterations converged,
-        whatever the value of ``converged``.
+        moved by less than the specified center accuracy between the
+        final iterations. If the ePSF was refined, ``converged``,
+        ``final_center_accuracy``, and ``final_converged_fraction``
+        are measured in the last refinement iteration, so that they
+        describe the returned ``fitted_stars``. A build whose building
+        iterations converged can therefore report `False`. The first
+        refit of the refinement moves some stars by more than the center
+        accuracy, because the ePSF changes when the refinement restores
+        its signal near one cycle per pixel. This mostly happens with
+        a single refinement iteration (``refinement_iters=1``). The
+        star centers settle again within a few refinement iterations.
+        With different oversampling factors along the two axes they can
+        need more refinement iterations than the default (about 10 in
+        tests). If ``iterations`` is less than the ``maxiters`` of the
+        builder, the building iterations converged, whatever the value
+        of ``converged``.
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
@@ -1654,7 +1656,10 @@ class EPSFBuilder:
         moves some stars by more than ``center_accuracy``, so with
         ``refinement_iters=1`` a build whose building iterations
         converged can report ``converged=False``. The star centers
-        settle again within a few refinement iterations.
+        settle again within a few refinement iterations. With
+        different oversampling factors along the two axes they can
+        need more refinement iterations than the default (about 10 in
+        tests).
 
     progress_bar : bool, optional
         Whether to print the progress bar during the build
@@ -1767,7 +1772,7 @@ class EPSFBuilder:
         self.smoothing_kernel = smoothing_kernel
 
         if not (alias_passband is None or self._is_auto(alias_passband)):
-            if (isinstance(alias_passband, (bool, str))
+            if (isinstance(alias_passband, bool)
                     or not isinstance(alias_passband, numbers.Real)
                     or not 0.0 < alias_passband < 1.0):
                 msg = ("alias_passband must be 'auto', a number between "
@@ -2871,8 +2876,8 @@ class EPSFBuilder:
                    'star sample or a lower oversampling factor.')
             warnings.warn(msg, AstropyUserWarning)
 
-    def _finalize_build(self, epsf, stars, progress_reporter, iter_num,
-                        converged, final_center_accuracy,
+    def _finalize_build(self, epsf, stars, iter_num, converged,
+                        final_center_accuracy,
                         final_converged_fraction=None):
         """
         Finalize the ePSF building process and create result object.
@@ -2887,9 +2892,6 @@ class EPSFBuilder:
 
         stars : `EPSFStars` object
             Final fitted stars.
-
-        progress_reporter : `_ProgressReporter`
-            Progress reporter instance for handling completion messages.
 
         iter_num : int
             Number of completed iterations.
@@ -2911,11 +2913,6 @@ class EPSFBuilder:
             Structured result containing ePSF, stars, and build
             diagnostics.
         """
-        # Handle progress reporting completion
-        if iter_num < self.maxiters:
-            progress_reporter.write_convergence_message(iter_num)
-        progress_reporter.close()
-
         excluded_star_indices = [i for i, star
                                  in enumerate(stars.all_stars)
                                  if star._excluded_from_fit]
@@ -3050,6 +3047,12 @@ class EPSFBuilder:
 
         final_center_accuracy = float(max_center_dist_sq ** 0.5)
 
+        # Finish the progress reporting of the building iterations
+        # before the refinement, which has its own progress bar.
+        if iter_num < self.maxiters:
+            progress_reporter.write_convergence_message(iter_num)
+        progress_reporter.close()
+
         # Refine the ePSF. Each refinement iteration updates the ePSF
         # with the star centers and fluxes fixed and then refits the
         # stars with the updated ePSF. The convergence diagnostics then
@@ -3071,8 +3074,7 @@ class EPSFBuilder:
             final_center_accuracy = float(max_center_dist_sq ** 0.5)
 
         # Finalize and return structured results
-        return self._finalize_build(epsf, stars, progress_reporter,
-                                    iter_num, converged,
+        return self._finalize_build(epsf, stars, iter_num, converged,
                                     final_center_accuracy,
                                     converged_fraction)
 

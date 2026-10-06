@@ -3430,7 +3430,9 @@ def test_refinement_excludes_failed_fits(epsf_test_data):
 
 def test_refinement_progress_bar(epsf_test_data, monkeypatch):
     """
-    The refinement iterations have their own progress bar.
+    The refinement iterations have their own progress bar, which
+    starts after the progress bar of the building iterations is
+    finished.
     """
     from photutils.psf import epsf_builder
 
@@ -3442,17 +3444,21 @@ def test_refinement_progress_bar(epsf_test_data, monkeypatch):
             self.desc = desc
             self.count = 0
             self.closed = False
+            self.messages = []
 
         def update(self):
             self.count += 1
 
-        def write(self, _message):
-            pass
+        def write(self, message):
+            assert not self.closed
+            self.messages.append(message)
 
         def close(self):
             self.closed = True
 
     def add_progress_bar(*, total, desc):
+        # The earlier progress bar is finished before the next starts
+        assert all(bar.closed for bar in bars)
         bars.append(Bar(total, desc))
         return bars[-1]
 
@@ -3464,6 +3470,16 @@ def test_refinement_progress_bar(epsf_test_data, monkeypatch):
     assert [(bar.desc, bar.total, bar.count) for bar in bars] == [
         ('EPSFBuilder (2 maxiters)', 2, 2), ('EPSFBuilder refinement', 3, 3)]
     assert all(bar.closed for bar in bars)
+    assert all(not bar.messages for bar in bars)
+
+    # The convergence message is about the building iterations
+    bars.clear()
+    EPSFBuilder(oversampling=4, maxiters=10, refinement_iters=1,
+                center_accuracy=0.1)(stars)
+    assert len(bars[0].messages) == 1
+    assert bars[0].messages[0].startswith(
+        'EPSFBuilder building iterations converged after')
+    assert not bars[1].messages
 
     # No refinement bar without refinement iterations
     bars.clear()
