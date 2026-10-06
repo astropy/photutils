@@ -324,6 +324,12 @@ New Features
     (if any), and a ``plot_iterations`` method that plots the ePSF after
     each iteration and its change from the previous one. [#2466]
 
+  - Added a ``wing_smoothing`` keyword to ``EPSFBuilder`` (default
+    `True`). The wings of the final ePSF, beyond 3.5 FWHM from its
+    center, are now smoothed with least-squares quadratic fits in boxes
+    1.25 to 1.75 FWHM wide, which lowers their noise. The core of the
+    ePSF is not changed. [#2467]
+
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose
     centers must change by less than ``center_accuracy`` between
