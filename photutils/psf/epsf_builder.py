@@ -1065,7 +1065,16 @@ class EPSFBuildResults:
         the final iterations. If the ePSF was refined, the final
         iteration of ``converged``, ``final_center_accuracy``, and
         ``final_converged_fraction`` is the last refinement iteration,
-        so that they describe the returned ``fitted_stars``.
+        so that they describe the returned ``fitted_stars``. A build
+        whose building iterations converged can therefore report
+        `False`. The first refit of the refinement moves some stars
+        by more than the center accuracy, because the ePSF changes
+        when the refinement restores its signal near one cycle per
+        pixel. This mostly happens with a single refinement iteration
+        (``refinement_iters=1``). The star centers settle again within
+        a few refinement iterations. If ``iterations`` is less than the
+        ``maxiters`` of the builder, the building iterations converged,
+        whatever the value of ``converged``.
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
@@ -1639,6 +1648,13 @@ class EPSFBuilder:
         is 0, if ``alias_passband`` is `None`, or if the oversampling
         factor is less than 4 along both axes. It roughly doubles the
         run time of a build.
+
+        The ``converged`` attribute of the results describes the
+        last refinement iteration. The first refit of the refinement
+        moves some stars by more than ``center_accuracy``, so with
+        ``refinement_iters=1`` a build whose building iterations
+        converged can report ``converged=False``. The star centers
+        settle again within a few refinement iterations.
 
     progress_bar : bool, optional
         Whether to print the progress bar during the build
