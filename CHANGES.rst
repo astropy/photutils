@@ -293,22 +293,27 @@ New Features
     ``EPSFBuildResults`` that report the smoothing kernel and fitting
     box used in the final iteration. [#2421]
 
-  - Added an ``alias_passband`` keyword to ``EPSFBuilder`` that sets
-    the passband (in cycles per detector pixel) of the low-pass filter
-    that is applied to an oversampled ePSF in each iteration. A value
-    of 0.9 recovers the peak of the ePSF of a strongly undersampled
-    detector, 0.7 rejects more noise for better-sampled data, and `None`
-    turns the filter off. [#XXXX]
+  - Added an ``alias_passband`` keyword to ``EPSFBuilder`` that
+    controls the low-pass filter that is applied to an oversampled
+    ePSF in each iteration. The filter removes structure that repeats
+    with a period of one detector pixel or shorter. The keyword sets
+    the highest spatial frequency that the filter leaves unchanged, in
+    cycles per detector pixel, which corresponds to a period of ``1 /
+    alias_passband`` detector pixels. A value of 0.9 recovers the peak
+    of the ePSF of a strongly undersampled detector, 0.7 rejects more
+    noise for better-sampled data, and `None` turns the filter off.
+    [#2465]
 
   - Added a ``refinement_iters`` keyword to ``EPSFBuilder`` (default
     5). After the building iterations, the ePSF is refined for an
     oversampling factor of 4 or larger. Each refinement iteration
     updates the ePSF with the star centers and fluxes held fixed, using
-    a low-pass filter that does not remove signal near one cycle per
-    pixel, and then refits the stars. This restores the real signal of
-    an undersampled ePSF that the alias low-pass filter of the building
-    iterations removes, which otherwise shows as a ripple pattern along
-    the row and the column through the center of the ePSF. [#XXXX]
+    a weaker low-pass filter that keeps structure that repeats with a
+    period of about one detector pixel, and then refits the stars. This
+    restores the real signal of an undersampled ePSF that the alias
+    low-pass filter of the building iterations removes, which otherwise
+    shows as a ripple pattern along the row and the column through the
+    center of the ePSF. [#2465]
 
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose
@@ -937,11 +942,11 @@ Bug Fixes
     contaminated stars. Each star pixel residual is now deposited on the
     oversampled grid points within 0.375 pixel (and at least one grid
     spacing) of the pixel center, so that every star contributes to both
-    parities of the grid regardless of its subpixel phase, and power
-    near and above one cycle per input pixel is removed from the ePSF in
-    each iteration. A warning is now emitted if the subpixel phases of
-    the fitted star centers are strongly non-uniform, which indicates
-    biased star centers. [#2419, #XXXX]
+    parities of the grid regardless of its subpixel phase, and structure
+    that repeats with a period of about one input pixel or shorter is
+    removed from the ePSF in each iteration. A warning is now emitted
+    if the subpixel phases of the fitted star centers are strongly
+    non-uniform, which indicates biased star centers. [#2419, #2465]
 
   - Fixed a bug where ``EPSFBuilder`` raised ``NonFiniteValueError``
     when a star cutout contained a non-finite (e.g., NaN) pixel inside
@@ -1276,7 +1281,7 @@ API Changes
     the fitted centers and can prevent convergence. The previous
     behavior is available with ``smoothing_kernel='quartic'`` and
     ``fit_shape=5``. An invalid string value for either parameter now
-    raises a ``ValueError``. [#2421, #XXXX]
+    raises a ``ValueError``. [#2421, #2465]
 
   - The following PSF flags have been renamed, along with their
     uppercase constants: ``outside_bounds`` (bit 2) to

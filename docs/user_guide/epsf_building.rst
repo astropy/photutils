@@ -173,15 +173,14 @@ as the background level. If the background in the image varies
 across the image, one should use more sophisticated methods (e.g.,
 `~photutils.background.Background2D`).
 
-The background level must be measured from pixels that are free of
-star light. The extended wings of the stars cover a large fraction of
-this image, and sigma clipping does not remove them. The median of the
-whole image is therefore biased high by about 0.35 counts. That is a
-small fraction of the noise, but summed over a 25 x 25 pixel cutout it
-is about 3% of the flux of a typical star in this image, and
-subtracting it would make the ePSF too concentrated. To avoid this
-bias, we first mask the pixels within 18 pixels of each detected
-star::
+The background level must be measured from pixels that are free of star
+light. The extended wings of the stars cover a large fraction of this
+image, and sigma clipping does not remove them. The median of the whole
+image is therefore biased high by about 0.35 counts. That is a small
+fraction of the noise, but summed over a 25 x 25 pixel cutout it is
+about 3% of the flux of a typical star in this image, and subtracting it
+would make the ePSF too concentrated. To avoid this bias, we first mask
+the pixels within 18 pixels of each detected star::
 
     >>> import numpy as np
     >>> from photutils.utils import circular_footprint
@@ -303,18 +302,18 @@ Constructing the ePSF
 ---------------------
 
 With the star cutouts, we are ready to construct the ePSF with the
-:class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF
-with an oversampling factor of 4, which is appropriate for these
-undersampled stars (a FWHM of about 1.5 pixels). We use the default
-maximum of 10 iterations (``maxiters=10``). The build stops early once
-the star centers have converged. Do not stop the build after only a few
-iterations. An ePSF that has not converged can differ from the true
-ePSF by a few percent of its peak, and the fitted star positions are
-less accurate. The
-:class:`~photutils.psf.EPSFBuilder` class has many options to control
-the ePSF build process, including the smoothing kernel, the fitting box,
-the recentering function, and the convergence criterion. Please see the
-:class:`~photutils.psf.EPSFBuilder` documentation for further details.
+:class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF with an
+oversampling factor of 4, which is appropriate for these undersampled
+stars (a FWHM of about 1.5 pixels). We use the default maximum of
+10 iterations (``maxiters=10``). The build stops early once the
+star centers have converged. Do not stop the build after only a few
+iterations. An ePSF that has not converged can differ from the true ePSF
+by a few percent of its peak, and the fitted star positions are less
+accurate. The :class:`~photutils.psf.EPSFBuilder` class has many options
+to control the ePSF build process, including the smoothing kernel, the
+fitting box, the recentering function, and the convergence criterion.
+Please see the :class:`~photutils.psf.EPSFBuilder` documentation for
+further details.
 
 We first initialize an :class:`~photutils.psf.EPSFBuilder` instance with
 our desired parameters and then input the cutouts of our selected stars
@@ -484,13 +483,16 @@ Independently of the smoothing kernel, when the oversampling factor is
 greater than one the builder applies a low-pass filter to the ePSF in
 every iteration. The filter has unit gain up to a passband frequency,
 a smooth transition, and zero gain at and above one cycle per detector
-pixel. A pixel-integrated PSF has essentially no signal at one cycle
-per pixel, but that is the frequency at which the pixel sampling of the
-stars aliases onto the oversampled grid. Together with depositing each
-star pixel residual on the oversampled grid points within 0.375 pixel
-of the pixel center along each axis, the filter prevents noise from
-heterogeneous, contaminated, or low signal-to-noise stars from growing
-into a checkerboard pattern in the ePSF.
+pixel. Here a spatial frequency of one cycle per pixel describes
+structure that repeats with a period of one detector pixel, and a
+frequency of 0.5 cycles per pixel describes structure that repeats every
+two pixels. A pixel-integrated PSF has essentially no signal at one
+cycle per pixel, but that is the frequency at which the pixel sampling
+of the stars aliases onto the oversampled grid. Together with depositing
+each star pixel residual on the oversampled grid points within 0.375
+pixel of the pixel center along each axis, the filter prevents noise
+from heterogeneous, contaminated, or low signal-to-noise stars from
+growing into a checkerboard pattern in the ePSF.
 
 The ``alias_passband`` parameter sets the end of the passband in cycles
 per detector pixel. The default (``'auto'``) is 0.8 cycles per pixel, or
@@ -560,9 +562,9 @@ use it with an oversampling factor of 2.
 
 The filter acts separately along the x and y axes. The signal that it
 removes from an undersampled ePSF therefore shows as a faint ripple
-pattern, with a period of about one pixel, along the row and the column
-through the center of the ePSF. To remove this pattern, the builder
-refines the ePSF after the building iterations. Each refinement
+pattern, with a period of about one pixel, along the row and the
+column through the center of the ePSF. To remove this pattern, the
+builder refines the ePSF after the building iterations. Each refinement
 iteration (``refinement_iters``, 5 by default) updates the ePSF five
 times with the star centers and fluxes held fixed and then refits the
 stars with the updated ePSF. These updates use a wider and smoother

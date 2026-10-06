@@ -108,15 +108,15 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=None, nu_stop=1.0,
 
     The default passband is a compromise. The ePSF of an undersampled
     detector has real power just below one cycle per input pixel. For
-    example, about 10% of the Fourier amplitude of the HST WFC3/IR
-    F110W ePSF lies between 0.7 and 1.0 cycles per pixel. A lower
-    ``nu_pass`` removes that power, which lowers the peak of the ePSF
-    and leaves ripples around its core. On the other hand, a star
-    sampled once per pixel constrains those frequencies only weakly,
-    so a higher ``nu_pass`` slows the convergence of the build,
-    especially for small star samples. The passband is also limited
-    to 70% of the Nyquist frequency of the oversampled grid, which
-    matters only for an oversampling factor of 2.
+    example, about 10% of the Fourier amplitude of the HST WFC3/IR F110W
+    ePSF lies between 0.7 and 1.0 cycles per pixel. A lower ``nu_pass``
+    removes that power, which lowers the peak of the ePSF and leaves
+    ripples around its core. On the other hand, a star sampled once
+    per pixel constrains those frequencies only weakly, so a higher
+    ``nu_pass`` slows the convergence of the build, especially for
+    small star samples. The passband is also limited to 70% of the
+    Nyquist frequency of the oversampled grid, which matters only for an
+    oversampling factor of 2.
 
     Parameters
     ----------
@@ -130,8 +130,8 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=None, nu_stop=1.0,
         The end of the passband in cycles per input pixel. If `None`,
         the passband along each axis ends at the smaller of 0.8 cycles
         per input pixel and 70% of the Nyquist frequency of the
-        oversampled grid (0.7 cycles per input pixel for an
-        oversampling factor of 2).
+        oversampled grid (0.7 cycles per input pixel for an oversampling
+        factor of 2).
 
     nu_stop : float, optional
         The start of the stopband in cycles per input pixel.
@@ -1394,90 +1394,90 @@ class EPSFBuilder:
     smoothing_kernel : {'auto', 'quartic', 'quadratic'}, 2D array, or `None`
         The smoothing kernel to apply to the ePSF during each iteration
         step. If ``'auto'``, a least-squares quartic polynomial kernel
-        (see Notes) whose width is the largest odd number of
-        oversampled grid points that is not larger than 0.7 times
-        the FWHM of the current ePSF is used, and no smoothing is
-        applied if that width is less than 5 grid points, i.e., for
-        ePSFs with fewer than about 7 grid points per FWHM. The
-        kernel is square and the
-        FWHM is measured in each iteration along the narrowest axis
-        of the ePSF, so with anisotropic oversampling the axis with
-        the fewer grid points per FWHM sets the kernel size. If the
-        FWHM cannot be measured, the ``'quartic'`` kernel is used
+        (see Notes) whose width is the largest odd number of oversampled
+        grid points that is not larger than 0.7 times the FWHM of the
+        current ePSF is used, and no smoothing is applied if that
+        width is less than 5 grid points, i.e., for ePSFs with fewer
+        than about 7 grid points per FWHM. The kernel is square and
+        the FWHM is measured in each iteration along the narrowest
+        axis of the ePSF, so with anisotropic oversampling the axis
+        with the fewer grid points per FWHM sets the kernel size. If
+        the FWHM cannot be measured, the ``'quartic'`` kernel is used
         and a warning is emitted. The predefined ``'quartic'`` and
         ``'quadratic'`` kernels are 5x5 kernels (in oversampled grid
         points) derived from fourth and second degree polynomials,
         respectively. Alternatively, a custom 2D array can be input.
         If `None` then no smoothing will be performed. The kernels are
         applied on the oversampled grid, so the physical width of a
-        fixed kernel depends on the oversampling factor. Power near
-        and above one cycle per input pixel is removed from the ePSF
-        along oversampled axes independently of this parameter (see
-        ``alias_passband``).
+        fixed kernel depends on the oversampling factor. Structure that
+        repeats with a period of about one input pixel or shorter is
+        removed from the ePSF along oversampled axes independently of
+        this parameter (see ``alias_passband``).
 
     alias_passband : {'auto'}, float, or `None`, optional
         The end of the passband, in cycles per detector pixel, of the
         low-pass filter that is applied to the ePSF in each iteration
-        along the axes with an oversampling factor greater than one.
-        The filter has unit gain up to ``alias_passband``, a
-        raised-cosine transition, and zero gain at and above one cycle
-        per pixel. It removes the frequencies at which the star-pixel
-        sampling lattice aliases onto the oversampled grid, which
-        otherwise can grow into a checkerboard pattern (see Notes).
-        The value must be greater than 0 and less than 1.
+        along the axes with an oversampling factor greater than
+        one. A spatial frequency of one cycle per pixel describes
+        structure that repeats with a period of one detector pixel,
+        and a frequency of 0.5 cycles per pixel describes structure
+        that repeats every two pixels. The filter has unit gain up to
+        ``alias_passband``, a raised-cosine transition, and zero gain
+        at and above one cycle per pixel. It removes the frequencies
+        at which the star-pixel sampling lattice aliases onto the
+        oversampled grid, which otherwise can grow into a checkerboard
+        pattern (see Notes). The value must be greater than 0 and less
+        than 1.
 
         If ``'auto'`` (default), the passband ends at 0.8 cycles per
-        pixel, or at 0.7 cycles per pixel for an oversampling factor
-        of 2 (70% of the Nyquist frequency of the oversampled grid).
+        pixel, or at 0.7 cycles per pixel for an oversampling factor of
+        2 (70% of the Nyquist frequency of the oversampled grid).
 
-        The default is the best choice for most data. A different
-        value can help in two cases, which are distinguished by the
-        optical cutoff frequency of the telescope in cycles per pixel,
-        ``cutoff = D * pixel_scale / wavelength``, with the telescope
-        diameter ``D`` and the shortest ``wavelength`` of the bandpass
-        in the same units and the ``pixel_scale`` in radians per
-        pixel:
+        The default is the best choice for most data. A different value
+        can help in two cases, which are distinguished by the optical
+        cutoff frequency of the telescope in cycles per pixel, ``cutoff
+        = D * pixel_scale / wavelength``, with the telescope diameter
+        ``D`` and the shortest ``wavelength`` of the bandpass in the
+        same units and the ``pixel_scale`` in radians per pixel:
 
         * ``cutoff`` greater than about 1 (strongly undersampled,
-          e.g., HST WFC3/IR F110W, JWST NIRCam F070W, or Roman WFI
-          F062 and F106): the ePSF has real signal up to nearly one
-          cycle per pixel. In tests the default recovered the peak of
-          such ePSFs to within about 1 percent, except for the
-          sharpest one (HST WFC3/IR F110W), whose peak was 3 percent
-          low. A value of 0.9 recovered that peak to within 0.2
-          percent, but it increased the noise in the core of the other
-          ePSFs by 10 to 65 percent. Try 0.9 if the default ePSF is
-          too broad, i.e., if the stars have positive residuals at
-          their centers after the fitted ePSF is subtracted. It needs
-          a large star sample (a few hundred stars) and more
-          iterations (``maxiters`` of 20 or more).
+          e.g., HST WFC3/IR F110W, JWST NIRCam F070W, or Roman WFI F062
+          and F106): the ePSF has real signal up to nearly one cycle per
+          pixel. In tests the default recovered the peak of such ePSFs
+          to within about 1 percent, except for the sharpest ones, whose
+          peak was 3 percent low. A value of 0.9 recovered that peak to
+          within 0.2 percent, but it increased the noise in the core of
+          the other ePSFs by 10 to 65 percent. Try 0.9 if the default
+          ePSF is too broad, i.e., if the stars have positive residuals
+          at their centers after the fitted ePSF is subtracted. It needs
+          a large star sample (a few hundred stars) and more iterations
+          (``maxiters`` of 20 or more).
 
         * ``cutoff`` less than about 0.9 (e.g., JWST NIRCam F115W and
           redder, JWST MIRI, or most ground-based data): the ePSF has
           no signal to preserve near one cycle per pixel. A value of
           0.7 rejects more noise (10 to 40 percent lower residuals in
           the core in tests) and converges in fewer iterations. It
-          leaves the peak of a strongly undersampled ePSF low by 2 to
-          6 percent, so use it only when ``cutoff`` is known.
+          leaves the peak of a strongly undersampled ePSF low by 2 to 6
+          percent, so use it only when ``cutoff`` is known.
 
-        A value larger than needed makes the build converge more
-        slowly, because a star sampled once per pixel constrains the
-        frequencies near one cycle per pixel only weakly, and it is
-        not recommended for small star samples or for an oversampling
-        factor of 2.
+        A value larger than needed makes the build converge more slowly,
+        because a star sampled once per pixel constrains the frequencies
+        near one cycle per pixel only weakly, and it is not recommended
+        for small star samples or for an oversampling factor of 2.
 
         If `None`, the filter is not applied. This is rarely
-        appropriate. Without the filter, noise at the alias
-        frequencies accumulates over the iterations, the build can
-        stall before it converges, and heterogeneous or contaminated
-        star samples can grow a checkerboard pattern. In tests with
-        simulated HST, JWST, and Roman star fields, the unfiltered
-        ePSF was less accurate than the filtered one in nearly every
-        case, even for large, clean, and homogeneous star samples.
-        The option is provided for experimentation, e.g., to check
-        how much the filter changes a particular ePSF. Always compare
-        the result with a filtered build. The filter is never applied
-        along an axis with an oversampling factor of 1.
+        appropriate. Without the filter, noise at the alias frequencies
+        accumulates over the iterations, the build can stall before it
+        converges, and heterogeneous or contaminated star samples can
+        grow a checkerboard pattern. In tests with simulated HST, JWST,
+        and Roman star fields, the unfiltered ePSF was less accurate
+        than the filtered one in nearly every case, even for large,
+        clean, and homogeneous star samples. The option is provided for
+        experimentation, e.g., to check how much the filter changes
+        a particular ePSF. Always compare the result with a filtered
+        build. The filter is never applied along an axis with an
+        oversampling factor of 1.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -1575,23 +1575,22 @@ class EPSFBuilder:
     refinement_iters : int, optional
         The number of refinement iterations to perform after the
         building iterations. The alias low-pass filter of the building
-        iterations (see ``alias_passband``) removes some real signal
-        of an undersampled ePSF just below one cycle per pixel. The
-        filter acts separately along each axis, so the missing signal
-        shows as a ripple pattern with a period of about one pixel
-        along the row and the column through the center of the ePSF.
-        The refinement iterations restore that signal. In each
-        refinement iteration, the ePSF is updated five times from the
-        star residuals with the star centers and fluxes held fixed and
-        without recentering the ePSF, and the stars are then refit
-        with the updated ePSF. The low-pass filter of these updates
-        has unit gain up to 1.1 cycles per pixel and zero gain at and
-        above 1.33 cycles per pixel, so it does not remove signal near
-        one cycle per pixel. It removes only the frequencies that the
-        star residuals do not constrain. Such a wide filter cannot be
-        used from the start of the build, because the build then
-        converges slowly and is more sensitive to the initial star
-        centers. The refinement is not performed if
+        iterations (see ``alias_passband``) removes some real signal of
+        an undersampled ePSF just below one cycle per pixel. The filter
+        acts separately along each axis, so the missing signal shows as
+        a ripple pattern with a period of about one pixel along the row
+        and the column through the center of the ePSF. The refinement
+        iterations restore that signal. In each refinement iteration,
+        the ePSF is updated five times from the star residuals with the
+        star centers and fluxes held fixed and without recentering the
+        ePSF, and the stars are then refit with the updated ePSF. The
+        low-pass filter of these updates has unit gain up to 1.1 cycles
+        per pixel and zero gain at and above 1.33 cycles per pixel, so
+        it does not remove signal near one cycle per pixel. It removes
+        only the frequencies that the star residuals do not constrain.
+        Such a wide filter cannot be used from the start of the build,
+        because the build then converges slowly and is more sensitive
+        to the initial star centers. The refinement is not performed if
         ``refinement_iters`` is 0, if ``alias_passband`` is `None`, or
         if the oversampling factor is less than 4 along both axes. It
         roughly doubles the run time of a build.
@@ -1605,29 +1604,28 @@ class EPSFBuilder:
     -----
     In each build iteration, the residual between each star and the
     current ePSF model is deposited on the oversampled grid points
-    within 0.375 detector pixel (and at least one grid spacing) of
-    each star pixel center along each axis. Each grid point is
-    therefore estimated from the star pixels in a box three quarters
-    of a pixel wide around it, and every star contributes to both
-    parities of the grid regardless of its subpixel phase. Anderson
-    and King (2000) combined the pixels within 0.25 pixel of each
-    grid point of an ePSF with an oversampling factor of 4. That
-    narrower box gives a slightly sharper ePSF for clean star
-    samples, but it grows a checkerboard pattern for heterogeneous
-    or contaminated ones. After the residuals are combined and the
-    ePSF is smoothed,
-    power is removed along each oversampled axis with a low-pass
-    filter that by default has unit gain up to 0.8 cycles per input
-    pixel (0.7 for an oversampling factor of 2) and zero gain at and
-    above one cycle per input pixel (see ``alias_passband``). A
-    pixel-integrated PSF has essentially no power at one cycle per
-    input pixel, but that is the frequency at which the star-pixel
-    sampling lattice aliases onto the oversampled grid. Without
-    these two measures, noise in the ePSF grid from heterogeneous
-    or contaminated stars can bias the fitted star centers toward
-    particular subpixel phases and grow into a checkerboard pattern in
-    the ePSF. A warning is emitted if the subpixel phases of the fitted
-    star centers are strongly non-uniform at the end of the build.
+    within 0.375 detector pixel (and at least one grid spacing) of each
+    star pixel center along each axis. Each grid point is therefore
+    estimated from the star pixels in a box three quarters of a pixel
+    wide around it, and every star contributes to both parities of the
+    grid regardless of its subpixel phase. Anderson and King (2000)
+    combined the pixels within 0.25 pixel of each grid point of an ePSF
+    with an oversampling factor of 4. That narrower box gives a slightly
+    sharper ePSF for clean star samples, but it grows a checkerboard
+    pattern for heterogeneous or contaminated ones. After the residuals
+    are combined and the ePSF is smoothed, power is removed along each
+    oversampled axis with a low-pass filter that by default has unit
+    gain up to 0.8 cycles per input pixel (0.7 for an oversampling
+    factor of 2) and zero gain at and above one cycle per input pixel
+    (see ``alias_passband``). A pixel-integrated PSF has essentially no
+    power at one cycle per input pixel, but that is the frequency at
+    which the star-pixel sampling lattice aliases onto the oversampled
+    grid. Without these two measures, noise in the ePSF grid from
+    heterogeneous or contaminated stars can bias the fitted star centers
+    toward particular subpixel phases and grow into a checkerboard
+    pattern in the ePSF. A warning is emitted if the subpixel phases of
+    the fitted star centers are strongly non-uniform at the end of the
+    build.
 
     The default ``smoothing_kernel='auto'`` and ``fit_shape='auto'``
     scale the smoothing kernel and the fitting box with the FWHM of the
