@@ -494,10 +494,11 @@ into a checkerboard pattern in the ePSF.
 
 The ``alias_passband`` parameter sets the end of the passband in cycles
 per detector pixel. The default (``'auto'``) is 0.8 cycles per pixel, or
-0.7 for an oversampling factor of 2. The best value depends on how much
-real signal the ePSF has just below one cycle per pixel. That is set by
-the optical cutoff frequency of the telescope expressed in cycles per
-pixel:
+0.7 for an oversampling factor of 2. The default is the best choice for
+most data. A different value can help in two cases, which depend on how
+much real signal the ePSF has just below one cycle per pixel. That is
+set by the optical cutoff frequency of the telescope expressed in cycles
+per pixel:
 
 .. math::
 
@@ -513,32 +514,40 @@ pixel.
 
 .. list-table::
     :header-rows: 1
-    :widths: 22 38 40
+    :widths: 22 33 45
 
     * - :math:`\nu_c` (cycles/pixel)
       - Examples
-      - Recommended ``alias_passband``
+      - Guidance for ``alias_passband``
     * - greater than about 1
       - HST WFC3/IR F110W, JWST NIRCam F070W, JWST NIRISS F090W, Roman
         WFI F062 and F106
-      - 0.9. The ePSF has real signal up to nearly one cycle per pixel.
-        The default leaves the peak of such an ePSF low by up to
-        about 3 percent, and 0.7 by 2 to 6 percent.
+      - The default, or 0.9. The ePSF has real signal up to nearly one
+        cycle per pixel. In tests the default recovered the peak of
+        these ePSFs to within about 1 percent, except for HST WFC3/IR
+        F110W (3 percent low), which 0.9 recovered to within 0.2
+        percent. For the others 0.9 increased the noise in the core by
+        10 to 65 percent.
     * - about 0.9 to 1
       - HST WFC3/IR F160W
       - The default (0.8)
     * - less than about 0.9
       - JWST NIRCam F115W and redder, JWST MIRI, Roman WFI F158 and
         F213, most ground-based data
-      - 0.7, or the default. There is no signal to preserve near one
-        cycle per pixel, and 0.7 rejects more noise and converges in
-        fewer iterations. The default is only slightly worse.
+      - The default, or 0.7. There is no signal to preserve near one
+        cycle per pixel. In tests 0.7 lowered the residuals in the core
+        by 10 to 40 percent and converged in fewer iterations.
 
-For example, for a strongly undersampled detector::
+Try 0.9 for a strongly undersampled detector if the default ePSF is too
+broad, i.e., if the stars have positive residuals at their centers after
+the fitted ePSF is subtracted::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4, alias_passband=0.9,
     ...                            maxiters=20,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
+Do not use 0.7 unless the cutoff frequency is known to be low. It leaves
+the peak of a strongly undersampled ePSF low by 2 to 6 percent.
 
 A passband that is wider than needed has a cost. A star that is sampled
 once per pixel constrains the frequencies near one cycle per pixel only

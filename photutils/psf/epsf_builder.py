@@ -1430,9 +1430,9 @@ class EPSFBuilder:
         pixel, or at 0.7 cycles per pixel for an oversampling factor
         of 2 (70% of the Nyquist frequency of the oversampled grid).
 
-        The best value depends on how much real signal the ePSF has
-        just below one cycle per pixel, which is set by the optical
-        cutoff frequency of the telescope in cycles per pixel,
+        The default is the best choice for most data. A different
+        value can help in two cases, which are distinguished by the
+        optical cutoff frequency of the telescope in cycles per pixel,
         ``cutoff = D * pixel_scale / wavelength``, with the telescope
         diameter ``D`` and the shortest ``wavelength`` of the bandpass
         in the same units and the ``pixel_scale`` in radians per
@@ -1441,18 +1441,24 @@ class EPSFBuilder:
         * ``cutoff`` greater than about 1 (strongly undersampled,
           e.g., HST WFC3/IR F110W, JWST NIRCam F070W, or Roman WFI
           F062 and F106): the ePSF has real signal up to nearly one
-          cycle per pixel. A value of 0.9 recovers it. The default
-          leaves the peak of such an ePSF low by up to a few percent,
-          and 0.7 by several percent. A value of 0.9 needs a large
-          star sample (a few hundred stars) and more iterations.
-
-        * ``cutoff`` between about 0.9 and 1: use the default.
+          cycle per pixel. In tests the default recovered the peak of
+          such ePSFs to within about 1 percent, except for the
+          sharpest one (HST WFC3/IR F110W), whose peak was 3 percent
+          low. A value of 0.9 recovered that peak to within 0.2
+          percent, but it increased the noise in the core of the other
+          ePSFs by 10 to 65 percent. Try 0.9 if the default ePSF is
+          too broad, i.e., if the stars have positive residuals at
+          their centers after the fitted ePSF is subtracted. It needs
+          a large star sample (a few hundred stars) and more
+          iterations (``maxiters`` of 20 or more).
 
         * ``cutoff`` less than about 0.9 (e.g., JWST NIRCam F115W and
           redder, JWST MIRI, or most ground-based data): the ePSF has
-          no signal to preserve near one cycle per pixel, and a value
-          of 0.7 rejects more noise and converges in fewer iterations.
-          The default is only slightly worse.
+          no signal to preserve near one cycle per pixel. A value of
+          0.7 rejects more noise (10 to 40 percent lower residuals in
+          the core in tests) and converges in fewer iterations. It
+          leaves the peak of a strongly undersampled ePSF low by 2 to
+          6 percent, so use it only when ``cutoff`` is known.
 
         A value larger than needed makes the build converge more
         slowly, because a star sampled once per pixel constrains the
