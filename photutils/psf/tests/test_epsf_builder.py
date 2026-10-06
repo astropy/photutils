@@ -3719,6 +3719,226 @@ class TestIterationHistory:
             result.plot_iterations()
 
 
+@pytest.mark.parametrize('value', [1, 0, 'yes', None])
+def test_invalid_wing_smoothing(value):
+    match = 'wing_smoothing must be a bool'
+    with pytest.raises(TypeError, match=match):
+        EPSFBuilder(wing_smoothing=value)
+
+
+def _noisy_gaussian_epsf(fwhm=6.0, size=101, noise=0.002, seed=0):
+    """
+    A Gaussian ePSF image with a FWHM of ``fwhm`` grid points, with
+    and without white noise.
+    """
+    yy, xx = np.indices((size, size), dtype=float)
+    center = (size - 1) / 2
+    sigma = fwhm / 2.3548
+    model = np.exp(-((xx - center)**2 + (yy - center)**2) / (2 * sigma**2))
+    # add a slowly varying wing so that the wings are not zero
+    radius = np.hypot(xx - center, yy - center)
+    model += 0.01 / (1 + (radius / 20.0)**2)
+    rng = np.random.default_rng(seed)
+    return model, model + rng.normal(0, noise, model.shape), radius
+
+
+def test_smooth_wings():
+    """
+    The wing smoothing leaves the ePSF within 3.5 FWHM of its center
+    unchanged and lowers the noise beyond that without biasing the
+    wings.
+    """
+    fwhm = 6.0
+    model, noisy, radius = _noisy_gaussian_epsf(fwhm=fwhm)
+    builder = EPSFBuilder(oversampling=4, progress_bar=False)
+    result = builder._smooth_wings(noisy)
+    assert result.shape == noisy.shape
+
+    core = radius <= 3.4 * fwhm
+    assert_array_equal(result[core], noisy[core])
+
+    for lo, hi, factor in ((4.6, 5.0, 2.0), (6.2, 8.0, 3.0)):
+        wings = (radius >= lo * fwhm) & (radius <= hi * fwhm)
+        rms_before = np.std((noisy - model)[wings])
+        rms_after = np.std((result - model)[wings])
+        assert rms_after < rms_before / factor
+        # no bias from the curvature of the wing profile
+        assert abs(np.mean((result - model)[wings])) < 0.1 * rms_before
+
+    # A noiseless ePSF is reproduced, to within the small effect of the
+    # image edges on the fits
+    smooth = builder._smooth_wings(model)
+    assert_allclose(smooth, model, atol=5e-5)
+
+
+def test_smooth_wings_structure():
+    """
+    The wing smoothing keeps structure in the wings that varies over
+    several FWHM and removes structure that varies over about one
+    FWHM, such as narrow diffraction rings.
+    """
+    fwhm = 6.0
+    size = 101
+    yy, xx = np.indices((size, size), dtype=float)
+    center = (size - 1) / 2
+    radius = np.hypot(xx - center, yy - center)
+    core = np.exp(-radius**2 / (2 * (fwhm / 2.3548)**2))
+    envelope = 0.01 / (1 + (radius / 20.0)**2)
+    builder = EPSFBuilder(oversampling=4, progress_bar=False)
+
+    def wing_change(period):
+        """
+        The RMS change of a ringed wing as a fraction of its mean.
+        """
+        rings = 1 + 0.5 * np.cos(2 * np.pi * radius / (period * fwhm))
+        model = core + envelope * rings
+        result = builder._smooth_wings(model)
+        assert_array_equal(result[radius <= 3.4 * fwhm],
+                           model[radius <= 3.4 * fwhm])
+        # the sum, and so the normalization, is nearly unchanged
+        assert_allclose(result.sum(), model.sum(), rtol=1e-3)
+        wings = (radius >= 6.2 * fwhm) & (radius <= 8.0 * fwhm)
+        return (np.sqrt(np.mean((result - model)[wings]**2))
+                / np.mean(model[wings]))
+
+    assert wing_change(4.0) < 0.02
+    assert 0.05 < wing_change(2.0) < 0.2
+    assert wing_change(1.0) > 0.3
+
+
+def test_smooth_wings_anisotropic_oversampling():
+    """
+    With different oversampling factors along the two axes, the radii
+    of the wing smoothing are measured in detector pixels.
+    """
+    fwhm = 1.5  # pixels
+    ny, nx = 61, 121
+    yy, xx = np.indices((ny, nx), dtype=float)
+    radius = np.hypot((xx - (nx - 1) / 2) / 4, (yy - (ny - 1) / 2) / 2)
+    model = (np.exp(-radius**2 / (2 * (fwhm / 2.3548)**2))
+             + 0.01 / (1 + (radius / 5.0)**2))
+    rng = np.random.default_rng(0)
+    noisy = model + rng.normal(0, 0.002, model.shape)
+
+    builder = EPSFBuilder(oversampling=(2, 4), progress_bar=False)
+    result = builder._smooth_wings(noisy)
+    core = radius <= 3.4 * fwhm
+    assert_array_equal(result[core], noisy[core])
+    for lo, hi in ((4.6, 5.0), (6.2, 8.0)):
+        wings = (radius >= lo * fwhm) & (radius <= hi * fwhm)
+        rms_before = np.std((noisy - model)[wings])
+        rms_after = np.std((result - model)[wings])
+        assert rms_after < rms_before / 2.0
+        assert abs(np.mean((result - model)[wings])) < 0.15 * rms_before
+
+
+def test_smooth_wings_no_change():
+    """
+    The ePSF is returned unchanged if its FWHM cannot be measured, if
+    the whole image is within 3.5 FWHM of the center, or if it has
+    non-finite values.
+    """
+    data = _noisy_gaussian_epsf(fwhm=6.0)[1]
+    builder = EPSFBuilder(oversampling=4, progress_bar=False)
+    assert builder._smooth_wings(data) is not data
+    for value in (np.nan, np.inf):
+        bad = data.copy()
+        bad[90, 90] = value
+        assert builder._smooth_wings(bad) is bad
+
+    builder = EPSFBuilder(oversampling=1, progress_bar=False)
+    data = np.zeros((25, 25))
+    assert builder._smooth_wings(data) is data
+
+    data = _noisy_gaussian_epsf(fwhm=8.0, size=25)[1]
+    assert builder._smooth_wings(data) is data
+
+
+def test_wing_smoothing_build(epsf_test_data):
+    """
+    The wing smoothing is applied once to the final ePSF. It does not
+    change the fitted stars or the core of the ePSF.
+    """
+    stars = extract_stars(epsf_test_data['nddata'],
+                          epsf_test_data['init_stars'][:40], size=25)
+    results = []
+    for wing_smoothing in (False, True):
+        builder = EPSFBuilder(oversampling=2, maxiters=3,
+                              wing_smoothing=wing_smoothing,
+                              progress_bar=False)
+        assert builder.wing_smoothing is wing_smoothing
+        results.append(builder(stars))
+
+    assert_array_equal(results[0].fitted_stars.cutout_center_flat,
+                       results[1].fitted_stars.cutout_center_flat)
+    assert results[0].iterations == results[1].iterations
+
+    data0 = results[0].epsf.data
+    data1 = results[1].epsf.data
+    assert not np.array_equal(data0, data1)
+    assert_allclose(data1.sum(), data0.sum())
+
+    # The ePSF FWHM is about 2.7 pixels, so the ePSF within 9 pixels
+    # of the center changes only by the renormalization
+    ny, nx = data0.shape
+    yy, xx = np.indices((ny, nx))
+    radius = np.hypot(xx - (nx - 1) / 2, yy - (ny - 1) / 2) / 2.0
+    core = radius < 9.0
+    assert_allclose(data1[core], data0[core], rtol=1e-3)
+    assert np.std(data1[~core]) < np.std(data0[~core])
+
+    # The wing smoothing is not an iteration. The last per-iteration
+    # ePSF is the ePSF before its wings were smoothed.
+    assert len(results[1].iteration_epsfs) == len(results[0].iteration_epsfs)
+    assert_array_equal(results[1].iteration_epsfs[-1], data0)
+    assert_array_equal(results[0].iteration_epsfs[-1], data0)
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_wing_smoothing_plot_iterations(epsf_test_data):
+    """
+    The figure has a last row for the smoothed ePSF, whatever the
+    selected iterations, only if the wing smoothing changed the ePSF.
+    """
+    import matplotlib.pyplot as plt
+
+    stars = extract_stars(epsf_test_data['nddata'],
+                          epsf_test_data['init_stars'][:40], size=25)
+    final_title = 'Final ePSF (wings smoothed)'
+    for wing_smoothing in (False, True):
+        builder = EPSFBuilder(oversampling=2, maxiters=3,
+                              wing_smoothing=wing_smoothing,
+                              progress_bar=False)
+        result = builder(stars)
+        n_total = len(result.iteration_epsfs)
+        n_extra = int(wing_smoothing)
+
+        fig = result.plot_iterations()
+        # two image panels and two colorbars per row
+        assert len(fig.axes) == 4 * (n_total + n_extra)
+        assert_allclose(fig.get_size_inches(),
+                        (7.0, 2.6 * (n_total + n_extra)))
+        titles = [ax.get_title() for ax in fig.axes]
+        assert titles.count(final_title) == n_extra
+        plt.close(fig)
+
+        fig = result.plot_iterations(iterations=1)
+        assert len(fig.axes) == 4 * (1 + n_extra)
+        if wing_smoothing:
+            # The last row shows the returned ePSF and the change made
+            # by the smoothing. The image panels of the two rows come
+            # before the colorbars in the list of axes.
+            ax_epsf, ax_diff = fig.axes[2], fig.axes[3]
+            assert ax_epsf.get_title() == final_title
+            assert_array_equal(ax_epsf.get_images()[0].get_array(),
+                               result.epsf.data)
+            last = result.iteration_epsfs[-1]
+            diff = (result.epsf.data - last) / np.max(last)
+            assert_allclose(ax_diff.get_images()[0].get_array(), diff)
+            assert 'converged fraction' not in ax_diff.get_title()
+        plt.close(fig)
+
+
 def test_nonuniform_phase_warning():
     """
     A warning is emitted when the fitted star centers have strongly

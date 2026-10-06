@@ -490,6 +490,51 @@ the peak of the ePSF, and ``smoothing_kernel=None`` is a better choice,
 especially when the stars have high signal-to-noise. Smoothing is most
 useful for well-sampled ePSFs built from noisy or few stars.
 
+The wings of the ePSF are smoothed separately. Far from its center the
+ePSF is faint and varies slowly, so its noise can be averaged over a
+larger area than in the core. After the last iteration, each value of
+the ePSF beyond 3.5 FWHM from the center is blended into a least-squares
+quadratic fit to the values in a box 1.25 FWHM wide around it, and
+beyond 5 FWHM into the fit in a box 1.75 FWHM wide. The ePSF within
+3.5 FWHM of the center changes only by the renormalization of the
+smoothed ePSF (less than 0.03 percent in tests). The fluxes of the
+returned stars were fit before that renormalization. This lowers the
+noise of the wings, which matters when they are used, e.g., to subtract
+bright stars, to make model images, or to measure encircled energies.
+
+The smoothing also removes real structure in the wings that is finer
+than about two FWHM, such as diffraction rings and spikes. Applied to
+noise-free ePSFs, it changed the wings by 2 to 8 percent of their mean
+value for JWST and Roman ePSFs and by 11 to 14 percent for HST WFC3/IR
+ePSFs. With a few hundred stars the noise that it removes is larger
+than this in every case that was tested (the residuals of the wings
+were up to about 50 percent lower). For a large star sample of high
+signal-to-noise (thousands of stars), the noise in the wings can be
+smaller than this change, and the wings are then more accurate without
+the smoothing.
+
+The boxes are at least 5 oversampled grid points wide. For an ePSF with
+a FWHM of less than 4 grid points they are therefore wider than given
+above, and they remove more of the real structure. This matters most
+for an oversampling factor of 1, where the boxes of an undersampled
+ePSF (a FWHM of about 1.3 pixels) are nearly 4 FWHM wide. In tests with
+an oversampling factor of 1, the smoothing made the wings of the most
+undersampled HST and JWST ePSFs less accurate, by up to a factor of
+about 2, and those of most other ePSFs slightly more accurate. With an
+oversampling factor of 2 or larger it made the wings more accurate or
+left them unchanged in every case. For an oversampling factor of 1,
+compare the ePSFs built with and without the smoothing.
+
+The smoothing is applied after the last iteration, so it is not part
+of ``iteration_epsfs`` or ``iteration_info``. The ``plot_iterations``
+method shows the smoothed ePSF and the change made by the smoothing in
+a last row of its figure.
+
+Set ``wing_smoothing=False`` to keep the wings as built::
+
+    >>> epsf_builder = EPSFBuilder(oversampling=4, wing_smoothing=False,
+    ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
 Alias Filter Passband
 ^^^^^^^^^^^^^^^^^^^^^
 

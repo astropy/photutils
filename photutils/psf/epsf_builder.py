@@ -19,6 +19,7 @@ from astropy.table import Table
 from astropy.utils.decorators import deprecated, deprecated_attribute
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
+from scipy.signal import fftconvolve
 from scipy.stats import chi2 as chi2_dist
 
 from photutils.centroids import centroid_com
@@ -45,6 +46,22 @@ _AUTO_KERNEL_FWHM_FRACTION = 0.7
 _AUTO_KERNEL_MIN_SIZE = 5
 _AUTO_FIT_FWHM_FRACTION = 2.0
 _AUTO_FIT_MIN_SIZE = 5
+
+# Smoothing of the wings of the final ePSF, in units of the ePSF FWHM.
+# Beyond _WING_START the ePSF is blended, over _WING_BLEND, into a
+# least-squares polynomial fit of degree _WING_DEGREE in a box of width
+# _WING_SMALL_BOX. Beyond _WING_LARGE_START it is blended into the fit
+# in a box of width _WING_LARGE_BOX. The radii are close to those (5
+# to 8 pixels) beyond which Anderson fits planes to the wings of HST
+# ePSFs. A quadratic fit is used here because the mean of a concave
+# profile in a box is biased high, which changes the encircled energy.
+_WING_START = 3.5
+_WING_LARGE_START = 5.0
+_WING_BLEND = 1.0
+_WING_SMALL_BOX = 1.25
+_WING_LARGE_BOX = 1.75
+_WING_DEGREE = 2
+_WING_MIN_SIZE = 5
 
 # Half width (in detector pixels) of the box around each oversampled
 # grid point within which star pixels contribute to that grid point.
@@ -1134,7 +1151,12 @@ class EPSFBuildResults:
         (if any). Each image has the shape and normalization of
         ``epsf.data``. The images can be used to check how the
         ePSF evolved and whether it stopped changing. See also
-        `~photutils.psf.EPSFBuildResults.plot_iterations`.
+        `~photutils.psf.EPSFBuildResults.plot_iterations`. The smoothing
+        of the wings of the final ePSF (see the ``wing_smoothing``
+        keyword of `EPSFBuilder`) is not an iteration, so the last
+        image is the ePSF before its wings were smoothed, and it
+        differs from ``epsf.data`` in the wings if that smoothing
+        changed the ePSF.
 
     iteration_info : `~astropy.table.Table`
         A table with one row for each image in ``iteration_epsfs``. The
@@ -1257,6 +1279,13 @@ class EPSFBuildResults:
         ``initial_epsf``, or the ePSF itself if the ePSF was built from
         scratch.
 
+        If the wings of the final ePSF were smoothed (see the
+        ``wing_smoothing`` keyword of `EPSFBuilder`), the figure has
+        one more row at the bottom. It shows the returned ePSF and its
+        difference from the ePSF of the last iteration, which is the
+        change made by the wing smoothing. This row is always plotted,
+        whatever the value of ``iterations``.
+
         Parameters
         ----------
         iterations : int, 1D array_like of int, or `None`, optional
@@ -1318,36 +1347,50 @@ class EPSFBuildResults:
         peak = np.max(final)
         norm = simple_norm(final, 'log', percent=99.0)
 
-        n_rows = len(iterations)
+        # The wing smoothing is not an iteration, so the smoothed ePSF
+        # is plotted in a row of its own (None) after the iterations
+        rows = list(iterations)
+        if not np.array_equal(self.epsf.data, final):
+            rows.append(None)
+
+        n_rows = len(rows)
         if figsize is None:
             figsize = (7.0, 2.6 * n_rows)
         fig, axes = plt.subplots(n_rows, 2, figsize=figsize, squeeze=False)
-        for row, iteration in enumerate(iterations):
-            data = self.iteration_epsfs[iteration - 1]
-            if iteration > 1:
-                previous = self.iteration_epsfs[iteration - 2]
-            elif self.initial_epsf is not None:
-                previous = self.initial_epsf
+        for row, iteration in enumerate(rows):
+            if iteration is None:
+                data = self.epsf.data
+                previous = final
+                title = 'Final ePSF (wings smoothed)'
+                subtitle = ''
             else:
-                previous = 0.0
+                data = self.iteration_epsfs[iteration - 1]
+                if iteration > 1:
+                    previous = self.iteration_epsfs[iteration - 2]
+                elif self.initial_epsf is not None:
+                    previous = self.initial_epsf
+                else:
+                    previous = 0.0
+                info = self.iteration_info[iteration - 1]
+                title = f'Iteration {iteration} ({info["stage"]})'
+                subtitle = ('\nconverged fraction '
+                            f'{info["converged_fraction"]:.2f}')
             diff = (data - previous) / peak
             limit = np.max(np.abs(diff))
             if limit == 0:
                 limit = 1.0
 
-            info = self.iteration_info[iteration - 1]
             ax = axes[row, 0]
             axim = ax.imshow(data, norm=norm, origin='lower', cmap=cmap)
             fig.colorbar(axim, ax=ax)
-            ax.set_title(f'Iteration {iteration} ({info["stage"]})')
+            ax.set_title(title)
 
             ax = axes[row, 1]
             axim = ax.imshow(diff, origin='lower', cmap=diff_cmap,
                              vmin=-limit, vmax=limit)
             fig.colorbar(axim, ax=ax)
-            ax.set_title(f'change / peak (max {limit:.2g})\n'
-                         f'converged fraction '
-                         f'{info["converged_fraction"]:.2f}', fontsize=9)
+            ax.set_title(f'change / peak (max {limit:.2g}){subtitle}',
+                         fontsize=9)
         fig.tight_layout()
         return fig
 
@@ -1822,6 +1865,55 @@ class EPSFBuilder:
         need more refinement iterations than the default (about 10 in
         tests).
 
+    wing_smoothing : bool, optional
+        Whether to smooth the wings of the final ePSF more strongly
+        than its core. Far from the center the ePSF is faint and
+        varies slowly, so its noise can be averaged over a larger area
+        than in the core. If `True`, each value of the final ePSF
+        beyond 3.5 FWHM from its center is blended into the value of
+        a least-squares quadratic fit to the values in a box 1.25
+        FWHM wide around it, and beyond 5 FWHM into the fit in a box
+        1.75 FWHM wide. The ePSF within 3.5 FWHM of its center is not
+        changed, except by the renormalization of the smoothed ePSF
+        (less than 0.03 percent in tests). The smoothing is applied
+        once, after the last iteration, so it does not affect the star
+        fits or the convergence of the build. The fluxes of the
+        returned stars were therefore fit before that renormalization.
+        It is modeled on the ePSF building code of Anderson, which
+        smooths HST ePSFs more strongly beyond 5 to 8 pixels from
+        their centers. In tests
+        with a few hundred stars it lowered the residuals of the wings
+        of undersampled ePSFs by up to about 50 percent. This matters
+        when the wings are used, e.g., to subtract bright stars, to
+        make model images, or to measure encircled energies.
+
+        The smoothing also removes real structure in the wings that
+        is finer than about two FWHM, such as diffraction rings and
+        spikes. Applied to noise-free ePSFs, it changed the wings by
+        2 to 8 percent of their mean value for JWST and Roman ePSFs
+        and by 11 to 14 percent for HST WFC3/IR ePSFs. With a few
+        hundred stars the noise that it removes is larger than this
+        in every case that was tested. For a large star sample of
+        high signal-to-noise (thousands of stars), the noise in the
+        wings can be smaller than this change, and the wings are then
+        more accurate without the smoothing.
+
+        The boxes are at least 5 oversampled grid points wide. For an
+        ePSF with a FWHM of less than 4 grid points they are therefore
+        wider than given above, and they remove more of the real
+        structure. This matters most for an oversampling factor of 1,
+        where the boxes of an undersampled ePSF (a FWHM of about 1.3
+        pixels) are nearly 4 FWHM wide. In tests with an oversampling
+        factor of 1, the smoothing made the wings of the most
+        undersampled HST and JWST ePSFs less accurate, by up to a
+        factor of about 2, and those of most other ePSFs slightly
+        more accurate. With an oversampling factor of 2 or larger it
+        made the wings more accurate or left them unchanged in every
+        case. For an oversampling factor of 1, compare the ePSFs
+        built with and without the smoothing.
+
+        Set to `False` to keep the wings as built.
+
     progress_bar : bool, optional
         Whether to print the progress bar during the build
         iterations. The progress bar requires that the `tqdm
@@ -1888,7 +1980,7 @@ class EPSFBuilder:
                  recentering_maxiters=20, center_accuracy=1.0e-3,
                  converged_fraction=0.95, fitter=None, fit_shape='auto',
                  fitter_maxiters=100, constrain_fluxes=True, maxiters=10,
-                 refinement_iters=5, progress_bar=True):
+                 refinement_iters=5, wing_smoothing=True, progress_bar=True):
 
         # Validate and store oversampling using the validator
         self.oversampling = _EPSFValidator.validate_oversampling(
@@ -2016,6 +2108,11 @@ class EPSFBuilder:
         if refinement_iters < 0:
             raise ValueError(msg)
         self.refinement_iters = int(refinement_iters)
+
+        if not isinstance(wing_smoothing, (bool, np.bool_)):
+            msg = 'wing_smoothing must be a bool'
+            raise TypeError(msg)
+        self.wing_smoothing = bool(wing_smoothing)
 
         self.progress_bar = progress_bar
 
@@ -2406,6 +2503,83 @@ class EPSFBuilder:
         """
         return _SmoothingKernel.apply_smoothing(
             epsf_data, self._current_smoothing_kernel())
+
+    def _smooth_wings(self, epsf_data):
+        """
+        Smooth the wings of the final ePSF more strongly than its core.
+
+        Far from the center the ePSF is faint and varies slowly, so
+        the noise there can be averaged over a larger area than in
+        the core. This also removes real structure that is finer than
+        about two FWHM. Beyond 3.5 FWHM from the center, each value
+        of the ePSF is blended into the value at the center of a
+        least-squares quadratic fit to the
+        values in a box 1.25 FWHM wide around it, and beyond 5 FWHM
+        into the fit in a box 1.75 FWHM wide. The ePSF within 3.5 FWHM
+        of the center is not changed here. The caller renormalizes the
+        result, which rescales the whole ePSF by the small change of
+        its sum. The FWHM is measured along the narrowest axis of the
+        ePSF, and the boxes are square on the oversampled grid and at
+        least ``_WING_MIN_SIZE`` grid points wide.
+
+        The smoothing is applied once, to the final ePSF. Applying it
+        in every iteration would compound its effect and couple the
+        wings to the normalization of the ePSF.
+
+        Parameters
+        ----------
+        epsf_data : 2D `~numpy.ndarray`
+            The ePSF image.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The ePSF image with smoothed wings. ``epsf_data`` is
+            returned if it has non-finite values, if the FWHM of the
+            ePSF could not be measured, or if no part of the image is
+            in the wings.
+        """
+        # The box fits use an FFT convolution, which would spread a
+        # non-finite value over the whole image
+        if not np.all(np.isfinite(epsf_data)):
+            return epsf_data
+
+        fwhm = _measure_fwhm(epsf_data)
+        if fwhm is None:
+            return epsf_data
+
+        oversampling = np.asarray(self.oversampling, dtype=float)
+        fwhm = float(np.min(np.asarray(fwhm) / oversampling))  # pixels
+
+        # Radius from the center in units of the FWHM
+        ny, nx = epsf_data.shape
+        yy, xx = np.indices((ny, nx), dtype=float)
+        yy = (yy - (ny - 1) / 2.0) / oversampling[0]
+        xx = (xx - (nx - 1) / 2.0) / oversampling[1]
+        radius = np.hypot(xx, yy) / fwhm
+
+        weight_small = np.clip((radius - _WING_START) / _WING_BLEND,
+                               0.0, 1.0)
+        if not np.any(weight_small > 0):
+            return epsf_data
+        weight_large = np.clip((radius - _WING_LARGE_START) / _WING_BLEND,
+                               0.0, 1.0)
+
+        def box_fit(width):
+            size = max(_odd_size(width * fwhm * float(np.min(oversampling))),
+                       _WING_MIN_SIZE)
+            kernel = _make_polynomial_kernel(size, degree=_WING_DEGREE)
+            # The kernel is symmetric and the image is extended with
+            # its edge values, which is the same as a convolution with
+            # mode='nearest' but much faster for large boxes.
+            padded = np.pad(epsf_data, size // 2, mode='edge')
+            return fftconvolve(padded, kernel, mode='valid')
+
+        wings = box_fit(_WING_SMALL_BOX)
+        if np.any(weight_large > 0):
+            wings = ((1.0 - weight_large) * wings
+                     + weight_large * box_fit(_WING_LARGE_BOX))
+        return (1.0 - weight_small) * epsf_data + weight_small * wings
 
     def _normalize_epsf(self, epsf_data):
         """
@@ -3270,6 +3444,16 @@ class EPSFBuilder:
                 refine_reporter.update()
             refine_reporter.close()
             final_center_accuracy = float(max_center_dist_sq ** 0.5)
+
+        # Smooth the wings of the final ePSF. The ePSF is replaced only
+        # if the smoothing changed it, so that an ePSF without wings is
+        # exactly the ePSF of the last iteration.
+        if self.wing_smoothing:
+            smoothed = self._smooth_wings(epsf.data)
+            if smoothed is not epsf.data:
+                epsf = ImagePSF(data=self._normalize_epsf(smoothed),
+                                oversampling=self.oversampling,
+                                fill_value=0.0)
 
         # Finalize and return structured results
         return self._finalize_build(epsf, stars, iter_num, converged,
