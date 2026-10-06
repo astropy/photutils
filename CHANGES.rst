@@ -332,7 +332,8 @@ New Features
     (less than 0.03 percent in tests). The smoothing also removes real
     structure in the wings that is finer than about two FWHM, so set
     ``wing_smoothing=False`` for large star samples of high
-    signal-to-noise. [#2467]
+    signal-to-noise. With an oversampling factor of 1 it can make the
+    wings of a strongly undersampled ePSF less accurate. [#2467]
 
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose

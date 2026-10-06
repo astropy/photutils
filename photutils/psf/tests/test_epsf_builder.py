@@ -3834,9 +3834,18 @@ def test_smooth_wings_anisotropic_oversampling():
 
 def test_smooth_wings_no_change():
     """
-    The ePSF is returned unchanged if its FWHM cannot be measured or
-    if the whole image is within 3.5 FWHM of the center.
+    The ePSF is returned unchanged if its FWHM cannot be measured, if
+    the whole image is within 3.5 FWHM of the center, or if it has
+    non-finite values.
     """
+    data = _noisy_gaussian_epsf(fwhm=6.0)[1]
+    builder = EPSFBuilder(oversampling=4, progress_bar=False)
+    assert builder._smooth_wings(data) is not data
+    for value in (np.nan, np.inf):
+        bad = data.copy()
+        bad[90, 90] = value
+        assert builder._smooth_wings(bad) is bad
+
     builder = EPSFBuilder(oversampling=1, progress_bar=False)
     data = np.zeros((25, 25))
     assert builder._smooth_wings(data) is data

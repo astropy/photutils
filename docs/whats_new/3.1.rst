@@ -887,7 +887,9 @@ by the renormalization of the smoothed ePSF (less than 0.03 percent
 in tests). The smoothing also removes real structure in the wings that
 is finer than about two FWHM, such as diffraction rings and spikes, so
 set ``wing_smoothing=False`` for large star samples of high
-signal-to-noise.
+signal-to-noise. With an oversampling factor of 1 it can make the wings
+of a strongly undersampled ePSF less accurate (see the ePSF building
+user guide).
 
 On clean data, the ePSF is at least as accurate as before and is often
 better. Star centers are recovered more accurately, and the build

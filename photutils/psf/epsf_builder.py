@@ -1856,9 +1856,11 @@ class EPSFBuilder:
         changed, except by the renormalization of the smoothed ePSF
         (less than 0.03 percent in tests). The smoothing is applied
         once, after the last iteration, so it does not affect the star
-        fits or the convergence of the build. It is modeled on the
-        ePSF building code of Anderson, which smooths HST ePSFs more
-        strongly beyond 5 to 8 pixels from their centers. In tests
+        fits or the convergence of the build. The fluxes of the
+        returned stars were therefore fit before that renormalization.
+        It is modeled on the ePSF building code of Anderson, which
+        smooths HST ePSFs more strongly beyond 5 to 8 pixels from
+        their centers. In tests
         with a few hundred stars it lowered the residuals of the wings
         of undersampled ePSFs by up to about 50 percent. This matters
         when the wings are used, e.g., to subtract bright stars, to
@@ -1873,8 +1875,23 @@ class EPSFBuilder:
         in every case that was tested. For a large star sample of
         high signal-to-noise (thousands of stars), the noise in the
         wings can be smaller than this change, and the wings are then
-        more accurate without the smoothing. Set to `False` to keep
-        the wings as built.
+        more accurate without the smoothing.
+
+        The boxes are at least 5 oversampled grid points wide. For an
+        ePSF with a FWHM of less than 4 grid points they are therefore
+        wider than given above, and they remove more of the real
+        structure. This matters most for an oversampling factor of 1,
+        where the boxes of an undersampled ePSF (a FWHM of about 1.3
+        pixels) are nearly 4 FWHM wide. In tests with an oversampling
+        factor of 1, the smoothing made the wings of the most
+        undersampled HST and JWST ePSFs less accurate, by up to a
+        factor of about 2, and those of most other ePSFs slightly
+        more accurate. With an oversampling factor of 2 or larger it
+        made the wings more accurate or left them unchanged in every
+        case. For an oversampling factor of 1, compare the ePSFs
+        built with and without the smoothing.
+
+        Set to `False` to keep the wings as built.
 
     progress_bar : bool, optional
         Whether to print the progress bar during the build
@@ -2471,16 +2488,18 @@ class EPSFBuilder:
         Smooth the wings of the final ePSF more strongly than its core.
 
         Far from the center the ePSF is faint and varies slowly, so
-        the noise there can be averaged over a larger area than in the
-        core without changing the shape of the ePSF. Beyond 3.5 FWHM
-        from the center, each value of the ePSF is blended into the
-        value at the center of a least-squares quadratic fit to the
+        the noise there can be averaged over a larger area than in
+        the core. This also removes real structure that is finer than
+        about two FWHM. Beyond 3.5 FWHM from the center, each value
+        of the ePSF is blended into the value at the center of a
+        least-squares quadratic fit to the
         values in a box 1.25 FWHM wide around it, and beyond 5 FWHM
         into the fit in a box 1.75 FWHM wide. The ePSF within 3.5 FWHM
         of the center is not changed here. The caller renormalizes the
         result, which rescales the whole ePSF by the small change of
         its sum. The FWHM is measured along the narrowest axis of the
-        ePSF, and the boxes are square on the oversampled grid.
+        ePSF, and the boxes are square on the oversampled grid and at
+        least ``_WING_MIN_SIZE`` grid points wide.
 
         The smoothing is applied once, to the final ePSF. Applying it
         in every iteration would compound its effect and couple the
@@ -2495,9 +2514,15 @@ class EPSFBuilder:
         -------
         result : 2D `~numpy.ndarray`
             The ePSF image with smoothed wings. ``epsf_data`` is
-            returned if the FWHM of the ePSF could not be measured or
-            if no part of the image is in the wings.
+            returned if it has non-finite values, if the FWHM of the
+            ePSF could not be measured, or if no part of the image is
+            in the wings.
         """
+        # The box fits use an FFT convolution, which would spread a
+        # non-finite value over the whole image
+        if not np.all(np.isfinite(epsf_data)):
+            return epsf_data
+
         fwhm = _measure_fwhm(epsf_data)
         if fwhm is None:
             return epsf_data
