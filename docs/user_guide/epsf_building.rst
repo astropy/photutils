@@ -477,19 +477,91 @@ the peak of the ePSF, and ``smoothing_kernel=None`` is a better choice,
 especially when the stars have high signal-to-noise. Smoothing is most
 useful for well-sampled ePSFs built from noisy or few stars.
 
-Independently of the smoothing kernel, when the oversampling factor
-is greater than one the builder also applies a low-pass filter to the
-ePSF in every iteration. The filter removes the structure near and
-above one cycle per detector pixel (it has unit gain up to 0.8 cycles
-per pixel, or 0.7 for an oversampling factor of 2). A pixel-integrated
-PSF has essentially no signal at one cycle per pixel, but the ePSF of
-a strongly undersampled detector does have some signal just below it,
-so the filter slightly lowers the peak of such an ePSF. Together with
-depositing each star pixel residual on the oversampled grid points
-within 0.375 pixel of the pixel center along each axis, this prevents
-noise from heterogeneous, contaminated, or low
-signal-to-noise stars from growing into a checkerboard pattern in the
-ePSF. If the subpixel phases of the fitted star centers are strongly
+Alias Filter Passband
+^^^^^^^^^^^^^^^^^^^^^
+
+Independently of the smoothing kernel, when the oversampling factor is
+greater than one the builder applies a low-pass filter to the ePSF in
+every iteration. The filter has unit gain up to a passband frequency,
+a smooth transition, and zero gain at and above one cycle per detector
+pixel. A pixel-integrated PSF has essentially no signal at one cycle
+per pixel, but that is the frequency at which the pixel sampling of the
+stars aliases onto the oversampled grid. Together with depositing each
+star pixel residual on the oversampled grid points within 0.375 pixel
+of the pixel center along each axis, the filter prevents noise from
+heterogeneous, contaminated, or low signal-to-noise stars from growing
+into a checkerboard pattern in the ePSF.
+
+The ``alias_passband`` parameter sets the end of the passband in cycles
+per detector pixel. The default (``'auto'``) is 0.8 cycles per pixel, or
+0.7 for an oversampling factor of 2. The best value depends on how much
+real signal the ePSF has just below one cycle per pixel. That is set by
+the optical cutoff frequency of the telescope expressed in cycles per
+pixel:
+
+.. math::
+
+    \nu_c = \frac{D \, p}{\lambda}
+
+where :math:`D` is the telescope diameter, :math:`\lambda` is the
+shortest wavelength of the bandpass (in the same units as :math:`D`),
+and :math:`p` is the pixel scale in radians per pixel. A telescope
+transmits no signal above this frequency. For example, for HST (:math:`D
+= 2.4` m) WFC3/IR (0.13 arcsec per pixel) at 1.1 microns, :math:`\nu_c
+= 2.4 \times 6.3 \times 10^{-7} / 1.1 \times 10^{-6} = 1.4` cycles per
+pixel.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 22 38 40
+
+    * - :math:`\nu_c` (cycles/pixel)
+      - Examples
+      - Recommended ``alias_passband``
+    * - greater than about 1
+      - HST WFC3/IR F110W, JWST NIRCam F070W, JWST NIRISS F090W, Roman
+        WFI F062 and F106
+      - 0.9. The ePSF has real signal up to nearly one cycle per pixel.
+        The default leaves the peak of such an ePSF low by up to
+        about 3 percent, and 0.7 by 2 to 6 percent.
+    * - about 0.9 to 1
+      - HST WFC3/IR F160W
+      - The default (0.8)
+    * - less than about 0.9
+      - JWST NIRCam F115W and redder, JWST MIRI, Roman WFI F158 and
+        F213, most ground-based data
+      - 0.7, or the default. There is no signal to preserve near one
+        cycle per pixel, and 0.7 rejects more noise and converges in
+        fewer iterations. The default is only slightly worse.
+
+For example, for a strongly undersampled detector::
+
+    >>> epsf_builder = EPSFBuilder(oversampling=4, alias_passband=0.9,
+    ...                            maxiters=20,
+    ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
+A passband that is wider than needed has a cost. A star that is sampled
+once per pixel constrains the frequencies near one cycle per pixel only
+weakly, because a small shift of the star center has nearly the same
+effect on its pixel values. A wider passband therefore makes the build
+converge more slowly and makes it more sensitive to noise. Use 0.9 only
+with a large star sample (a few hundred stars), allow more iterations
+(``maxiters`` of 20 or more), and check that the build converged. Do not
+use it with an oversampling factor of 2.
+
+Setting ``alias_passband=None`` turns the filter off. This is rarely
+appropriate. Without the filter, noise at the alias frequencies
+accumulates over the iterations, the build can stall before it
+converges, and heterogeneous or contaminated star samples can grow a
+checkerboard pattern. In tests with simulated HST, JWST, and Roman star
+fields, the unfiltered ePSF was less accurate than the filtered one in
+nearly every case, even for large, clean, and homogeneous star samples.
+The option is provided for experimentation, e.g., to check how much
+the filter changes a particular ePSF. Always compare the result with
+a filtered build. The filter is never applied along an axis with an
+oversampling factor of 1.
+
+If the subpixel phases of the fitted star centers are strongly
 non-uniform at the end of the build, which indicates biased star
 centers, a warning is emitted. In that case the star sample should be
 inspected for stars with different PSFs, saturated or contaminated

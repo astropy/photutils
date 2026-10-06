@@ -293,6 +293,13 @@ New Features
     ``EPSFBuildResults`` that report the smoothing kernel and fitting
     box used in the final iteration. [#2421]
 
+  - Added an ``alias_passband`` keyword to ``EPSFBuilder`` that sets
+    the passband (in cycles per detector pixel) of the low-pass filter
+    that is applied to an oversampled ePSF in each iteration. A value
+    of 0.9 recovers the peak of the ePSF of a strongly undersampled
+    detector, 0.7 rejects more noise for better-sampled data, and `None`
+    turns the filter off. [#XXXX]
+
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose
     centers must change by less than ``center_accuracy`` between

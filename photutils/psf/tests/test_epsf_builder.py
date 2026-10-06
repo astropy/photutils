@@ -3136,6 +3136,59 @@ def test_suppress_alias_modes_default_passband():
                 assert np.abs(result).max() < 0.999 * np.abs(data).max()
 
 
+@pytest.mark.parametrize('value', ['bogus', 'AUTO', 0, 1, 1.5, -0.1, True,
+                                   (0.8, 0.8)])
+def test_invalid_alias_passband(value):
+    match = "alias_passband must be 'auto', a number between 0 and 1"
+    with pytest.raises(ValueError, match=match):
+        EPSFBuilder(alias_passband=value)
+
+
+@pytest.mark.parametrize(('alias_passband', 'expected'),
+                         [('auto', [None]), (0.9, [0.9]), (0.65, [0.65]),
+                          (None, [])])
+def test_alias_passband(monkeypatch, alias_passband, expected):
+    """
+    The ``alias_passband`` keyword sets the passband of the alias
+    low-pass filter, and `None` turns the filter off.
+    """
+    from photutils.psf import epsf_builder
+
+    calls = []
+    original = epsf_builder._suppress_alias_modes
+
+    def recorder(data, oversampling, **kwargs):
+        calls.append(kwargs.get('nu_pass'))
+        return original(data, oversampling, **kwargs)
+
+    monkeypatch.setattr(epsf_builder, '_suppress_alias_modes', recorder)
+
+    data = _make_gaussian_star_data()
+    stars = EPSFStars([EPSFStar(data, cutout_center=(5.25, 5.25))])
+    builder = EPSFBuilder(oversampling=2, alias_passband=alias_passband,
+                          smoothing_kernel=None, progress_bar=False)
+    assert builder.alias_passband == alias_passband
+    epsf = builder._build_epsf_step(stars)
+    assert calls == expected
+    assert np.all(np.isfinite(epsf.data))
+
+
+def test_alias_passband_changes_epsf():
+    """
+    A narrow passband removes fine structure of the ePSF that a wide
+    passband or no filter keeps.
+    """
+    data = _make_gaussian_star_data()
+    stars = EPSFStars([EPSFStar(data, cutout_center=(5.25, 5.25))])
+    peaks = []
+    for alias_passband in (0.3, 0.9, None):
+        builder = EPSFBuilder(oversampling=2, alias_passband=alias_passband,
+                              smoothing_kernel=None, progress_bar=False)
+        peaks.append(builder._build_epsf_step(stars).data.max())
+    assert peaks[0] < 0.99 * peaks[1]
+    assert peaks[0] < 0.99 * peaks[2]
+
+
 def test_nonuniform_phase_warning():
     """
     A warning is emitted when the fitted star centers have strongly

@@ -841,17 +841,23 @@ iteration and produced a checkerboard, or alias, pattern.
 
 Now, each star-pixel residual is deposited on the oversampled grid
 points within 0.375 pixel (and at least one grid spacing) of the pixel
-center along each axis. This ensures that every star contributes to both
-parities of the grid, regardless of its subpixel phase. Anderson and
-King (2000) combined the pixels within 0.25 pixel of each grid point
-of an ePSF with an oversampling factor of 4. The slightly wider region
-used here is needed to keep heterogeneous star samples from growing the
-pattern. In each iteration, power near and above one cycle per input
-pixel is also removed from the ePSF with a low-pass filter (unit gain up
-to 0.8 cycles per input pixel, or 0.7 for an oversampling factor of 2).
-A pixel-integrated PSF has essentially no signal at one cycle per input
-pixel. However, that is the frequency at which the star-pixel sampling
-lattice aliases onto the oversampled grid.
+center along each axis. This ensures that every star contributes to
+both parities of the grid, regardless of its subpixel phase. Anderson
+and King (2000) combined the pixels within 0.25 pixel of each grid
+point of an ePSF with an oversampling factor of 4. The slightly wider
+region used here is needed to keep heterogeneous star samples from
+growing the pattern. In each iteration, power near and above one cycle
+per input pixel is also removed from the ePSF with a low-pass filter
+(unit gain up to 0.8 cycles per input pixel, or 0.7 for an oversampling
+factor of 2). A pixel-integrated PSF has essentially no signal at one
+cycle per input pixel. However, that is the frequency at which the
+star-pixel sampling lattice aliases onto the oversampled grid. The new
+``alias_passband`` keyword sets the passband of this filter. The ePSF of
+a strongly undersampled detector (e.g., HST WFC3/IR F110W, JWST NIRCam
+F070W, or Roman WFI F062) has real signal just below one cycle per
+pixel, and ``alias_passband=0.9`` recovers the peak of such an ePSF more
+accurately than the default. See the ePSF building user guide for how to
+choose the value.
 
 On clean data, the ePSF is at least as accurate as before and is often
 better. Star centers are recovered more accurately, and the build

@@ -1381,8 +1381,67 @@ class EPSFBuilder:
         If `None` then no smoothing will be performed. The kernels are
         applied on the oversampled grid, so the physical width of a
         fixed kernel depends on the oversampling factor. Power near
-        and above one cycle per input pixel is always removed from the
-        ePSF along oversampled axes, independently of this parameter.
+        and above one cycle per input pixel is removed from the ePSF
+        along oversampled axes independently of this parameter (see
+        ``alias_passband``).
+
+    alias_passband : {'auto'}, float, or `None`, optional
+        The end of the passband, in cycles per detector pixel, of the
+        low-pass filter that is applied to the ePSF in each iteration
+        along the axes with an oversampling factor greater than one.
+        The filter has unit gain up to ``alias_passband``, a
+        raised-cosine transition, and zero gain at and above one cycle
+        per pixel. It removes the frequencies at which the star-pixel
+        sampling lattice aliases onto the oversampled grid, which
+        otherwise can grow into a checkerboard pattern (see Notes).
+        The value must be greater than 0 and less than 1.
+
+        If ``'auto'`` (default), the passband ends at 0.8 cycles per
+        pixel, or at 0.7 cycles per pixel for an oversampling factor
+        of 2 (70% of the Nyquist frequency of the oversampled grid).
+
+        The best value depends on how much real signal the ePSF has
+        just below one cycle per pixel, which is set by the optical
+        cutoff frequency of the telescope in cycles per pixel,
+        ``cutoff = D * pixel_scale / wavelength``, with the telescope
+        diameter ``D`` and the shortest ``wavelength`` of the bandpass
+        in the same units and the ``pixel_scale`` in radians per
+        pixel:
+
+        * ``cutoff`` greater than about 1 (strongly undersampled,
+          e.g., HST WFC3/IR F110W, JWST NIRCam F070W, or Roman WFI
+          F062 and F106): the ePSF has real signal up to nearly one
+          cycle per pixel. A value of 0.9 recovers it. The default
+          leaves the peak of such an ePSF low by up to a few percent,
+          and 0.7 by several percent. A value of 0.9 needs a large
+          star sample (a few hundred stars) and more iterations.
+
+        * ``cutoff`` between about 0.9 and 1: use the default.
+
+        * ``cutoff`` less than about 0.9 (e.g., JWST NIRCam F115W and
+          redder, JWST MIRI, or most ground-based data): the ePSF has
+          no signal to preserve near one cycle per pixel, and a value
+          of 0.7 rejects more noise and converges in fewer iterations.
+          The default is only slightly worse.
+
+        A value larger than needed makes the build converge more
+        slowly, because a star sampled once per pixel constrains the
+        frequencies near one cycle per pixel only weakly, and it is
+        not recommended for small star samples or for an oversampling
+        factor of 2.
+
+        If `None`, the filter is not applied. This is rarely
+        appropriate. Without the filter, noise at the alias
+        frequencies accumulates over the iterations, the build can
+        stall before it converges, and heterogeneous or contaminated
+        star samples can grow a checkerboard pattern. In tests with
+        simulated HST, JWST, and Roman star fields, the unfiltered
+        ePSF was less accurate than the filtered one in nearly every
+        case, even for large, clean, and homogeneous star samples.
+        The option is provided for experimentation, e.g., to check
+        how much the filter changes a particular ePSF. Always compare
+        the result with a filtered build. The filter is never applied
+        along an axis with an oversampling factor of 1.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -1498,9 +1557,9 @@ class EPSFBuilder:
     or contaminated ones. After the residuals are combined and the
     ePSF is smoothed,
     power is removed along each oversampled axis with a low-pass
-    filter that has unit gain up to 0.8 cycles per input pixel (0.7
-    for an oversampling factor of 2) and zero gain at and above one
-    cycle per input pixel. A
+    filter that by default has unit gain up to 0.8 cycles per input
+    pixel (0.7 for an oversampling factor of 2) and zero gain at and
+    above one cycle per input pixel (see ``alias_passband``). A
     pixel-integrated PSF has essentially no power at one cycle per
     input pixel, but that is the frequency at which the star-pixel
     sampling lattice aliases onto the oversampled grid. Without
@@ -1538,7 +1597,8 @@ class EPSFBuilder:
         warning_type=PhotutilsDeprecationWarning)
 
     def __init__(self, *, oversampling=4, shape=None,
-                 smoothing_kernel='auto', sigma_clip=SIGMA_CLIP,
+                 smoothing_kernel='auto', alias_passband='auto',
+                 sigma_clip=SIGMA_CLIP,
                  recentering_func=centroid_com, recentering_boxsize=(5, 5),
                  recentering_maxiters=20, center_accuracy=1.0e-3,
                  converged_fraction=0.95, fitter=None, fit_shape='auto',
@@ -1586,6 +1646,21 @@ class EPSFBuilder:
             # instead of in the middle of a build.
             _SmoothingKernel.get_kernel(smoothing_kernel)
         self.smoothing_kernel = smoothing_kernel
+
+        if isinstance(alias_passband, str):
+            if alias_passband != 'auto':
+                msg = ("alias_passband must be 'auto', a number between "
+                       '0 and 1 (exclusive), or None')
+                raise ValueError(msg)
+        elif alias_passband is not None:
+            if (isinstance(alias_passband, bool)
+                    or not isinstance(alias_passband, numbers.Real)
+                    or not 0.0 < alias_passband < 1.0):
+                msg = ("alias_passband must be 'auto', a number between "
+                       '0 and 1 (exclusive), or None')
+                raise ValueError(msg)
+            alias_passband = float(alias_passband)
+        self.alias_passband = alias_passband
 
         # Per-call state for the automatic smoothing kernel and fit
         # shape (reset in build_epsf and updated in each iteration).
@@ -2257,10 +2332,15 @@ class EPSFBuilder:
         # Smooth the ePSF
         smoothed_data = self._smooth_epsf(new_epsf)
 
-        # Remove power at and above the input pixel sampling frequency
+        # Remove power near and above the input pixel sampling frequency
         # along oversampled axes, where the star-pixel lattice aliases
         # onto the ePSF grid.
-        smoothed_data = _suppress_alias_modes(smoothed_data, self.oversampling)
+        if self.alias_passband is not None:
+            nu_pass = None
+            if not self._is_auto(self.alias_passband):
+                nu_pass = self.alias_passband
+            smoothed_data = _suppress_alias_modes(
+                smoothed_data, self.oversampling, nu_pass=nu_pass)
 
         # Recenter the ePSF using an intermediate ePSF that keeps the
         # current epsf's origin. The recentering shifts the ePSF by
