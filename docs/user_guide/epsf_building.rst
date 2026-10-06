@@ -552,15 +552,22 @@ use it with an oversampling factor of 2.
 The filter acts separately along the x and y axes. The signal that it
 removes from an undersampled ePSF therefore shows as a faint ripple
 pattern, with a period of about one pixel, along the row and the column
-through the center of the ePSF. To limit this, the builder refines the
-ePSF after the building iterations. In the refinement iterations
-(``refinement_iters``, 5 by default) the star centers and fluxes are
-held fixed, so the passband can be extended to 0.95 cycles per pixel
-without slowing the convergence. This restores most of the missing
-signal and removes most of the ripple pattern. What remains is the
-signal of the ePSF at and above one cycle per pixel, which only the
-ePSFs of the most undersampled detectors have. The refinement is
-applied only for an oversampling factor of 4 or larger. Set
+through the center of the ePSF. To remove this pattern, the builder
+refines the ePSF after the building iterations. Each refinement
+iteration (``refinement_iters``, 5 by default) updates the ePSF five
+times with the star centers and fluxes held fixed and then refits the
+stars with the updated ePSF. These updates use a wider and smoother
+low-pass filter, with unit gain up to 1.1 cycles per pixel and zero
+gain at and above 1.33 cycles per pixel. It does not remove signal near
+one cycle per pixel, so it leaves no ripple pattern. It removes only
+the frequencies that the star residuals do not constrain. Such a filter
+cannot be used from the start of the build, because the build then
+converges slowly and is more sensitive to the initial star centers.
+
+The refinement is applied only for an oversampling factor of 4 or
+larger, and it roughly doubles the run time of the build. For a
+well-sampled ePSF it has little to restore and it adds a small amount
+of noise (up to about 10 percent of the residual of the ePSF). Set
 ``refinement_iters=0`` to skip it.
 
 Setting ``alias_passband=None`` turns the filter off. This is rarely

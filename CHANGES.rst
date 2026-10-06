@@ -301,13 +301,14 @@ New Features
     turns the filter off. [#XXXX]
 
   - Added a ``refinement_iters`` keyword to ``EPSFBuilder`` (default
-    5). After the building iterations, the ePSF is refined with the
-    star centers and fluxes held fixed and a wider passband of the
-    alias low-pass filter (for an oversampling factor of 4 or larger).
-    This restores real signal of an undersampled
-    ePSF just below one cycle per pixel, which removes most of the
-    ripple pattern along the row and the column through its center.
-    [#XXXX]
+    5). After the building iterations, the ePSF is refined for an
+    oversampling factor of 4 or larger. Each refinement iteration
+    updates the ePSF with the star centers and fluxes held fixed, using
+    a low-pass filter that does not remove signal near one cycle per
+    pixel, and then refits the stars. This restores the real signal of
+    an undersampled ePSF that the alias low-pass filter of the building
+    iterations removes, which otherwise shows as a ripple pattern along
+    the row and the column through the center of the ePSF. [#XXXX]
 
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose

@@ -3198,24 +3198,22 @@ def test_invalid_refinement_iters(value):
 
 def test_refinement_iters(epsf_test_data):
     """
-    The refinement iterations update the ePSF without refitting the
-    stars or recentering the ePSF.
+    The refinement iterations update the ePSF and refit the stars
+    after the building iterations.
     """
     stars = extract_stars(epsf_test_data['nddata'],
                           epsf_test_data['init_stars'][:40], size=11)
     results = []
-    for refinement_iters in (0, 3):
+    for refinement_iters in (0, 2):
         builder = EPSFBuilder(oversampling=4, maxiters=3,
                               refinement_iters=refinement_iters,
                               progress_bar=False)
         assert builder.refinement_iters == refinement_iters
         results.append(builder(stars))
 
-    # The star centers and fluxes are those of the building iterations
-    assert_allclose(results[0].fitted_stars.cutout_center_flat,
-                    results[1].fitted_stars.cutout_center_flat)
-    assert_allclose(results[0].fitted_stars.flux, results[1].fitted_stars.flux)
+    # The refinement is not counted in the building iterations
     assert results[0].iterations == results[1].iterations
+    assert results[0].converged == results[1].converged
 
     # The ePSF changes, but only slightly, and stays normalized
     data0 = results[0].epsf.data
@@ -3225,67 +3223,80 @@ def test_refinement_iters(epsf_test_data):
     assert_allclose(data1, data0, atol=0.02 * data0.max())
     assert_allclose(data1.sum(), data0.sum())
 
+    # The stars are refit, and their centers barely move
+    centers0 = results[0].fitted_stars.cutout_center_flat
+    centers1 = results[1].fitted_stars.cutout_center_flat
+    assert not np.array_equal(centers0, centers1)
+    assert_allclose(centers1, centers0, atol=0.05)
+
 
 def test_refinement_steps(monkeypatch):
     """
-    A refinement step uses the wider filter passband and does not
-    recenter the ePSF. The refinement is skipped without the alias
-    filter and for an oversampling factor less than 4.
+    In a refinement iteration the ePSF is updated five times with the
+    refinement filter and without recentering, and the stars are then
+    refit. The refinement is skipped without the alias filter and for
+    an oversampling factor less than 4.
     """
     from photutils.psf import epsf_builder
 
-    passbands = []
+    refine_flags = []
     original = epsf_builder._suppress_alias_modes
 
     def recorder(data, oversampling, **kwargs):
-        passbands.append((kwargs.get('nu_pass'), kwargs.get('refine')))
+        refine_flags.append(kwargs.get('refine'))
         return original(data, oversampling, **kwargs)
 
     monkeypatch.setattr(epsf_builder, '_suppress_alias_modes', recorder)
 
     data = _make_gaussian_star_data()
     stars = EPSFStars([EPSFStar(data, cutout_center=(5.25, 5.25))])
-    n_recenter = []
+    counts = {}
 
     def run(**kwargs):
         builder = EPSFBuilder(maxiters=1, smoothing_kernel=None,
                               progress_bar=False, **kwargs)
         recenter = builder._recenter_epsf
-        n_recenter.clear()
+        fit_stars = builder._fit_stars
+        counts.update(recenter=0, fit=0)
 
         def counting_recenter(epsf, **kw):
-            n_recenter.append(1)
+            counts['recenter'] += 1
             return recenter(epsf, **kw)
 
+        def counting_fit(epsf, stars_):
+            counts['fit'] += 1
+            return fit_stars(epsf, stars_)
+
         monkeypatch.setattr(builder, '_recenter_epsf', counting_recenter)
-        passbands.clear()
+        monkeypatch.setattr(builder, '_fit_stars', counting_fit)
+        refine_flags.clear()
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', AstropyUserWarning)
             builder(stars)
-        return list(passbands), len(n_recenter)
+        return (refine_flags.count(False), refine_flags.count(True),
+                counts['recenter'], counts['fit'])
 
-    # One building iteration, then two refinement iterations
-    assert run(oversampling=4, refinement_iters=2) == (
-        [(None, False), (None, True), (None, True)], 1)
-    assert run(oversampling=4, refinement_iters=1, alias_passband=0.6) == (
-        [(0.6, False), (0.6, True)], 1)
-    assert run(oversampling=4, refinement_iters=0) == ([(None, False)], 1)
-    assert run(oversampling=(2, 4), refinement_iters=1) == (
-        [(None, False), (None, True)], 1)
+    # (build updates, refinement updates, recenterings, star fits) for
+    # one building iteration and the given refinement iterations
+    assert run(oversampling=4, refinement_iters=2) == (1, 10, 1, 3)
+    assert run(oversampling=4, refinement_iters=1,
+               alias_passband=0.6) == (1, 5, 1, 2)
+    assert run(oversampling=4, refinement_iters=0) == (1, 0, 1, 1)
+    assert run(oversampling=(2, 4), refinement_iters=1) == (1, 5, 1, 2)
 
     # No refinement without the filter or for an oversampling factor
     # less than 4
     assert run(oversampling=4, refinement_iters=2,
-               alias_passband=None) == ([], 1)
-    assert run(oversampling=2, refinement_iters=2) == ([(None, False)], 1)
-    assert run(oversampling=1, refinement_iters=2) == ([(None, False)], 1)
+               alias_passband=None) == (0, 0, 1, 1)
+    assert run(oversampling=2, refinement_iters=2) == (1, 0, 1, 1)
+    assert run(oversampling=1, refinement_iters=2) == (1, 0, 1, 1)
 
 
 def test_suppress_alias_modes_refine():
     """
-    In a refinement step the passband is extended to 0.95 cycles per
-    input pixel, but only along axes with an oversampling factor of at
-    least 4 and only if the passband is not already wider.
+    The refinement filter has unit gain up to 1.1 cycles per input
+    pixel and zero gain at and above 1.33 cycles per input pixel, but
+    only along axes with an oversampling factor of at least 4.
     """
     npts = 80
     xx = np.arange(npts)
@@ -3296,14 +3307,22 @@ def test_suppress_alias_modes_refine():
         result = _suppress_alias_modes(data, (1, oversampling), **kwargs)
         return np.abs(result).max() / np.abs(data).max()
 
-    # 0.9 cycles per pixel is on the FFT grid for these sizes
+    # These frequencies are on the FFT grid for these sizes
     assert gain(4, 0.9) < 0.6
-    assert_allclose(gain(4, 0.9, refine=True), 1.0, atol=1e-10)
-    assert_allclose(gain(8, 0.9, refine=True), 1.0, atol=1e-10)
-    assert_allclose(gain(4, 0.9, nu_pass=0.6, refine=True), 1.0, atol=1e-10)
+    assert gain(4, 1.0) < 1e-10
+    for freq in (0.9, 1.0, 1.1):
+        assert_allclose(gain(4, freq, refine=True), 1.0, atol=1e-10)
+        assert_allclose(gain(8, freq, refine=True), 1.0, atol=1e-10)
+    assert 0.1 < gain(4, 1.2, refine=True) < 0.9
+    assert gain(4, 1.35, refine=True) < 1e-10
+    assert gain(4, 1.5, refine=True) < 1e-10
+
+    # The input passband does not change the refinement filter
+    assert_allclose(gain(4, 1.0, nu_pass=0.6, refine=True), 1.0, atol=1e-10)
+
+    # No change for an oversampling factor less than 4
     assert gain(2, 0.9, refine=True) < 0.6
     assert_allclose(gain(2, 0.9), gain(2, 0.9, refine=True))
-    assert gain(4, 0.975, nu_pass=0.97, refine=True) > 0.9
 
 
 def test_nonuniform_phase_warning():
