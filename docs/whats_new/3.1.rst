@@ -882,7 +882,12 @@ The wings of the final ePSF are now smoothed more strongly than its core
 where the ePSF is faint and varies slowly, each value is replaced by a
 least-squares quadratic fit to the values in a box 1.25 to 1.75 FWHM
 wide. This lowers the noise of the wings, by up to about 50 percent for
-undersampled ePSFs, without changing the core.
+undersampled ePSFs built from a few hundred stars. The core changes only
+by the renormalization of the smoothed ePSF (less than 0.03 percent
+in tests). The smoothing also removes real structure in the wings that
+is finer than about two FWHM, such as diffraction rings and spikes, so
+set ``wing_smoothing=False`` for large star samples of high
+signal-to-noise.
 
 On clean data, the ePSF is at least as accurate as before and is often
 better. Star centers are recovered more accurately, and the build

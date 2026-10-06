@@ -328,7 +328,11 @@ New Features
     `True`). The wings of the final ePSF, beyond 3.5 FWHM from its
     center, are now smoothed with least-squares quadratic fits in boxes
     1.25 to 1.75 FWHM wide, which lowers their noise. The core of the
-    ePSF is not changed. [#2467]
+    ePSF changes only by the renormalization of the smoothed ePSF
+    (less than 0.03 percent in tests). The smoothing also removes real
+    structure in the wings that is finer than about two FWHM, so set
+    ``wing_smoothing=False`` for large star samples of high
+    signal-to-noise. [#2467]
 
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose

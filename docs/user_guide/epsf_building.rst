@@ -495,13 +495,23 @@ ePSF is faint and varies slowly, so its noise can be averaged over a
 larger area than in the core. After the last iteration, each value of
 the ePSF beyond 3.5 FWHM from the center is blended into a least-squares
 quadratic fit to the values in a box 1.25 FWHM wide around it, and
-beyond 5 FWHM into the fit in a box 1.75 FWHM wide. The ePSF within 3.5
-FWHM of the center is not changed. This lowers the noise of the wings,
-which matters when they are used, e.g., to subtract bright stars, to
-make model images, or to measure encircled energies. It also smooths
-real structure that is narrower than the box, such as diffraction
-spikes, at those radii. Set ``wing_smoothing=False`` to keep the wings
-as built::
+beyond 5 FWHM into the fit in a box 1.75 FWHM wide. The ePSF within
+3.5 FWHM of the center changes only by the renormalization of the
+smoothed ePSF (less than 0.03 percent in tests). This lowers the noise
+of the wings, which matters when they are used, e.g., to subtract bright
+stars, to make model images, or to measure encircled energies.
+
+The smoothing also removes real structure in the wings that is finer
+than about two FWHM, such as diffraction rings and spikes. Applied to
+noise-free ePSFs, it changed the wings by 2 to 8 percent of their mean
+value for JWST and Roman ePSFs and by 11 to 14 percent for HST WFC3/IR
+ePSFs. With a few hundred stars the noise that it removes is larger
+than this in every case that was tested (the residuals of the wings
+were up to about 50 percent lower). For a large star sample of high
+signal-to-noise (thousands of stars), the noise in the wings can be
+smaller than this change, and the wings are then more accurate without
+the smoothing. Set ``wing_smoothing=False`` to keep the wings as
+built::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4, wing_smoothing=False,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA

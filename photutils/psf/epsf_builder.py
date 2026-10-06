@@ -19,6 +19,7 @@ from astropy.table import Table
 from astropy.utils.decorators import deprecated, deprecated_attribute
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
+from scipy.signal import fftconvolve
 from scipy.stats import chi2 as chi2_dist
 
 from photutils.centroids import centroid_com
@@ -1852,18 +1853,28 @@ class EPSFBuilder:
         a least-squares quadratic fit to the values in a box 1.25
         FWHM wide around it, and beyond 5 FWHM into the fit in a box
         1.75 FWHM wide. The ePSF within 3.5 FWHM of its center is not
-        changed. The smoothing is applied once, after the last
-        iteration, so it does not affect the star fits or the
-        convergence of the build. It follows the ePSF building code
-        of Anderson, which smooths HST ePSFs more strongly beyond 5
-        to 8 pixels from their centers. In tests it lowered the noise
-        of the wings of undersampled ePSFs by up to about 50 percent.
-        This matters when the
-        wings are used, e.g., to subtract bright stars, to make model
-        images, or to measure encircled energies. It also smooths
-        real structure that is narrower than the box, such as
-        diffraction spikes, at those radii. Set to `False` to keep the
-        wings as built.
+        changed, except by the renormalization of the smoothed ePSF
+        (less than 0.03 percent in tests). The smoothing is applied
+        once, after the last iteration, so it does not affect the star
+        fits or the convergence of the build. It is modeled on the
+        ePSF building code of Anderson, which smooths HST ePSFs more
+        strongly beyond 5 to 8 pixels from their centers. In tests
+        with a few hundred stars it lowered the residuals of the wings
+        of undersampled ePSFs by up to about 50 percent. This matters
+        when the wings are used, e.g., to subtract bright stars, to
+        make model images, or to measure encircled energies.
+
+        The smoothing also removes real structure in the wings that
+        is finer than about two FWHM, such as diffraction rings and
+        spikes. Applied to noise-free ePSFs, it changed the wings by
+        2 to 8 percent of their mean value for JWST and Roman ePSFs
+        and by 11 to 14 percent for HST WFC3/IR ePSFs. With a few
+        hundred stars the noise that it removes is larger than this
+        in every case that was tested. For a large star sample of
+        high signal-to-noise (thousands of stars), the noise in the
+        wings can be smaller than this change, and the wings are then
+        more accurate without the smoothing. Set to `False` to keep
+        the wings as built.
 
     progress_bar : bool, optional
         Whether to print the progress bar during the build
@@ -2466,9 +2477,10 @@ class EPSFBuilder:
         value at the center of a least-squares quadratic fit to the
         values in a box 1.25 FWHM wide around it, and beyond 5 FWHM
         into the fit in a box 1.75 FWHM wide. The ePSF within 3.5 FWHM
-        of the center is not changed. The FWHM is measured along the
-        narrowest axis of the ePSF, and the boxes are square on the
-        oversampled grid.
+        of the center is not changed here. The caller renormalizes the
+        result, which rescales the whole ePSF by the small change of
+        its sum. The FWHM is measured along the narrowest axis of the
+        ePSF, and the boxes are square on the oversampled grid.
 
         The smoothing is applied once, to the final ePSF. Applying it
         in every iteration would compound its effect and couple the
@@ -2511,7 +2523,11 @@ class EPSFBuilder:
             size = max(_odd_size(width * fwhm * float(np.min(oversampling))),
                        _WING_MIN_SIZE)
             kernel = _make_polynomial_kernel(size, degree=_WING_DEGREE)
-            return convolve(epsf_data, kernel, mode='nearest')
+            # The kernel is symmetric and the image is extended with
+            # its edge values, which is the same as a convolution with
+            # mode='nearest' but much faster for large boxes.
+            padded = np.pad(epsf_data, size // 2, mode='edge')
+            return fftconvolve(padded, kernel, mode='valid')
 
         wings = box_fit(_WING_SMALL_BOX)
         if np.any(weight_large > 0):

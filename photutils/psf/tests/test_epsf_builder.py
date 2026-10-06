@@ -3771,6 +3771,67 @@ def test_smooth_wings():
     assert_allclose(smooth, model, atol=5e-5)
 
 
+def test_smooth_wings_structure():
+    """
+    The wing smoothing keeps structure in the wings that varies over
+    several FWHM and removes structure that varies over about one
+    FWHM, such as narrow diffraction rings.
+    """
+    fwhm = 6.0
+    size = 101
+    yy, xx = np.indices((size, size), dtype=float)
+    center = (size - 1) / 2
+    radius = np.hypot(xx - center, yy - center)
+    core = np.exp(-radius**2 / (2 * (fwhm / 2.3548)**2))
+    envelope = 0.01 / (1 + (radius / 20.0)**2)
+    builder = EPSFBuilder(oversampling=4, progress_bar=False)
+
+    def wing_change(period):
+        """
+        The RMS change of a ringed wing as a fraction of its mean.
+        """
+        rings = 1 + 0.5 * np.cos(2 * np.pi * radius / (period * fwhm))
+        model = core + envelope * rings
+        result = builder._smooth_wings(model)
+        assert_array_equal(result[radius <= 3.4 * fwhm],
+                           model[radius <= 3.4 * fwhm])
+        # the sum, and so the normalization, is nearly unchanged
+        assert_allclose(result.sum(), model.sum(), rtol=1e-3)
+        wings = (radius >= 6.2 * fwhm) & (radius <= 8.0 * fwhm)
+        return (np.sqrt(np.mean((result - model)[wings]**2))
+                / np.mean(model[wings]))
+
+    assert wing_change(4.0) < 0.02
+    assert 0.05 < wing_change(2.0) < 0.2
+    assert wing_change(1.0) > 0.3
+
+
+def test_smooth_wings_anisotropic_oversampling():
+    """
+    With different oversampling factors along the two axes, the radii
+    of the wing smoothing are measured in detector pixels.
+    """
+    fwhm = 1.5  # pixels
+    ny, nx = 61, 121
+    yy, xx = np.indices((ny, nx), dtype=float)
+    radius = np.hypot((xx - (nx - 1) / 2) / 4, (yy - (ny - 1) / 2) / 2)
+    model = (np.exp(-radius**2 / (2 * (fwhm / 2.3548)**2))
+             + 0.01 / (1 + (radius / 5.0)**2))
+    rng = np.random.default_rng(0)
+    noisy = model + rng.normal(0, 0.002, model.shape)
+
+    builder = EPSFBuilder(oversampling=(2, 4), progress_bar=False)
+    result = builder._smooth_wings(noisy)
+    core = radius <= 3.4 * fwhm
+    assert_array_equal(result[core], noisy[core])
+    for lo, hi in ((4.6, 5.0), (6.2, 8.0)):
+        wings = (radius >= lo * fwhm) & (radius <= hi * fwhm)
+        rms_before = np.std((noisy - model)[wings])
+        rms_after = np.std((result - model)[wings])
+        assert rms_after < rms_before / 2.0
+        assert abs(np.mean((result - model)[wings])) < 0.15 * rms_before
+
+
 def test_smooth_wings_no_change():
     """
     The ePSF is returned unchanged if its FWHM cannot be measured or
