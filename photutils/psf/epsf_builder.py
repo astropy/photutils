@@ -1749,11 +1749,11 @@ class EPSFBuilder:
         self.shape = shape
 
         self.recentering_func = recentering_func
+        msg = 'recentering_maxiters must be a strictly-positive integer'
         if (isinstance(recentering_maxiters, bool)
-                or not isinstance(recentering_maxiters, numbers.Integral)
-                or recentering_maxiters <= 0):
-            msg = ('recentering_maxiters must be a strictly-positive '
-                   'integer')
+                or not isinstance(recentering_maxiters, numbers.Integral)):
+            raise TypeError(msg)
+        if recentering_maxiters <= 0:
             raise ValueError(msg)
         self.recentering_maxiters = int(recentering_maxiters)
         self.recentering_boxsize = as_pair('recentering_boxsize',
@@ -1772,11 +1772,13 @@ class EPSFBuilder:
         self.smoothing_kernel = smoothing_kernel
 
         if not (alias_passband is None or self._is_auto(alias_passband)):
+            msg = ("alias_passband must be 'auto', a number between "
+                   '0 and 1 (exclusive), or None')
             if (isinstance(alias_passband, bool)
-                    or not isinstance(alias_passband, numbers.Real)
+                    or not isinstance(alias_passband, (str, numbers.Real))):
+                raise TypeError(msg)
+            if (isinstance(alias_passband, str)
                     or not 0.0 < alias_passband < 1.0):
-                msg = ("alias_passband must be 'auto', a number between "
-                       '0 and 1 (exclusive), or None')
                 raise ValueError(msg)
             alias_passband = float(alias_passband)
         self.alias_passband = alias_passband
@@ -1829,6 +1831,9 @@ class EPSFBuilder:
         self._fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
         self._fitter_accepts_weights = _fitter_accepts_weights(self.fitter)
 
+        if not isinstance(constrain_fluxes, (bool, np.bool_)):
+            msg = 'constrain_fluxes must be a bool'
+            raise TypeError(msg)
         self.constrain_fluxes = bool(constrain_fluxes)
 
         # Validate center accuracy using the validator
@@ -1843,10 +1848,11 @@ class EPSFBuilder:
         _EPSFValidator.validate_maxiters(maxiters)
         self.maxiters = maxiters
 
+        msg = 'refinement_iters must be a non-negative integer'
         if (isinstance(refinement_iters, bool)
-                or not isinstance(refinement_iters, numbers.Integral)
-                or refinement_iters < 0):
-            msg = 'refinement_iters must be a non-negative integer'
+                or not isinstance(refinement_iters, numbers.Integral)):
+            raise TypeError(msg)
+        if refinement_iters < 0:
             raise ValueError(msg)
         self.refinement_iters = int(refinement_iters)
 

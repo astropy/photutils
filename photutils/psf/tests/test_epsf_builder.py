@@ -2918,10 +2918,13 @@ def test_invalid_fit_shape_string(value):
         EPSFBuilder(fit_shape=value)
 
 
-@pytest.mark.parametrize('value', [-3, 0, 2.5, True])
-def test_invalid_recentering_maxiters(value):
+@pytest.mark.parametrize(('value', 'error'),
+                         [(-3, ValueError), (0, ValueError),
+                          (2.5, TypeError), (True, TypeError),
+                          ('5', TypeError), (None, TypeError)])
+def test_invalid_recentering_maxiters(value, error):
     match = 'recentering_maxiters must be a strictly-positive integer'
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(error, match=match):
         EPSFBuilder(recentering_maxiters=value)
 
 
@@ -3137,11 +3140,15 @@ def test_suppress_alias_modes_default_passband():
                 assert np.abs(result).max() < 0.999 * np.abs(data).max()
 
 
-@pytest.mark.parametrize('value', ['bogus', 'AUTO', 0, 1, 1.5, -0.1, True,
-                                   (0.8, 0.8)])
-def test_invalid_alias_passband(value):
+@pytest.mark.parametrize(('value', 'error'),
+                         [('bogus', ValueError), ('AUTO', ValueError),
+                          (0, ValueError), (1, ValueError),
+                          (1.5, ValueError), (-0.1, ValueError),
+                          (np.nan, ValueError), (True, TypeError),
+                          ((0.8, 0.8), TypeError)])
+def test_invalid_alias_passband(value, error):
     match = "alias_passband must be 'auto', a number between 0 and 1"
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(error, match=match):
         EPSFBuilder(alias_passband=value)
 
 
@@ -3190,11 +3197,21 @@ def test_alias_passband_changes_epsf():
     assert peaks[0] < 0.99 * peaks[2]
 
 
-@pytest.mark.parametrize('value', [-1, 2.5, True, 'auto', None])
-def test_invalid_refinement_iters(value):
+@pytest.mark.parametrize(('value', 'error'),
+                         [(-1, ValueError), (2.5, TypeError),
+                          (True, TypeError), ('auto', TypeError),
+                          (None, TypeError)])
+def test_invalid_refinement_iters(value, error):
     match = 'refinement_iters must be a non-negative integer'
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(error, match=match):
         EPSFBuilder(refinement_iters=value)
+
+
+@pytest.mark.parametrize('value', [1, 0, 'yes', None])
+def test_invalid_constrain_fluxes(value):
+    match = 'constrain_fluxes must be a bool'
+    with pytest.raises(TypeError, match=match):
+        EPSFBuilder(constrain_fluxes=value)
 
 
 def test_refinement_iters(epsf_test_data):
