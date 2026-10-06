@@ -1279,6 +1279,13 @@ class EPSFBuildResults:
         ``initial_epsf``, or the ePSF itself if the ePSF was built from
         scratch.
 
+        If the wings of the final ePSF were smoothed (see the
+        ``wing_smoothing`` keyword of `EPSFBuilder`), the figure has
+        one more row at the bottom. It shows the returned ePSF and its
+        difference from the ePSF of the last iteration, which is the
+        change made by the wing smoothing. This row is always plotted,
+        whatever the value of ``iterations``.
+
         Parameters
         ----------
         iterations : int, 1D array_like of int, or `None`, optional
@@ -1340,36 +1347,50 @@ class EPSFBuildResults:
         peak = np.max(final)
         norm = simple_norm(final, 'log', percent=99.0)
 
-        n_rows = len(iterations)
+        # The wing smoothing is not an iteration, so the smoothed ePSF
+        # is plotted in a row of its own (None) after the iterations
+        rows = list(iterations)
+        if not np.array_equal(self.epsf.data, final):
+            rows.append(None)
+
+        n_rows = len(rows)
         if figsize is None:
             figsize = (7.0, 2.6 * n_rows)
         fig, axes = plt.subplots(n_rows, 2, figsize=figsize, squeeze=False)
-        for row, iteration in enumerate(iterations):
-            data = self.iteration_epsfs[iteration - 1]
-            if iteration > 1:
-                previous = self.iteration_epsfs[iteration - 2]
-            elif self.initial_epsf is not None:
-                previous = self.initial_epsf
+        for row, iteration in enumerate(rows):
+            if iteration is None:
+                data = self.epsf.data
+                previous = final
+                title = 'Final ePSF (wings smoothed)'
+                subtitle = ''
             else:
-                previous = 0.0
+                data = self.iteration_epsfs[iteration - 1]
+                if iteration > 1:
+                    previous = self.iteration_epsfs[iteration - 2]
+                elif self.initial_epsf is not None:
+                    previous = self.initial_epsf
+                else:
+                    previous = 0.0
+                info = self.iteration_info[iteration - 1]
+                title = f'Iteration {iteration} ({info["stage"]})'
+                subtitle = ('\nconverged fraction '
+                            f'{info["converged_fraction"]:.2f}')
             diff = (data - previous) / peak
             limit = np.max(np.abs(diff))
             if limit == 0:
                 limit = 1.0
 
-            info = self.iteration_info[iteration - 1]
             ax = axes[row, 0]
             axim = ax.imshow(data, norm=norm, origin='lower', cmap=cmap)
             fig.colorbar(axim, ax=ax)
-            ax.set_title(f'Iteration {iteration} ({info["stage"]})')
+            ax.set_title(title)
 
             ax = axes[row, 1]
             axim = ax.imshow(diff, origin='lower', cmap=diff_cmap,
                              vmin=-limit, vmax=limit)
             fig.colorbar(axim, ax=ax)
-            ax.set_title(f'change / peak (max {limit:.2g})\n'
-                         f'converged fraction '
-                         f'{info["converged_fraction"]:.2f}', fontsize=9)
+            ax.set_title(f'change / peak (max {limit:.2g}){subtitle}',
+                         fontsize=9)
         fig.tight_layout()
         return fig
 

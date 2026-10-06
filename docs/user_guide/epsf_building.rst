@@ -525,6 +525,11 @@ oversampling factor of 2 or larger it made the wings more accurate or
 left them unchanged in every case. For an oversampling factor of 1,
 compare the ePSFs built with and without the smoothing.
 
+The smoothing is applied after the last iteration, so it is not part
+of ``iteration_epsfs`` or ``iteration_info``. The ``plot_iterations``
+method shows the smoothed ePSF and the change made by the smoothing in
+a last row of its figure.
+
 Set ``wing_smoothing=False`` to keep the wings as built::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4, wing_smoothing=False,

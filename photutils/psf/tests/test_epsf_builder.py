@@ -3894,6 +3894,51 @@ def test_wing_smoothing_build(epsf_test_data):
     assert_array_equal(results[0].iteration_epsfs[-1], data0)
 
 
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_wing_smoothing_plot_iterations(epsf_test_data):
+    """
+    The figure has a last row for the smoothed ePSF, whatever the
+    selected iterations, only if the wing smoothing changed the ePSF.
+    """
+    import matplotlib.pyplot as plt
+
+    stars = extract_stars(epsf_test_data['nddata'],
+                          epsf_test_data['init_stars'][:40], size=25)
+    final_title = 'Final ePSF (wings smoothed)'
+    for wing_smoothing in (False, True):
+        builder = EPSFBuilder(oversampling=2, maxiters=3,
+                              wing_smoothing=wing_smoothing,
+                              progress_bar=False)
+        result = builder(stars)
+        n_total = len(result.iteration_epsfs)
+        n_extra = int(wing_smoothing)
+
+        fig = result.plot_iterations()
+        # two image panels and two colorbars per row
+        assert len(fig.axes) == 4 * (n_total + n_extra)
+        assert_allclose(fig.get_size_inches(),
+                        (7.0, 2.6 * (n_total + n_extra)))
+        titles = [ax.get_title() for ax in fig.axes]
+        assert titles.count(final_title) == n_extra
+        plt.close(fig)
+
+        fig = result.plot_iterations(iterations=1)
+        assert len(fig.axes) == 4 * (1 + n_extra)
+        if wing_smoothing:
+            # The last row shows the returned ePSF and the change made
+            # by the smoothing. The image panels of the two rows come
+            # before the colorbars in the list of axes.
+            ax_epsf, ax_diff = fig.axes[2], fig.axes[3]
+            assert ax_epsf.get_title() == final_title
+            assert_array_equal(ax_epsf.get_images()[0].get_array(),
+                               result.epsf.data)
+            last = result.iteration_epsfs[-1]
+            diff = (result.epsf.data - last) / np.max(last)
+            assert_allclose(ax_diff.get_images()[0].get_array(), diff)
+            assert 'converged fraction' not in ax_diff.get_title()
+        plt.close(fig)
+
+
 def test_nonuniform_phase_warning():
     """
     A warning is emitted when the fitted star centers have strongly
