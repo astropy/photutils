@@ -870,6 +870,13 @@ column through the center of the ePSF. The convergence attributes of
 `~photutils.psf.EPSFBuildResults` then describe the last refinement
 iteration, so that they match the returned stars.
 
+The `~photutils.psf.EPSFBuildResults` now keep the ePSF image
+of every iteration (``iteration_epsfs``) and a table of the
+convergence statistics of each iteration (``iteration_info``). The new
+``plot_iterations`` method plots the ePSF after each iteration and its
+change from the previous iteration, which shows whether the build has
+stopped changing and where it is still changing.
+
 On clean data, the ePSF is at least as accurate as before and is often
 better. Star centers are recovered more accurately, and the build
 converges in fewer iterations. A warning is now emitted if the fitted
