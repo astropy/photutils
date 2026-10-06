@@ -507,12 +507,11 @@ per pixel:
     \nu_c = \frac{D \, p}{\lambda}
 
 where :math:`D` is the telescope diameter, :math:`\lambda` is the
-shortest wavelength of the bandpass (in the same units as :math:`D`),
-and :math:`p` is the pixel scale in radians per pixel. A telescope
-transmits no signal above this frequency. For example, for HST (:math:`D
-= 2.4` m) WFC3/IR (0.13 arcsec per pixel) at 1.1 microns, :math:`\nu_c
-= 2.4 \times 6.3 \times 10^{-7} / 1.1 \times 10^{-6} = 1.4` cycles per
-pixel.
+mean wavelength of the bandpass (in the same units as :math:`D`), and
+:math:`p` is the pixel scale in radians per pixel. A telescope transmits
+no signal above this frequency. For example, for HST (:math:`D = 2.4`
+m) WFC3/IR (0.13 arcsec per pixel) at 1.1 microns, :math:`\nu_c = 2.4
+\times 6.3 \times 10^{-7} / 1.1 \times 10^{-6} = 1.4` cycles per pixel.
 
 .. list-table::
     :header-rows: 1
@@ -567,7 +566,8 @@ column through the center of the ePSF. To remove this pattern, the
 builder refines the ePSF after the building iterations. Each refinement
 iteration (``refinement_iters``, 5 by default) updates the ePSF five
 times with the star centers and fluxes held fixed and then refits the
-stars with the updated ePSF. These updates use a wider and smoother
+stars with the updated ePSF. The ePSF is recentered in each update,
+as in the building iterations. These updates use a wider and smoother
 low-pass filter, with unit gain up to 1.1 cycles per pixel and zero
 gain at and above 1.33 cycles per pixel. It does not remove signal near
 one cycle per pixel, so it leaves no ripple pattern. It removes only
@@ -578,8 +578,16 @@ converges slowly and is more sensitive to the initial star centers.
 The refinement is applied only for an oversampling factor of 4 or
 larger, and it roughly doubles the run time of the build. For a
 well-sampled ePSF it has little to restore and it adds a small amount
-of noise (up to about 10 percent of the residual of the ePSF). Set
-``refinement_iters=0`` to skip it.
+of noise (up to about 15 percent of the residual of the ePSF). Set
+``refinement_iters=0`` to skip it. More refinement iterations than the
+default improve the most strongly undersampled ePSFs only slightly and
+add more noise to the well-sampled ones.
+
+The ``converged``, ``final_center_accuracy``, and
+``final_converged_fraction`` attributes of the results describe the last
+refinement iteration when the ePSF was refined, so that they match the
+returned stars. The ``iterations`` attribute counts only the building
+iterations.
 
 Setting ``alias_passband=None`` turns the filter off. This is rarely
 appropriate. Without the filter, noise at the alias frequencies

@@ -859,14 +859,16 @@ recovers the peak of such an ePSF more accurately than the default. See
 the ePSF building user guide for how to choose the value.
 
 After the building iterations, the ePSF is now refined
-(``refinement_iters``, 5 by default) for an oversampling factor of 4 or
-larger. Each refinement iteration updates the ePSF with the star centers
-and fluxes held fixed and then refits the stars. These updates use a
-low-pass filter that does not remove signal near one cycle per pixel, so
-they restore the real signal of an undersampled ePSF that the filter of
-the building iterations removes. Without the refinement, that missing
-signal shows as a ripple pattern along the row and the column through
-the center of the ePSF.
+(``refinement_iters``, 5 by default) for an oversampling factor of 4
+or larger. Each refinement iteration updates the ePSF with the star
+centers and fluxes held fixed and then refits the stars. These updates
+use a low-pass filter that does not remove signal near one cycle per
+pixel, so they restore the real signal of an undersampled ePSF that
+the filter of the building iterations removes. Without the refinement,
+that missing signal shows as a ripple pattern along the row and the
+column through the center of the ePSF. The convergence attributes of
+`~photutils.psf.EPSFBuildResults` then describe the last refinement
+iteration, so that they match the returned stars.
 
 On clean data, the ePSF is at least as accurate as before and is often
 better. Star centers are recovered more accurately, and the build

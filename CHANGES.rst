@@ -308,12 +308,14 @@ New Features
     5). After the building iterations, the ePSF is refined for an
     oversampling factor of 4 or larger. Each refinement iteration
     updates the ePSF with the star centers and fluxes held fixed, using
-    a weaker low-pass filter that keeps structure that repeats with a
-    period of about one detector pixel, and then refits the stars. This
-    restores the real signal of an undersampled ePSF that the alias
-    low-pass filter of the building iterations removes, which otherwise
-    shows as a ripple pattern along the row and the column through the
-    center of the ePSF. [#2465]
+    a weaker low-pass filter that keeps structure that repeats with
+    a period of about one detector pixel, and then refits the stars.
+    This restores the real signal of an undersampled ePSF that the
+    alias low-pass filter of the building iterations removes, which
+    otherwise shows as a ripple pattern along the row and the column
+    through the center of the ePSF. The convergence attributes of
+    ``EPSFBuildResults`` then describe the last refinement iteration.
+    [#2465]
 
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose
