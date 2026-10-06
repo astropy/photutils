@@ -28,7 +28,7 @@ from photutils.psf.epsf_builder import (_alias_filter_band,
                                         _SmoothingKernel,
                                         _suppress_alias_modes)
 from photutils.psf.epsf_stars import LinkedEPSFStar
-from photutils.utils._optional_deps import HAS_TQDM
+from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_TQDM
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
@@ -3503,6 +3503,154 @@ def test_refinement_progress_bar(epsf_test_data, monkeypatch):
     EPSFBuilder(oversampling=2, maxiters=2, refinement_iters=3)(stars)
     EPSFBuilder(oversampling=4, maxiters=2, refinement_iters=0)(stars)
     assert [bar.desc for bar in bars] == ['EPSFBuilder (2 maxiters)'] * 2
+
+
+class TestIterationHistory:
+    """
+    Tests for the per-iteration ePSFs of `EPSFBuildResults`.
+    """
+
+    @pytest.fixture(scope='class')
+    @classmethod
+    def stars(cls):
+        psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+        data, params = make_psf_model_image(
+            (400, 400), psf_model, 30, model_shape=(9, 9),
+            flux=(500, 700), min_separation=25, border_size=25, seed=0)
+        tbl = Table({'x': params['x_0'], 'y': params['y_0']})
+        return extract_stars(NDData(data), tbl, size=11)
+
+    def test_history(self, stars):
+        builder = EPSFBuilder(oversampling=4, maxiters=3,
+                              refinement_iters=2, progress_bar=False)
+        result = builder(stars)
+
+        n_total = result.iterations + 2
+        assert len(result.iteration_epsfs) == n_total
+        assert len(result.iteration_info) == n_total
+        for data in result.iteration_epsfs:
+            assert data.shape == result.epsf.data.shape
+            assert np.all(np.isfinite(data))
+        assert_array_equal(result.iteration_epsfs[-1], result.epsf.data)
+
+        # The images are copies, not views of one array
+        assert (result.iteration_epsfs[0]
+                is not result.iteration_epsfs[1])
+        assert not np.array_equal(result.iteration_epsfs[0],
+                                  result.iteration_epsfs[1])
+
+        info = result.iteration_info
+        assert info.colnames == ['iteration', 'stage', 'converged',
+                                 'converged_fraction', 'max_center_shift',
+                                 'n_fit_failed', 'max_epsf_change']
+        assert info['converged'].dtype == bool
+        assert_array_equal(info['converged'],
+                           info['converged_fraction'] >= 0.95)
+        assert_array_equal(info['iteration'], np.arange(1, n_total + 1))
+        assert list(info['stage']) == (['build'] * result.iterations
+                                       + ['refine'] * 2)
+        assert np.all((info['converged_fraction'] >= 0)
+                      & (info['converged_fraction'] <= 1))
+        assert np.all(info['max_center_shift'] >= 0)
+        assert np.all(info['n_fit_failed'] == 0)
+
+        # The first iteration starts from an empty ePSF, and the ePSF
+        # changes less in the later iterations
+        assert info['max_epsf_change'][0] > 0.5
+        assert info['max_epsf_change'][-1] < info['max_epsf_change'][0]
+
+        # The last iteration, which is a refinement iteration, matches
+        # the reported convergence
+        assert info['converged'][-1] == result.converged
+        assert_allclose(info['converged_fraction'][-1],
+                        result.final_converged_fraction)
+        assert_allclose(info['max_center_shift'][-1],
+                        result.final_center_accuracy)
+
+    def test_history_build_convergence(self, stars):
+        """
+        The table tells whether the building iterations converged when
+        the refinement changes the reported convergence.
+        """
+        kwargs = {'oversampling': 4, 'maxiters': 5, 'progress_bar': False}
+        build = EPSFBuilder(refinement_iters=0, **kwargs)(stars)
+        refined = EPSFBuilder(refinement_iters=4, **kwargs)(stars)
+        assert not build.converged
+        assert refined.converged
+
+        info = refined.iteration_info
+        is_build = info['stage'] == 'build'
+        assert not info['converged'][is_build][-1]
+        assert info['converged'][-1]
+        for name in ('converged', 'converged_fraction', 'max_center_shift'):
+            assert_allclose(info[name][is_build], build.iteration_info[name])
+
+    def test_history_without_refinement(self, stars):
+        builder = EPSFBuilder(oversampling=2, maxiters=2,
+                              progress_bar=False)
+        result = builder(stars)
+        assert len(result.iteration_epsfs) == result.iterations
+        assert set(result.iteration_info['stage']) == {'build'}
+        assert_array_equal(result.iteration_epsfs[-1], result.epsf.data)
+
+    def test_history_not_in_tuple_or_repr(self, stars):
+        builder = EPSFBuilder(oversampling=2, maxiters=2,
+                              progress_bar=False)
+        result = builder(stars)
+        assert len(result) == 2
+        epsf, fitted_stars = result
+        assert epsf is result.epsf
+        assert fitted_stars is result.fitted_stars
+        assert 'iteration_epsfs' not in repr(result)
+        assert 'iteration_info' not in repr(result)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_iterations(self, stars):
+        import matplotlib.pyplot as plt
+
+        builder = EPSFBuilder(oversampling=4, maxiters=2,
+                              refinement_iters=1, progress_bar=False)
+        result = builder(stars)
+        n_total = len(result.iteration_epsfs)
+
+        fig = result.plot_iterations()
+        # two image panels and two colorbars per iteration
+        assert len(fig.axes) == 4 * n_total
+        titles = [ax.get_title() for ax in fig.axes]
+        assert 'Iteration 1 (build)' in titles
+        assert f'Iteration {n_total} (refine)' in titles
+        plt.close(fig)
+
+        fig = result.plot_iterations(iterations=[1, n_total],
+                                     figsize=(6, 5), cmap='gray')
+        assert len(fig.axes) == 8
+        assert tuple(fig.get_size_inches()) == (6.0, 5.0)
+        plt.close(fig)
+
+        fig = result.plot_iterations(iterations=2)
+        assert len(fig.axes) == 4
+        plt.close(fig)
+
+        # An ePSF that did not change from the previous iteration
+        result.iteration_epsfs[1] = result.iteration_epsfs[0]
+        fig = result.plot_iterations(iterations=2)
+        assert fig.axes[1].get_images()[0].get_clim() == (-1.0, 1.0)
+        plt.close(fig)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_iterations_invalid(self, stars):
+        builder = EPSFBuilder(oversampling=2, maxiters=2,
+                              progress_bar=False)
+        result = builder(stars)
+        match = 'iterations must be between 1 and'
+        for value in (0, [1, 99]):
+            with pytest.raises(ValueError, match=match):
+                result.plot_iterations(iterations=value)
+
+        result.iteration_epsfs = None
+        match = 'There are no per-iteration ePSFs to plot'
+        with pytest.raises(ValueError, match=match):
+            result.plot_iterations()
 
 
 def test_nonuniform_phase_warning():

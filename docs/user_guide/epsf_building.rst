@@ -352,6 +352,20 @@ iteration (``final_center_accuracy``), and the smoothing kernel and
 fitting box that were used (``smoothing_kernel`` and ``fit_shape``). See
 `~photutils.psf.EPSFBuildResults` for the full list.
 
+The results also keep the ePSF image after each iteration in the
+``iteration_epsfs`` attribute, and the ``iteration_info`` attribute
+is a table with the convergence statistics of each iteration. The
+``max_epsf_change`` column is the largest change of the ePSF from the
+previous iteration as a fraction of its peak. If it is still large in
+the last building iteration, increase ``maxiters``. The ``converged``
+column tells whether the star centers had converged in each iteration,
+so the last ``'build'`` row tells whether the building iterations
+converged. The ``plot_iterations`` method plots the ePSF after each
+iteration and its change from the previous iteration::
+
+    >>> result.iteration_info['iteration', 'stage', 'max_epsf_change'].pprint(max_lines=6)  # doctest: +SKIP
+    >>> fig = result.plot_iterations()  # doctest: +SKIP
+
 The returned ``epsf`` is an `~photutils.psf.ImagePSF` object, and
 ``fitted_stars`` is a new `~photutils.psf.EPSFStars` object with the
 updated star positions and fluxes from fitting the final ePSF model.

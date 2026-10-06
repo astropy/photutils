@@ -317,6 +317,12 @@ New Features
     ``EPSFBuildResults`` then describe the last refinement iteration.
     [#2465]
 
+  - Added ``iteration_epsfs`` and ``iteration_info`` attributes to
+    ``EPSFBuildResults`` that hold the ePSF image and the convergence
+    statistics of each building and refinement iteration, and a
+    ``plot_iterations`` method that plots the ePSF after each iteration
+    and its change from the previous one. [#2466]
+
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose
     centers must change by less than ``center_accuracy`` between

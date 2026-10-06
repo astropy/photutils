@@ -14,6 +14,7 @@ import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NoOverlapError, PartialOverlapError, overlap_slices
 from astropy.stats import SigmaClip
+from astropy.table import Table
 from astropy.utils.decorators import deprecated, deprecated_attribute
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
@@ -1074,9 +1075,8 @@ class EPSFBuildResults:
         star centers settle again within a few refinement iterations.
         With different oversampling factors along the two axes they can
         need more refinement iterations than the default (about 10 in
-        tests). If ``iterations`` is less than the ``maxiters`` of the
-        builder, the building iterations converged, whatever the value
-        of ``converged``.
+        tests). The ``converged`` column of ``iteration_info`` gives the
+        convergence of every building and refinement iteration.
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
@@ -1113,6 +1113,31 @@ class EPSFBuildResults:
         iteration, or `None` if the entire star cutouts were fit. This
         includes the shape chosen by ``fit_shape='auto'``.
 
+    iteration_epsfs : list of 2D `~numpy.ndarray`
+        The ePSF image after each iteration, in order. The building
+        iterations come first, followed by the refinement iterations
+        (if any). Each image has the shape and normalization of
+        ``epsf.data``. The images can be used to check how the
+        ePSF evolved and whether it stopped changing. See also
+        `plot_iterations`.
+
+    iteration_info : `~astropy.table.Table`
+        A table with one row for each image in ``iteration_epsfs``. The
+        columns are the iteration number (``iteration``, starting at 1),
+        the kind of iteration (``stage``, ``'build'`` or ``'refine'``),
+        whether the star centers had converged in that iteration
+        (``converged``), the fraction of the successfully fitted
+        stars whose centers moved by less than the center accuracy in
+        that iteration (``converged_fraction``), the largest center
+        movement in pixels (``max_center_shift``), the number of stars
+        whose fit failed (``n_fit_failed``), and the largest absolute
+        change of the ePSF image from the previous iteration as a
+        fraction of the ePSF peak (``max_epsf_change``). The last row
+        gives the ``converged``, ``final_converged_fraction``, and
+        ``final_center_accuracy`` values of the results. The last
+        ``'build'`` row tells whether the building iterations converged,
+        which ``converged`` alone does not when the ePSF was refined.
+
     Notes
     -----
     This result object maintains backward compatibility by implementing
@@ -1144,6 +1169,10 @@ class EPSFBuildResults:
                                                 repr=False)
     fit_shape: tuple | None = None
     final_converged_fraction: float | None = None
+    iteration_epsfs: list | None = field(default=None, compare=False,
+                                         repr=False)
+    iteration_info: Table | None = field(default=None, compare=False,
+                                         repr=False)
 
     def __iter__(self):
         """
@@ -1189,6 +1218,91 @@ class EPSFBuildResults:
 
         msg = 'EPSFBuildResults index must be 0 (epsf) or 1 (fitted_stars)'
         raise IndexError(msg)
+
+    def plot_iterations(self, *, iterations=None, figsize=None,
+                        cmap='viridis', diff_cmap='RdBu_r'):
+        """
+        Plot the ePSF after each iteration and its change from the
+        previous iteration.
+
+        The figure has one row for each iteration. The left panel shows
+        the ePSF with a logarithmic stretch that is common to all the
+        rows. The right panel shows the difference from the ePSF of
+        the previous iteration, as a fraction of the peak of the final
+        ePSF, with a symmetric linear stretch of its own. For the first
+        iteration the right panel shows the ePSF itself, because the
+        build starts from an empty ePSF.
+
+        Parameters
+        ----------
+        iterations : array_like of int or `None`, optional
+            The iteration numbers (starting at 1, as in the
+            ``iteration`` column of ``iteration_info``) to plot. If
+            `None`, all the iterations are plotted.
+
+        figsize : tuple of 2 float or `None`, optional
+            The figure (width, height) in inches. If `None`, the figure
+            is 8 inches wide and 3.6 inches tall per row.
+
+        cmap : str or `matplotlib.colors.Colormap`, optional
+            The colormap of the ePSF panels.
+
+        diff_cmap : str or `matplotlib.colors.Colormap`, optional
+            The colormap of the difference panels.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            The figure.
+        """
+        import matplotlib.pyplot as plt
+        from astropy.visualization import simple_norm
+
+        if not self.iteration_epsfs:
+            msg = 'There are no per-iteration ePSFs to plot'
+            raise ValueError(msg)
+
+        n_total = len(self.iteration_epsfs)
+        if iterations is None:
+            iterations = np.arange(1, n_total + 1)
+        iterations = np.atleast_1d(iterations).astype(int)
+        if np.any(iterations < 1) or np.any(iterations > n_total):
+            msg = f'iterations must be between 1 and {n_total}'
+            raise ValueError(msg)
+
+        final = self.iteration_epsfs[-1]
+        peak = np.max(final)
+        norm = simple_norm(final, 'log', percent=99.0)
+
+        n_rows = len(iterations)
+        if figsize is None:
+            figsize = (8.0, 3.6 * n_rows)
+        fig, axes = plt.subplots(n_rows, 2, figsize=figsize, squeeze=False)
+        for row, iteration in enumerate(iterations):
+            data = self.iteration_epsfs[iteration - 1]
+            if iteration == 1:
+                diff = data / peak
+            else:
+                diff = (data - self.iteration_epsfs[iteration - 2]) / peak
+            limit = np.max(np.abs(diff))
+            if limit == 0:
+                limit = 1.0
+
+            info = self.iteration_info[iteration - 1]
+            ax = axes[row, 0]
+            axim = ax.imshow(data, norm=norm, origin='lower', cmap=cmap)
+            fig.colorbar(axim, ax=ax)
+            ax.set_title(f'Iteration {iteration} ({info["stage"]})')
+
+            ax = axes[row, 1]
+            axim = ax.imshow(diff, origin='lower', cmap=diff_cmap,
+                             vmin=-limit, vmax=limit)
+            fig.colorbar(axim, ax=ax)
+            ax.set_title(f'change / peak (max {limit:.2g})\n'
+                         f'converged fraction '
+                         f'{info["converged_fraction"]:.2f}', fontsize=9)
+        fig.tight_layout()
+        return fig
 
 
 @deprecated(since='3.0',
@@ -1708,8 +1822,8 @@ class EPSFBuilder:
     reported in the ``smoothing_kernel`` and ``fit_shape`` attributes of
     the returned `EPSFBuildResults`.
 
-    This class stores per-call state on the instance (e.g., the list
-    of per-iteration ePSFs), so a single instance must not be called
+    This class stores per-call state on the instance (e.g., the
+    automatic smoothing kernel), so a single instance must not be called
     concurrently from multiple threads. Create one instance per thread
     for concurrent use. Sharing a single Astropy fitter instance across
     concurrently-used objects is also unsafe because Astropy fitters
@@ -3036,6 +3150,7 @@ class EPSFBuilder:
         # Main iteration loop. Note that an all-failed iteration
         # raises inside _process_iteration, so no fit_failed exit
         # condition is needed here.
+        history = []
         while iter_num < self.maxiters and not converged:
 
             iter_num += 1
@@ -3047,6 +3162,9 @@ class EPSFBuilder:
             # Check convergence based on center movements
             (converged, converged_fraction, max_center_dist_sq,
              centers) = self._check_convergence(stars, centers, fit_failed)
+            history.append((epsf.data.copy(), 'build', converged,
+                            converged_fraction, max_center_dist_sq,
+                            int(np.sum(fit_failed))))
 
             # Update progress bar
             progress_reporter.update()
@@ -3075,14 +3193,56 @@ class EPSFBuilder:
                 (converged, converged_fraction, max_center_dist_sq,
                  centers) = self._check_convergence(stars, centers,
                                                     fit_failed)
+                history.append((epsf.data.copy(), 'refine', converged,
+                                converged_fraction, max_center_dist_sq,
+                                int(np.sum(fit_failed))))
                 refine_reporter.update()
             refine_reporter.close()
             final_center_accuracy = float(max_center_dist_sq ** 0.5)
 
         # Finalize and return structured results
-        return self._finalize_build(epsf, stars, iter_num, converged,
-                                    final_center_accuracy,
-                                    converged_fraction)
+        result = self._finalize_build(epsf, stars, iter_num, converged,
+                                      final_center_accuracy,
+                                      converged_fraction)
+        result.iteration_epsfs = [item[0] for item in history]
+        result.iteration_info = self._make_iteration_info(history)
+        return result
+
+    @staticmethod
+    def _make_iteration_info(history):
+        """
+        Make the table of per-iteration diagnostics.
+
+        Parameters
+        ----------
+        history : list of tuple
+            One ``(epsf_data, stage, converged, converged_fraction,
+            max_center_dist_sq, n_fit_failed)`` tuple per iteration.
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            The table described in `EPSFBuildResults`.
+        """
+        peak = np.max(history[-1][0]) if history else 1.0
+        changes = []
+        previous = None
+        for item in history:
+            data = item[0]
+            reference = np.zeros_like(data) if previous is None else previous
+            changes.append(float(np.max(np.abs(data - reference)) / peak))
+            previous = data
+
+        table = Table()
+        table['iteration'] = np.arange(1, len(history) + 1)
+        table['stage'] = [item[1] for item in history]
+        table['converged'] = [bool(item[2]) for item in history]
+        table['converged_fraction'] = [float(item[3]) for item in history]
+        table['max_center_shift'] = [float(item[4]) ** 0.5
+                                     for item in history]
+        table['n_fit_failed'] = [item[5] for item in history]
+        table['max_epsf_change'] = changes
+        return table
 
 
 def __getattr__(name):
