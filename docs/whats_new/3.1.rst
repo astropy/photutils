@@ -839,13 +839,19 @@ star centers toward particular subpixel phases. This prevented alternate
 grid points from being sampled evenly. The effect grew with each
 iteration and produced a checkerboard, or alias, pattern.
 
-Now, each star-pixel residual is deposited on every oversampled grid
-point within its footprint. This ensures that every star contributes to
-every grid point, regardless of its subpixel phase. In each iteration,
-power at and above one cycle per input pixel is also removed from
-the ePSF. A pixel-integrated PSF has essentially no signal at these
-frequencies. However, the star-pixel sampling lattice can alias onto the
-oversampled grid.
+Now, each star-pixel residual is deposited on the oversampled grid
+points within 0.375 pixel (and at least one grid spacing) of the pixel
+center along each axis. This ensures that every star contributes to both
+parities of the grid, regardless of its subpixel phase. Anderson and
+King (2000) combined the pixels within 0.25 pixel of each grid point
+of an ePSF with an oversampling factor of 4. The slightly wider region
+used here is needed to keep heterogeneous star samples from growing the
+pattern. In each iteration, power near and above one cycle per input
+pixel is also removed from the ePSF with a low-pass filter (unit gain up
+to 0.8 cycles per input pixel, or 0.7 for an oversampling factor of 2).
+A pixel-integrated PSF has essentially no signal at one cycle per input
+pixel. However, that is the frequency at which the star-pixel sampling
+lattice aliases onto the oversampled grid.
 
 On clean data, the ePSF is at least as accurate as before and is often
 better. Star centers are recovered more accurately, and the build
@@ -876,8 +882,9 @@ with an oversampling factor of 4, where they correspond to about 0.7 and
 ePSFs, and a fixed 5-pixel fitting box applied to a well-sampled star
 uses only its flat core, which biases the fitted centers and can prevent
 the build from converging. The automatic kernel is a least-squares
-quartic polynomial kernel 0.7 FWHM wide in oversampled grid points
-(no smoothing below 5 grid points), and the automatic fitting box
+quartic polynomial kernel at most 0.7 FWHM wide in oversampled grid
+points (no smoothing below 5 grid points, i.e., for fewer than about 7
+grid points per FWHM), and the automatic fitting box
 is 2 FWHM wide in detector pixels (at least 5 pixels and at most
 the star cutout size). The choices made in the final iteration are
 reported in the new ``smoothing_kernel`` and ``fit_shape`` attributes

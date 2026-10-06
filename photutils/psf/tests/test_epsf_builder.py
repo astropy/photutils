@@ -3015,6 +3015,38 @@ def test_build_heterogeneous_stars_no_checkerboard(oversampling):
         assert chi2 < 20.0
 
 
+def test_build_heterogeneous_stars_deposit_width():
+    """
+    Regression test for the width of the residual deposit.
+
+    Depositing each star pixel only on the grid points within one grid
+    spacing (or within 0.25 pixel) of its center gives a sharper ePSF
+    for clean stars, but for this heterogeneous star sample it grows
+    a checkerboard pattern within a few iterations at an oversampling
+    factor of 6. The deposit must be wide enough to prevent that.
+    """
+    oversampling = 6
+    stars = _make_heterogeneous_stars(seed=3)
+    builder = EPSFBuilder(oversampling=oversampling, maxiters=8,
+                          fit_shape=11, recentering_boxsize=11,
+                          progress_bar=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', AstropyUserWarning)
+        result = builder(stars)
+
+    assert np.all(np.isfinite(result.epsf.data))
+    alias_power = _alias_power_fraction(result.epsf.data, oversampling)
+    assert max(alias_power) < 5.0e-4
+    assert result.epsf.data.min() > -0.05 * result.epsf.data.max()
+
+    centers = result.fitted_stars.cutout_center_flat
+    for axis in (0, 1):
+        hist = np.histogram(centers[:, axis] % 1, bins=4,
+                            range=(0, 1))[0]
+        chi2 = np.sum((hist - hist.mean())**2) / hist.mean()
+        assert chi2 < 20.0
+
+
 def test_resample_residual_pixel_footprint():
     """
     Each star pixel residual is deposited on every oversampled grid
@@ -3046,6 +3078,16 @@ def test_resample_residual_pixel_footprint():
     resid1 = builder1._resample_residuals(stars, epsf1)[0]
     assert np.isfinite(resid1).sum() == data.size
 
+    # With oversampling=4 each star pixel covers only the grid points
+    # within 0.375 pixel (1.5 grid spacings) of its center (3x3
+    # points), not its whole footprint (4x4 points).
+    builder4 = EPSFBuilder(oversampling=4, progress_bar=False)
+    epsf4 = builder4._create_initial_epsf(stars)
+    resid4 = builder4._resample_residuals(stars, epsf4)[0]
+    finite4 = np.isfinite(resid4)
+    assert finite4.sum() == 9 * data.size
+    assert np.all(np.isin(resid4[finite4], values))
+
 
 def test_suppress_alias_modes():
     """
@@ -3070,6 +3112,28 @@ def test_suppress_alias_modes():
     assert np.abs(result - psf).max() < 0.1 * np.abs(rows).max()
     result = _suppress_alias_modes(psf + rows, (1, 2))
     assert_allclose(result, psf + rows, atol=1e-5)
+
+
+def test_suppress_alias_modes_default_passband():
+    """
+    The default passband ends at 0.8 cycles per input pixel, or at 0.7
+    cycles per input pixel for an oversampling factor of 2.
+    """
+    npts = 64
+    xx = np.arange(npts)
+    for oversampling, expected in ((2, 0.7), (3, 0.8), (4, 0.8)):
+        # Frequencies (cycles per input pixel) on the FFT grid
+        nu = np.fft.rfftfreq(npts) * oversampling
+        below = nu[nu < expected - 1e-6][-1]
+        above = nu[(nu > expected + 1e-6) & (nu < 1.0)][0]
+        for freq, passed in ((below, True), (above, False)):
+            wave = np.cos(2 * np.pi * freq / oversampling * xx)
+            data = np.tile(wave, (npts, 1))
+            result = _suppress_alias_modes(data, (1, oversampling))
+            if passed:
+                assert_allclose(result, data, atol=1e-10)
+            else:
+                assert np.abs(result).max() < 0.999 * np.abs(data).max()
 
 
 def test_nonuniform_phase_warning():
@@ -3243,13 +3307,14 @@ class TestAutoSmoothingAndFitShape:
     def test_auto_choices_oversampled(self, stars):
         """
         The ePSF FWHM is about 2.9 pixels (11.2 grid points at
-        oversampling 4), so the kernel is 0.7 x 11.2 = 7.9 -> 9 grid
-        points and the fit shape is 2 x 2.9 = 5.7 -> 7 pixels.
+        oversampling 4), so the kernel is 0.7 x 11.2 = 7.9 -> 7 grid
+        points (rounded down to an odd size) and the fit shape is
+        2 x 2.9 = 5.7 -> 7 pixels.
         """
         builder = EPSFBuilder(oversampling=4, maxiters=3,
                               progress_bar=False)
         result = builder(stars)
-        assert result.smoothing_kernel.shape == (9, 9)
+        assert result.smoothing_kernel.shape == (7, 7)
         assert result.fit_shape == (7, 7)
         fwhm = _measure_fwhm(result.epsf.data)
         assert_allclose(fwhm, (11.2, 11.2), rtol=0.05)
@@ -3289,9 +3354,10 @@ class TestAutoSmoothingAndFitShape:
     def test_auto_fit_shape_capped_by_cutout(self):
         """
         A wide PSF in small cutouts: the 2 FWHM fit box (15 pixels)
-        is capped at the cutout size and the kernel is 0.7 x 7 = 5.
+        is capped at the cutout size and the kernel is 0.7 x 7.5 = 5.2
+        -> 5.
         """
-        fwhm = 7.0
+        fwhm = 7.5
         data, params = make_psf_model_image(
             (600, 600), CircularGaussianPRF(flux=1, fwhm=fwhm), 30,
             model_shape=(25, 25), flux=(500, 700), min_separation=40,
@@ -3543,9 +3609,10 @@ def _resample_residual_per_star(builder, star, epsf):
     Reference per-star implementation of the residual resampling.
 
     The normalized ePSF model is subtracted from the normalized star
-    and each pixel residual is deposited on every oversampled grid
-    point inside the footprint of that pixel. Grid points without data
-    are NaN.
+    and each pixel residual is deposited on the oversampled grid points
+    within 0.375 pixel, and at least one grid spacing, of the pixel
+    center (the nearest grid point for an oversampling factor of one).
+    Grid points without data are NaN.
     """
     xidx_centered, yidx_centered = star._xyidx_centered
     stardata = (star._data_values_normalized
@@ -3559,14 +3626,18 @@ def _resample_residual_per_star(builder, star, epsf):
 
     epsf_shape = epsf.data.shape
     out_image = np.full(epsf_shape, np.nan)
-    x_first = np.floor(x_over - nx_over / 2.0).astype(int) + 1
-    y_first = np.floor(y_over - ny_over / 2.0).astype(int) + 1
-    for j in range(ny_over):
+    x_width = max(0.375 * nx_over, 1.0) if nx_over > 1 else 0.5
+    y_width = max(0.375 * ny_over, 1.0) if ny_over > 1 else 0.5
+    x_first = np.floor(x_over - x_width).astype(int) + 1
+    y_first = np.floor(y_over - y_width).astype(int) + 1
+    for j in range(int(np.ceil(2 * y_width))):
         yidx = y_first + j
-        for i in range(nx_over):
+        for i in range(int(np.ceil(2 * x_width))):
             xidx = x_first + i
             mask = ((xidx >= 0) & (xidx < epsf_shape[1])
-                    & (yidx >= 0) & (yidx < epsf_shape[0]))
+                    & (yidx >= 0) & (yidx < epsf_shape[0])
+                    & (xidx <= x_over + x_width)
+                    & (yidx <= y_over + y_width))
             out_image[yidx[mask], xidx[mask]] = stardata[mask]
 
     return out_image

@@ -408,16 +408,15 @@ polynomial shape of the ePSF within the kernel window.
 The default is ``'auto'``, which uses a quartic (fourth-degree)
 polynomial kernel whose width is 0.7 times the FWHM of the ePSF in
 oversampled grid points, measured in each iteration along its narrowest
-axis. The width is rounded to an odd number of grid points, and no
+axis. The width is rounded down to an odd number of grid points, and no
 smoothing is applied when it would be smaller than 5 grid points, i.e.,
-for heavily undersampled ePSFs with fewer than about 5 grid points per
-FWHM, where a fixed 5x5 kernel would lower the peak of the ePSF. The
-kernel is square, so with anisotropic oversampling the axis with the
-fewer grid points per FWHM sets its size. The chosen kernel is reported
-in the ``smoothing_kernel`` attribute of the results, and it can be
-input as a fixed ``smoothing_kernel`` to reproduce the build. If the
-FWHM cannot be measured, the ``'quartic'`` kernel is used and a warning
-is emitted.
+for undersampled ePSFs with fewer than about 7 grid points per FWHM,
+where a fixed 5x5 kernel would lower the peak of the ePSF. The kernel is
+square, so with anisotropic oversampling the axis with the fewer grid
+points per FWHM sets its size. The chosen kernel is reported in the
+``smoothing_kernel`` attribute of the results, and it can be input as a
+fixed ``smoothing_kernel`` to reproduce the build. If the FWHM cannot be
+measured, the ``'quartic'`` kernel is used and a warning is emitted.
 
 You can also use ``'quartic'`` or ``'quadratic'`` for the fixed 5x5
 fourth- and second-degree polynomial kernels of `Anderson and King 2000
@@ -431,21 +430,24 @@ provide a custom 2D array, or set it to `None` for no smoothing::
 
 The fixed kernels are applied on the oversampled grid, so their physical
 width is ``5 / oversampling`` detector pixels. The 5x5 quartic kernel
-was developed for HST data with an oversampling factor of 4, where
-it is about 0.7 FWHM wide. When using a fixed kernel for a heavily
-undersampled ePSF with fewer than about five grid points per FWHM, the
-kernel lowers the peak of the ePSF, and ``smoothing_kernel=None`` is
-a better choice, especially when the stars have high signal-to-noise.
-Smoothing is most useful for well-sampled ePSFs built from noisy or few
-stars.
+was developed for HST data with an oversampling factor of 4, where it
+is about 0.7 FWHM wide. When using a fixed kernel for an undersampled
+ePSF with fewer than about seven grid points per FWHM, the kernel lowers
+the peak of the ePSF, and ``smoothing_kernel=None`` is a better choice,
+especially when the stars have high signal-to-noise. Smoothing is most
+useful for well-sampled ePSFs built from noisy or few stars.
 
 Independently of the smoothing kernel, when the oversampling factor
 is greater than one the builder also applies a low-pass filter to the
-ePSF in every iteration. The filter removes only the finest-scale
-structure on the oversampled grid, which a real pixel-integrated PSF
-cannot contain, so it does not blur the ePSF. Together with depositing
-each star pixel residual over its full footprint on the oversampled
-grid, this prevents noise from heterogeneous, contaminated, or low
+ePSF in every iteration. The filter removes the structure near and
+above one cycle per detector pixel (it has unit gain up to 0.8 cycles
+per pixel, or 0.7 for an oversampling factor of 2). A pixel-integrated
+PSF has essentially no signal at one cycle per pixel, but the ePSF of
+a strongly undersampled detector does have some signal just below it,
+so the filter slightly lowers the peak of such an ePSF. Together with
+depositing each star pixel residual on the oversampled grid points
+within 0.375 pixel of the pixel center along each axis, this prevents
+noise from heterogeneous, contaminated, or low
 signal-to-noise stars from growing into a checkerboard pattern in the
 ePSF. If the subpixel phases of the fitted star centers are strongly
 non-uniform at the end of the build, which indicates biased star

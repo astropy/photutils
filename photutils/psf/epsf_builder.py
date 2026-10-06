@@ -44,6 +44,17 @@ _AUTO_KERNEL_MIN_SIZE = 5
 _AUTO_FIT_FWHM_FRACTION = 2.0
 _AUTO_FIT_MIN_SIZE = 5
 
+# Half width (in detector pixels) of the box around each oversampled
+# grid point within which star pixels contribute to that grid point.
+# The half width is never smaller than one grid spacing.
+_DEPOSIT_HALF_WIDTH = 0.375
+
+# Passband of the alias low-pass filter. It ends at the smaller of
+# _ALIAS_PASS cycles per input pixel and _ALIAS_PASS_NYQUIST times the
+# Nyquist frequency of the oversampled grid.
+_ALIAS_PASS = 0.8
+_ALIAS_PASS_NYQUIST = 0.7
+
 
 def _fitter_accepts_weights(fitter):
     """
@@ -66,10 +77,10 @@ def _fitter_accepts_weights(fitter):
                    for p in spec.parameters.values()))
 
 
-def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
+def _suppress_alias_modes(data, oversampling, *, nu_pass=None, nu_stop=1.0):
     """
-    Low-pass filter an oversampled ePSF above the input pixel sampling
-    frequency.
+    Low-pass filter an oversampled ePSF near and above the input pixel
+    sampling frequency.
 
     The filter is applied independently along each axis with an
     oversampling factor greater than one. It has unit gain up to
@@ -77,10 +88,22 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
     transition, and zero gain at and above ``nu_stop`` cycles per input
     pixel. Frequencies at integer cycles per input pixel are the zeros
     of the pixel response, so a pixel-integrated PSF has essentially no
-    power there or above. However, those are exactly the frequencies at
-    which the star-pixel sampling lattice aliases onto the oversampled
-    grid, so noise at those frequencies can grow into a checkerboard
-    pattern during the ePSF build iterations.
+    power there. However, those are exactly the frequencies at which
+    the star-pixel sampling lattice aliases onto the oversampled grid,
+    so noise at those frequencies can grow into a checkerboard pattern
+    during the ePSF build iterations.
+
+    The default passband is a compromise. The ePSF of an undersampled
+    detector has real power just below one cycle per input pixel. For
+    example, about 10% of the Fourier amplitude of the HST WFC3/IR
+    F110W ePSF lies between 0.7 and 1.0 cycles per pixel. A lower
+    ``nu_pass`` removes that power, which lowers the peak of the ePSF
+    and leaves ripples around its core. On the other hand, a star
+    sampled once per pixel constrains those frequencies only weakly,
+    so a higher ``nu_pass`` slows the convergence of the build,
+    especially for small star samples. The passband is also limited
+    to 70% of the Nyquist frequency of the oversampled grid, which
+    matters only for an oversampling factor of 2.
 
     Parameters
     ----------
@@ -90,8 +113,12 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
     oversampling : tuple of int
         The (y, x) oversampling factors.
 
-    nu_pass : float, optional
-        The end of the passband in cycles per input pixel.
+    nu_pass : float or `None`, optional
+        The end of the passband in cycles per input pixel. If `None`,
+        the passband along each axis ends at the smaller of 0.8 cycles
+        per input pixel and 70% of the Nyquist frequency of the
+        oversampled grid (0.7 cycles per input pixel for an
+        oversampling factor of 2).
 
     nu_stop : float, optional
         The start of the stopband in cycles per input pixel.
@@ -108,10 +135,14 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
         if factor < 2:
             continue
 
+        axis_pass = nu_pass
+        if axis_pass is None:
+            axis_pass = min(_ALIAS_PASS, _ALIAS_PASS_NYQUIST * factor / 2)
+
         npts = data.shape[axis]
         # Frequency in cycles per input (undersampled) pixel
         nu = np.abs(np.fft.fftfreq(npts)) * factor
-        frac = np.clip((nu - nu_pass) / (nu_stop - nu_pass), 0.0, 1.0)
+        frac = np.clip((nu - axis_pass) / (nu_stop - axis_pass), 0.0, 1.0)
         gain = 0.5 * (1.0 + np.cos(np.pi * frac))
         shape = [1, 1]
         shape[axis] = npts
@@ -1333,10 +1364,12 @@ class EPSFBuilder:
     smoothing_kernel : {'auto', 'quartic', 'quadratic'}, 2D array, or `None`
         The smoothing kernel to apply to the ePSF during each iteration
         step. If ``'auto'``, a least-squares quartic polynomial kernel
-        (see Notes) whose width is 0.7 times the FWHM of the current
-        ePSF in oversampled grid points is used, and no smoothing
-        is applied if that width is less than 5 grid points, i.e.,
-        for heavily undersampled ePSFs. The kernel is square and the
+        (see Notes) whose width is the largest odd number of
+        oversampled grid points that is not larger than 0.7 times
+        the FWHM of the current ePSF is used, and no smoothing is
+        applied if that width is less than 5 grid points, i.e., for
+        ePSFs with fewer than about 7 grid points per FWHM. The
+        kernel is square and the
         FWHM is measured in each iteration along the narrowest axis
         of the ePSF, so with anisotropic oversampling the axis with
         the fewer grid points per FWHM sets the kernel size. If the
@@ -1347,9 +1380,9 @@ class EPSFBuilder:
         respectively. Alternatively, a custom 2D array can be input.
         If `None` then no smoothing will be performed. The kernels are
         applied on the oversampled grid, so the physical width of a
-        fixed kernel depends on the oversampling factor. Power at and
-        above one cycle per input pixel is always removed from the ePSF
-        along oversampled axes, independently of this parameter.
+        fixed kernel depends on the oversampling factor. Power near
+        and above one cycle per input pixel is always removed from the
+        ePSF along oversampled axes, independently of this parameter.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
@@ -1452,13 +1485,24 @@ class EPSFBuilder:
     Notes
     -----
     In each build iteration, the residual between each star and the
-    current ePSF model is deposited on every oversampled grid point
-    inside the footprint of each star pixel, so that every star
-    contributes to every grid point regardless of its subpixel phase.
-    After the residuals are combined and the ePSF is smoothed, power
-    at and above one cycle per input pixel is removed along each
-    oversampled axis. A pixel-integrated PSF has essentially no power
-    there, but those are the frequencies at which the star-pixel
+    current ePSF model is deposited on the oversampled grid points
+    within 0.375 detector pixel (and at least one grid spacing) of
+    each star pixel center along each axis. Each grid point is
+    therefore estimated from the star pixels in a box three quarters
+    of a pixel wide around it, and every star contributes to both
+    parities of the grid regardless of its subpixel phase. Anderson
+    and King (2000) combined the pixels within 0.25 pixel of each
+    grid point of an ePSF with an oversampling factor of 4. That
+    narrower box gives a slightly sharper ePSF for clean star
+    samples, but it grows a checkerboard pattern for heterogeneous
+    or contaminated ones. After the residuals are combined and the
+    ePSF is smoothed,
+    power is removed along each oversampled axis with a low-pass
+    filter that has unit gain up to 0.8 cycles per input pixel (0.7
+    for an oversampling factor of 2) and zero gain at and above one
+    cycle per input pixel. A
+    pixel-integrated PSF has essentially no power at one cycle per
+    input pixel, but that is the frequency at which the star-pixel
     sampling lattice aliases onto the oversampled grid. Without
     these two measures, noise in the ePSF grid from heterogeneous
     or contaminated stars can bias the fitted star centers toward
@@ -1674,8 +1718,9 @@ class EPSFBuilder:
         Choose the smoothing kernel and fit shape from the FWHM of the
         current ePSF.
 
-        The smoothing window is ``_AUTO_KERNEL_FWHM_FRACTION`` times
-        the FWHM in oversampled grid points (no smoothing below
+        The smoothing window is the largest odd size that is not
+        larger than ``_AUTO_KERNEL_FWHM_FRACTION`` times the FWHM
+        in oversampled grid points (no smoothing below
         ``_AUTO_KERNEL_MIN_SIZE``), and the fit shape is
         ``_AUTO_FIT_FWHM_FRACTION`` times the FWHM in detector pixels
         (at least ``_AUTO_FIT_MIN_SIZE`` and at most the smallest star
@@ -1704,7 +1749,11 @@ class EPSFBuilder:
         # Cap the kernel at the largest odd size smaller than the ePSF.
         # A kernel as large as the ePSF would fit every grid value
         # mostly to edge-reflected data.
-        size = _odd_size(_AUTO_KERNEL_FWHM_FRACTION * fwhm_grid)
+        # The window is rounded down to an odd size so that the kernel
+        # is never wider than the requested fraction of the FWHM
+        size = int(_AUTO_KERNEL_FWHM_FRACTION * fwhm_grid)
+        if size % 2 == 0:
+            size -= 1
         size = min(size, _odd_size(min(epsf_data.shape)) - 2)
         if size >= _AUTO_KERNEL_MIN_SIZE:
             kernel = _SmoothingKernel.make_polynomial_kernel(size, degree=4)
@@ -1820,11 +1869,19 @@ class EPSFBuilder:
         star at the location of the star in the undersampled grid.
         The normalized residual image is then resampled from the
         undersampled star grid to the oversampled ePSF grid by
-        depositing each star pixel value on every oversampled grid
-        point inside the footprint of that pixel. Every star therefore
-        contributes to every grid point that its cutout covers,
-        regardless of its subpixel phase. For an oversampling factor of
-        one along an axis, this reduces to the nearest grid point.
+        depositing each star pixel value on the oversampled grid points
+        within 0.375 detector pixel (and at least one grid spacing)
+        of the pixel center along each axis. Each grid point is
+        therefore estimated from the star pixels in a box three
+        quarters of a pixel wide around it. Anderson and King (2000)
+        used a box half a pixel wide (pixels within 0.25 pixel of each
+        grid point of an ePSF with an oversampling factor of 4). The
+        wider box is needed for heterogeneous or contaminated star
+        samples, which grow a checkerboard pattern with the narrower
+        one. Every star contributes to both parities of the grid along
+        each axis, regardless of its subpixel phase. For an
+        oversampling factor of one along an axis, this reduces to the
+        nearest grid point.
 
         Parameters
         ----------
@@ -1860,6 +1917,32 @@ class EPSFBuilder:
 
         return epsf_resid
 
+    @staticmethod
+    def _deposit_half_width(oversampling):
+        """
+        Return the half width, in oversampled grid spacings, of the box
+        around each star pixel center within which the pixel is
+        deposited on the ePSF grid points along one axis.
+
+        The half width is ``_DEPOSIT_HALF_WIDTH`` detector pixels, but
+        at least one grid spacing so that every star pixel reaches both
+        parities of the grid. For an oversampling factor of one it is
+        half a grid spacing, i.e., the nearest grid point.
+
+        Parameters
+        ----------
+        oversampling : int
+            The oversampling factor along the axis.
+
+        Returns
+        -------
+        half_width : float
+            The half width in oversampled grid spacings.
+        """
+        if oversampling < 2:
+            return 0.5
+        return max(_DEPOSIT_HALF_WIDTH * oversampling, 1.0)
+
     def _deposit_residuals(self, stars, epsf, epsf_resid):
         """
         Deposit the normalized residuals of the input stars into a
@@ -1882,7 +1965,7 @@ class EPSFBuilder:
 
         # Gather the unmasked pixels of all stars so that the ePSF model
         # is evaluated once and the residuals are deposited with a
-        # single indexed assignment per footprint offset.
+        # single indexed assignment per grid offset.
         star_index = []
         xidx_centered = []
         yidx_centered = []
@@ -1903,32 +1986,38 @@ class EPSFBuilder:
         residuals -= epsf.evaluate(x=xidx_centered, y=yidx_centered,
                                    flux=1.0, x_0=0.0, y_0=0.0)
 
-        # Each star pixel covers the oversampled grid points k with
-        # x_over - os / 2 < k <= x_over + os / 2 along each axis, where
-        # x_over is the pixel center in the oversampled ePSF grid.
-        # Compute the first covered grid point along each axis.
+        # Each star pixel is deposited on the oversampled grid points
+        # k with x_over - w < k <= x_over + w along each axis, where
+        # x_over is the pixel center in the oversampled ePSF grid and w
+        # is the deposit half width in grid spacings. Compute the first
+        # of these grid points and the largest number of them along
+        # each axis.
         ny_over, nx_over = self.oversampling
+        y_width = self._deposit_half_width(ny_over)
+        x_width = self._deposit_half_width(nx_over)
         x_over, y_over = self._coord_transformer.undersampled_to_oversampled(
             xidx_centered, yidx_centered)
-        x_first = np.floor(x_over + epsf.origin[0] - nx_over / 2.0)
-        y_first = np.floor(y_over + epsf.origin[1] - ny_over / 2.0)
-        x_first = x_first.astype(int) + 1
-        y_first = y_first.astype(int) + 1
+        x_over = x_over + epsf.origin[0]
+        y_over = y_over + epsf.origin[1]
+        x_first = np.floor(x_over - x_width).astype(int) + 1
+        y_first = np.floor(y_over - y_width).astype(int) + 1
+        ny_deposit = int(np.ceil(2 * y_width))
+        nx_deposit = int(np.ceil(2 * x_width))
 
-        # Deposit each pixel residual on every grid point inside the
-        # pixel footprint through a flat index into the stack, which
-        # needs only two masked copies per footprint offset. The
-        # in-bounds masks along the x axis are the same for every row
-        # offset, so they are computed once.
+        # Deposit each pixel residual on these grid points through a
+        # flat index into the stack, which needs only two masked copies
+        # per grid offset. The masks along the x axis are the same for
+        # every row offset, so they are computed once.
         epsf_resid_flat = epsf_resid.reshape(-1)
         star_offset = star_index * (ny * nx)
         x_masks = [((x_first + i) >= 0) & ((x_first + i) < nx)
-                   for i in range(nx_over)]
-        for j in range(ny_over):
+                   & ((x_first + i) <= x_over + x_width)
+                   for i in range(nx_deposit)]
+        for j in range(ny_deposit):
             yidx = y_first + j
-            y_mask = (yidx >= 0) & (yidx < ny)
+            y_mask = (yidx >= 0) & (yidx < ny) & (yidx <= y_over + y_width)
             row_index = star_offset + yidx * nx
-            for i in range(nx_over):
+            for i in range(nx_deposit):
                 mask = y_mask & x_masks[i]
                 flat_index = row_index + (x_first + i)
                 epsf_resid_flat[flat_index[mask]] = residuals[mask]
