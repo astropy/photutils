@@ -1280,6 +1280,19 @@ class EPSFBuildResults:
         -------
         fig : `matplotlib.figure.Figure`
             The figure.
+
+        Notes
+        -----
+        This method returns a figure object. If you are using this
+        method in a script, you will need to call ``fig.show()`` to
+        display the figure. If you are using this method in a Jupyter
+        notebook, the figure will be displayed automatically.
+
+        When in a notebook, if you do not store the return value of this
+        function, the figure will be displayed twice due to the REPL
+        automatically displaying the return value of the last function
+        call. Alternatively, you can append a semicolon to the end of
+        the function call to suppress the display of the return value.
         """
         import matplotlib.pyplot as plt
         from astropy.visualization import simple_norm
