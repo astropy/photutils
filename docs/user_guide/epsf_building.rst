@@ -549,6 +549,20 @@ with a large star sample (a few hundred stars), allow more iterations
 (``maxiters`` of 20 or more), and check that the build converged. Do not
 use it with an oversampling factor of 2.
 
+The filter acts separately along the x and y axes. The signal that it
+removes from an undersampled ePSF therefore shows as a faint ripple
+pattern, with a period of about one pixel, along the row and the column
+through the center of the ePSF. To limit this, the builder refines the
+ePSF after the building iterations. In the refinement iterations
+(``refinement_iters``, 5 by default) the star centers and fluxes are
+held fixed, so the passband can be extended to 0.95 cycles per pixel
+without slowing the convergence. This restores most of the missing
+signal and removes most of the ripple pattern. What remains is the
+signal of the ePSF at and above one cycle per pixel, which only the
+ePSFs of the most undersampled detectors have. The refinement is
+applied only for an oversampling factor of 4 or larger. Set
+``refinement_iters=0`` to skip it.
+
 Setting ``alias_passband=None`` turns the filter off. This is rarely
 appropriate. Without the filter, noise at the alias frequencies
 accumulates over the iterations, the build can stall before it

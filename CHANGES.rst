@@ -300,6 +300,15 @@ New Features
     detector, 0.7 rejects more noise for better-sampled data, and `None`
     turns the filter off. [#XXXX]
 
+  - Added a ``refinement_iters`` keyword to ``EPSFBuilder`` (default
+    5). After the building iterations, the ePSF is refined with the
+    star centers and fluxes held fixed and a wider passband of the
+    alias low-pass filter (for an oversampling factor of 4 or larger).
+    This restores real signal of an undersampled
+    ePSF just below one cycle per pixel, which removes most of the
+    ripple pattern along the row and the column through its center.
+    [#XXXX]
+
   - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
     0.95) giving the fraction of the successfully fitted stars whose
     centers must change by less than ``center_accuracy`` between
