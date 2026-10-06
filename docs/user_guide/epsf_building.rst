@@ -173,11 +173,32 @@ as the background level. If the background in the image varies
 across the image, one should use more sophisticated methods (e.g.,
 `~photutils.background.Background2D`).
 
-Let's subtract the background from the image::
+The background level must be measured from pixels that are free of
+star light. The extended wings of the stars cover a large fraction of
+this image, and sigma clipping does not remove them. The median of the
+whole image is therefore biased high by about 0.35 counts. That is a
+small fraction of the noise, but summed over a 25 x 25 pixel cutout it
+is about 3% of the flux of a typical star in this image, and
+subtracting it would make the ePSF too concentrated. To avoid this
+bias, we first mask the pixels within 18 pixels of each detected
+star::
+
+    >>> import numpy as np
+    >>> from photutils.utils import circular_footprint
+    >>> from scipy.ndimage import binary_dilation
+    >>> star_mask = np.zeros(data.shape, dtype=bool)  # doctest: +REMOTE_DATA
+    >>> yidx = np.round(sources['y_centroid']).astype(int)  # doctest: +REMOTE_DATA
+    >>> xidx = np.round(sources['x_centroid']).astype(int)  # doctest: +REMOTE_DATA
+    >>> star_mask[yidx, xidx] = True  # doctest: +REMOTE_DATA
+    >>> star_mask = binary_dilation(
+    ...     star_mask, structure=circular_footprint(18))  # doctest: +REMOTE_DATA
+
+Now let's subtract the background, measured from the unmasked pixels,
+from the image::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> mean_val, median_val, std_val = sigma_clipped_stats(
-    ...     data, sigma=2.0)  # doctest: +REMOTE_DATA
+    ...     data, sigma=2.0, mask=star_mask)  # doctest: +REMOTE_DATA
     >>> data -= median_val  # doctest: +REMOTE_DATA
 
 The :func:`~photutils.psf.extract_stars` function requires the input
@@ -226,6 +247,7 @@ show the first 25 of them:
 .. plot::
 
     import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
@@ -234,6 +256,8 @@ show the first 25 of them:
                                     make_noise_image)
     from photutils.detection import DAOStarFinder
     from photutils.psf import extract_stars
+    from photutils.utils import circular_footprint
+    from scipy.ndimage import binary_dilation
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
@@ -252,7 +276,13 @@ show the first 25 of them:
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
 
-    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0)
+    star_mask = np.zeros(data.shape, dtype=bool)
+    yidx = np.round(sources['y_centroid']).astype(int)
+    xidx = np.round(sources['x_centroid']).astype(int)
+    star_mask[yidx, xidx] = True
+    star_mask = binary_dilation(star_mask, structure=circular_footprint(18))
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0,
+                                                        mask=star_mask)
     data -= median_val
 
     nddata = NDData(data=data)
@@ -339,6 +369,7 @@ Finally, let's show the constructed ePSF:
 .. plot::
 
     import matplotlib.pyplot as plt
+    import numpy as np
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
@@ -347,6 +378,8 @@ Finally, let's show the constructed ePSF:
                                     make_noise_image)
     from photutils.detection import DAOStarFinder
     from photutils.psf import EPSFBuilder, extract_stars
+    from photutils.utils import circular_footprint
+    from scipy.ndimage import binary_dilation
 
     hdu = load_simulated_hst_star_image()
     data = hdu.data
@@ -366,7 +399,13 @@ Finally, let's show the constructed ePSF:
     stars_tbl['x'] = x[mask]
     stars_tbl['y'] = y[mask]
 
-    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0)
+    star_mask = np.zeros(data.shape, dtype=bool)
+    yidx = np.round(sources['y_centroid']).astype(int)
+    xidx = np.round(sources['x_centroid']).astype(int)
+    star_mask[yidx, xidx] = True
+    star_mask = binary_dilation(star_mask, structure=circular_footprint(18))
+    mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0,
+                                                        mask=star_mask)
     data -= median_val
 
     nddata = NDData(data=data)
