@@ -3585,6 +3585,58 @@ class TestIterationHistory:
         for name in ('converged', 'converged_fraction', 'max_center_shift'):
             assert_allclose(info[name][is_build], build.iteration_info[name])
 
+    def test_history_initial_epsf(self, stars):
+        """
+        The change of the first iteration is measured from the input
+        ePSF when the build starts from one.
+        """
+        builder = EPSFBuilder(oversampling=4, maxiters=3,
+                              refinement_iters=0, progress_bar=False)
+        first = builder(stars)
+        assert first.initial_epsf is None
+        assert first.iteration_info['max_epsf_change'][0] > 0.5
+
+        initial = first.epsf.data.copy()
+        result = builder.build_epsf(stars, epsf=first.epsf)
+        assert_array_equal(result.initial_epsf, initial)
+        assert not np.shares_memory(result.initial_epsf, first.epsf.data)
+
+        change = (np.max(np.abs(result.iteration_epsfs[0] - initial))
+                  / result.epsf.data.max())
+        assert 0 < change < 0.01
+        assert_allclose(result.iteration_info['max_epsf_change'][0], change)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_iterations_initial_epsf(self, stars):
+        import matplotlib.pyplot as plt
+
+        builder = EPSFBuilder(oversampling=4, maxiters=2,
+                              refinement_iters=0, progress_bar=False)
+        first = builder(stars)
+        result = builder.build_epsf(stars, epsf=first.epsf)
+        change = result.iteration_info['max_epsf_change'][0]
+
+        # The first difference panel is the change from the input ePSF
+        fig = result.plot_iterations(iterations=1)
+        assert_allclose(fig.axes[1].get_images()[0].get_clim(),
+                        (-change, change))
+        plt.close(fig)
+
+        # Without an input ePSF it is the ePSF itself
+        fig = first.plot_iterations(iterations=1)
+        assert fig.axes[1].get_images()[0].get_clim()[1] > 0.5
+        plt.close(fig)
+
+    def test_history_table_format(self, stars):
+        builder = EPSFBuilder(oversampling=2, maxiters=2,
+                              progress_bar=False)
+        info = builder(stars).iteration_info
+        lines = info.pformat()
+        assert len(lines[-1].split()) == len(info.colnames)
+        fraction = lines[-1].split()[info.colnames.index(
+            'converged_fraction')]
+        assert len(fraction) == 5
+
     def test_history_without_refinement(self, stars):
         builder = EPSFBuilder(oversampling=2, maxiters=2,
                               progress_bar=False)
@@ -3627,6 +3679,10 @@ class TestIterationHistory:
         assert tuple(fig.get_size_inches()) == (6.0, 5.0)
         plt.close(fig)
 
+        fig = result.plot_iterations(iterations=np.array([1, 2]))
+        assert_allclose(fig.get_size_inches(), (7.0, 5.2))
+        plt.close(fig)
+
         fig = result.plot_iterations(iterations=2)
         assert len(fig.axes) == 4
         plt.close(fig)
@@ -3647,8 +3703,18 @@ class TestIterationHistory:
             with pytest.raises(ValueError, match=match):
                 result.plot_iterations(iterations=value)
 
+        match = 'iterations must be an integer or a non-empty 1D array'
+        for value in ([], 1.5, [1.0, 2.0], True, [[1, 2]], 'all'):
+            with pytest.raises(ValueError, match=match):
+                result.plot_iterations(iterations=value)
+
+        match = 'There is no per-iteration history to plot'
+        iteration_info = result.iteration_info
+        result.iteration_info = None
+        with pytest.raises(ValueError, match=match):
+            result.plot_iterations()
+        result.iteration_info = iteration_info
         result.iteration_epsfs = None
-        match = 'There are no per-iteration ePSFs to plot'
         with pytest.raises(ValueError, match=match):
             result.plot_iterations()
 

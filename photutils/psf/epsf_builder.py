@@ -9,6 +9,7 @@ import inspect
 import numbers
 import warnings
 from dataclasses import dataclass, field
+from typing import NamedTuple
 
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
@@ -1034,6 +1035,20 @@ class _ProgressReporter:
             self._pbar.close()
 
 
+class _IterationRecord(NamedTuple):
+    """
+    The ePSF and the convergence statistics of one building or
+    refinement iteration.
+    """
+
+    epsf_data: np.ndarray
+    stage: str
+    converged: bool
+    converged_fraction: float
+    max_center_dist_sq: float
+    n_fit_failed: int
+
+
 @dataclass
 class EPSFBuildResults:
     """
@@ -1119,24 +1134,30 @@ class EPSFBuildResults:
         (if any). Each image has the shape and normalization of
         ``epsf.data``. The images can be used to check how the
         ePSF evolved and whether it stopped changing. See also
-        `plot_iterations`.
+        `~photutils.psf.EPSFBuildResults.plot_iterations`.
 
     iteration_info : `~astropy.table.Table`
         A table with one row for each image in ``iteration_epsfs``. The
         columns are the iteration number (``iteration``, starting at 1),
         the kind of iteration (``stage``, ``'build'`` or ``'refine'``),
         whether the star centers had converged in that iteration
-        (``converged``), the fraction of the successfully fitted
-        stars whose centers moved by less than the center accuracy in
-        that iteration (``converged_fraction``), the largest center
-        movement in pixels (``max_center_shift``), the number of stars
-        whose fit failed (``n_fit_failed``), and the largest absolute
-        change of the ePSF image from the previous iteration as a
-        fraction of the ePSF peak (``max_epsf_change``). The last row
-        gives the ``converged``, ``final_converged_fraction``, and
-        ``final_center_accuracy`` values of the results. The last
+        (``converged``), the fraction of the successfully fitted stars
+        whose centers moved by less than the center accuracy in that
+        iteration (``converged_fraction``), the largest center movement
+        in pixels (``max_center_shift``), the number of stars whose
+        fit failed (``n_fit_failed``), and the largest absolute change
+        of the ePSF image from the previous iteration as a fraction
+        of the ePSF peak (``max_epsf_change``). The change of the
+        first iteration is measured from ``initial_epsf``, or from
+        an empty ePSF if the ePSF was built from scratch. The last
+        row gives the ``converged``, ``final_converged_fraction``,
+        and ``final_center_accuracy`` values of the results. The last
         ``'build'`` row tells whether the building iterations converged,
         which ``converged`` alone does not when the ePSF was refined.
+
+    initial_epsf : 2D `~numpy.ndarray` or `None`
+        The image of the input ePSF that the build started from, or
+        `None` if the ePSF was built from scratch.
 
     Notes
     -----
@@ -1173,6 +1194,8 @@ class EPSFBuildResults:
                                          repr=False)
     iteration_info: Table | None = field(default=None, compare=False,
                                          repr=False)
+    initial_epsf: np.ndarray | None = field(default=None, compare=False,
+                                            repr=False)
 
     def __iter__(self):
         """
@@ -1226,23 +1249,26 @@ class EPSFBuildResults:
         previous iteration.
 
         The figure has one row for each iteration. The left panel shows
-        the ePSF with a logarithmic stretch that is common to all the
-        rows. The right panel shows the difference from the ePSF of
-        the previous iteration, as a fraction of the peak of the final
-        ePSF, with a symmetric linear stretch of its own. For the first
-        iteration the right panel shows the ePSF itself, because the
-        build starts from an empty ePSF.
+        the ePSF with a logarithmic stretch that is common to all
+        the rows. The right panel shows the difference from the ePSF
+        of the previous iteration, as a fraction of the peak of the
+        final ePSF, with a symmetric linear stretch of its own. For
+        the first iteration the right panel shows the difference from
+        ``initial_epsf``, or the ePSF itself if the ePSF was built from
+        scratch.
 
         Parameters
         ----------
-        iterations : array_like of int or `None`, optional
+        iterations : int, 1D array_like of int, or `None`, optional
             The iteration numbers (starting at 1, as in the
             ``iteration`` column of ``iteration_info``) to plot. If
-            `None`, all the iterations are plotted.
+            `None`, all the iterations are plotted. The figure has one
+            row per iteration, so select a few iterations to get a
+            compact figure.
 
         figsize : tuple of 2 float or `None`, optional
             The figure (width, height) in inches. If `None`, the figure
-            is 8 inches wide and 3.6 inches tall per row.
+            is 7 inches wide and 2.6 inches tall per row.
 
         cmap : str or `matplotlib.colors.Colormap`, optional
             The colormap of the ePSF panels.
@@ -1258,14 +1284,19 @@ class EPSFBuildResults:
         import matplotlib.pyplot as plt
         from astropy.visualization import simple_norm
 
-        if not self.iteration_epsfs:
-            msg = 'There are no per-iteration ePSFs to plot'
+        if not self.iteration_epsfs or self.iteration_info is None:
+            msg = 'There is no per-iteration history to plot'
             raise ValueError(msg)
 
         n_total = len(self.iteration_epsfs)
         if iterations is None:
             iterations = np.arange(1, n_total + 1)
-        iterations = np.atleast_1d(iterations).astype(int)
+        iterations = np.atleast_1d(iterations)
+        if (iterations.ndim != 1 or iterations.size == 0
+                or not np.issubdtype(iterations.dtype, np.integer)):
+            msg = ('iterations must be an integer or a non-empty 1D array '
+                   'of integers')
+            raise ValueError(msg)
         if np.any(iterations < 1) or np.any(iterations > n_total):
             msg = f'iterations must be between 1 and {n_total}'
             raise ValueError(msg)
@@ -1276,14 +1307,17 @@ class EPSFBuildResults:
 
         n_rows = len(iterations)
         if figsize is None:
-            figsize = (8.0, 3.6 * n_rows)
+            figsize = (7.0, 2.6 * n_rows)
         fig, axes = plt.subplots(n_rows, 2, figsize=figsize, squeeze=False)
         for row, iteration in enumerate(iterations):
             data = self.iteration_epsfs[iteration - 1]
-            if iteration == 1:
-                diff = data / peak
+            if iteration > 1:
+                previous = self.iteration_epsfs[iteration - 2]
+            elif self.initial_epsf is not None:
+                previous = self.initial_epsf
             else:
-                diff = (data - self.iteration_epsfs[iteration - 2]) / peak
+                previous = 0.0
+            diff = (data - previous) / peak
             limit = np.max(np.abs(diff))
             if limit == 0:
                 limit = 1.0
@@ -2998,7 +3032,8 @@ class EPSFBuilder:
 
     def _finalize_build(self, epsf, stars, iter_num, converged,
                         final_center_accuracy,
-                        final_converged_fraction=None):
+                        final_converged_fraction=None, *, history=None,
+                        initial_epsf=None):
         """
         Finalize the ePSF building process and create result object.
 
@@ -3027,6 +3062,12 @@ class EPSFBuilder:
             changed by less than the center accuracy in the final
             iteration.
 
+        history : list of `_IterationRecord` or `None`, optional
+            The record of each building and refinement iteration.
+
+        initial_epsf : 2D `~numpy.ndarray` or `None`, optional
+            The image of the input ePSF that the build started from.
+
         Returns
         -------
         result : `EPSFBuildResults`
@@ -3052,6 +3093,13 @@ class EPSFBuilder:
         if fit_shape is not None:
             fit_shape = tuple(int(size) for size in fit_shape)
 
+        iteration_epsfs = None
+        iteration_info = None
+        if history is not None:
+            iteration_epsfs = [record.epsf_data for record in history]
+            iteration_info = self._make_iteration_info(
+                history, initial_epsf=initial_epsf)
+
         return EPSFBuildResults(
             epsf=epsf,
             fitted_stars=stars,
@@ -3063,6 +3111,9 @@ class EPSFBuilder:
             smoothing_kernel=kernel,
             fit_shape=fit_shape,
             final_converged_fraction=final_converged_fraction,
+            iteration_epsfs=iteration_epsfs,
+            iteration_info=iteration_info,
+            initial_epsf=initial_epsf,
         )
 
     def build_epsf(self, stars, *, epsf=None):
@@ -3106,8 +3157,14 @@ class EPSFBuilder:
         - excluded_star_indices: Indices of excluded stars
         - smoothing_kernel: Smoothing kernel of the final iteration
         - fit_shape: Fitting box of the final iteration
+        - iteration_epsfs: ePSF image after each iteration
+        - iteration_info: Table of the convergence statistics of each
+          iteration
+        - initial_epsf: Image of the input ePSF, if any
         """
+        initial_epsf = None
         if epsf is not None:
+            initial_epsf = epsf.data.copy()
             if not np.array_equal(epsf.oversampling, self.oversampling):
                 msg = (f'The input epsf oversampling '
                        f'{tuple(epsf.oversampling)} does not match the '
@@ -3162,9 +3219,9 @@ class EPSFBuilder:
             # Check convergence based on center movements
             (converged, converged_fraction, max_center_dist_sq,
              centers) = self._check_convergence(stars, centers, fit_failed)
-            history.append((epsf.data.copy(), 'build', converged,
-                            converged_fraction, max_center_dist_sq,
-                            int(np.sum(fit_failed))))
+            history.append(_IterationRecord(
+                epsf.data.copy(), 'build', converged, converged_fraction,
+                max_center_dist_sq, int(np.sum(fit_failed))))
 
             # Update progress bar
             progress_reporter.update()
@@ -3193,55 +3250,61 @@ class EPSFBuilder:
                 (converged, converged_fraction, max_center_dist_sq,
                  centers) = self._check_convergence(stars, centers,
                                                     fit_failed)
-                history.append((epsf.data.copy(), 'refine', converged,
-                                converged_fraction, max_center_dist_sq,
-                                int(np.sum(fit_failed))))
+                history.append(_IterationRecord(
+                    epsf.data.copy(), 'refine', converged,
+                    converged_fraction, max_center_dist_sq,
+                    int(np.sum(fit_failed))))
                 refine_reporter.update()
             refine_reporter.close()
             final_center_accuracy = float(max_center_dist_sq ** 0.5)
 
         # Finalize and return structured results
-        result = self._finalize_build(epsf, stars, iter_num, converged,
-                                      final_center_accuracy,
-                                      converged_fraction)
-        result.iteration_epsfs = [item[0] for item in history]
-        result.iteration_info = self._make_iteration_info(history)
-        return result
+        return self._finalize_build(epsf, stars, iter_num, converged,
+                                    final_center_accuracy,
+                                    converged_fraction, history=history,
+                                    initial_epsf=initial_epsf)
 
     @staticmethod
-    def _make_iteration_info(history):
+    def _make_iteration_info(history, *, initial_epsf=None):
         """
         Make the table of per-iteration diagnostics.
 
         Parameters
         ----------
-        history : list of tuple
-            One ``(epsf_data, stage, converged, converged_fraction,
-            max_center_dist_sq, n_fit_failed)`` tuple per iteration.
+        history : list of `_IterationRecord`
+            The record of each iteration. It has at least one record.
+
+        initial_epsf : 2D `~numpy.ndarray` or `None`, optional
+            The image of the input ePSF that the build started from,
+            which is the reference for the change of the first
+            iteration. If `None`, the reference is an empty ePSF.
 
         Returns
         -------
         table : `~astropy.table.Table`
             The table described in `EPSFBuildResults`.
         """
-        peak = np.max(history[-1][0]) if history else 1.0
+        peak = np.max(history[-1].epsf_data)
         changes = []
-        previous = None
-        for item in history:
-            data = item[0]
-            reference = np.zeros_like(data) if previous is None else previous
-            changes.append(float(np.max(np.abs(data - reference)) / peak))
-            previous = data
+        previous = 0.0 if initial_epsf is None else initial_epsf
+        for record in history:
+            change = np.max(np.abs(record.epsf_data - previous)) / peak
+            changes.append(float(change))
+            previous = record.epsf_data
 
         table = Table()
         table['iteration'] = np.arange(1, len(history) + 1)
-        table['stage'] = [item[1] for item in history]
-        table['converged'] = [bool(item[2]) for item in history]
-        table['converged_fraction'] = [float(item[3]) for item in history]
-        table['max_center_shift'] = [float(item[4]) ** 0.5
-                                     for item in history]
-        table['n_fit_failed'] = [item[5] for item in history]
+        table['stage'] = [record.stage for record in history]
+        table['converged'] = [bool(record.converged) for record in history]
+        table['converged_fraction'] = [float(record.converged_fraction)
+                                       for record in history]
+        table['max_center_shift'] = [float(record.max_center_dist_sq) ** 0.5
+                                     for record in history]
+        table['n_fit_failed'] = [record.n_fit_failed for record in history]
         table['max_epsf_change'] = changes
+        table['converged_fraction'].info.format = '.3f'
+        table['max_center_shift'].info.format = '.3g'
+        table['max_epsf_change'].info.format = '.3g'
         return table
 
 
