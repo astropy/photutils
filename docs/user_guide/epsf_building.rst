@@ -305,10 +305,12 @@ Constructing the ePSF
 With the star cutouts, we are ready to construct the ePSF with the
 :class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF
 with an oversampling factor of 4, which is appropriate for these
-undersampled stars (a FWHM of about 1.5 pixels). Here we limit
-the maximum number of iterations to 3 (to limit its run time).
-In practice the default of 10 iterations is usually enough, and
-the build stops early once the star centers have converged. The
+undersampled stars (a FWHM of about 1.5 pixels). We use the default
+maximum of 10 iterations (``maxiters=10``). The build stops early once
+the star centers have converged. Do not stop the build after only a few
+iterations. An ePSF that has not converged can differ from the true
+ePSF by a few percent of its peak, and the fitted star positions are
+less accurate. The
 :class:`~photutils.psf.EPSFBuilder` class has many options to control
 the ePSF build process, including the smoothing kernel, the fitting box,
 the recentering function, and the convergence criterion. Please see the
@@ -319,7 +321,7 @@ our desired parameters and then input the cutouts of our selected stars
 to the instance::
 
     >>> from photutils.psf import EPSFBuilder
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
     >>> result = epsf_builder(stars)  # doctest: +REMOTE_DATA
 
@@ -339,9 +341,9 @@ The `~photutils.psf.EPSFBuildResults` object provides useful diagnostic
 information about the build process::
 
     >>> result.converged  # doctest: +REMOTE_DATA
-    False
+    True
     >>> result.iterations  # doctest: +REMOTE_DATA
-    3
+    10
     >>> result.n_excluded_stars  # doctest: +REMOTE_DATA
     0
 
@@ -412,8 +414,7 @@ Finally, let's show the constructed ePSF:
 
     stars = extract_stars(nddata, stars_tbl, size=25)
 
-    epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
-                               progress_bar=False)
+    epsf_builder = EPSFBuilder(oversampling=4, progress_bar=False)
     epsf, fitted_stars = epsf_builder(stars)
 
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -463,7 +464,7 @@ fourth- and second-degree polynomial kernels of `Anderson and King 2000
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_,
 provide a custom 2D array, or set it to `None` for no smoothing::
 
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            smoothing_kernel='quadratic',
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
@@ -515,7 +516,7 @@ into the ePSF. The flux constraint assumes that the linked images have
 the same flux scale (e.g., the same exposure time and throughput). If
 they do not, set ``constrain_fluxes=False``::
 
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            constrain_fluxes=False,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
@@ -549,7 +550,7 @@ from converging. The 5-pixel box of Anderson and King is about 2.5 FWHM
 wide for HST data but only about 1 FWHM wide for a star with a FWHM of 5
 pixels::
 
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            fit_shape=7,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
@@ -558,7 +559,7 @@ You can also customize the fitter itself by passing a
 
     >>> from astropy.modeling.fitting import LMLSQFitter
     >>> fitter = LMLSQFitter()  # doctest: +REMOTE_DATA
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            fitter=fitter, fit_shape=7,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
@@ -572,7 +573,7 @@ own `~astropy.stats.SigmaClip` instance to customize this behavior::
 
     >>> from astropy.stats import SigmaClip
     >>> sigclip = SigmaClip(sigma=2.5, maxiters=5)  # doctest: +REMOTE_DATA
-    >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
+    >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            sigma_clip=sigclip,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
