@@ -134,7 +134,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         * ``'center'`` (default)
           Discretize model by taking the value at the center of the
           pixel bins. This method should be used for ePSF/PRF single or
-          gridded models.
+          gridded models, which are already integrated over the pixels.
 
         * ``'interp'``
           Discretize model by bilinearly interpolating between the
@@ -150,6 +150,12 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
           Discretize model by integrating the model over the pixel bins
           using `scipy.integrate.quad`. This mode conserves the model
           integral on a subpixel scale, but it is *extremely* slow.
+
+        The ``'oversample'`` or ``'integrate'`` method should be used
+        for a model that is not integrated over the pixels, such as the
+        `photutils.psf` analytic models whose names end in ``PSF``.
+        Neither should be used for an ePSF/PRF model, which would then
+        be integrated over the pixels twice.
 
     discretize_oversample : int, optional
         The integer oversampling factor used when
