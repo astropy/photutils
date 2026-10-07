@@ -1200,6 +1200,14 @@ API Changes
 
 - ``photutils.psf``
 
+  - ``GaussianPRF`` is now integrated exactly over the detector pixels
+    for any rotation angle. Previously, the integration was performed
+    along the rotated principal axes of the Gaussian, which was exact
+    only for ``theta = 0``. The model values change for a rotated
+    Gaussian with different x and y widths, by up to about 1% of the
+    peak for a FWHM of 1 pixel. Such models are several times slower to
+    evaluate. [#2471]
+
   - The ``PSFPhotometry.decode_flags`` and
     ``IterativePSFPhotometry.decode_flags`` methods now return a
     dictionary mapping each source id from the results table to its

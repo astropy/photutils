@@ -1184,6 +1184,20 @@ of zero. An exactly thin tilted source, whose covariance determinant is
 zero apart from rounding, is now regularized instead of having NaN shape
 properties.
 
+Exact Pixel Integration of a Rotated ``GaussianPRF``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`~photutils.psf.GaussianPRF` is now integrated exactly over the detector
+pixels for any rotation angle. Previously, the integration was performed
+along the rotated principal axes of the Gaussian, which is the integral
+over a rotated pixel and was exact only for ``theta = 0``. The model
+values for a rotated Gaussian with different x and y widths change by
+up to about 1% of the peak for a FWHM of 1 pixel and by less than 0.1%
+for a FWHM of 2 pixels or more. The model now conserves flux for any
+subpixel position of the source. A rotated Gaussian is evaluated with
+Owen's T function, which is several times slower than the product of
+error functions that is still used when the Gaussian is not rotated.
+
 PSF ``decode_flags`` Methods Return a Dictionary
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

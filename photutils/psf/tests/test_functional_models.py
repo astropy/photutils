@@ -299,6 +299,98 @@ def test_gaussian_prf_matches_analytic_integral():
     assert_allclose(model(xx, yy), expected)
 
 
+def _numerical_pixel_integral(model, xx, yy, n_sub=101):
+    """
+    Integrate a model over the unit pixels centered at the input
+    positions with the midpoint rule.
+    """
+    offsets = (np.arange(n_sub) + 0.5) / n_sub - 0.5
+    xsub = xx[:, :, np.newaxis, np.newaxis] + offsets
+    ysub = yy[:, :, np.newaxis, np.newaxis] + offsets[:, np.newaxis]
+    return model(xsub, ysub).mean(axis=(2, 3))
+
+
+class TestGaussianPRFRotated:
+    @pytest.mark.parametrize('theta', [17.0, 30.0, 45.0, 90.0, 135.0, -20.0])
+    @pytest.mark.parametrize(('x_fwhm', 'y_fwhm'),
+                             [(1.0, 1.4), (0.6, 1.8), (3.0, 1.5)])
+    @pytest.mark.parametrize(('x_0', 'y_0'),
+                             [(0.37, -0.13), (0.5, 0.5), (0.5, 0.0),
+                              (0.0, 0.0)])
+    def test_matches_pixel_integral(self, theta, x_fwhm, y_fwhm, x_0, y_0):
+        """
+        Test that the model is the integral of the rotated GaussianPSF
+        over the axis-aligned pixels.
+
+        The source positions include pixel corners and edges, where
+        the standardized pixel-edge coordinates are exactly zero.
+        """
+        params = {'flux': 3.2, 'x_0': x_0, 'y_0': y_0, 'x_fwhm': x_fwhm,
+                  'y_fwhm': y_fwhm, 'theta': theta}
+        yy, xx = np.mgrid[-6:7, -6:7]
+        expected = _numerical_pixel_integral(GaussianPSF(**params), xx, yy)
+        result = GaussianPRF(**params)(xx, yy)
+        assert_allclose(result, expected, atol=5e-5 * expected.max())
+
+    @pytest.mark.parametrize('theta', [30.0, 45.0, 73.0])
+    def test_flux_conservation(self, theta):
+        """
+        Test that an undersampled rotated model conserves flux at any
+        subpixel position and is never negative.
+        """
+        yy, xx = np.mgrid[-25:26, -25:26]
+        for x_0, y_0 in [(0, 0), (0.5, 0), (0.5, 0.5), (0.37, -0.13)]:
+            model = GaussianPRF(x_0=x_0, y_0=y_0, x_fwhm=1.0, y_fwhm=1.4,
+                                theta=theta)
+            data = model(xx, yy)
+            assert_allclose(data.sum(), 1.0, rtol=1e-12)
+            assert np.all(data >= 0)
+
+    def test_equal_widths(self):
+        """
+        Test that the rotation has no effect for equal widths.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        model1 = GaussianPRF(x_0=0.2, y_0=0.3, x_fwhm=2, y_fwhm=2, theta=37)
+        model2 = CircularGaussianPRF(x_0=0.2, y_0=0.3, fwhm=2)
+        assert_allclose(model1(xx, yy), model2(xx, yy), rtol=1e-12)
+
+    def test_right_angle(self):
+        """
+        Test that a rotation by 90 degrees swaps the widths.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        model1 = GaussianPRF(x_0=0.2, y_0=0.3, x_fwhm=2, y_fwhm=3, theta=90)
+        model2 = GaussianPRF(x_0=0.2, y_0=0.3, x_fwhm=3, y_fwhm=2, theta=0)
+        assert_allclose(model1(xx, yy), model2(xx, yy), rtol=1e-12)
+
+    def test_small_angle_continuity(self):
+        """
+        Test that the values are continuous between the separable and
+        rotated evaluations.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        model1 = GaussianPRF(x_0=0.2, y_0=0.3, x_fwhm=2, y_fwhm=3, theta=0)
+        model2 = GaussianPRF(x_0=0.2, y_0=0.3, x_fwhm=2, y_fwhm=3,
+                             theta=1e-9)
+        assert_allclose(model1(xx, yy), model2(xx, yy), atol=1e-11)
+
+    def test_units(self):
+        """
+        Test that a rotated model with units gives the same values as
+        the model without units.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        model1 = GaussianPRF(flux=3, x_0=0.2, y_0=0.3, x_fwhm=2, y_fwhm=3,
+                             theta=30)
+        model2 = GaussianPRF(flux=3 * u.Jy, x_0=0.2 * u.pix, y_0=0.3 * u.pix,
+                             x_fwhm=2 * u.pix, y_fwhm=3 * u.pix,
+                             theta=30 * u.deg)
+        result = model2(xx * u.pix, yy * u.pix)
+        assert result.unit == u.Jy
+        assert_allclose(result.value, model1(xx, yy), rtol=1e-12)
+
+
 def test_gaussian_prf_sums():
     """
     Test that subpixel accuracy of Gaussian PRFs by checking the sum of
