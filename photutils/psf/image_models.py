@@ -156,6 +156,30 @@ class ImagePSF(Fittable2DModel):
         data = psf_model(xx, yy)
         fig, ax = plt.subplots()
         ax.imshow(data, origin='lower')
+
+    An oversampled PSF whose values are samples of the PSF, such as
+    the output of an optical model, must be converted to an ePSF before
+    it is used as the input image. Here, a narrow Gaussian PSF is
+    sampled on a grid that is oversampled by a factor of 4 and then
+    integrated over the detector pixels with `make_epsf_from_psf`:
+
+    >>> import numpy as np
+    >>> from photutils.psf import ImagePSF, make_epsf_from_psf
+    >>> oversampling = 4
+    >>> yy, xx = np.mgrid[-30:31, -30:31] / oversampling
+    >>> sigma = 0.5  # detector pixels
+    >>> psf = np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    >>> psf *= oversampling**2 / psf.sum()
+    >>> epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+    >>> model = ImagePSF(epsf, oversampling=oversampling, x_0=0.3,
+    ...                  y_0=-0.4)
+
+    The model values on a grid of detector pixels sum to the model
+    flux for any subpixel position of the source:
+
+    >>> yy, xx = np.mgrid[-7:8, -7:8]
+    >>> print(f'{model(xx, yy).sum():.3f}')
+    1.000
     """
 
     flux = Parameter(default=1,

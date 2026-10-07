@@ -174,6 +174,36 @@ class GriddedPSFModel(Fittable2DModel):
     the four bounding grid planes are evaluated together by a compiled
     kernel, which also computes the analytic partial derivatives used by
     `fit_deriv`.
+
+    Examples
+    --------
+    Oversampled PSFs whose values are samples of the PSF, such as the
+    output of an optical model, must be converted to ePSFs before they
+    are used as the input images. Here, four narrow Gaussian PSFs are
+    sampled on a grid that is oversampled by a factor of 4 and then
+    integrated over the detector pixels with `make_epsf_from_psf`:
+
+    >>> import numpy as np
+    >>> from astropy.nddata import NDData
+    >>> from photutils.psf import GriddedPSFModel, make_epsf_from_psf
+    >>> oversampling = 4
+    >>> yy, xx = np.mgrid[-30:31, -30:31] / oversampling
+    >>> sigmas = (0.5, 0.55, 0.6, 0.65)  # detector pixels
+    >>> psfs = np.array([np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    ...                  for sigma in sigmas])
+    >>> psfs *= oversampling**2 / psfs.sum(axis=(1, 2), keepdims=True)
+    >>> epsfs = make_epsf_from_psf(psfs, oversampling=oversampling)
+    >>> meta = {'grid_xypos': [(0, 0), (100, 0), (0, 100), (100, 100)],
+    ...         'oversampling': oversampling}
+    >>> model = GriddedPSFModel(NDData(epsfs, meta=meta), x_0=40.3,
+    ...                         y_0=29.6)
+
+    The model values on a grid of detector pixels sum to the model
+    flux for any subpixel position of the source:
+
+    >>> yy, xx = np.mgrid[23:38, 33:48]
+    >>> print(f'{model(xx, yy).sum():.3f}')
+    1.000
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
