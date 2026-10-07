@@ -780,7 +780,8 @@ class LinkedEPSFStar:
         Averaging the fluxes across dithered images removes the
         pixel-phase dependence of the individual flux measurements
         caused by intra-pixel sensitivity variations, which would
-        otherwise be absorbed into the ePSF (Anderson and King 2000).
+        otherwise be absorbed into the ePSF (Anderson and King 2000,
+        Godden and Blundell 2026).
         """
         if len(self._data) < 2:  # no linked stars
             return

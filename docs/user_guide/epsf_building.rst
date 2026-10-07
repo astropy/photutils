@@ -21,23 +21,25 @@ pixel positions on the detector, the appearance of such a PSF varies
 with the star's position within a pixel, and an oversampled ePSF
 captures this pixel-phase variation so that the PSF can be interpolated
 to the exact position of any star. When the PSF is well sampled (a FWHM
-of a few pixels or more), an ePSF with no oversampling already captures
-its shape, and a larger oversampling factor only adds noise and requires
-more stars (see :ref:`epsf-guidelines`).
+of about 4 pixels or more), an ePSF with no oversampling already captures
+its shape, and a larger oversampling factor improves it only slightly
+(see :ref:`epsf-guidelines`).
 
 
 Building an ePSF
 ----------------
 
-Photutils provides tools for building an ePSF following the
-prescription of `Anderson and King 2000 (PASP 112, 1360)
+Photutils provides tools for building an ePSF that are based
+on the method of `Anderson and King 2000 (PASP 112, 1360)
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
-and subsequent enhancements detailed mainly
-in `Anderson 2016 (WFC3 ISR 2016-12)
-<https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_.
-The process iteratively refines the ePSF model and star positions: the
-current ePSF is fitted to the stars to improve their centers, and then
-the ePSF is rebuilt using the improved star positions.
+and `Anderson 2016 (WFC3 ISR 2016-12)
+<https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_. The
+implementation differs from that method in several steps, so that it
+can be used for other instruments, samplings, and oversampling factors
+(see :ref:`epsf-anderson-differences`). The process iteratively refines
+the ePSF model and star positions: the current ePSF is fitted to the
+stars to improve their centers, and then the ePSF is rebuilt using the
+improved star positions.
 
 To begin, we must first define a sample of stars used to build the
 ePSF. Ideally these stars should be bright (high S/N) and isolated to
@@ -48,11 +50,11 @@ sample of stars. However, the step of creating a good sample of stars
 generally requires visual inspection and manual selection to ensure
 stars are sufficiently isolated and of good quality (e.g., no cosmic
 rays, detector artifacts, etc.). To produce a good ePSF, one should
-have a reasonably large sample of stars (e.g., several hundred for an
-oversampling factor of 4) in order to sample the PSF at all subpixel
-phases and to help reduce the effects of noise. Otherwise, the resulting
-ePSF may be noisy or biased. See :ref:`epsf-guidelines` for guidance on
-choosing the oversampling factor and the star sample.
+have a reasonably large sample of stars (e.g., a few hundred) in order
+to sample the PSF at all subpixel phases and to help reduce the effects
+of noise. Otherwise, the resulting ePSF may be noisy or biased. See
+:ref:`epsf-guidelines` for guidance on choosing the oversampling factor
+and the star sample.
 
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 
@@ -149,7 +151,7 @@ a table of star positions either in pixel or sky coordinates. For this
 example we are using pixel coordinates, which need to be in table
 columns called ``x`` and ``y``.
 
-We'll extract 25 x 25 pixel cutouts of our selected stars. Let's
+We'll extract 25x25 pixel cutouts of our selected stars. Let's
 explicitly exclude stars that are too close to the image boundaries
 (because they cannot be extracted)::
 
@@ -177,7 +179,7 @@ The background level must be measured from pixels that are free of star
 light. The extended wings of the stars cover a large fraction of this
 image, and sigma clipping does not remove them. The median of the whole
 image is therefore biased high by about 0.35 counts. That is a small
-fraction of the noise, but summed over a 25 x 25 pixel cutout it is
+fraction of the noise, but summed over a 25x25 pixel cutout it is
 about 3% of the flux of a typical star in this image, and subtracting it
 would make the ePSF too concentrated. To avoid this bias, we first mask
 the pixels within 18 pixels of each detected star::
@@ -221,7 +223,7 @@ dithered images) and a single catalog, the same physical star will be
 sky coordinate and, by default, the same flux in each input image (see
 :ref:`epsf-linked-stars`).
 
-Let's extract the 25 x 25 pixel cutouts of our selected stars::
+Let's extract the 25x25 pixel cutouts of our selected stars::
 
     >>> from photutils.psf import extract_stars
     >>> stars = extract_stars(nddata, stars_tbl, size=25)  # doctest: +REMOTE_DATA
@@ -471,11 +473,11 @@ points per FWHM sets its size. The chosen kernel is reported in the
 fixed ``smoothing_kernel`` to reproduce the build. If the FWHM cannot be
 measured, the ``'quartic'`` kernel is used and a warning is emitted.
 
-You can also use ``'quartic'`` or ``'quadratic'`` for the fixed 5x5
-fourth- and second-degree polynomial kernels of `Anderson and King 2000
-(PASP 112, 1360)
+You can also use ``'quartic'`` for the fixed 5x5 fourth-degree
+polynomial kernel of `Anderson and King 2000 (PASP 112, 1360)
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_,
-provide a custom 2D array, or set it to `None` for no smoothing::
+``'quadratic'`` for its second-degree counterpart, provide a custom 2D
+array, or set it to `None` for no smoothing::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            smoothing_kernel='quadratic',
@@ -534,6 +536,8 @@ Set ``wing_smoothing=False`` to keep the wings as built::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4, wing_smoothing=False,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
+.. _epsf-alias-passband:
 
 Alias Filter Passband
 ^^^^^^^^^^^^^^^^^^^^^
@@ -677,10 +681,14 @@ automatically when :func:`~photutils.psf.extract_stars` is given
 multiple images and a single catalog of sky coordinates). After each
 fitting iteration, the builder constrains the centers of the linked
 stars to a single sky coordinate and, by default, their fluxes to
-their mean value. Averaging both the positions and the fluxes across
+their mean value. Averaging the positions and the fluxes across
 dithers is the key step of `Anderson and King 2000 (PASP 112, 1360)
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
-that breaks the degeneracy between the flux of a star and its subpixel
+that breaks the degeneracy between the shape of the ePSF and the
+positions of the stars. `Godden and Blundell 2026 (RASTI 5, 1)
+<https://doi.org/10.1093/rasti/rzaf063>`_ confirmed that constraining
+the positions alone is not enough. The fluxes must also be constrained
+to break the degeneracy between the flux of a star and its subpixel
 position caused by intra-pixel sensitivity variations. Without it, the
 pixel-phase dependence of the individual flux measurements is absorbed
 into the ePSF. The flux constraint assumes that the linked images have
@@ -717,8 +725,8 @@ the ``fit_shape`` attribute of the results. A fixed box can be given
 instead. A smaller box speeds up the fitting, but it should still cover
 the core of the star. A box that is much smaller than the star uses only
 its flat core, which biases the fitted centers and can prevent the build
-from converging. The 5-pixel box of Anderson and King is about 2.5 FWHM
-wide for HST data but only about 1 FWHM wide for a star with a FWHM of 5
+from converging. The 5-pixel box of Anderson 2016 is about 2.5 FWHM wide
+for HST data but only about 1 FWHM wide for a star with a FWHM of 5
 pixels::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4,
@@ -777,13 +785,14 @@ any of the `~astropy.nddata.NDUncertainty` subclasses (e.g.,
 Guidelines for Building a Good ePSF
 -----------------------------------
 
-The quality of an ePSF depends more on the input stars and on a
-sensible choice of the oversampling factor than on the other builder
-parameters. The following guidelines are based on `Anderson and King
-2000 (PASP 112, 1360)
-<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_ and
-on the systematic tests of `Godden and Blundell 2026 (RASTI 5, 1)
-<https://doi.org/10.1093/rasti/rzaf063>`_.
+The quality of an ePSF depends more on the input stars and on a sensible
+choice of the oversampling factor than on the other builder parameters.
+The following guidelines are based on `Anderson and King 2000 (PASP 112,
+1360) <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
+and on the systematic tests of `Godden and Blundell 2026 (RASTI
+5, 1) <https://doi.org/10.1093/rasti/rzaf063>`_, with the
+oversampling and star-count advice updated from tests of the current
+:class:`~photutils.psf.EPSFBuilder` implementation.
 
 Choosing the oversampling factor
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -791,34 +800,56 @@ Choosing the oversampling factor
 The ePSF is tabulated on a grid with a spacing of ``1 / oversampling``
 detector pixels and is evaluated between grid points by cubic spline
 interpolation. The interpolation is accurate when there are at least
-about four grid points per FWHM of the ePSF, so a good rule of thumb
-is ``oversampling >= 4 / FWHM`` with the FWHM in pixels (measured
-along the narrowest direction of an elongated PSF). For example, use
-an oversampling of 3 or 4 for a FWHM of 1.5 pixels, 2 for a FWHM of 2
-pixels, and 1 for a FWHM of 4 pixels or more.
+about four grid points per FWHM of the ePSF, so the oversampling factor
+should be at least ``4 / FWHM`` with the FWHM in pixels (measured along
+the narrowest direction of an elongated PSF). For example, the smallest
+adequate oversampling factor is 3 for a FWHM of about 1.5 pixels, 2 for
+a FWHM of about 2 pixels, and 1 for a FWHM of 4 pixels or more.
 
-Do not use a larger oversampling factor than the data require. A
-pixel-integrated PSF has essentially no structure on scales smaller
-than a pixel once the PSF is well sampled, so extra grid points add
-no information. They do, however, divide the star samples among more
-grid cells and make the ePSF noisier, and they require more stars. For
-well-sampled data (a FWHM of a few pixels or more), an oversampling of 1
-is usually the best choice.
+:class:`~photutils.psf.EPSFBuilder` estimates each grid point from
+the star pixels within 0.375 pixel of it along each axis, or within one
+grid spacing if that is larger. This box does not shrink as the
+oversampling factor grows. A larger factor therefore neither makes the
+ePSF noisier nor requires more stars. The grid points are not
+independent, however, because neighboring points share most of their
+star pixels, so a finer grid reduces the interpolation error but does
+not resolve finer structure.
+
+This behavior was confirmed with seven simulated ePSFs (Gaussian,
+Moffat, JWST, and Roman models with FWHMs of 1.3 to 4.1 pixels). Each
+was built from 40, 150, and 450 stars with oversampling factors of 1
+to 8. Too small a factor clearly degraded the result. For the ePSFs
+with a FWHM of 1.3 to 1.5 pixels, the errors of the fitted star
+positions were about twice as large with a factor of 2 as with a factor
+of 4, and four to six times as large with a factor of 1. Increasing
+the factor beyond 4 did not help, because factors of 6 and 8 gave about
+the same accuracy as 4. It also did no harm, even with only 40 stars,
+apart from a run time that grew by a factor of 2 to 3 for each doubling
+of the oversampling factor. The tests used clean simulated stars with
+random subpixel phases.
+
+The default factor of 4 is therefore a good choice for a FWHM of about
+1 pixel or more, and a larger factor is needed only for a smaller FWHM.
+A smaller factor that still satisfies ``oversampling >= 4 / FWHM`` saves
+run time and memory, and for well-sampled data (a FWHM of 4 pixels or
+more) it gives the same fitted positions and fluxes.
 
 Choosing the star sample
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Each of the ``oversampling**2`` subpixel cells within a pixel must
-be sampled by the centers of several stars. With randomly placed
-stars, plan on at least about 10 stars per cell, i.e., roughly ``10 *
-oversampling**2`` stars (about 40 for an oversampling of 2, 90 for 3,
-and 160 for 4), and considerably more if the stars are faint. Godden
-and Blundell estimate that about 240 randomly placed stars are needed
-for an oversampling of 4 to have a 95 percent probability of at least
-six samples in every cell. A set of exposures dithered by fractions of
-a pixel that uniformly cover the subpixel phases is far more effective
-than random placement and also allows the star fluxes and positions to
-be constrained across images (see :ref:`epsf-linked-stars`).
+The noise of the ePSF falls as more stars are used. In the tests
+described above, the residuals of the ePSF built from 450 stars were
+about three times smaller than those of the ePSF built from 40 stars.
+A few hundred stars is a good target, and the number that is needed
+does not depend on the oversampling factor.
+
+The subpixel phases of the star centers must still be spread over the
+whole pixel, because structure in the ePSF that is finer than a
+pixel is constrained only by stars at different phases. A set of
+exposures dithered by fractions of a pixel that uniformly cover the
+subpixel phases is far more effective than random placement and also
+allows the star fluxes and positions to be constrained across images
+(see :ref:`epsf-linked-stars`).
 
 The stars should be bright but unsaturated, isolated (no neighbors
 within the cutout), free of cosmic rays and detector artifacts, and have
@@ -837,3 +868,216 @@ Finally, check the result. The subpixel phases of the fitted star
 centers should be uniformly distributed, and the fitted fluxes and
 positions of the stars (or of an independent set of stars) should not
 depend on their subpixel phase.
+
+
+.. _epsf-anderson-differences:
+
+Differences from the Anderson and King Algorithm
+------------------------------------------------
+
+:class:`~photutils.psf.EPSFBuilder` implements the ePSF concept and
+the iterative building procedure of `Anderson and King 2000 (PASP 112,
+1360) <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
+(hereafter AK2000) and `Anderson 2016 (WFC3 ISR 2016-12)
+<https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_
+(hereafter ISR 2016-12). The implementation differs from Anderson's
+approach in several steps. This section describes these differences to
+facilitate comparisons between ePSFs built with Photutils and those
+built with Anderson's method, such as the library ePSFs distributed for
+HST and JWST.
+
+The basic procedure is the same. For each star, after subtracting the
+background and normalizing by the star's flux, the value of each pixel
+provides a sample of the ePSF at the pixel's offset from the star
+center. The ePSF is tabulated on a grid that is finer than the detector
+pixels. In each iteration the differences between the samples and the
+current ePSF are combined with a robust average at each grid point and
+added to the ePSF, which is then smoothed and recentered. The stars are
+then fit again with the improved ePSF. A star is also placed on an image
+in the same way in both. The ePSF is evaluated once per pixel, at the
+offset of the pixel center from the star center, and multiplied by the
+flux. The ePSF already includes the integration over the pixel, so no
+further integration is performed.
+
+The Anderson and King method was developed for HST images. Its
+constants are given in detector pixels or in grid points of an ePSF
+with an oversampling factor of 4, and they suit a PSF with a FWHM of
+about 1.5 to 2 pixels. :class:`~photutils.psf.EPSFBuilder` is meant
+to work for any instrument, sampling, and oversampling factor, and for
+a single exposure. Most of the differences follow from that. The
+others make the build robust for star samples that are heterogeneous,
+contaminated, or of low signal-to-noise.
+
+The following table compares the steps. The entries for Anderson come
+from the two publications.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 16 42 42
+
+    * - Step
+      - Anderson
+      - ``EPSFBuilder``
+    * - ePSF grid
+      - Oversampling factor of 4. The grid covers 5x5 pixels (21x21
+        points) in AK2000 and 25x25 pixels (101x101 points) in ISR
+        2016-12.
+      - Any integer oversampling factor, which can differ along the two
+        axes. The grid covers the star cutouts unless ``shape`` is
+        given.
+    * - Variation over the detector
+      - A 3x3 array of ePSFs across each detector, interpolated
+        bilinearly to the position of each star.
+      - A single ePSF. Build one ePSF per detector region to make a
+        `~photutils.psf.GriddedPSFModel`.
+    * - Background
+      - Measured for each star in an annulus around it. AK2000 uses
+        the mode of the pixels 4 to 7 pixels from the star.
+      - Not measured. The star cutouts must be background subtracted
+        by the user.
+    * - Residual sampling
+      - Each grid point uses the samples within 0.25 pixel of it along
+        each axis.
+      - Each grid point uses the samples within 0.375 pixel of it
+        along each axis, and within at least one grid spacing.
+    * - Combining the residuals
+      - Mean with iterative rejection of the samples more than 2.5
+        sigma from it.
+      - Median after sigma clipping at 3 sigma (``sigma_clip``).
+    * - Smoothing of the core
+      - A 5x5 least-squares quartic kernel in grid points, in every
+        iteration.
+      - A least-squares quartic kernel whose width is 0.7 FWHM, in
+        every iteration. No smoothing if that is less than 5 grid
+        points (``smoothing_kernel``).
+    * - Smoothing of the wings
+      - Stronger smoothing at fixed radii in every iteration. ISR
+        2016-12 allows quadratic variations beyond 3 pixels and uses a
+        3x3 boxcar beyond 5 pixels.
+      - Quadratic fits in boxes of 1.25 and 1.75 FWHM beyond 3.5 and 5
+        FWHM, applied once to the final ePSF (``wing_smoothing``).
+    * - Fourier filter
+      - None.
+      - A low-pass filter that removes the frequencies at and above one
+        cycle per pixel, in every iteration, for oversampling factors
+        greater than 1 (``alias_passband``).
+    * - Centering
+      - AK2000 requires equal values half a pixel on either side of
+        the center. ISR 2016-12 shifts the ePSF to the position where
+        it is most symmetric about its center within a radius of 1.5
+        pixels.
+      - The center of mass in a 5x5 pixel box is shifted to the
+        center of the grid (``recentering_func`` and
+        ``recentering_boxsize``).
+    * - Normalization
+      - The pixel values of a star of unit flux sum to 1 over its
+        central 5x5 pixels (AK2000) or within a radius of 5.5 pixels
+        (ISR 2016-12).
+      - The ePSF sums to the product of the oversampling factors over
+        the whole grid, so the pixel values of a star of unit flux sum
+        to 1 over an area the size of its cutout.
+    * - Iteration scheme
+      - An inner loop of 5 ePSF updates (adjust, smooth, and recenter)
+        with the stars held fixed, inside an outer loop that fits the
+        stars again. The outer loop continues until the fitted
+        positions and fluxes show no trend with pixel phase (12
+        iterations in AK2000, 9 in ISR 2016-12).
+      - One ePSF update per fit of the stars until the star centers
+        converge (``center_accuracy``, ``converged_fraction``, and
+        ``maxiters``). Then refinement iterations of 5 ePSF updates per
+        fit of the stars, with a wider filter for oversampling factors
+        of 4 or more (``refinement_iters``).
+    * - Fitting the stars
+      - Weighted by the expected Poisson noise. AK2000 fits the pixels
+        within 1.5 pixels of the center, with a taper to 2 pixels, and
+        solves for the position with Newton-Raphson steps. ISR 2016-12
+        fits the central 5x5 pixels with a grid search for the
+        position.
+      - A box 2 FWHM wide and at least 5 pixels (``fit_shape``),
+        weighted only if the input data have uncertainties, with a
+        nonlinear least-squares fitter from Astropy (``fitter``).
+    * - Dithered exposures
+      - Central to the method. The positions of each star are
+        transformed to a common frame, and the positions and fluxes
+        are averaged over the exposures after every fit.
+      - Optional. The centers and fluxes of linked stars are
+        constrained across the images using their WCS (see
+        :ref:`epsf-linked-stars`).
+    * - Interpolation of the ePSF
+      - A bicubic spline within 4 pixels of the center and bilinear
+        interpolation farther out (ISR 2016-12).
+      - A single bicubic spline over the whole grid.
+
+The differences that change the ePSF the most are explained below.
+
+**Residual sampling and the Fourier filter.** The pixels of a star
+sample the ePSF on a lattice with a spacing of one pixel. With a
+narrow sampling box, each star contributes to only some of the grid
+points, and noise with a period of one pixel in the ePSF and biases
+in the fitted star centers can reinforce each other from one iteration
+to the next. For heterogeneous or contaminated stars this grows into
+a checkerboard pattern. The wider box and the low-pass filter of
+:class:`~photutils.psf.EPSFBuilder` prevent it. In tests with
+heterogeneous stars, a box of 0.25 pixel regrew the pattern. The cost
+is that the filter and the wider box remove some real signal of an
+undersampled ePSF just below one cycle per pixel, which the refinement
+iterations restore (see :ref:`epsf-alias-passband`).
+
+**Smoothing.** A 5x5 quartic kernel is about 0.7 FWHM wide for
+HST data with an oversampling factor of 4. Applied to an ePSF with
+fewer grid points per FWHM it lowers the peak, and applied to one
+with many more it removes little noise. The same holds for wing
+smoothing at fixed radii in pixels. :class:`~photutils.psf.EPSFBuilder`
+therefore scales both with the measured FWHM. It smooths the wings
+only once, after the last iteration, because smoothing them in every
+iteration changed the core of the ePSF through the normalization.
+
+**Iteration scheme.** Anderson's inner loop lets the ePSF settle for
+fixed star positions before the stars are fit again, and the average
+over the dithered exposures breaks the degeneracy between the shape of
+the ePSF and the star positions. :class:`~photutils.psf.EPSFBuilder`
+must also work for a single exposure, where each star has only one fit.
+It fits the stars after every ePSF update, and it uses Anderson's scheme
+of several updates per fit only in the refinement iterations. Several
+updates per fit from the start of the build did not improve the ePSF in
+tests.
+
+**Centering.** The definition of the center of an ePSF is arbitrary
+as long as the same ePSF is used to build and to fit. The centering
+definitions agree for a symmetric ePSF. For an asymmetric ePSF they
+differ by a small constant offset. The offset has no effect on
+photometry or on relative astrometry made with the same ePSF, because
+the fitted star positions shift with it. Positions measured with ePSFs
+that were centered differently differ by that offset. The recentering
+function and box can be changed with ``recentering_func`` and
+``recentering_boxsize``.
+
+**Normalization and background.** These two conventions set the flux
+scale and must be kept in mind when ePSFs from the two sources are
+mixed:
+
+* Fluxes fit with an ePSF from :class:`~photutils.psf.EPSFBuilder`
+  are the fluxes within the area of the ePSF grid. Fluxes fit with one
+  of Anderson's library ePSFs are the fluxes within a radius of 5.5
+  pixels (for the ISR 2016-12 models). The values of such a library
+  ePSF sum to more than the product of the oversampling factors over
+  the whole grid (5 to 8 percent more for the HST WFC3/IR F110W and
+  F160W models). `~photutils.psf.ImagePSF` and
+  `~photutils.psf.GriddedPSFModel` do not renormalize their input,
+  so they return fluxes in the convention of the ePSF that they are
+  given.
+
+* An annulus close to a star contains light from the wings of the
+  star. An ePSF built with such a local background has a small
+  constant subtracted from it compared with one built with the
+  background far from the stars (0.05 to 0.5 percent of the peak in
+  tests). Both are valid. Use the same background convention when
+  building an ePSF and when fitting stars with it.
+
+**Interpolation.** Interpolation schemes differ most where the ePSF
+curves strongly between grid points. In the cores of undersampled
+ePSFs with an oversampling factor of 4 they can differ by several
+tenths of a percent of the peak. An ePSF is built to reproduce the star
+pixels with the interpolation that was used to build it, so a library
+ePSF that is evaluated with a different interpolation can show
+residuals of that size in the cores of bright stars.
