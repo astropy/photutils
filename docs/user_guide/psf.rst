@@ -295,6 +295,22 @@ accuracy of the PSF model.
 - `~photutils.psf.GriddedPSFModel`: a PSF model that contains a grid of
   image-based ePSF models at fiducial detector positions.
 
+These models interpolate the input image(s) and do not integrate them
+over the detector pixels. The input must therefore be an effective
+PSF (ePSF), in which each value is the fraction of the source flux
+that falls in a whole detector pixel centered at that position
+relative to the source. An oversampled PSF whose values are samples
+of the PSF, such as the output of an optical model, is not an ePSF.
+A model made from such an image is sharper than the sources in the
+data. If the PSF is also undersampled by the detector pixels, the sum
+of the model over the detector pixels changes with the subpixel
+position of the source. Use `~photutils.psf.make_epsf_from_psf` to
+make an ePSF from a sampled PSF::
+
+    >>> from photutils.psf import ImagePSF, make_epsf_from_psf
+    >>> epsf = make_epsf_from_psf(psf, oversampling=4)  # doctest: +SKIP
+    >>> model = ImagePSF(epsf, oversampling=4)  # doctest: +SKIP
+
 
 .. _psf-photometry-examples:
 

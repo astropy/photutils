@@ -84,9 +84,35 @@ class ImagePSF(Fittable2DModel):
     See Also
     --------
     GriddedPSFModel : A model for a grid of ePSF models.
+    make_epsf_from_psf : Make an ePSF image from a sampled PSF.
 
     Notes
     -----
+    The input image must be an effective PSF (ePSF). Each value of an
+    ePSF is the fraction of the source flux that falls in a whole
+    detector pixel centered at that position relative to the source,
+    even when the image is oversampled. The model interpolates the
+    input image and does not integrate it over the detector pixels.
+    Evaluating the model at a position ``(x, y)`` therefore gives the
+    flux in a detector pixel centered at ``(x, y)``, which can be any
+    fractional pixel position.
+
+    Because each value is the flux in a whole detector pixel, the model
+    values sum to ``flux`` only when the model is evaluated on a grid
+    with a spacing of one detector pixel. That holds for any values of
+    ``x_0`` and ``y_0``. On a finer grid the pixels overlap, and the
+    sum is larger than ``flux`` by the ratio of the pixel area to the
+    area of a grid cell.
+
+    An oversampled image that is not an ePSF, such as a PSF sampled at
+    the points of a fine grid or binned into subpixels, is not converted
+    to an ePSF by this model. The model is then sharper than a source
+    in the data. For an undersampled PSF, the sum of the model values
+    over the detector pixels can also change with the subpixel position
+    of the source. Such an image should first be integrated over the
+    area of a detector pixel centered at each of its grid points, which
+    is what `make_epsf_from_psf` does.
+
     The fitted ``flux`` parameter represents the total source flux,
     provided the input PSF image is properly normalized. The fitted flux
     is a multiplicative scale factor applied to the input PSF after

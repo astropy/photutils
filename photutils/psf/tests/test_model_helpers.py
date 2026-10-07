@@ -11,11 +11,13 @@ from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
 from numpy.testing import assert_allclose, assert_equal
+from scipy.interpolate import RectBivariateSpline
+from scipy.special import erf
 
 from photutils import datasets
 from photutils.detection import find_peaks
-from photutils.psf import (EPSFBuilder, extract_stars, grid_from_epsfs,
-                           make_psf_model)
+from photutils.psf import (EPSFBuilder, ImagePSF, extract_stars,
+                           grid_from_epsfs, make_epsf_from_psf, make_psf_model)
 from photutils.psf.model_helpers import _integrate_model, _InverseShift
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -339,3 +341,120 @@ class TestGridFromEPSFs:
                       (0.0, 1000.0), (1000.0, 1000.0)])
         assert_equal(psf_grid.meta['oversampling'], [4, 4])
         assert psf_grid.meta['fill_value'] == 0.0
+
+
+def _sampled_gaussian(sigma, oversampling, size):
+    """
+    Make a Gaussian PSF sampled at the points of an oversampled grid
+    and the matching pixel-integrated ePSF.
+    """
+    oversampling = np.broadcast_to(oversampling, 2)
+    profiles = []
+    for factor in oversampling:
+        n_points = size * factor + (size * factor + 1) % 2
+        offsets = (np.arange(n_points) - n_points // 2) / factor
+        sampled = np.exp(-offsets**2 / (2 * sigma**2))
+        scale = np.sqrt(2) * sigma
+        integrated = 0.5 * (erf((offsets + 0.5) / scale)
+                            - erf((offsets - 0.5) / scale))
+        profiles.append((sampled * factor / sampled.sum(), integrated))
+    psf = np.outer(profiles[0][0], profiles[1][0])
+    epsf = np.outer(profiles[0][1], profiles[1][1])
+    return psf, epsf
+
+
+class TestMakeEPSFFromPSF:
+    @pytest.mark.parametrize(('oversampling', 'atol', 'sum_rtol'),
+                             [(1, 2e-2, 1e-3), (2, 3e-3, 1e-6),
+                              (4, 3e-4, 1e-6), (5, 3e-4, 1e-6),
+                              ((3, 4), 3e-4, 1e-6)])
+    def test_gaussian(self, oversampling, atol, sum_rtol):
+        """
+        Test that the result matches the analytic pixel-integrated
+        Gaussian and preserves the normalization.
+
+        The accuracy is set by how well the spline through the samples
+        represents the PSF, so it improves with the oversampling.
+        """
+        psf, expected = _sampled_gaussian(0.8, oversampling, 15)
+        result = make_epsf_from_psf(psf, oversampling=oversampling)
+        assert result.shape == psf.shape
+        assert_allclose(result.sum(), psf.sum(), rtol=sum_rtol)
+        assert_allclose(result, expected, atol=atol * expected.max())
+
+    def test_spline_integral(self):
+        """
+        Test the result against the integral of the bicubic spline,
+        including the truncated windows at the image edges.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.random((9, 12))
+        result = make_epsf_from_psf(data, oversampling=(2, 3))
+        yy = np.arange(9.0)
+        xx = np.arange(12.0)
+        spline = RectBivariateSpline(yy, xx, data, kx=3, ky=3, s=0)
+        for idx_y, idx_x in [(0, 0), (4, 6), (8, 11), (1, 10)]:
+            expected = spline.integral(max(idx_y - 1.0, 0),
+                                       min(idx_y + 1.0, 8),
+                                       max(idx_x - 1.5, 0),
+                                       min(idx_x + 1.5, 11)) / 6
+            assert_allclose(result[idx_y, idx_x], expected, rtol=1e-10)
+
+    @pytest.mark.parametrize('oversampling', [4, 5])
+    def test_flux_conservation(self, oversampling):
+        """
+        Test that a model of an undersampled PSF conserves flux at any
+        subpixel position only after the pixel integration.
+        """
+        psf, _ = _sampled_gaussian(0.42, oversampling, 15)
+        epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+        yy, xx = np.mgrid[-10:11, -10:11]
+        offsets = [(0, 0), (0.5, 0), (0.5, 0.5), (0.37, -0.13)]
+        sums = {}
+        for name, data in (('psf', psf), ('epsf', epsf)):
+            model = ImagePSF(data, oversampling=oversampling)
+            sums[name] = []
+            for x_0, y_0 in offsets:
+                model.x_0 = x_0
+                model.y_0 = y_0
+                sums[name].append(model(xx, yy).sum())
+        assert_allclose(sums['epsf'], 1.0, atol=2e-5)
+        assert np.ptp(sums['psf']) > 0.2
+
+    def test_stack(self):
+        """
+        Test that a 3D stack is integrated image by image.
+        """
+        psf1, _ = _sampled_gaussian(0.6, 3, 9)
+        psf2, _ = _sampled_gaussian(1.1, 3, 9)
+        result = make_epsf_from_psf(np.array([psf1, psf2]),
+                                    oversampling=3)
+        assert result.shape == (2, *psf1.shape)
+        for image, psf in zip(result, (psf1, psf2), strict=True):
+            expected = make_epsf_from_psf(psf, oversampling=3)
+            assert_allclose(image, expected, rtol=1e-12, atol=1e-15)
+
+    def test_input_unchanged(self):
+        psf, _ = _sampled_gaussian(0.8, 2, 9)
+        psf_orig = psf.copy()
+        make_epsf_from_psf(psf, oversampling=2)
+        assert_equal(psf, psf_orig)
+
+    def test_invalid_inputs(self):
+        match = 'data must be a 2D or 3D array'
+        with pytest.raises(ValueError, match=match):
+            make_epsf_from_psf(np.ones(10), oversampling=2)
+
+        match = 'must both be at least 4'
+        with pytest.raises(ValueError, match=match):
+            make_epsf_from_psf(np.ones((3, 10)), oversampling=2)
+
+        data = np.ones((10, 10))
+        data[4, 4] = np.nan
+        match = 'All elements of data must be finite'
+        with pytest.raises(ValueError, match=match):
+            make_epsf_from_psf(data, oversampling=2)
+
+        match = 'oversampling must be > 0'
+        with pytest.raises(ValueError, match=match):
+            make_epsf_from_psf(np.ones((10, 10)), oversampling=0)
