@@ -25,22 +25,45 @@ By contrast, the function describing the responsivity variations
 across individual *pixels* is the pixel response function. The
 pixel response function is sometimes called the "PRF", but we
 do not use that acronym here to avoid confusion with the "Point
-Response Function" (see below). The convolution of the PSF and
-pixel response function, when discretized onto the detector
-(i.e., a rectilinear grid), is the effective PSF (ePSF) or Point
-Response Function (PRF). The PRF terminology is sometimes used to
-emphasize that the model function describes the response of the
-detector to a point source, rather than the intrinsic instrumental
-PSF (e.g., see the `Spitzer Space Telescope MOPEX documentation
-<https://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools
-/mopex/mopexusersguide/89/>`_).
+Response Function" (see below). The convolution of the PSF and the
+pixel response function is the effective PSF (ePSF) or Point Response
+Function (PRF). The PRF terminology is sometimes used to emphasize
+that the model function describes the response of the detector to a
+point source, rather than the intrinsic instrumental PSF.
 
-In many cases the PSF/PRF/ePSF distinction is unimportant, and the
-PSF/PRF/ePSF is simply called the "PSF" model. However, the distinction
-can be critical when dealing carefully with undersampled data or
-detectors with significant intra-pixel sensitivity variations. For a
-more detailed description of this formalism, see `Anderson & King 2000
+The ePSF is a continuous function. Its value at a given offset from a
+source is the fraction of the source flux that falls in a detector
+pixel centered at that offset. The image of a star samples the ePSF at
+a spacing of one pixel, at offsets that depend on where the center of
+the star falls within a pixel. An oversampled ePSF samples the same
+function on a finer grid. Each of its values is still the flux in a
+whole detector pixel, not the flux in a subpixel. For a more detailed
+description of this formalism, see `Anderson & King 2000
 <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_.
+
+The names of the models in `photutils.psf` follow these definitions.
+The analytic models whose names end in ``PSF`` are evaluated at the
+input positions. The analytic models whose names end in ``PRF`` are
+integrated over the detector pixels, assuming that the response is
+uniform across a pixel. The image-based models
+(`~photutils.psf.ImagePSF` and `~photutils.psf.GriddedPSFModel`)
+interpolate their input images and do not integrate them over the
+pixels, so their input images must be ePSFs. An ePSF that is built from
+observed stars (see :ref:`build-epsf`) includes the actual response of
+the pixels.
+
+The PSF/PRF/ePSF is often simply called the "PSF" model. The
+distinction matters most for undersampled data and for detectors with
+significant intra-pixel sensitivity variations. For such data, a PSF
+that is not integrated over the pixels is much sharper than the image
+of a star, and the fraction of its flux in the pixels changes with the
+subpixel position of the star. The distinction also matters for
+well-sampled data, because the integration over a pixel broadens the
+profile. A PSF with a known width that is not integrated over the pixels
+is narrower than the image of a star, which biases the fitted flux. The
+distinction is largely unimportant only when the width of the model is
+itself measured from the pixelated image of a well-sampled star, because
+that width then includes the broadening.
 
 In colloquial usage, "PSF photometry" sometimes refers to the
 more general task of model-fitting photometry with the effects of
