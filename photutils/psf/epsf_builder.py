@@ -51,10 +51,11 @@ _AUTO_FIT_MIN_SIZE = 5
 # Beyond _WING_START the ePSF is blended, over _WING_BLEND, into a
 # least-squares polynomial fit of degree _WING_DEGREE in a box of width
 # _WING_SMALL_BOX. Beyond _WING_LARGE_START it is blended into the fit
-# in a box of width _WING_LARGE_BOX. The radii are close to those (5
-# to 8 pixels) beyond which Anderson fits planes to the wings of HST
-# ePSFs. A quadratic fit is used here because the mean of a concave
-# profile in a box is biased high, which changes the encircled energy.
+# in a box of width _WING_LARGE_BOX. This follows the approach of
+# Anderson 2016 (WFC3 ISR 2016-12), which smooths the wings of HST ePSFs
+# more strongly than their cores. A quadratic fit is used here because
+# the mean of a concave profile in a box is biased high, which changes
+# the encircled energy.
 _WING_START = 3.5
 _WING_LARGE_START = 5.0
 _WING_BLEND = 1.0
@@ -1619,11 +1620,11 @@ class EPSFBuilder:
     """
     Class to build an effective PSF (ePSF).
 
-    See `Anderson and King 2000 (PASP 112, 1360)
+    The method is based on `Anderson and King 2000 (PASP 112, 1360)
     <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_
     and `Anderson 2016 (WFC3 ISR 2016-12)
-    <https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_
-    for details.
+    <https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_.
+    It differs from them in several steps (see Notes).
 
     Parameters
     ----------
@@ -1632,14 +1633,15 @@ class EPSFBuilder:
         to the input ``stars`` along each axis. If ``oversampling`` is a
         scalar then it will be used for both axes. If ``oversampling``
         has two elements, they must be in ``(y, x)`` order. The ePSF
-        should have at least about four grid points per FWHM, so a good
-        rule of thumb is ``oversampling >= 4 / FWHM`` with the FWHM
-        in pixels. Do not use a larger value than the data require.
-        For well-sampled data (a FWHM of a few pixels or more), an
-        oversampling of 1 is usually the best choice. Larger values
-        require more stars, roughly ``10 * oversampling**2`` stars with
-        uniformly distributed subpixel phases. See the guidelines in the
-        ePSF building user guide for details.
+        should have at least about four grid points per FWHM, so the
+        value should be at least ``4 / FWHM`` with the FWHM in pixels.
+        The default of 4 is a good choice for a FWHM of about 1 pixel
+        or more. A value above ``4 / FWHM`` increases the run time
+        and the memory use, and in tests a value of 8 was no more
+        accurate than 4. For well-sampled data (a FWHM of 4 pixels or
+        more), a value of 1 gives the same fitted star positions and
+        fluxes in less time. See the guidelines in the ePSF building
+        user guide for details.
 
     shape : int, tuple of two ints, or `None`, optional
         The (ny, nx) shape of the output ePSF. If the input shape is
@@ -1877,11 +1879,10 @@ class EPSFBuilder:
         changed, except by the renormalization of the smoothed ePSF
         (less than 0.03 percent in tests). The smoothing is applied
         once, after the last iteration, so it does not affect the star
-        fits or the convergence of the build. The fluxes of the
-        returned stars were therefore fit before that renormalization.
-        It is modeled on the ePSF building code of Anderson, which
-        smooths HST ePSFs more strongly beyond 5 to 8 pixels from
-        their centers. In tests
+        fits or the convergence of the build. The fluxes of the returned
+        stars were therefore fit before that renormalization. It is
+        modeled on the approach of Anderson 2016, which smooths the
+        wings of HST ePSFs more strongly than their cores. In tests
         with a few hundred stars it lowered the residuals of the wings
         of undersampled ePSFs by up to about 50 percent. This matters
         when the wings are used, e.g., to subtract bright stars, to
@@ -1948,18 +1949,77 @@ class EPSFBuilder:
 
     The default ``smoothing_kernel='auto'`` and ``fit_shape='auto'``
     scale the smoothing kernel and the fitting box with the FWHM of the
-    ePSF. The 5x5 ``'quartic'`` kernel (in oversampled grid points)
-    and 5-pixel fitting box (in detector pixels) of Anderson and King
-    2000 were designed for HST images with an oversampling factor
-    of 4, where they correspond to about 0.7 and 2.5 FWHM. A fixed
-    kernel oversmooths heavily undersampled ePSFs, and a fixed 5-pixel
-    fitting box applied to a well-sampled star uses only its flat core,
-    which biases the fitted centers and can prevent convergence. The
-    polynomial kernels replace each grid value by the value at the
-    center of a least-squares polynomial fit to the surrounding grid
-    values. The kernel and fitting box chosen in the final iteration are
-    reported in the ``smoothing_kernel`` and ``fit_shape`` attributes of
-    the returned `EPSFBuildResults`.
+    ePSF. The 5x5 ``'quartic'`` kernel (in oversampled grid points) of
+    Anderson and King 2000 and the 5-pixel fitting box (in detector
+    pixels) of Anderson 2016 were designed for HST images with an
+    oversampling factor of 4, where they correspond to about 0.7 and
+    2.5 FWHM. A fixed kernel oversmooths heavily undersampled ePSFs,
+    and a fixed 5-pixel fitting box applied to a well-sampled star
+    uses only its flat core, which biases the fitted centers and can
+    prevent convergence. The polynomial kernels replace each grid value
+    by the value at the center of a least-squares polynomial fit to
+    the surrounding grid values. The kernel and fitting box chosen in
+    the final iteration are reported in the ``smoothing_kernel`` and
+    ``fit_shape`` attributes of the returned `EPSFBuildResults`.
+
+    This class follows the ePSF building procedure of Anderson and
+    King 2000 and Anderson 2016, with several modifications. The main
+    differences are listed below. See the ePSF building user guide
+    (:ref:`epsf-anderson-differences`) for the complete comparison and
+    the reasons for each difference.
+
+    * A single ePSF is built with any integer oversampling factor.
+      Anderson builds a 3x3 array of ePSFs across each detector with
+      an oversampling factor of 4.
+
+    * The star cutouts must be background subtracted by the user.
+      Anderson measures the background of each star in an annulus
+      around it.
+
+    * The residuals are combined in a box of 0.375 pixel half width
+      with a sigma-clipped median (3 sigma by default). Anderson uses a
+      half width of 0.25 pixel and a mean with rejection at 2.5 sigma.
+
+    * The smoothing kernel and the wing smoothing scale with the FWHM
+      of the ePSF, and the wings are smoothed only once, after the last
+      iteration. Anderson uses a 5x5 quartic kernel in the core and
+      stronger smoothing beyond fixed radii of 3 to 5 pixels, in every
+      iteration.
+
+    * A low-pass Fourier filter is applied in every iteration for
+      oversampling factors greater than 1 (see ``alias_passband``).
+      Anderson applies none.
+
+    * The ePSF is centered on its center of mass in a 5x5 pixel box
+      by default. Anderson requires equal values half a pixel on either
+      side of the center (2000) or centers the ePSF on its point of
+      maximal symmetry within a radius of 1.5 pixels (2016).
+
+    * The ePSF is normalized so that its values sum to the product of
+      the oversampling factors over the whole grid. Fitted fluxes are
+      therefore the fluxes within the area of the grid. Anderson
+      normalizes the ePSF to unit flux in the central 5x5 pixels
+      (2000) or within a radius of 5.5 pixels (2016).
+
+    * The stars are fit after every ePSF update until their centers
+      converge, and the ePSF is then refined with five updates per
+      fit (see ``refinement_iters``). Anderson uses five updates
+      per fit throughout and iterates until the fitted positions and
+      fluxes show no trend with pixel phase.
+
+    * The stars are fit in a box of twice the FWHM with a nonlinear
+      least-squares fitter. Anderson fits the pixels within about 2
+      pixels of the center (2000) or the central 5x5 pixels (2016)
+      with Poisson weights.
+
+    * Dithered exposures are optional (see
+      `~photutils.psf.LinkedEPSFStar`). They are central to Anderson's
+      method, which averages the positions and fluxes of each star over
+      the exposures after every fit.
+
+    * The ePSF is evaluated with a single bicubic spline over the whole
+      grid. Anderson uses a bicubic spline within 4 pixels of the
+      center and bilinear interpolation farther out (2016).
 
     This class stores per-call state on the instance (e.g., the
     automatic smoothing kernel), so a single instance must not be called
@@ -2509,18 +2569,18 @@ class EPSFBuilder:
         Smooth the wings of the final ePSF more strongly than its core.
 
         Far from the center the ePSF is faint and varies slowly, so
-        the noise there can be averaged over a larger area than in
-        the core. This also removes real structure that is finer than
-        about two FWHM. Beyond 3.5 FWHM from the center, each value
-        of the ePSF is blended into the value at the center of a
-        least-squares quadratic fit to the
-        values in a box 1.25 FWHM wide around it, and beyond 5 FWHM
-        into the fit in a box 1.75 FWHM wide. The ePSF within 3.5 FWHM
-        of the center is not changed here. The caller renormalizes the
-        result, which rescales the whole ePSF by the small change of
-        its sum. The FWHM is measured along the narrowest axis of the
-        ePSF, and the boxes are square on the oversampled grid and at
-        least ``_WING_MIN_SIZE`` grid points wide.
+        the noise there can be averaged over a larger area than in the
+        core. This also removes real structure that is finer than about
+        two FWHM. Beyond 3.5 FWHM from the center, each value of the
+        ePSF is blended into the value at the center of a least-squares
+        quadratic fit to the values in a box 1.25 FWHM wide around it,
+        and beyond 5 FWHM into the fit in a box 1.75 FWHM wide. The
+        ePSF within 3.5 FWHM of the center is not changed here. The
+        caller renormalizes the result, which rescales the whole ePSF
+        by the small change of its sum. The FWHM is measured along the
+        narrowest axis of the ePSF, and the boxes are square on the
+        oversampled grid and at least ``_WING_MIN_SIZE`` grid points
+        wide.
 
         The smoothing is applied once, to the final ePSF. Applying it
         in every iteration would compound its effect and couple the
@@ -2626,9 +2686,9 @@ class EPSFBuilder:
         """
         Recenter the ePSF data by shifting to the array center.
 
-        This method uses iterative centroiding to find the center of
-        the ePSF and applies sub-pixel shifts using spline
-        interpolation via the ImagePSF ``evaluate`` method.
+        This method uses iterative centroiding to find the center of the
+        ePSF and applies sub-pixel shifts using spline interpolation via
+        the ImagePSF ``evaluate`` method.
 
         Parameters
         ----------
