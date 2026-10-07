@@ -1137,6 +1137,15 @@ class CircularGaussianPRF(Fittable2DModel):
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
 
+    Because the model is integrated over the pixels, its values on a
+    grid with a spacing of one pixel also sum to the total flux, for
+    any subpixel position of the source:
+
+    .. math::
+
+        \sum_{i=-\infty}^{\infty} \sum_{j=-\infty}^{\infty}
+            f(x + i, y + j) = F
+
     The ``fwhm`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
 
@@ -1386,6 +1395,15 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
     .. math::
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
+
+    Because the model is integrated over the pixels, its values on a
+    grid with a spacing of one pixel also sum to the total flux, for
+    any subpixel position of the source:
+
+    .. math::
+
+        \sum_{i=-\infty}^{\infty} \sum_{j=-\infty}^{\infty}
+            f(x + i, y + j) = F
 
     The ``sigma`` parameter is fixed by default. If you wish to fit this
     parameter, set the ``fixed`` attribute to `False`, e.g.,::
