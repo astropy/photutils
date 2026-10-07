@@ -138,6 +138,15 @@ class GaussianPSF(Fittable2DModel):
     Directly setting a non-positive width produces unphysical model
     values.
 
+    This model is evaluated at the input coordinates and is not
+    integrated over the detector pixels. Its values on a grid of
+    detector pixels are the values of the PSF at the pixel centers,
+    not the fluxes in the pixels. For a PSF that is undersampled by the
+    detector pixels, the model is sharper than a source in the data and
+    the sum of its values over the pixels depends on the subpixel
+    position of the source. Use `GaussianPRF` for a Gaussian that is
+    integrated over the pixels.
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
@@ -520,6 +529,15 @@ class CircularGaussianPSF(Fittable2DModel):
     By default, the ``fwhm`` parameter is bounded to be strictly
     positive. This bound applies only during fitting. Directly setting a
     non-positive width produces unphysical model values.
+
+    This model is evaluated at the input coordinates and is not
+    integrated over the detector pixels. Its values on a grid of
+    detector pixels are the values of the PSF at the pixel centers,
+    not the fluxes in the pixels. For a PSF that is undersampled by the
+    detector pixels, the model is sharper than a source in the data and
+    the sum of its values over the pixels depends on the subpixel
+    position of the source. Use `CircularGaussianPRF` for a circular
+    Gaussian that is integrated over the pixels.
 
     References
     ----------
@@ -1627,6 +1645,17 @@ class MoffatPSF(Fittable2DModel):
     By default, the ``alpha`` parameter is bounded to be strictly
     positive and the ``beta`` parameter is bounded to be greater than 1.
 
+    This model is evaluated at the input coordinates and is not
+    integrated over the detector pixels. Its values on a grid of
+    detector pixels are the values of the PSF at the pixel centers,
+    not the fluxes in the pixels. For a PSF that is undersampled by the
+    detector pixels, the model is sharper than a source in the data and
+    the sum of its values over the pixels depends on the subpixel
+    position of the source. To integrate this model over the pixels,
+    evaluate it on an oversampled grid, make an ePSF image from the
+    result with `make_epsf_from_psf`, and use that image with
+    `ImagePSF`.
+
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Moffat_distribution
@@ -1883,6 +1912,17 @@ class AiryDiskPSF(Fittable2DModel):
 
     By default, the ``radius`` parameter is bounded to be strictly
     positive.
+
+    This model is evaluated at the input coordinates and is not
+    integrated over the detector pixels. Its values on a grid of
+    detector pixels are the values of the PSF at the pixel centers,
+    not the fluxes in the pixels. For a PSF that is undersampled by the
+    detector pixels, the model is sharper than a source in the data and
+    the sum of its values over the pixels depends on the subpixel
+    position of the source. To integrate this model over the pixels,
+    evaluate it on an oversampled grid, make an ePSF image from the
+    result with `make_epsf_from_psf`, and use that image with
+    `ImagePSF`.
 
     References
     ----------

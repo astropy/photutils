@@ -252,12 +252,36 @@ models are evaluated by sampling the analytic function at the input (x,
 y) coordinates. The PRF models are evaluated by integrating the analytic
 function over the pixel areas.
 
-If one needs a custom PRF model based on an analytical PSF model, an
-efficient option is to first discretize the model on a grid using
-:func:`~astropy.convolution.discretize_model` with the ``'oversample'``
-or ``'integrate'`` mode. The resulting 2D image can then be used as the
-input to `~photutils.psf.ImagePSF` (see :ref:`psf-image-models` below)
-to create an image-based PSF model.
+The values of a PSF model on a grid of detector pixels are the values
+of the PSF at the pixel centers, not the fluxes in the pixels. For a PSF
+that is undersampled by the detector pixels (a FWHM of less than about
+2 pixels), a PSF model is sharper than the sources in the data and the
+sum of its values over the pixels depends on the subpixel position of
+the source. A PRF model should be used for such data.
+
+If one needs a custom PRF model based on an analytical PSF model,
+evaluate the PSF model on an oversampled grid and integrate the result
+over the detector pixels with `~photutils.psf.make_epsf_from_psf`. The
+resulting image can then be used as the input to
+`~photutils.psf.ImagePSF` (see :ref:`psf-image-models` below) with the
+same oversampling factor to create an image-based PSF model::
+
+    >>> import numpy as np
+    >>> from photutils.psf import ImagePSF, MoffatPSF, make_epsf_from_psf
+    >>> oversampling = 4
+    >>> yy, xx = np.mgrid[-50:51, -50:51] / oversampling
+    >>> psf = MoffatPSF(alpha=1.2, beta=2.5)(xx, yy)
+    >>> epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+    >>> model = ImagePSF(epsf, oversampling=oversampling)
+
+The values of the oversampled PSF model sum to the square of the
+oversampling factor, apart from the flux outside of the grid, which is
+the normalization that `~photutils.psf.ImagePSF` requires. Discretizing
+the model on the detector pixel grid with
+:func:`~astropy.convolution.discretize_model` also gives a
+pixel-integrated image, but only for one subpixel position of the
+source. A model made from that image is not accurate at other
+positions unless the PSF is well sampled.
 
 Note that the non-circular Gaussian and Moffat models above have
 additional parameters beyond the standard PSF model parameters of
