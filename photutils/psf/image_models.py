@@ -36,11 +36,12 @@ class ImagePSF(Fittable2DModel):
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        A 2D array containing the PSF image. The x and y dimensions
+        A 2D array containing the ePSF image. The x and y dimensions
         must both be at least 4 pixels. All values must be finite. By
-        default, the PSF peak is assumed to be centered in the input
-        image (see ``origin``). See the Notes section for details on the
-        required normalization of the input image.
+        default, the ePSF peak is assumed to be centered in the input
+        image (see ``origin``). See the Notes section for the definition
+        of an ePSF and for details on the required normalization of the
+        input image.
 
     flux : float, optional
         The flux scaling factor. This corresponds to the total source flux,
@@ -137,21 +138,23 @@ class ImagePSF(Fittable2DModel):
 
     Examples
     --------
-    In this simple example, we create a PSF image model from a Circular
-    Gaussian PSF. In this case, one should use the `CircularGaussianPSF`
-    model directly as a PSF model. However, this example demonstrates
-    how to create an image PSF model from an input image.
+    In this simple example, we create a PSF image model from a circular
+    Gaussian that is integrated over the pixels, which is an ePSF with
+    no oversampling. In this case, one should use the
+    `CircularGaussianPRF` model directly as a PSF model. However, this
+    example demonstrates how to create an image PSF model from an input
+    image.
 
     .. plot::
         :include-source:
 
         import matplotlib.pyplot as plt
         import numpy as np
-        from photutils.psf import CircularGaussianPSF, ImagePSF
+        from photutils.psf import CircularGaussianPRF, ImagePSF
 
-        gaussian_psf = CircularGaussianPSF(x_0=12, y_0=12, fwhm=3.2)
+        gaussian_prf = CircularGaussianPRF(x_0=12, y_0=12, fwhm=3.2)
         yy, xx = np.mgrid[:25, :25]
-        psf_data = gaussian_psf(xx, yy)
+        psf_data = gaussian_prf(xx, yy)
         psf_model = ImagePSF(psf_data, x_0=12, y_0=12, flux=10)
         data = psf_model(xx, yy)
         fig, ax = plt.subplots()

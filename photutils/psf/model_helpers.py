@@ -52,6 +52,10 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
         It is *not* needed for any of the PSF models provided by
         Photutils.
 
+    The output PSF model is evaluated at the input positions like
+    the input ``model``. It is not integrated over the detector pixels
+    (see the Notes section).
+
     Parameters
     ----------
     model : `~astropy.modeling.Fittable2DModel`
@@ -118,6 +122,16 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     fail, e.g., return zero for a non-zero model. This can happen when
     the model function is sharply localized relative to the size of the
     integration interval.
+
+    That integration is used only to normalize the model. The values
+    of the output model on a grid of detector pixels are the values of
+    the input ``model`` at the pixel centers, not the fluxes in the
+    pixels. For a PSF that is undersampled by the detector pixels, such
+    a model is sharper than a source in the data and the sum of its
+    values over the pixels depends on the subpixel position of the
+    source. To integrate a model over the pixels, evaluate it on an
+    oversampled grid, make an ePSF image from the result with
+    `make_epsf_from_psf`, and use that image with `ImagePSF`.
 
     Examples
     --------

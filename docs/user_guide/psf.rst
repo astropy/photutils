@@ -234,7 +234,9 @@ You can also create your own custom PSF model using the Astropy modeling
 framework. The PSF model must be a 2D model that is a subclass of
 `~astropy.modeling.Fittable2DModel`. It must have parameters called
 ``x_0``, ``y_0``, and ``flux``, specifying the central position and
-total integrated flux.
+total integrated flux. The value of the model at a position should be
+the flux in a detector pixel centered at that position (see
+:ref:`psf-terminology`), especially for data that are undersampled.
 
 
 Analytic PSF Models
@@ -317,7 +319,9 @@ Astropy fittable 2D model. However, it is recommended that one use the
 PSF models provided by `photutils.psf` as they are optimized for PSF
 photometry. If a custom PSF model is needed, one can be created using
 the Astropy modeling framework that will provide better performance than
-using :func:`~photutils.psf.make_psf_model`.
+using :func:`~photutils.psf.make_psf_model`. A model made with
+:func:`~photutils.psf.make_psf_model` is evaluated at the input
+positions and is not integrated over the detector pixels.
 
 
 .. _psf-image-models:
@@ -872,7 +876,10 @@ an image. This function fits the source(s) with a circular
 2D Gaussian PRF model (`~photutils.psf.CircularGaussianPRF`)
 using the `~photutils.psf.PSFPhotometry` class. If your sources
 are non-circular or non-Gaussian, you can fit them with the
-`~photutils.psf.PSFPhotometry` class and a different PSF model.
+`~photutils.psf.PSFPhotometry` class and a different PSF model. Because
+the model is integrated over the pixels, the returned FWHM is the FWHM
+of the Gaussian before that integration, which is smaller than the FWHM
+of the pixelated image of a source.
 
 For example, let's estimate the FWHM of the sources in our example image
 defined above::
