@@ -3919,12 +3919,13 @@ class SourceCatalog:
         else:
             xcen = np.atleast_1d(self.x_centroid)
             ycen = np.atleast_1d(self.y_centroid)
-            bkg = map_coordinates(self._background, (ycen, xcen),
-                                  output=np.float64, order=1,
-                                  mode='nearest')
-
+            # scipy >= 2.0 raises an error for non-finite coordinates
             mask = np.isfinite(xcen) & np.isfinite(ycen)
-            bkg[~mask] = np.nan
+            bkg = np.full(xcen.shape, np.nan)
+            bkg[mask] = map_coordinates(self._background,
+                                        (ycen[mask], xcen[mask]),
+                                        output=np.float64, order=1,
+                                        mode='nearest')
 
         if self._data_unit is not None:
             bkg <<= self._data_unit
