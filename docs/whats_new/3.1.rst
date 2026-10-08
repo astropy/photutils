@@ -354,6 +354,14 @@ approximations of the parameter derivatives. This eliminates roughly
 60% of the model evaluations performed during fitting, speeding up PSF
 photometry with these models with no change in the fitted results.
 
+The pixel-integrated Gaussian models `~photutils.psf.GaussianPRF`,
+`~photutils.psf.CircularGaussianPRF`, and
+`~photutils.psf.CircularGaussianSigmaPRF`, and the
+`~photutils.psf.MoffatPSF` and `~photutils.psf.AiryDiskPSF` models, also
+provide analytic Jacobians. All of the PSF models in `photutils.psf` now
+have one, so the fitted positions and fluxes no longer depend on the
+step size of a finite-difference approximation.
+
 
 ``GriddedPSFModel`` and ``ImagePSF`` Performance Improvements
 =============================================================
