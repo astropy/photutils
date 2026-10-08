@@ -40,12 +40,14 @@ if _ASDF_ASTROPY_INSTALLED:
     from .converters import functional_models, image_models
 
     PHOTUTILS_PSF_CONVERTERS += [
+        functional_models.AiryDiskPRFConverter(),
         functional_models.AiryDiskPSFConverter(),
         functional_models.CircularGaussianPRFConverter(),
         functional_models.CircularGaussianPSFConverter(),
         functional_models.CircularGaussianSigmaPRFConverter(),
         functional_models.GaussianPRFConverter(),
         functional_models.GaussianPSFConverter(),
+        functional_models.MoffatPRFConverter(),
         functional_models.MoffatPSFConverter(),
         image_models.ImagePSFConverter(),
         image_models.GriddedPSFModelConverter(),

@@ -116,6 +116,8 @@ quantities.
     * - ``photutils/aperture/rectangular_annulus-1.0.0``
       - `~photutils.aperture.RectangularAnnulus`,
         `~photutils.aperture.SkyRectangularAnnulus`
+    * - ``photutils/psf/airy_disk_prf-1.0.0``
+      - `~photutils.psf.AiryDiskPRF`
     * - ``photutils/psf/airy_disk_psf-1.0.0``
       - `~photutils.psf.AiryDiskPSF`
     * - ``photutils/psf/circular_gaussian_prf-1.0.0``
@@ -132,6 +134,8 @@ quantities.
       - `~photutils.psf.GriddedPSFModel`
     * - ``photutils/psf/image_psf-1.0.0``
       - `~photutils.psf.ImagePSF`
+    * - ``photutils/psf/moffat_prf-1.0.0``
+      - `~photutils.psf.MoffatPRF`
     * - ``photutils/psf/moffat_psf-1.0.0``
       - `~photutils.psf.MoffatPSF`
     * - ``photutils/psf/stdpsf_grid-1.0.0``

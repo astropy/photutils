@@ -293,9 +293,15 @@ models:
   terms of the position, total flux, :math:`\alpha`, and :math:`\beta`
   parameters.
 
+- `~photutils.psf.MoffatPRF`: a 2D Moffat PRF model with the same
+  parameters as `~photutils.psf.MoffatPSF`.
+
 - `~photutils.psf.AiryDiskPSF`: a 2D Airy disk PSF model parameterized
   in terms of the position, total flux, and radius of the first dark
   ring.
+
+- `~photutils.psf.AiryDiskPRF`: a 2D Airy disk PRF model with the same
+  parameters as `~photutils.psf.AiryDiskPSF`.
 
 Note there are two types of defined models, PSF and PRF models. The PSF
 models are evaluated by sampling the analytic function at the input (x,
@@ -303,18 +309,37 @@ y) coordinates. The PRF models are evaluated by integrating the analytic
 function over the pixel areas.
 
 The values of a PSF model on a grid of detector pixels are the values
-of the PSF at the pixel centers, not the fluxes in the pixels. For a PSF
-that is undersampled by the detector pixels (a FWHM of less than about
-2 pixels), a PSF model is sharper than the sources in the data and the
-sum of its values over the pixels depends on the subpixel position of
-the source. A PRF model should be used for such data.
+of the PSF at the pixel centers, not the fluxes in the pixels. For a
+PSF that is undersampled by the detector pixels (a FWHM of less than
+about 2 pixels), a PSF model is sharper than the sources in the data
+and the sum of its values over the pixels depends on the subpixel
+position of the source. Even for a well-sampled PSF, a PSF model whose
+shape parameters are fixed gives fitted fluxes that are biased by a few
+percent for a FWHM of 2 to 3 pixels, because the integration over a
+pixel broadens the image of a source. The PRF models should therefore
+be used to fit the pixel values of an image, e.g., for PSF photometry.
+Every PSF model above has a PRF counterpart.
 
-If one needs a custom PRF model based on an analytical PSF model,
-evaluate the PSF model on an oversampled grid and integrate the result
-over the detector pixels with `~photutils.psf.make_epsf_from_psf`. The
-resulting image can then be used as the input to
-`~photutils.psf.ImagePSF` (see :ref:`psf-image-models` below) with the
-same oversampling factor to create an image-based PSF model::
+The Gaussian PRF models are integrated over the pixels analytically.
+The Moffat and Airy disk PRF models are integrated numerically at
+``n_nodes**2`` points in each pixel (81 by default), so they are much
+slower to evaluate than their PSF counterparts. On a 7 x 7 pixel cutout,
+which is typical for PSF fitting, `~photutils.psf.MoffatPRF` takes about
+0.05 ms to evaluate and `~photutils.psf.AiryDiskPRF` about 0.08 ms,
+which is about 10 times slower than `~photutils.psf.MoffatPSF` (0.005
+ms) and `~photutils.psf.AiryDiskPSF` (0.009 ms). On a 101 x 101 pixel
+image they take about 7 ms and 13 ms, which is about 70 times slower
+than the PSF models (0.1 ms and 0.2 ms). A smaller ``n_nodes`` reduces
+the time at the cost of accuracy.
+
+If one needs a custom PRF model based on an analytical PSF
+model that has no PRF counterpart, evaluate the PSF model on
+an oversampled grid (a Moffat profile is used below only as an
+illustration) and integrate the result over the detector pixels
+with `~photutils.psf.make_epsf_from_psf`. The resulting image
+can then be used as the input to `~photutils.psf.ImagePSF` (see
+:ref:`psf-image-models` below) with the same oversampling factor to
+create an image-based PSF model::
 
     >>> import numpy as np
     >>> from photutils.psf import ImagePSF, MoffatPSF, make_epsf_from_psf

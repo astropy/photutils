@@ -1,0 +1,82 @@
+%YAML 1.1
+---
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/psf/airy_disk_prf-1.0.0'
+title: AiryDiskPRF
+description: |
+  ASDF schema for serializing an AiryDiskPRF model, a 2D Airy disk PSF
+  integrated over pixels, defined by the total flux, center
+  coordinates, and radius.
+
+examples:
+  - - |
+      An AiryDiskPRF with a flux of 71.4, centered at (24.3, 25.2)
+      pixels, and a radius of 5 pixels:
+      AiryDiskPRF(flux=71.4, x_0=24.3, y_0=25.2, radius=5)
+    - |
+      !<tag:astropy.org:photutils/psf/airy_disk_prf-1.0.0>
+        bbox_factor: 10.0
+        bounds:
+          radius: [1.1754943508222875e-38, null]
+        fixed: {radius: true}
+        flux: 71.4
+        inputs: [x, y]
+        n_nodes: 9
+        outputs: [z]
+        radius: 5.0
+        x_0: 24.3
+        y_0: 25.2
+
+allOf:
+  - $ref: 'http://stsci.edu/schemas/asdf/transform/transform-1.4.0'
+  - type: object
+    properties:
+      flux:
+        anyOf:
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+          - type: number
+        description: |
+          Total integrated flux of the PSF.
+      x_0:
+        anyOf:
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+          - type: number
+        description: |
+          Position of the peak along the x axis.
+      y_0:
+        anyOf:
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+          - type: number
+        description: |
+          Position of the peak along the y axis.
+      radius:
+        anyOf:
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+          - type: number
+        description: |
+          Radius of the Airy disk at the first zero, in pixels.
+      bbox_factor:
+        type: number
+        description: |
+          The multiple of the FWHM used to define the bounding box limits.
+      n_nodes:
+        type: integer
+        minimum: 1
+        description: |
+          The number of Gauss-Legendre quadrature nodes along each axis
+          of a pixel used to integrate the profile over the pixel.
+      # The properties of the referenced transform schema are repeated
+      # here because "additionalProperties" applies only to the
+      # properties defined in the same subschema.
+      bounding_box: {}
+      bounds: {}
+      fixed: {}
+      input_units_equivalencies: {}
+      inputs: {}
+      inverse: {}
+      name: {}
+      outputs: {}
+
+    additionalProperties: false
+    required: [flux, x_0, y_0, radius]
+...

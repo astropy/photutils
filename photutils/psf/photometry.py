@@ -569,6 +569,15 @@ class PSFPhotometry:
         the pixels gives biased fluxes and positions for undersampled
         data.
 
+        The analytic models whose names end in ``PSF``
+        (e.g., `~photutils.psf.CircularGaussianPSF` and
+        `~photutils.psf.MoffatPSF`) are not integrated over the pixels
+        and should not be used here. Each has a counterpart whose name
+        ends in ``PRF`` (e.g., `~photutils.psf.CircularGaussianPRF` and
+        `~photutils.psf.MoffatPRF`). With a ``PSF`` model whose shape
+        parameters are fixed, the fitted flux is biased by a few percent
+        even for a FWHM of 2 to 3 pixels.
+
         The fitted source positions are the fitted values of the model
         position parameters. For an image-based model, they give the
         position of the center of the model image, or of the

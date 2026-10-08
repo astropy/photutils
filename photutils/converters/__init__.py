@@ -36,16 +36,17 @@ if _ASDF_INSTALLED:
                 ]
 
 if _ASDF_ASTROPY_INSTALLED:
-    from .functional_models import (AiryDiskPSFConverter,
+    from .functional_models import (AiryDiskPRFConverter, AiryDiskPSFConverter,
                                     CircularGaussianPRFConverter,
                                     CircularGaussianPSFConverter,
                                     CircularGaussianSigmaPRFConverter,
                                     GaussianPRFConverter, GaussianPSFConverter,
-                                    MoffatPSFConverter)
+                                    MoffatPRFConverter, MoffatPSFConverter)
     from .image_models import (GriddedPSFModelConverter, ImagePSFConverter,
                                STDPSFGridConverter)
 
-    __all__ += ['AiryDiskPSFConverter',
+    __all__ += ['AiryDiskPRFConverter',
+                'AiryDiskPSFConverter',
                 'CircularGaussianPRFConverter',
                 'CircularGaussianPSFConverter',
                 'CircularGaussianSigmaPRFConverter',
@@ -53,6 +54,7 @@ if _ASDF_ASTROPY_INSTALLED:
                 'GaussianPSFConverter',
                 'GriddedPSFModelConverter',
                 'ImagePSFConverter',
+                'MoffatPRFConverter',
                 'MoffatPSFConverter',
                 'STDPSFGridConverter',
                 ]

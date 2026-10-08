@@ -11,9 +11,10 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from numpy.testing import assert_allclose
 from scipy.special import erf
 
-from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
+from photutils.psf import (AiryDiskPRF, AiryDiskPSF, CircularGaussianPRF,
                            CircularGaussianPSF, CircularGaussianSigmaPRF,
-                           GaussianPRF, GaussianPSF, MoffatPSF)
+                           GaussianPRF, GaussianPSF, MoffatPRF, MoffatPSF,
+                           functional_models)
 
 
 def make_gaussian_models(name):
@@ -779,7 +780,7 @@ def test_moffat_psf_scalar_coords():
 @pytest.mark.parametrize('model', [
     GaussianPSF(), CircularGaussianPSF(), GaussianPRF(),
     CircularGaussianPRF(), CircularGaussianSigmaPRF(),
-    MoffatPSF(), AiryDiskPSF()])
+    MoffatPSF(), AiryDiskPSF(), MoffatPRF(), AiryDiskPRF()])
 def test_nan_propagation(model):
     """
     Test that NaN input coordinates propagate to NaN output values.
@@ -835,6 +836,20 @@ def test_airydisk_psf_model(use_units):
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
 
 
+def test_airydisk_flux_array_broadcast():
+    """
+    Test that an array-valued flux can have more dimensions than the
+    input coordinates.
+    """
+    flux = np.array([1.0, 2.0, 3.0])
+    peak = AiryDiskPSF()(0, 0)
+    assert_allclose(AiryDiskPSF(flux=flux)(0, 0), flux * peak)
+
+    result = AiryDiskPSF(flux=flux * u.Jy)(0, 0)
+    assert result.unit == u.Jy
+    assert_allclose(result.value, flux * peak)
+
+
 def test_airydisk_infinite_radial_distance():
     """
     Regression test that AiryDiskPSF evaluates to zero at infinite
@@ -847,3 +862,262 @@ def test_airydisk_infinite_radial_distance():
     result = model(np.array([np.inf, 0.0]), np.array([0.0, 0.0]))
     assert result[0] == 0.0
     assert result[1] > 0.0
+
+
+PIXEL_INTEGRATED_CASES = [
+    (MoffatPRF, MoffatPSF, {'alpha': 0.9, 'beta': 2.5}),
+    (MoffatPRF, MoffatPSF, {'alpha': 3.1, 'beta': 4.2}),
+    (AiryDiskPRF, AiryDiskPSF, {'radius': 1.0}),
+    (AiryDiskPRF, AiryDiskPSF, {'radius': 3.3}),
+]
+
+
+class TestPixelIntegratedProfiles:
+    """
+    Tests of the pixel-integrated Moffat and Airy disk models.
+    """
+
+    @pytest.mark.parametrize(('prf_class', 'psf_class', 'shape_params'),
+                             PIXEL_INTEGRATED_CASES)
+    @pytest.mark.parametrize(('x_0', 'y_0'),
+                             [(0.0, 0.0), (0.5, 0.5), (0.37, -0.13)])
+    def test_matches_pixel_integral(self, prf_class, psf_class, shape_params,
+                                    x_0, y_0):
+        """
+        Test that the model is the integral of the matching PSF model
+        over the pixels.
+        """
+        params = {'flux': 3.2, 'x_0': x_0, 'y_0': y_0, **shape_params}
+        yy, xx = np.mgrid[-6:7, -6:7]
+        expected = _numerical_pixel_integral(psf_class(**params), xx, yy,
+                                             n_sub=151)
+        result = prf_class(**params)(xx, yy)
+        assert_allclose(result, expected, atol=5e-5 * expected.max())
+
+    @pytest.mark.parametrize(('prf_class', 'psf_class', 'shape_params'),
+                             PIXEL_INTEGRATED_CASES[::2])
+    def test_flux_conservation(self, prf_class, psf_class, shape_params):
+        """
+        Test that an undersampled model conserves flux at any subpixel
+        position, unlike the matching PSF model.
+        """
+        yy, xx = np.mgrid[-30:31, -30:31]
+        sums = {prf_class: [], psf_class: []}
+        for x_0, y_0 in [(0, 0), (0.5, 0), (0.5, 0.5), (0.37, -0.13)]:
+            for model_class, values in sums.items():
+                model = model_class(x_0=x_0, y_0=y_0, **shape_params)
+                values.append(model(xx, yy).sum())
+        assert np.ptp(sums[prf_class]) < 1e-5
+        assert np.ptp(sums[psf_class]) > 0.1
+        assert_allclose(sums[prf_class], 1.0, atol=5e-3)
+
+    @pytest.mark.parametrize(('model', 'params'), [
+        (MoffatPRF(), (71.4, 24.3, 25.2, 0.9, 2.5)),
+        (MoffatPRF(), (71.4, 24.5, 24.5, 4.1, 3.2)),
+        (AiryDiskPRF(), (71.4, 24.3, 25.2, 1.1)),
+        (AiryDiskPRF(), (71.4, 24.0, 25.0, 4.3)),
+    ])
+    def test_fit_deriv(self, model, params):
+        yy, xx = np.mgrid[20:30, 19:29]
+        derivs = model.fit_deriv(xx, yy, *params)
+        assert len(derivs) == len(params)
+        # The step and the absolute tolerance keep the roundoff error
+        # of the central difference, which is the only difference where
+        # a derivative is zero by symmetry, far below the tolerance
+        step = 1e-5
+        for index in range(len(params)):
+            params_hi = list(params)
+            params_lo = list(params)
+            params_hi[index] += step
+            params_lo[index] -= step
+            numerical = ((model.evaluate(xx, yy, *params_hi)
+                          - model.evaluate(xx, yy, *params_lo))
+                         / (2.0 * step))
+            assert derivs[index].shape == xx.shape
+            assert_allclose(derivs[index], numerical, rtol=1e-5, atol=1e-8)
+
+    @pytest.mark.parametrize(('model', 'model_init', 'free'), [
+        (MoffatPRF(flux=71.4, x_0=12.3, y_0=11.8, alpha=1.1, beta=2.7),
+         MoffatPRF(flux=60.0, x_0=12.0, y_0=12.0, alpha=1.5, beta=2.2),
+         ('alpha', 'beta')),
+        (AiryDiskPRF(flux=71.4, x_0=12.3, y_0=11.8, radius=1.3),
+         AiryDiskPRF(flux=60.0, x_0=12.0, y_0=12.0, radius=1.6),
+         ('radius',)),
+    ])
+    def test_fit_free_shape(self, model, model_init, free):
+        """
+        Test fitting an undersampled model with free shape parameters.
+        """
+        yy, xx = np.mgrid[0:25, 0:25]
+        data = model(xx, yy)
+        model_init = model_init.copy()
+        for name in free:
+            getattr(model_init, name).fixed = False
+        fit_model = TRFLSQFitter()(model_init, xx, yy, data)
+        assert_allclose(fit_model.parameters, model.parameters, rtol=1e-6)
+
+    @pytest.mark.parametrize(('prf_class', 'psf_class', 'shape_params'),
+                             PIXEL_INTEGRATED_CASES[::2])
+    def test_single_node(self, prf_class, psf_class, shape_params):
+        """
+        Test that one quadrature node gives the value at the pixel
+        center.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        params = {'flux': 3.2, 'x_0': 0.2, 'y_0': -0.3, **shape_params}
+        assert_allclose(prf_class(n_nodes=1, **params)(xx, yy),
+                        psf_class(**params)(xx, yy), rtol=1e-12)
+
+    @pytest.mark.parametrize('model_class', [MoffatPRF, AiryDiskPRF])
+    def test_n_nodes(self, model_class):
+        model = model_class(n_nodes=5)
+        assert model.n_nodes == 5
+        assert model.copy().n_nodes == 5
+        assert model_class().n_nodes == 9
+
+        match = 'n_nodes must be a positive integer'
+        for n_nodes in (0, -1, 2.5, True):
+            with pytest.raises(ValueError, match=match):
+                model_class(n_nodes=n_nodes)
+            with pytest.raises(ValueError, match=match):
+                model.n_nodes = n_nodes
+        assert model.n_nodes == 5
+
+        model.n_nodes = np.int64(3)
+        assert model.n_nodes == 3
+        assert isinstance(model.n_nodes, int)
+
+    @pytest.mark.parametrize(('prf_class', 'psf_class', 'shape_params'),
+                             PIXEL_INTEGRATED_CASES[::2])
+    def test_model_set(self, prf_class, psf_class, shape_params):
+        """
+        Test that a model set can be evaluated at scalar and array
+        inputs, like the matching PSF model.
+        """
+        params = {'flux': [1.0, 2.0], 'x_0': [0.2, 0.2], 'y_0': [-0.3, -0.3]}
+        params.update({name: [value, value]
+                       for name, value in shape_params.items()})
+        model = prf_class(n_models=2, **params)
+        single = prf_class(flux=1.0, x_0=0.2, y_0=-0.3, **shape_params)
+
+        result = model(0, 0)
+        assert result.shape == psf_class(n_models=2, **params)(0, 0).shape
+        assert_allclose(result, single(0, 0) * np.array([1.0, 2.0]))
+
+        xx = np.tile(np.arange(-2.0, 3.0), (2, 1))
+        yy = np.zeros(xx.shape)
+        result = model(xx, yy)
+        assert result.shape == (2, 5)
+        assert_allclose(result[1], 2.0 * single(xx[0], yy[0]))
+
+    @pytest.mark.parametrize(('prf_class', 'psf_class', 'shape_params'),
+                             PIXEL_INTEGRATED_CASES[::2])
+    def test_parameter_array_broadcast(self, prf_class, psf_class,
+                                       shape_params):
+        """
+        Test that a parameter array with more dimensions than the input
+        coordinates broadcasts like the matching PSF model.
+        """
+        flux = np.array([[1.0], [2.0]])
+        xx = np.arange(-1.0, 2.0)
+        yy = np.zeros(3)
+        result = prf_class(flux=flux, **shape_params)(xx, yy)
+        expected = flux * prf_class(**shape_params)(xx, yy)
+        assert result.shape == psf_class(flux=flux, **shape_params)(xx,
+                                                                    yy).shape
+        assert_allclose(result, expected)
+
+        result = prf_class(flux=[1.0, 2.0, 3.0], **shape_params)(0, 0)
+        assert_allclose(result,
+                        prf_class(**shape_params)(0, 0) * np.arange(1, 4))
+
+    @pytest.mark.parametrize(('model', 'params'), [
+        (MoffatPRF(), (71.4, 4.3, 5.2, 0.9, 2.5)),
+        (AiryDiskPRF(), (71.4, 4.3, 5.2, 1.1)),
+    ])
+    @pytest.mark.parametrize('coords', [
+        tuple(np.mgrid[0:10, 0:11][::-1]),
+        (4.0, 5.0),
+        (np.array(4.0), np.array(5.0)),
+    ])
+    def test_node_rows(self, model, params, coords, monkeypatch):
+        """
+        Test that evaluating one row of quadrature nodes at a time, as
+        is done for large inputs, gives the same result as evaluating
+        all of the nodes in one call.
+        """
+        xx, yy = coords
+        expected = model.evaluate(xx, yy, *params)
+        expected_derivs = model.fit_deriv(xx, yy, *params)
+
+        monkeypatch.setattr(functional_models, '_MAX_QUADRATURE_ELEMENTS', 0)
+        assert_allclose(model.evaluate(xx, yy, *params), expected,
+                        rtol=1e-12)
+        derivs = model.fit_deriv(xx, yy, *params)
+        assert len(derivs) == len(expected_derivs)
+        for deriv, expected_deriv in zip(derivs, expected_derivs,
+                                         strict=True):
+            assert_allclose(deriv, expected_deriv, rtol=1e-12, atol=1e-14)
+
+    @pytest.mark.parametrize(('model', 'model_units'), [
+        (MoffatPRF(flux=3, x_0=0.2, y_0=0.3, alpha=1.2, beta=2.5),
+         MoffatPRF(flux=3 * u.Jy, x_0=0.2 * u.pix, y_0=0.3 * u.pix,
+                   alpha=1.2 * u.pix, beta=2.5)),
+        (AiryDiskPRF(flux=3, x_0=0.2, y_0=0.3, radius=1.2),
+         AiryDiskPRF(flux=3 * u.Jy, x_0=0.2 * u.pix, y_0=0.3 * u.pix,
+                     radius=1.2 * u.pix)),
+    ])
+    def test_node_rows_units(self, model, model_units, monkeypatch):
+        """
+        Test evaluating one row of quadrature nodes at a time for inputs
+        with units.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        expected = model(xx, yy)
+        monkeypatch.setattr(functional_models, '_MAX_QUADRATURE_ELEMENTS', 0)
+        result = model_units(xx * u.pix, yy * u.pix)
+        assert result.unit == u.Jy
+        assert_allclose(result.value, expected, rtol=1e-12)
+
+    @pytest.mark.parametrize(('prf_class', 'psf_class', 'shape_params'),
+                             PIXEL_INTEGRATED_CASES[::2])
+    def test_node_rows_model_set(self, prf_class, psf_class, shape_params,
+                                 monkeypatch):
+        """
+        Test evaluating one row of quadrature nodes at a time for a
+        model set.
+        """
+        params = {'flux': [1.0, 2.0], 'x_0': [0.2, 0.2], 'y_0': [-0.3, -0.3]}
+        params.update({name: [value, value]
+                       for name, value in shape_params.items()})
+        model = prf_class(n_models=2, **params)
+        xx = np.tile(np.arange(-2.0, 3.0), (2, 1))
+        yy = np.zeros(xx.shape)
+        expected = model(xx, yy)
+        expected_scalar = model(0, 0)
+        assert expected_scalar.shape == psf_class(n_models=2,
+                                                  **params)(0, 0).shape
+
+        monkeypatch.setattr(functional_models, '_MAX_QUADRATURE_ELEMENTS', 0)
+        assert_allclose(model(xx, yy), expected, rtol=1e-12)
+        assert_allclose(model(0, 0), expected_scalar, rtol=1e-12)
+
+    @pytest.mark.parametrize(('model', 'model_units'), [
+        (MoffatPRF(flux=3, x_0=0.2, y_0=0.3, alpha=1.2, beta=2.5),
+         MoffatPRF(flux=3 * u.Jy, x_0=0.2 * u.pix, y_0=0.3 * u.pix,
+                   alpha=1.2 * u.pix, beta=2.5)),
+        (AiryDiskPRF(flux=3, x_0=0.2, y_0=0.3, radius=1.2),
+         AiryDiskPRF(flux=3 * u.Jy, x_0=0.2 * u.pix, y_0=0.3 * u.pix,
+                     radius=1.2 * u.pix)),
+    ])
+    def test_units(self, model, model_units):
+        yy, xx = np.mgrid[-5:6, -5:6]
+        result = model_units(xx * u.pix, yy * u.pix)
+        assert result.unit == u.Jy
+        assert_allclose(result.value, model(xx, yy), rtol=1e-12)
+
+    @pytest.mark.parametrize('model', [MoffatPRF(alpha=1.2, beta=2.5),
+                                       AiryDiskPRF(radius=1.2)])
+    def test_scalar_coords(self, model):
+        yy, xx = np.mgrid[0:3, 0:3]
+        assert_allclose(model(1.0, 2.0), model(xx, yy)[2, 1])

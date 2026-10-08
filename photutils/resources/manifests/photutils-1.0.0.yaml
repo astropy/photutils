@@ -32,6 +32,10 @@ tags:
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/rectangular_annulus-1.0.0
     title: Rectangular annulus aperture
     description: A rectangular annulus aperture in pixel or sky coordinates.
+  - tag_uri: tag:astropy.org:photutils/psf/airy_disk_prf-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/psf/airy_disk_prf-1.0.0
+    title: AiryDiskPRF
+    description: A 2D Airy disk PSF model integrated over pixels.
   - tag_uri: tag:astropy.org:photutils/psf/airy_disk_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0
     title: AiryDiskPSF
@@ -64,6 +68,10 @@ tags:
     schema_uri: asdf://astropy.org/photutils/schemas/psf/image_psf-1.0.0
     title: ImagePSF
     description: A 2D image PSF model.
+  - tag_uri: tag:astropy.org:photutils/psf/moffat_prf-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/psf/moffat_prf-1.0.0
+    title: MoffatPRF
+    description: A 2D Moffat PSF model integrated over pixels.
   - tag_uri: tag:astropy.org:photutils/psf/moffat_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/moffat_psf-1.0.0
     title: MoffatPSF
