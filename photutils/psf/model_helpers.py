@@ -588,10 +588,18 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     The input image is interpolated with a bicubic spline. The spline
     is integrated exactly over the area of one detector pixel centered
     at each output grid point, and the result is divided by the number
-    of grid points in a detector pixel. The normalization of the
-    input image is therefore preserved. An input image whose values
-    sum to the product of the oversampling factors gives an ePSF with
-    the same sum, which is the normalization that `ImagePSF` requires.
+    of grid points in a detector pixel. The output values are
+    therefore on the same scale as the input values, and the output
+    image is not normalized.
+
+    Normalize the input image, not the output image. `ImagePSF`
+    requires an image whose values sum to the product of the
+    oversampling factors. If the input image has that sum, the output
+    values are correctly scaled. The output image has the same sum
+    if the PSF is negligible at the image edges. Otherwise its sum is
+    slightly smaller, because of the edge values described below, and
+    normalizing the output image would make all of its values too
+    large.
 
     The accuracy of the result is set by how well the spline through
     the input values represents the PSF. The input grid must therefore
@@ -613,7 +621,15 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     The input image is taken to be zero outside of its grid. The
     output values within half of a detector pixel of the image edges
     are therefore integrals over only the part of the pixel that is
-    inside the grid.
+    inside the grid. They are smaller than the ePSF values at those
+    positions, by a factor of about two at an edge and by more at a
+    corner. All other output values are unaffected. These values
+    matter for PSF photometry only if the fitted region of a source
+    extends to within half of a detector pixel of the edge of the
+    model image. They are not removed from the output image, because
+    a model made from the trimmed image contains less of the source
+    flux and conserves flux no better. The input image should be
+    large enough that the PSF is small at its edges.
 
     The input values must be samples of the PSF at the grid points.
     The result is less accurate for an image whose values are the
