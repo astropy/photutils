@@ -3,6 +3,8 @@
 Functional PSF models.
 """
 
+from functools import lru_cache
+
 import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
@@ -11,12 +13,14 @@ from astropy.units import UnitsError
 from scipy.special import erf, j0, j1, jn_zeros, ndtr, owens_t
 
 __all__ = [
+    'AiryDiskPRF',
     'AiryDiskPSF',
     'CircularGaussianPRF',
     'CircularGaussianPSF',
     'CircularGaussianSigmaPRF',
     'GaussianPRF',
     'GaussianPSF',
+    'MoffatPRF',
     'MoffatPSF',
 ]
 
@@ -450,6 +454,80 @@ def _circular_gaussian_prf_derivs(x, y, flux, x_0, y_0, sigma):
             flux * (x_d_sigma * y_frac + x_frac * y_d_sigma)]
 
 
+@lru_cache
+def _pixel_quadrature_nodes(n_nodes):
+    """
+    Return the Gauss-Legendre nodes and weights for the integral over
+    a pixel of unit width along one axis.
+
+    Parameters
+    ----------
+    n_nodes : int
+        The number of nodes.
+
+    Returns
+    -------
+    offsets, weights : `~numpy.ndarray`
+        The offsets of the nodes from the pixel center and their
+        weights, which sum to 1.
+    """
+    nodes, weights = np.polynomial.legendre.leggauss(n_nodes)
+    return 0.5 * nodes, 0.5 * weights
+
+
+def _integrate_over_pixels(func, x, y, n_nodes):
+    """
+    Integrate a function over the pixels of unit area centered at the
+    input positions using Gauss-Legendre quadrature.
+
+    Parameters
+    ----------
+    func : callable
+        The function to integrate. It is called as ``func(x, y)`` with
+        arrays that have two leading axes for the quadrature nodes. It
+        must return an array, or a list of arrays, with those leading
+        axes.
+
+    x, y : float or array_like
+        The x and y coordinates of the pixel centers.
+
+    n_nodes : int
+        The number of quadrature nodes along each axis of a pixel.
+
+    Returns
+    -------
+    result : `~numpy.ndarray` or list of `~numpy.ndarray`
+        The integral of each array returned by ``func`` over each
+        pixel.
+    """
+    x, y = np.broadcast_arrays(x, y, subok=True)
+    offsets, weights = _pixel_quadrature_nodes(n_nodes)
+    trailing = (1,) * x.ndim
+    x_offsets = offsets.reshape((1, n_nodes, *trailing))
+    y_offsets = offsets.reshape((n_nodes, 1, *trailing))
+    if isinstance(x, u.Quantity):
+        x_offsets = x_offsets << x.unit
+        y_offsets = y_offsets << y.unit
+    weights_2d = np.outer(weights, weights).reshape((n_nodes, n_nodes,
+                                                     *trailing))
+
+    values = func(x + x_offsets, y + y_offsets)
+    if isinstance(values, list):
+        return [np.sum(value * weights_2d, axis=(0, 1)) for value in values]
+    return np.sum(values * weights_2d, axis=(0, 1))
+
+
+def _validate_n_nodes(n_nodes):
+    """
+    Validate the number of quadrature nodes along each axis of a pixel.
+    """
+    if (isinstance(n_nodes, bool)
+            or not isinstance(n_nodes, (int, np.integer)) or n_nodes < 1):
+        msg = 'n_nodes must be a positive integer'
+        raise ValueError(msg)
+    return int(n_nodes)
+
+
 def _gaussian_amplitude(flux, xsigma, ysigma):
     # Output units should match the input flux units
     if isinstance(xsigma, u.Quantity):
@@ -566,8 +644,15 @@ class GaussianPSF(Fittable2DModel):
     not the fluxes in the pixels. For a PSF that is undersampled by the
     detector pixels, the model is sharper than a source in the data and
     the sum of its values over the pixels depends on the subpixel
-    position of the source. Use `GaussianPRF` for a Gaussian that is
-    integrated over the pixels.
+    position of the source.
+
+    This model should therefore not be used to fit the pixel values of
+    an image, e.g., for PSF photometry. If its shape parameters are
+    fixed to those of the PSF before the integration over the pixels,
+    the fitted flux is biased by a few percent for a FWHM of 2 to 3
+    pixels, and by much more, with an error that depends on the subpixel
+    position of the source, for a FWHM of less than about 1.5 pixels.
+    Use `GaussianPRF` instead, which is integrated over the pixels.
 
     References
     ----------
@@ -954,12 +1039,20 @@ class CircularGaussianPSF(Fittable2DModel):
 
     This model is evaluated at the input coordinates and is not
     integrated over the detector pixels. Its values on a grid of
-    detector pixels are the values of the PSF at the pixel centers,
-    not the fluxes in the pixels. For a PSF that is undersampled by the
-    detector pixels, the model is sharper than a source in the data and
-    the sum of its values over the pixels depends on the subpixel
-    position of the source. Use `CircularGaussianPRF` for a circular
-    Gaussian that is integrated over the pixels.
+    detector pixels are the values of the PSF at the pixel centers, not
+    the fluxes in the pixels. For a PSF that is undersampled by the
+    detector pixels, the model is sharper than a source in the data
+    and the sum of its values over the pixels depends on the subpixel
+    position of the source.
+
+    This model should therefore not be used to fit the pixel values of
+    an image, e.g., for PSF photometry. If its shape parameters are
+    fixed to those of the PSF before the integration over the pixels,
+    the fitted flux is biased by a few percent for a FWHM of 2 to 3
+    pixels, and by much more, with an error that depends on the subpixel
+    position of the source, for a FWHM of less than about 1.5 pixels.
+    Use `CircularGaussianPRF` instead, which is integrated over the
+    pixels.
 
     References
     ----------
@@ -2216,8 +2309,8 @@ class MoffatPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
-    CircularGaussianSigmaPRF, AiryDiskPSF
+    MoffatPRF, GaussianPSF, CircularGaussianPSF, GaussianPRF,
+    CircularGaussianPRF, CircularGaussianSigmaPRF, AiryDiskPSF
 
     Notes
     -----
@@ -2260,14 +2353,19 @@ class MoffatPSF(Fittable2DModel):
 
     This model is evaluated at the input coordinates and is not
     integrated over the detector pixels. Its values on a grid of
-    detector pixels are the values of the PSF at the pixel centers,
-    not the fluxes in the pixels. For a PSF that is undersampled by the
-    detector pixels, the model is sharper than a source in the data and
-    the sum of its values over the pixels depends on the subpixel
-    position of the source. To integrate this model over the pixels,
-    evaluate it on an oversampled grid, make an ePSF image from the
-    result with `make_epsf_from_psf`, and use that image with
-    `ImagePSF`.
+    detector pixels are the values of the PSF at the pixel centers, not
+    the fluxes in the pixels. For a PSF that is undersampled by the
+    detector pixels, the model is sharper than a source in the data
+    and the sum of its values over the pixels depends on the subpixel
+    position of the source.
+
+    This model should therefore not be used to fit the pixel values of
+    an image, e.g., for PSF photometry. If its shape parameters are
+    fixed to those of the PSF before the integration over the pixels,
+    the fitted flux is biased by a few percent for a FWHM of 2 to 3
+    pixels, and by much more, with an error that depends on the subpixel
+    position of the source, for a FWHM of less than about 1.5 pixels.
+    Use `MoffatPRF` instead, which is integrated over the pixels.
 
     References
     ----------
@@ -2485,6 +2583,201 @@ class MoffatPSF(Fittable2DModel):
                 'flux': outputs_unit[self.outputs[0]]}
 
 
+class MoffatPRF(MoffatPSF):
+    r"""
+    A 2D Moffat PSF model integrated over pixels.
+
+    This model is evaluated by integrating the 2D Moffat function over
+    the area of a pixel centered at each input position. Because it is
+    integrated over pixels, this model is considered a PRF instead of a
+    PSF. The response is assumed to be uniform across a pixel.
+
+    The Moffat profile is normalized such that the analytical integral
+    over the entire 2D plane is equal to the total flux.
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak along the x-axis.
+
+    y_0 : float, optional
+        Position of the peak along the y-axis.
+
+    alpha : float, optional
+        The characteristic radius of the Moffat profile.
+
+    beta : float, optional
+        The asymptotic power-law slope of the Moffat profile wings at
+        large radial distances. Larger values provide less flux in the
+        profile wings. ``beta`` must be greater than 1.
+
+    bbox_factor : float, optional
+        The multiple of the FWHM used to define the bounding box limits.
+
+    n_nodes : int, optional
+        The number of Gauss-Legendre quadrature nodes along each axis of
+        a pixel that are used to integrate the profile over the pixel.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    MoffatPSF, AiryDiskPRF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF
+
+    Notes
+    -----
+    The model is the integral of the Moffat profile over a pixel of unit
+    area that is centered at :math:`(x, y)`:
+
+    .. math::
+
+        f(x, y) = \int_{y - 0.5}^{y + 0.5} \int_{x - 0.5}^{x + 0.5}
+            g(u, v) \,du \,dv
+
+    where the Moffat profile is:
+
+    .. math::
+
+       g(u, v) = F \frac{\beta - 1}{\pi \alpha^2}
+           \left(1 + \frac{\left(u - x_{0}\right)^{2}
+               + \left(v - y_{0}\right)^{2}}{\alpha^{2}}\right)^{-\beta}
+
+    :math:`F` is the total integrated flux and :math:`(x_{0}, y_{0})` is
+    the position of the peak. Note that :math:`\beta` must be greater
+    than 1.
+
+    The integral over each pixel is computed with Gauss-Legendre
+    quadrature using ``n_nodes`` nodes along each axis of the pixel. The
+    default of 9 nodes gives values that are accurate to better than
+    :math:`10^{-4}` of the peak for a FWHM of 0.5 pixels and to better
+    than :math:`10^{-7}` of the peak for a FWHM of at least 1 pixel.
+    The partial derivatives used for fitting are computed with the same
+    quadrature.
+
+    Because the model is integrated over the pixels, its values on a
+    grid with a spacing of one pixel sum to the total flux, for any
+    subpixel position of the source:
+
+    .. math::
+
+        \sum_{i=-\infty}^{\infty} \sum_{j=-\infty}^{\infty}
+            f(x + i, y + j) = F
+
+    The FWHM of the Moffat profile before the integration over the
+    pixels is given by:
+
+    .. math::
+
+        \rm{FWHM} = 2 \alpha \sqrt{2^{1 / \beta} - 1}
+
+    The ``alpha`` and ``beta`` parameters are fixed by default. If
+    you wish to fit these parameters, set the ``fixed`` attribute to
+    `False`, e.g.,::
+
+        >>> from photutils.psf import MoffatPRF
+        >>> model = MoffatPRF()
+        >>> model.alpha.fixed = False
+        >>> model.beta.fixed = False
+
+    By default, the ``alpha`` parameter is bounded to be strictly
+    positive and the ``beta`` parameter is bounded to be greater than 1.
+
+    Examples
+    --------
+    The values of an undersampled model on a grid of pixels sum to the
+    flux for any subpixel position of the source:
+
+    >>> import numpy as np
+    >>> from photutils.psf import MoffatPRF
+    >>> model = MoffatPRF(flux=71.4, x_0=50.3, y_0=49.8, alpha=0.9,
+    ...                   beta=3.5)
+    >>> yy, xx = np.mgrid[0:101, 0:101]
+    >>> print(f'{model(xx, yy).sum():.2f}')
+    71.40
+    """
+
+    def __init__(self, *, flux=MoffatPSF.flux.default,
+                 x_0=MoffatPSF.x_0.default, y_0=MoffatPSF.y_0.default,
+                 alpha=MoffatPSF.alpha.default, beta=MoffatPSF.beta.default,
+                 bbox_factor=10.0, n_nodes=9, **kwargs):
+        super().__init__(flux=flux, x_0=x_0, y_0=y_0, alpha=alpha, beta=beta,
+                         bbox_factor=bbox_factor, **kwargs)
+        self.n_nodes = _validate_n_nodes(n_nodes)
+
+    def evaluate(self, x, y, flux, x_0, y_0, alpha, beta):
+        """
+        Calculate the value of the pixel-integrated 2D Moffat model at
+        the input coordinates for the given model parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        alpha : float
+            The characteristic radius of the Moffat profile.
+
+        beta : float
+            The asymptotic power-law slope of the Moffat profile wings
+            at large radial distances.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
+        """
+        return _integrate_over_pixels(
+            lambda xsub, ysub: MoffatPSF.evaluate(self, xsub, ysub, flux,
+                                                  x_0, y_0, alpha, beta),
+            x, y, self.n_nodes)
+
+    def fit_deriv(self, x, y, flux, x_0, y_0, alpha, beta):
+        """
+        Calculate the partial derivatives of the pixel-integrated 2D
+        Moffat function with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        alpha : float
+            The characteristic radius of the Moffat profile.
+
+        beta : float
+            The asymptotic power-law slope of the Moffat profile wings
+            at large radial distances.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        return _integrate_over_pixels(
+            lambda xsub, ysub: MoffatPSF.fit_deriv(xsub, ysub, flux, x_0,
+                                                   y_0, alpha, beta),
+            x, y, self.n_nodes)
+
+
 class AiryDiskPSF(Fittable2DModel):
     r"""
     A 2D Airy disk PSF model.
@@ -2517,8 +2810,8 @@ class AiryDiskPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
-    CircularGaussianSigmaPRF, MoffatPSF
+    AiryDiskPRF, GaussianPSF, CircularGaussianPSF, GaussianPRF,
+    CircularGaussianPRF, CircularGaussianSigmaPRF, MoffatPSF
 
     Notes
     -----
@@ -2577,14 +2870,19 @@ class AiryDiskPSF(Fittable2DModel):
 
     This model is evaluated at the input coordinates and is not
     integrated over the detector pixels. Its values on a grid of
-    detector pixels are the values of the PSF at the pixel centers,
-    not the fluxes in the pixels. For a PSF that is undersampled by the
-    detector pixels, the model is sharper than a source in the data and
-    the sum of its values over the pixels depends on the subpixel
-    position of the source. To integrate this model over the pixels,
-    evaluate it on an oversampled grid, make an ePSF image from the
-    result with `make_epsf_from_psf`, and use that image with
-    `ImagePSF`.
+    detector pixels are the values of the PSF at the pixel centers, not
+    the fluxes in the pixels. For a PSF that is undersampled by the
+    detector pixels, the model is sharper than a source in the data
+    and the sum of its values over the pixels depends on the subpixel
+    position of the source.
+
+    This model should therefore not be used to fit the pixel values of
+    an image, e.g., for PSF photometry. If its shape parameters are
+    fixed to those of the PSF before the integration over the pixels,
+    the fitted flux is biased by a few percent for a FWHM of 2 to 3
+    pixels, and by much more, with an error that depends on the subpixel
+    position of the source, for a FWHM of less than about 1.5 pixels.
+    Use `AiryDiskPRF` instead, which is integrated over the pixels.
 
     References
     ----------
@@ -2838,3 +3136,197 @@ class AiryDiskPSF(Fittable2DModel):
                 'y_0': inputs_unit[self.inputs[0]],
                 'radius': inputs_unit[self.inputs[0]],
                 'flux': outputs_unit[self.outputs[0]]}
+
+
+class AiryDiskPRF(AiryDiskPSF):
+    r"""
+    A 2D Airy disk PSF model integrated over pixels.
+
+    This model is evaluated by integrating the 2D Airy disk function
+    over the area of a pixel centered at each input position. Because it
+    is integrated over pixels, this model is considered a PRF instead of
+    a PSF. The response is assumed to be uniform across a pixel.
+
+    The Airy disk profile is normalized such that the analytical
+    integral over the entire 2D plane is equal to the total flux.
+
+    Parameters
+    ----------
+    flux : float, optional
+        Total integrated flux over the entire PSF.
+
+    x_0 : float, optional
+        Position of the peak along the x-axis.
+
+    y_0 : float, optional
+        Position of the peak along the y-axis.
+
+    radius : float, optional
+        The radius of the Airy disk at the first zero.
+
+    bbox_factor : float, optional
+        The multiple of the FWHM used to define the bounding box limits.
+
+    n_nodes : int, optional
+        The number of Gauss-Legendre quadrature nodes along each axis of
+        a pixel that are used to integrate the profile over the pixel.
+
+    **kwargs : dict, optional
+        Additional optional keyword arguments to be passed to the
+        `astropy.modeling.Model` base class.
+
+    See Also
+    --------
+    AiryDiskPSF, MoffatPRF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF
+
+    Notes
+    -----
+    The model is the integral of the Airy disk profile over a pixel of
+    unit area that is centered at :math:`(x, y)`:
+
+    .. math::
+
+        f(x, y) = \int_{y - 0.5}^{y + 0.5} \int_{x - 0.5}^{x + 0.5}
+            g(u, v) \,du \,dv
+
+    where the Airy disk profile is:
+
+    .. math::
+
+        g(u, v) = \frac{\pi F}{4 (R / R_z)^{2}}
+               \left[ \frac{2 J_1\left(\frac{\pi r}{R / R_z}\right)}
+                      {\frac{\pi r}{R / R_z}} \right]^2
+
+    .. math::
+
+        r = \sqrt{(u - x_0)^2 + (v - y_0)^2}
+
+    :math:`F` is the total integrated flux, :math:`(x_{0}, y_{0})` is
+    the position of the peak, :math:`J_1` is the first order `Bessel
+    function <https://en.wikipedia.org/wiki/Bessel_function>`_ of
+    the first kind, :math:`R` is the input ``radius`` parameter, and
+    :math:`R_z = 1.2196698912665045` is the solution to the equation
+    :math:`J_1(\pi R_z) = 0`.
+
+    The integral over each pixel is computed with Gauss-Legendre
+    quadrature using ``n_nodes`` nodes along each axis of the pixel. The
+    default of 9 nodes gives values that are accurate to better than
+    :math:`10^{-4}` of the peak for a FWHM of 0.5 pixels and to better
+    than :math:`10^{-7}` of the peak for a FWHM of at least 1 pixel.
+    The partial derivatives used for fitting are computed with the same
+    quadrature.
+
+    Because the model is integrated over the pixels, its values on a
+    grid with a spacing of one pixel sum to the total flux, for any
+    subpixel position of the source:
+
+    .. math::
+
+        \sum_{i=-\infty}^{\infty} \sum_{j=-\infty}^{\infty}
+            f(x + i, y + j) = F
+
+    The flux in the wings of an Airy disk decreases slowly with the
+    distance from the peak, so the sum over a finite grid of pixels is
+    smaller than the total flux.
+
+    The FWHM of the Airy disk profile before the integration over the
+    pixels is given by:
+
+    .. math::
+
+        \rm{FWHM} = 1.028993969962188 \, \frac{R}{R_z}
+                  = 0.8436659602162364 \, R
+
+    The ``radius`` parameter is fixed by default. If you wish to fit
+    this parameter, set the ``fixed`` attribute to `False`, e.g.,::
+
+        >>> from photutils.psf import AiryDiskPRF
+        >>> model = AiryDiskPRF()
+        >>> model.radius.fixed = False
+
+    By default, the ``radius`` parameter is bounded to be strictly
+    positive.
+
+    Examples
+    --------
+    The values of an undersampled model on a grid of pixels sum to the
+    same fraction of the flux for any subpixel position of the source:
+
+    >>> import numpy as np
+    >>> from photutils.psf import AiryDiskPRF
+    >>> yy, xx = np.mgrid[0:101, 0:101]
+    >>> for x_0, y_0 in ((50.0, 50.0), (50.5, 50.5), (50.3, 49.8)):
+    ...     model = AiryDiskPRF(flux=100.0, x_0=x_0, y_0=y_0, radius=1.0)
+    ...     print(f'{model(xx, yy).sum():.2f}')
+    99.70
+    99.70
+    99.70
+    """
+
+    def __init__(self, *, flux=AiryDiskPSF.flux.default,
+                 x_0=AiryDiskPSF.x_0.default, y_0=AiryDiskPSF.y_0.default,
+                 radius=AiryDiskPSF.radius.default, bbox_factor=10.0,
+                 n_nodes=9, **kwargs):
+        super().__init__(flux=flux, x_0=x_0, y_0=y_0, radius=radius,
+                         bbox_factor=bbox_factor, **kwargs)
+        self.n_nodes = _validate_n_nodes(n_nodes)
+
+    def evaluate(self, x, y, flux, x_0, y_0, radius):
+        """
+        Calculate the value of the pixel-integrated 2D Airy disk model
+        at the input coordinates for the given model parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        radius : float
+            The radius of the Airy disk at the first zero.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
+        """
+        return _integrate_over_pixels(
+            lambda xsub, ysub: AiryDiskPSF.evaluate(self, xsub, ysub, flux,
+                                                    x_0, y_0, radius),
+            x, y, self.n_nodes)
+
+    def fit_deriv(self, x, y, flux, x_0, y_0, radius):
+        """
+        Calculate the partial derivatives of the pixel-integrated 2D
+        Airy disk function with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        radius : float
+            The radius of the Airy disk at the first zero.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        return _integrate_over_pixels(
+            lambda xsub, ysub: AiryDiskPSF.fit_deriv(xsub, ysub, flux, x_0,
+                                                     y_0, radius),
+            x, y, self.n_nodes)
