@@ -1081,3 +1081,48 @@ tenths of a percent of the peak. An ePSF is built to reproduce the star
 pixels with the interpolation that was used to build it, so a library
 ePSF that is evaluated with a different interpolation can show
 residuals of that size in the cores of bright stars.
+
+**Alternatives proposed by Godden and Blundell.** `Godden and Blundell
+2026 (RASTI 5, 1) <https://doi.org/10.1093/rasti/rzaf063>`_ tested the
+steps of the method with simulated stars and proposed two changes that
+apply to both Anderson's method and :class:`~photutils.psf.EPSFBuilder`.
+Both were tested with the current builder and neither is implemented:
+
+* A clipped mean or median of the samples around a grid point
+  underestimates the ePSF where it has a local maximum, i.e., at its
+  peak. They found much smaller errors by fitting a two-dimensional
+  polynomial surface to the samples and evaluating it at the grid
+  point. Their tests used known star positions and took the samples of
+  a single pass from the grid cell nearest each grid point. That result
+  was reproduced under the same conditions. It does not carry over to
+  :class:`~photutils.psf.EPSFBuilder`, which combines the residuals of
+  the samples from the current ePSF evaluated at the position of each
+  sample. The curvature of the ePSF within the sampling box is then
+  removed by the model, and the bias of the median vanishes as the
+  iteration converges. In tests, the median and a quadratic surface fit
+  converged to nearly the same ePSF. The surface fit was less accurate
+  for undersampled ePSFs (FWHM below about 1.5 pixels) when the build
+  stopped at its convergence criterion, and noisier for well-sampled
+  ones. A least-squares fit is also not robust. For a sample that
+  included cutouts without a star and stars with different shapes, the
+  surface fit grew a checkerboard pattern in most of the builds, while
+  the median did not in any of them.
+
+* Interpolating the ePSF grid with a radial basis function with a cubic
+  kernel was more accurate than a bicubic spline. In tests with analytic
+  pixel-integrated profiles, its interpolation errors were 2 to 4 times
+  smaller for oversampling factors of 3 or larger and not better for
+  factors of 1 and 2. For an oversampling factor of 4 the interpolation
+  error of the bicubic spline is already small. For an ePSF with a
+  FWHM of 1 pixel it was at most 0.08 percent of the peak in the core,
+  and the typical (RMS) error was about ten times smaller, 0.007
+  percent. The interpolation is therefore not what limits the accuracy
+  of an ePSF built from stars. In tests with a few hundred stars, the
+  difference between the built ePSF and the true one was about ten times
+  larger than the interpolation error (a maximum of 0.2 to 1 percent
+  of the peak and an RMS of about 0.1 percent), so a more accurate
+  interpolation would not noticeably improve the result. The radial
+  basis function is also about two hundred times slower to evaluate.
+  If the interpolation error of the bicubic spline is too large for an
+  application, building the ePSF with a larger oversampling factor also
+  reduces it, without slowing the evaluation of the ePSF.
