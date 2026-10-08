@@ -1032,13 +1032,18 @@ class TestPixelIntegratedProfiles:
         (MoffatPRF(), (71.4, 4.3, 5.2, 0.9, 2.5)),
         (AiryDiskPRF(), (71.4, 4.3, 5.2, 1.1)),
     ])
-    def test_node_rows(self, model, params, monkeypatch):
+    @pytest.mark.parametrize('coords', [
+        tuple(np.mgrid[0:10, 0:11][::-1]),
+        (4.0, 5.0),
+        (np.array(4.0), np.array(5.0)),
+    ])
+    def test_node_rows(self, model, params, coords, monkeypatch):
         """
         Test that evaluating one row of quadrature nodes at a time, as
         is done for large inputs, gives the same result as evaluating
         all of the nodes in one call.
         """
-        yy, xx = np.mgrid[0:10, 0:11]
+        xx, yy = coords
         expected = model.evaluate(xx, yy, *params)
         expected_derivs = model.fit_deriv(xx, yy, *params)
 
@@ -1050,6 +1055,49 @@ class TestPixelIntegratedProfiles:
         for deriv, expected_deriv in zip(derivs, expected_derivs,
                                          strict=True):
             assert_allclose(deriv, expected_deriv, rtol=1e-12, atol=1e-14)
+
+    @pytest.mark.parametrize(('model', 'model_units'), [
+        (MoffatPRF(flux=3, x_0=0.2, y_0=0.3, alpha=1.2, beta=2.5),
+         MoffatPRF(flux=3 * u.Jy, x_0=0.2 * u.pix, y_0=0.3 * u.pix,
+                   alpha=1.2 * u.pix, beta=2.5)),
+        (AiryDiskPRF(flux=3, x_0=0.2, y_0=0.3, radius=1.2),
+         AiryDiskPRF(flux=3 * u.Jy, x_0=0.2 * u.pix, y_0=0.3 * u.pix,
+                     radius=1.2 * u.pix)),
+    ])
+    def test_node_rows_units(self, model, model_units, monkeypatch):
+        """
+        Test evaluating one row of quadrature nodes at a time for inputs
+        with units.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        expected = model(xx, yy)
+        monkeypatch.setattr(functional_models, '_MAX_QUADRATURE_ELEMENTS', 0)
+        result = model_units(xx * u.pix, yy * u.pix)
+        assert result.unit == u.Jy
+        assert_allclose(result.value, expected, rtol=1e-12)
+
+    @pytest.mark.parametrize(('prf_class', 'psf_class', 'shape_params'),
+                             PIXEL_INTEGRATED_CASES[::2])
+    def test_node_rows_model_set(self, prf_class, psf_class, shape_params,
+                                 monkeypatch):
+        """
+        Test evaluating one row of quadrature nodes at a time for a
+        model set.
+        """
+        params = {'flux': [1.0, 2.0], 'x_0': [0.2, 0.2], 'y_0': [-0.3, -0.3]}
+        params.update({name: [value, value]
+                       for name, value in shape_params.items()})
+        model = prf_class(n_models=2, **params)
+        xx = np.tile(np.arange(-2.0, 3.0), (2, 1))
+        yy = np.zeros(xx.shape)
+        expected = model(xx, yy)
+        expected_scalar = model(0, 0)
+        assert expected_scalar.shape == psf_class(n_models=2,
+                                                  **params)(0, 0).shape
+
+        monkeypatch.setattr(functional_models, '_MAX_QUADRATURE_ELEMENTS', 0)
+        assert_allclose(model(xx, yy), expected, rtol=1e-12)
+        assert_allclose(model(0, 0), expected_scalar, rtol=1e-12)
 
     @pytest.mark.parametrize(('model', 'model_units'), [
         (MoffatPRF(flux=3, x_0=0.2, y_0=0.3, alpha=1.2, beta=2.5),

@@ -545,11 +545,13 @@ def _integrate_over_pixels(func, x, y, params, n_nodes):
             values = [values]
         terms = [np.sum(value * weights_2d[rows], axis=(0, 1))
                  for value in values]
+        # Not an in-place addition because the terms are NumPy scalars
+        # for scalar inputs
         if result is None:
             result = terms
         else:
-            for total, term in zip(result, terms, strict=True):
-                total += term
+            result = [total + term
+                      for total, term in zip(result, terms, strict=True)]
 
     return result if is_list else result[0]
 
@@ -563,6 +565,33 @@ def _validate_n_nodes(n_nodes):
         msg = 'n_nodes must be a positive integer'
         raise ValueError(msg)
     return int(n_nodes)
+
+
+class _PixelQuadratureMixin:
+    """
+    Mixin class for the models that are integrated over the pixels with
+    Gauss-Legendre quadrature.
+    """
+
+    @property
+    def n_nodes(self):
+        """
+        The number of Gauss-Legendre quadrature nodes along each axis
+        of a pixel.
+        """
+        return self._n_nodes
+
+    @n_nodes.setter
+    def n_nodes(self, value):
+        """
+        Set the number of quadrature nodes along each axis of a pixel.
+
+        Parameters
+        ----------
+        value : int
+            The number of nodes, which must be a positive integer.
+        """
+        self._n_nodes = _validate_n_nodes(value)
 
 
 def _gaussian_amplitude(flux, xsigma, ysigma):
@@ -2620,7 +2649,7 @@ class MoffatPSF(Fittable2DModel):
                 'flux': outputs_unit[self.outputs[0]]}
 
 
-class MoffatPRF(MoffatPSF):
+class MoffatPRF(_PixelQuadratureMixin, MoffatPSF):
     r"""
     A 2D Moffat PSF model integrated over pixels.
 
@@ -2753,26 +2782,6 @@ class MoffatPRF(MoffatPSF):
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, alpha=alpha, beta=beta,
                          bbox_factor=bbox_factor, **kwargs)
         self.n_nodes = n_nodes
-
-    @property
-    def n_nodes(self):
-        """
-        The number of Gauss-Legendre quadrature nodes along each axis
-        of a pixel.
-        """
-        return self._n_nodes
-
-    @n_nodes.setter
-    def n_nodes(self, value):
-        """
-        Set the number of quadrature nodes along each axis of a pixel.
-
-        Parameters
-        ----------
-        value : int
-            The number of nodes, which must be a positive integer.
-        """
-        self._n_nodes = _validate_n_nodes(value)
 
     def evaluate(self, x, y, flux, x_0, y_0, alpha, beta):
         """
@@ -3198,7 +3207,7 @@ class AiryDiskPSF(Fittable2DModel):
                 'flux': outputs_unit[self.outputs[0]]}
 
 
-class AiryDiskPRF(AiryDiskPSF):
+class AiryDiskPRF(_PixelQuadratureMixin, AiryDiskPSF):
     r"""
     A 2D Airy disk PSF model integrated over pixels.
 
@@ -3336,26 +3345,6 @@ class AiryDiskPRF(AiryDiskPSF):
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, radius=radius,
                          bbox_factor=bbox_factor, **kwargs)
         self.n_nodes = n_nodes
-
-    @property
-    def n_nodes(self):
-        """
-        The number of Gauss-Legendre quadrature nodes along each axis
-        of a pixel.
-        """
-        return self._n_nodes
-
-    @n_nodes.setter
-    def n_nodes(self, value):
-        """
-        Set the number of quadrature nodes along each axis of a pixel.
-
-        Parameters
-        ----------
-        value : int
-            The number of nodes, which must be a positive integer.
-        """
-        self._n_nodes = _validate_n_nodes(value)
 
     def evaluate(self, x, y, flux, x_0, y_0, radius):
         """
