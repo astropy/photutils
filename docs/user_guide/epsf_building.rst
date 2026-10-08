@@ -844,9 +844,7 @@ PSF wings beyond the ePSF image is not in the model. Stars subtracted
 with the model leave their outer wings in the residual image, and the
 sum of the model over the detector pixels changes with the subpixel
 position of the star, because the number of detector pixels inside the
-ePSF image changes. For a simulated JWST NIRCam F115W ePSF, that sum
-changes by up to 2.5% for an ePSF that covers 6x6 detector pixels and
-by up to 0.6% for one that covers 16x16 pixels.
+ePSF image changes (see :ref:`psf-image-models` for example values).
 
 The ePSF should therefore extend to where the PSF is small compared
 with the accuracy that is needed. A larger ePSF has a cost. The stars

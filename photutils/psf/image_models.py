@@ -140,10 +140,8 @@ class ImagePSF(Fittable2DModel):
     on a grid of detector pixels therefore sum to less than ``flux``
     by the fraction of the source flux that is outside of the image.
     That sum also changes with the subpixel position of the source,
-    because the number of detector pixels inside the image changes.
-    For example, for a simulated JWST NIRCam F115W ePSF the sum
-    changes by up to 2.5% for an image that covers 6x6 detector pixels
-    and by up to 0.6% for one that covers 16x16 pixels. The input
+    because the number of detector pixels inside the image changes
+    (see :ref:`psf-image-models` for example values). The input
     image should therefore be large enough that the ePSF is small at
     its edges. The fluxes and positions fitted by the PSF photometry
     classes are not affected if the fitted region of each source is

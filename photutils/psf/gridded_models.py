@@ -163,7 +163,7 @@ class GriddedPSFModel(Fittable2DModel):
     less than ``flux`` by the fraction of the source flux that is
     outside of the images. That sum also changes with the subpixel
     position of the source, because the number of detector pixels
-    inside the images changes (see the `ImagePSF` Notes for example
+    inside the images changes (see :ref:`psf-image-models` for example
     values). The input images should therefore be large enough that
     the ePSF is small at their edges.
 
