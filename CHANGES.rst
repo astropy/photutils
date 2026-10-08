@@ -1010,6 +1010,14 @@ Bug Fixes
     which can occur when the Fourier-space denominator is zero at
     frequencies where the numerator is also zero. [#2372]
 
+  - Fixed ``resize_psf`` to return a PSF with the requested pixel
+    scale. The output pixel scale was ``input_pixel_scale * (n_in - 1) /
+    (n_out - 1)``, where ``n_in`` and ``n_out`` are the input and output
+    sizes, which made the resized PSF too broad or too narrow by up to
+    several percent. The output size is now the largest odd size for
+    which the output grid lies within the outermost pixel centers of
+    the input PSF, which can be smaller than before. [#2474]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
