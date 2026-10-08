@@ -206,7 +206,11 @@ class TestFitDeriv:
                              [(GaussianPSF, gaussian_params),
                               (CircularGaussianPSF, circular_params),
                               (CircularGaussianPRF, circular_params),
-                              (CircularGaussianSigmaPRF, circular_params)])
+                              (CircularGaussianSigmaPRF, circular_params),
+                              (MoffatPSF, (71.4, 24.3, 25.2, 8.1, 7.2)),
+                              (MoffatPSF, (71.4, 24.0, 25.0, 0.9, 1.5)),
+                              (AiryDiskPSF, (71.4, 24.3, 25.2, 5.3)),
+                              (AiryDiskPSF, (71.4, 24.0, 25.0, 1.1))])
     def test_fit_deriv(self, model_class, params):
         model = model_class()
         derivs = model.fit_deriv(self.xx, self.yy, *params)
@@ -321,6 +325,52 @@ class TestFitDeriv:
         expected = model_class().evaluate(1.0, 1.0, 1.0, *params[1:])
         assert_allclose(derivs[0], expected)
         assert derivs[0] > 0
+
+    def test_airy_fit_deriv_at_peak(self):
+        """
+        Test that the Airy disk derivatives are finite at the peak,
+        where the Bessel function ratios take their limiting values.
+        """
+        params = (2.0, 0.0, 0.0, 2.0)
+        derivs = AiryDiskPSF.fit_deriv(0.0, 0.0, *params)
+        peak = AiryDiskPSF(flux=1.0, radius=2.0)(0.0, 0.0)
+        assert_allclose(derivs[0], peak)
+        assert_allclose(derivs[1:3], 0.0)
+        # The peak scales as radius**-2
+        assert_allclose(derivs[3], -2.0 * 2.0 * peak / 2.0)
+
+    @pytest.mark.parametrize('offset', [1.0e-170, 1.0e-8, 0.19, 0.2])
+    def test_airy_fit_deriv_near_peak(self, offset):
+        """
+        Test the Airy disk derivatives close to the peak, including an
+        offset whose square underflows and offsets on either side of
+        the radius where the Bessel function ratio changes from its
+        power series to the recurrence.
+        """
+        params = (71.4, 0.0, 0.0, 2.0)
+        model = AiryDiskPSF()
+        derivs = AiryDiskPSF.fit_deriv(offset, 0.0, *params)
+        step = 1.0e-6
+        for index in range(len(params)):
+            params_hi = list(params)
+            params_lo = list(params)
+            params_hi[index] += step
+            params_lo[index] -= step
+            numerical = (model.evaluate(offset, 0.0, *params_hi)
+                         - model.evaluate(offset, 0.0, *params_lo)) / (
+                             2.0 * step)
+            assert_allclose(derivs[index], numerical, rtol=1e-6, atol=1e-8)
+
+    def test_moffat_fit_deriv_beta_one(self):
+        """
+        Test that the Moffat derivatives are finite at beta = 1, where
+        the normalized profile is zero everywhere.
+        """
+        derivs = MoffatPSF.fit_deriv(self.xx, self.yy, 71.4, 24.3, 25.2,
+                                     2.0, 1.0)
+        for deriv in derivs[:4]:
+            assert_allclose(deriv, 0.0)
+        assert np.all(derivs[4] > 0)
 
     def test_gaussian_prf_fit_free_shape(self):
         """

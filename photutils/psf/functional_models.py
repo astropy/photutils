@@ -8,7 +8,7 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.utils import ellipse_extent
 from astropy.units import UnitsError
-from scipy.special import erf, j1, jn_zeros, ndtr, owens_t
+from scipy.special import erf, j0, j1, jn_zeros, ndtr, owens_t
 
 __all__ = [
     'AiryDiskPSF',
@@ -2417,6 +2417,55 @@ class MoffatPSF(Fittable2DModel):
         r2 = (x - x_0) ** 2 + (y - y_0) ** 2
         return amp * (1 + (r2 / alpha**2)) ** (-beta)
 
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, alpha, beta):
+        """
+        Calculate the partial derivatives of the 2D Moffat function with
+        respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        alpha : float
+            The characteristic radius of the Moffat profile.
+
+        beta : float
+            The asymptotic power-law slope of the Moffat profile wings
+            at large radial distances.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        dx = x - x_0
+        dy = y - y_0
+        r2_scaled = (dx**2 + dy**2) / alpha**2
+        base = 1.0 + r2_scaled
+        # The profile for unit flux without the (beta - 1) factor of
+        # the normalization, which is kept apart so that the beta
+        # derivative is finite at beta = 1
+        profile = base ** (-beta) / (np.pi * alpha**2)
+        model = flux * (beta - 1.0) * profile
+
+        d_flux = (beta - 1.0) * profile
+        position_factor = 2.0 * beta * model / (alpha**2 * base)
+        d_x_0 = position_factor * dx
+        d_y_0 = position_factor * dy
+        d_alpha = 2.0 * model / alpha * (beta * r2_scaled / base - 1.0)
+        d_beta = flux * profile * (1.0 - (beta - 1.0) * np.log(base))
+
+        return [d_flux, d_x_0, d_y_0, d_alpha, d_beta]
+
     @property
     def input_units(self):
         """
@@ -2698,6 +2747,79 @@ class AiryDiskPSF(Fittable2DModel):
         z *= (flux / normalization)
 
         return z
+
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, radius):
+        """
+        Calculate the partial derivatives of the 2D Airy disk function
+        with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        radius : float
+            The radius of the Airy disk at the first zero.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        scale = radius / AiryDiskPSF._rz
+        dx, dy = np.broadcast_arrays(x - x_0, y - y_0)
+        rt = np.pi * np.hypot(dx, dy) / scale
+        rt = np.atleast_1d(np.asarray(rt, dtype=float))
+
+        # The profile is (2 J1(t) / t)**2 and its derivative with
+        # respect to t is -8 J1(t) J2(t) / t**2. Both are computed
+        # from J1(t) / t and J2(t) / t**2, whose limits as t approaches
+        # zero are 1/2 and 1/8.
+        j1_ratio = np.full(rt.shape, 0.5)
+        nonzero = rt > 0
+        j1_ratio[nonzero] = j1(rt[nonzero]) / rt[nonzero]
+
+        # J2(t) comes from the recurrence J2(t) = 2 J1(t) / t - J0(t),
+        # which is much faster than evaluating it directly. The
+        # recurrence loses precision as t approaches zero, where the
+        # power series of J2(t) / t**2 is used instead.
+        j2_ratio = np.empty(rt.shape)
+        small = rt < 0.3
+        rt2 = rt[small] ** 2
+        j2_ratio[small] = 0.125 * (1.0 - rt2 / 12.0 * (
+            1.0 - rt2 / 32.0 * (1.0 - rt2 / 60.0 * (1.0 - rt2 / 96.0))))
+        large = ~small
+        j2_ratio[large] = ((2.0 * j1_ratio[large] - j0(rt[large]))
+                           / rt[large] ** 2)
+        shape = np.shape(dx)
+        j1_ratio = j1_ratio.reshape(shape)
+        j2_ratio = j2_ratio.reshape(shape)
+        rt = rt.reshape(shape)
+
+        amplitude = np.pi / (4.0 * scale**2)
+        profile = 4.0 * j1_ratio**2
+        # The derivative of the profile divided by t, which is finite
+        # at t = 0
+        d_profile_over_t = -8.0 * j1_ratio * j2_ratio
+
+        d_flux = amplitude * profile
+        position_factor = (-flux * amplitude * d_profile_over_t
+                           * (np.pi / scale) ** 2)
+        d_x_0 = position_factor * dx
+        d_y_0 = position_factor * dy
+        d_scale = (-flux * amplitude / scale
+                   * (2.0 * profile + d_profile_over_t * rt**2))
+        d_radius = d_scale / AiryDiskPSF._rz
+
+        return [d_flux, d_x_0, d_y_0, d_radius]
 
     @property
     def input_units(self):
