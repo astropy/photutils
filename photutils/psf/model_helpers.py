@@ -543,7 +543,9 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
         The oversampled PSF image. A 3D array is a stack of PSF images
         with shape ``(n_psfs, ny, nx)``, such as the data of a
         `GriddedPSFModel`. The x and y dimensions must both be at
-        least 4 pixels. All values must be finite.
+        least 4 pixels. All values must be finite. A masked array
+        with masked values is not allowed. The units of a
+        `~astropy.units.Quantity` are dropped.
 
     oversampling : int or array_like (int)
         The integer oversampling factor(s) of the PSF image. If a
@@ -577,7 +579,8 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     result : `~numpy.ndarray`
         The ePSF image(s), with the same oversampling as ``data``. The
         shape and grid are also the same as ``data`` unless
-        ``midpoints`` is `True`.
+        ``midpoints`` is `True`. The result is always a plain array
+        without units.
 
     See Also
     --------
@@ -688,6 +691,9 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     >>> print(epsf.argmax() == epsf.size // 2)
     True
     """
+    if np.ma.is_masked(data):
+        msg = 'data must not have masked values'
+        raise ValueError(msg)
     data = np.asarray(data, dtype=float)
     if data.ndim not in (2, 3):
         msg = 'data must be a 2D or 3D array'

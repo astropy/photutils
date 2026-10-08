@@ -10,6 +10,7 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
 from astropy.table import Table
+from astropy.units import Quantity
 from numpy.testing import assert_allclose, assert_equal
 from scipy.interpolate import RectBivariateSpline
 from scipy.special import erf
@@ -527,6 +528,30 @@ class TestMakeEPSFFromPSF:
         psf_orig = psf.copy()
         make_epsf_from_psf(psf, oversampling=2)
         assert_equal(psf, psf_orig)
+
+    def test_units_dropped(self):
+        """
+        Test that the units of a Quantity input are dropped.
+        """
+        psf, _ = _sampled_gaussian(0.8, 2, 9)
+        result = make_epsf_from_psf(Quantity(psf, 'Jy'), oversampling=2)
+        assert not isinstance(result, Quantity)
+        assert_equal(result, make_epsf_from_psf(psf, oversampling=2))
+
+    def test_masked_input(self):
+        """
+        Test that a masked array is allowed only if no values are
+        masked.
+        """
+        psf, _ = _sampled_gaussian(0.8, 2, 9)
+        expected = make_epsf_from_psf(psf, oversampling=2)
+        data = np.ma.MaskedArray(psf, mask=np.zeros(psf.shape, dtype=bool))
+        assert_equal(make_epsf_from_psf(data, oversampling=2), expected)
+
+        data.mask[4, 4] = True
+        match = 'data must not have masked values'
+        with pytest.raises(ValueError, match=match):
+            make_epsf_from_psf(data, oversampling=2)
 
     def test_invalid_inputs(self):
         match = 'data must be a 2D or 3D array'
