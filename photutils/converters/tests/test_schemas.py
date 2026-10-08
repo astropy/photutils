@@ -459,7 +459,17 @@ REQUIRED_PSF_PARAMS = {
 
 # The models whose parameters are all plain numbers, so that a reference
 # model can be built from the same required parameters.
-FUNCTIONAL_PSF_STEMS = list(REQUIRED_PSF_PARAMS)[:9]
+FUNCTIONAL_PSF_STEMS = [
+    'airy_disk_prf',
+    'airy_disk_psf',
+    'circular_gaussian_prf',
+    'circular_gaussian_psf',
+    'circular_gaussian_sigma_prf',
+    'gaussian_prf',
+    'gaussian_psf',
+    'moffat_prf',
+    'moffat_psf',
+]
 
 
 def _psf_yaml(stem, params):

@@ -469,13 +469,23 @@ def _pixel_quadrature_nodes(n_nodes):
     -------
     offsets, weights : `~numpy.ndarray`
         The offsets of the nodes from the pixel center and their
-        weights, which sum to 1.
+        weights, which sum to 1. The arrays are read-only because they
+        are cached and shared.
     """
     nodes, weights = np.polynomial.legendre.leggauss(n_nodes)
-    return 0.5 * nodes, 0.5 * weights
+    offsets = 0.5 * nodes
+    weights = 0.5 * weights
+    offsets.setflags(write=False)
+    weights.setflags(write=False)
+    return offsets, weights
 
 
-def _integrate_over_pixels(func, x, y, n_nodes):
+# The largest number of elements in the arrays of quadrature node
+# coordinates for which all of the nodes are evaluated in a single call
+_MAX_QUADRATURE_ELEMENTS = 2**20
+
+
+def _integrate_over_pixels(func, x, y, params, n_nodes):
     """
     Integrate a function over the pixels of unit area centered at the
     input positions using Gauss-Legendre quadrature.
@@ -484,12 +494,17 @@ def _integrate_over_pixels(func, x, y, n_nodes):
     ----------
     func : callable
         The function to integrate. It is called as ``func(x, y)`` with
-        arrays that have two leading axes for the quadrature nodes. It
-        must return an array, or a list of arrays, with those leading
-        axes.
+        arrays that broadcast to two leading axes for the quadrature
+        nodes along the y and x axes. It must return an array, or a
+        list of arrays, with those leading axes.
 
     x, y : float or array_like
         The x and y coordinates of the pixel centers.
+
+    params : sequence
+        The model parameter values used by ``func``. Their shapes
+        are needed to place the quadrature axis ahead of every axis
+        of a parameter array, e.g., the model axis of a model set.
 
     n_nodes : int
         The number of quadrature nodes along each axis of a pixel.
@@ -500,21 +515,43 @@ def _integrate_over_pixels(func, x, y, n_nodes):
         The integral of each array returned by ``func`` over each
         pixel.
     """
-    x, y = np.broadcast_arrays(x, y, subok=True)
+    shape = np.broadcast_shapes(np.shape(x), np.shape(y),
+                                *(np.shape(param) for param in params))
+    x = np.broadcast_to(x, shape, subok=True)
+    y = np.broadcast_to(y, shape, subok=True)
     offsets, weights = _pixel_quadrature_nodes(n_nodes)
-    trailing = (1,) * x.ndim
-    x_offsets = offsets.reshape((1, n_nodes, *trailing))
+    trailing = (1,) * len(shape)
+    x_offsets = offsets.reshape((n_nodes, *trailing))
     y_offsets = offsets.reshape((n_nodes, 1, *trailing))
     if isinstance(x, u.Quantity):
         x_offsets = x_offsets << x.unit
         y_offsets = y_offsets << y.unit
+    xsub = x + x_offsets
     weights_2d = np.outer(weights, weights).reshape((n_nodes, n_nodes,
                                                      *trailing))
 
-    values = func(x + x_offsets, y + y_offsets)
-    if isinstance(values, list):
-        return [np.sum(value * weights_2d, axis=(0, 1)) for value in values]
-    return np.sum(values * weights_2d, axis=(0, 1))
+    # Small inputs, e.g., the cutouts used for fitting, are evaluated at
+    # all of the nodes in one call, which is the fastest. Large inputs
+    # are evaluated one row of nodes at a time so that the temporary
+    # arrays are n_nodes, and not n_nodes**2, times the size of the
+    # input.
+    step = n_nodes if xsub.size * n_nodes <= _MAX_QUADRATURE_ELEMENTS else 1
+    result = None
+    for start in range(0, n_nodes, step):
+        rows = slice(start, start + step)
+        values = func(xsub, y + y_offsets[rows])
+        is_list = isinstance(values, list)
+        if not is_list:
+            values = [values]
+        terms = [np.sum(value * weights_2d[rows], axis=(0, 1))
+                 for value in values]
+        if result is None:
+            result = terms
+        else:
+            for total, term in zip(result, terms, strict=True):
+                total += term
+
+    return result if is_list else result[0]
 
 
 def _validate_n_nodes(n_nodes):
@@ -2653,12 +2690,19 @@ class MoffatPRF(MoffatPSF):
     than 1.
 
     The integral over each pixel is computed with Gauss-Legendre
-    quadrature using ``n_nodes`` nodes along each axis of the pixel. The
-    default of 9 nodes gives values that are accurate to better than
-    :math:`10^{-4}` of the peak for a FWHM of 0.5 pixels and to better
-    than :math:`10^{-7}` of the peak for a FWHM of at least 1 pixel.
-    The partial derivatives used for fitting are computed with the same
-    quadrature.
+    quadrature using ``n_nodes`` nodes along each axis of the pixel.
+    For ``beta`` of at least 1.5, the default of 9 nodes gives values
+    that are accurate to better than :math:`10^{-4}` of the peak for
+    a FWHM of 0.5 pixels and to better than :math:`10^{-7}` of the
+    peak for a FWHM of at least 1 pixel. The errors are about twice as
+    large for ``beta`` close to 1. The partial derivatives used for
+    fitting are computed with the same quadrature.
+
+    The profile is evaluated at ``n_nodes**2`` points in each pixel, so
+    this model is much slower than `MoffatPSF`. With the default of 9
+    nodes, it is about 10 times slower on the small cutouts used for
+    fitting and about 80 times slower on a large image. A smaller
+    ``n_nodes`` is faster and less accurate.
 
     Because the model is integrated over the pixels, its values on a
     grid with a spacing of one pixel sum to the total flux, for any
@@ -2708,7 +2752,27 @@ class MoffatPRF(MoffatPSF):
                  bbox_factor=10.0, n_nodes=9, **kwargs):
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, alpha=alpha, beta=beta,
                          bbox_factor=bbox_factor, **kwargs)
-        self.n_nodes = _validate_n_nodes(n_nodes)
+        self.n_nodes = n_nodes
+
+    @property
+    def n_nodes(self):
+        """
+        The number of Gauss-Legendre quadrature nodes along each axis
+        of a pixel.
+        """
+        return self._n_nodes
+
+    @n_nodes.setter
+    def n_nodes(self, value):
+        """
+        Set the number of quadrature nodes along each axis of a pixel.
+
+        Parameters
+        ----------
+        value : int
+            The number of nodes, which must be a positive integer.
+        """
+        self._n_nodes = _validate_n_nodes(value)
 
     def evaluate(self, x, y, flux, x_0, y_0, alpha, beta):
         """
@@ -2741,7 +2805,7 @@ class MoffatPRF(MoffatPSF):
         return _integrate_over_pixels(
             lambda xsub, ysub: MoffatPSF.evaluate(self, xsub, ysub, flux,
                                                   x_0, y_0, alpha, beta),
-            x, y, self.n_nodes)
+            x, y, (flux, x_0, y_0, alpha, beta), self.n_nodes)
 
     def fit_deriv(self, x, y, flux, x_0, y_0, alpha, beta):
         """
@@ -2775,7 +2839,7 @@ class MoffatPRF(MoffatPSF):
         return _integrate_over_pixels(
             lambda xsub, ysub: MoffatPSF.fit_deriv(xsub, ysub, flux, x_0,
                                                    y_0, alpha, beta),
-            x, y, self.n_nodes)
+            x, y, (flux, x_0, y_0, alpha, beta), self.n_nodes)
 
 
 class AiryDiskPSF(Fittable2DModel):
@@ -3034,17 +3098,13 @@ class AiryDiskPSF(Fittable2DModel):
         z[np.isnan(rt)] = np.nan
         z = z.reshape(r.shape)
 
-        if isinstance(flux, u.Quantity):
-            # Make z a quantity to allow in-place multiplication
-            z <<= u.dimensionless_unscaled
-
         normalization = (4.0 / np.pi) * (radius / self._rz) ** 2
         if isinstance(normalization, u.Quantity):
             normalization = normalization.value
 
-        z *= (flux / normalization)
-
-        return z
+        # Not an in-place multiplication because a flux array can have
+        # more dimensions than the input coordinates
+        return z * (flux / normalization)
 
     @staticmethod
     def fit_deriv(x, y, flux, x_0, y_0, radius):
@@ -3212,10 +3272,15 @@ class AiryDiskPRF(AiryDiskPSF):
     The integral over each pixel is computed with Gauss-Legendre
     quadrature using ``n_nodes`` nodes along each axis of the pixel. The
     default of 9 nodes gives values that are accurate to better than
-    :math:`10^{-4}` of the peak for a FWHM of 0.5 pixels and to better
-    than :math:`10^{-7}` of the peak for a FWHM of at least 1 pixel.
+    :math:`10^{-7}` of the peak for a FWHM of at least 0.5 pixels.
     The partial derivatives used for fitting are computed with the same
     quadrature.
+
+    The profile is evaluated at ``n_nodes**2`` points in each pixel, so
+    this model is much slower than `AiryDiskPSF`. With the default of 9
+    nodes, it is about 10 times slower on the small cutouts used for
+    fitting and about 80 times slower on a large image. A smaller
+    ``n_nodes`` is faster and less accurate.
 
     Because the model is integrated over the pixels, its values on a
     grid with a spacing of one pixel sum to the total flux, for any
@@ -3270,7 +3335,27 @@ class AiryDiskPRF(AiryDiskPSF):
                  n_nodes=9, **kwargs):
         super().__init__(flux=flux, x_0=x_0, y_0=y_0, radius=radius,
                          bbox_factor=bbox_factor, **kwargs)
-        self.n_nodes = _validate_n_nodes(n_nodes)
+        self.n_nodes = n_nodes
+
+    @property
+    def n_nodes(self):
+        """
+        The number of Gauss-Legendre quadrature nodes along each axis
+        of a pixel.
+        """
+        return self._n_nodes
+
+    @n_nodes.setter
+    def n_nodes(self, value):
+        """
+        Set the number of quadrature nodes along each axis of a pixel.
+
+        Parameters
+        ----------
+        value : int
+            The number of nodes, which must be a positive integer.
+        """
+        self._n_nodes = _validate_n_nodes(value)
 
     def evaluate(self, x, y, flux, x_0, y_0, radius):
         """
@@ -3299,7 +3384,7 @@ class AiryDiskPRF(AiryDiskPSF):
         return _integrate_over_pixels(
             lambda xsub, ysub: AiryDiskPSF.evaluate(self, xsub, ysub, flux,
                                                     x_0, y_0, radius),
-            x, y, self.n_nodes)
+            x, y, (flux, x_0, y_0, radius), self.n_nodes)
 
     def fit_deriv(self, x, y, flux, x_0, y_0, radius):
         """
@@ -3329,4 +3414,4 @@ class AiryDiskPRF(AiryDiskPSF):
         return _integrate_over_pixels(
             lambda xsub, ysub: AiryDiskPSF.fit_deriv(xsub, ysub, flux, x_0,
                                                      y_0, radius),
-            x, y, self.n_nodes)
+            x, y, (flux, x_0, y_0, radius), self.n_nodes)

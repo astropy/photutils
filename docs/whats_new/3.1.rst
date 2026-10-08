@@ -483,7 +483,9 @@ pixel-integrated counterpart, which should be used for PSF photometry.
 
 The integral over each pixel is computed with Gauss-Legendre quadrature.
 The number of nodes along each axis of a pixel is set by the ``n_nodes``
-keyword.
+keyword. With the default of 9 nodes, the new models are about
+10 times slower to evaluate than `~photutils.psf.MoffatPSF` and
+`~photutils.psf.AiryDiskPSF` on the small cutouts used for PSF fitting.
 
 
 Polygon Apertures

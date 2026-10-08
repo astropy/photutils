@@ -708,6 +708,10 @@ Bug Fixes
 
 - ``photutils.psf``
 
+  - Fixed a bug where evaluating an ``AiryDiskPSF`` model with an
+    array-valued ``flux`` at input coordinates with fewer dimensions
+    than the ``flux`` array raised a ``ValueError``. [#2473]
+
   - Fixed a bug where calling ``PSFPhotometry`` with an ``init_params``
     table containing a ``group_id`` column permanently disabled the
     grouper for all subsequent calls on the same instance. [#2383]
