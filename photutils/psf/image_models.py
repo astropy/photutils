@@ -45,7 +45,7 @@ class ImagePSF(Fittable2DModel):
 
     flux : float, optional
         The flux scaling factor. This corresponds to the total source flux,
-        assuming the input PSF image is properly normalized.
+        assuming the input ePSF image is properly normalized.
 
     x_0, y_0 : float, optional
         The x and y positions of a feature in the image in the output
@@ -115,9 +115,9 @@ class ImagePSF(Fittable2DModel):
     is what `make_epsf_from_psf` does.
 
     The fitted ``flux`` parameter represents the total source flux,
-    provided the input PSF image is properly normalized. The fitted flux
-    is a multiplicative scale factor applied to the input PSF after
-    accounting for any oversampling.
+    provided the input ePSF image is properly normalized. The fitted
+    flux is a multiplicative scale factor applied to the input ePSF
+    after accounting for any oversampling.
 
     For a fully sampled ePSF (i.e., no oversampling), the sum of
     the ePSF values over an infinite grid is 1.0. Because ePSFs are
@@ -131,7 +131,7 @@ class ImagePSF(Fittable2DModel):
     image will generally have a smaller sum because it does not contain
     the full PSF wings.
 
-    If the input PSF image covers only a finite region of the PSF,
+    If the input ePSF image covers only a finite region of the PSF,
     correction factors based on the encircled or ensquared energy
     can be used to estimate the missing flux and obtain the proper
     normalization.
