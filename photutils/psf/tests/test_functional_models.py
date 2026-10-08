@@ -921,7 +921,10 @@ class TestPixelIntegratedProfiles:
         yy, xx = np.mgrid[20:30, 19:29]
         derivs = model.fit_deriv(xx, yy, *params)
         assert len(derivs) == len(params)
-        step = 1e-6
+        # The step and the absolute tolerance keep the roundoff error
+        # of the central difference, which is the only difference where
+        # a derivative is zero by symmetry, far below the tolerance
+        step = 1e-5
         for index in range(len(params)):
             params_hi = list(params)
             params_lo = list(params)
@@ -931,7 +934,7 @@ class TestPixelIntegratedProfiles:
                           - model.evaluate(xx, yy, *params_lo))
                          / (2.0 * step))
             assert derivs[index].shape == xx.shape
-            assert_allclose(derivs[index], numerical, rtol=1e-5, atol=1e-9)
+            assert_allclose(derivs[index], numerical, rtol=1e-5, atol=1e-8)
 
     @pytest.mark.parametrize(('model', 'model_init', 'free'), [
         (MoffatPRF(flux=71.4, x_0=12.3, y_0=11.8, alpha=1.1, beta=2.7),
