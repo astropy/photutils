@@ -596,13 +596,16 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     image is not normalized.
 
     Normalize the input image, not the output image. `ImagePSF`
-    requires an image whose values sum to the product of the
-    oversampling factors. If the input image has that sum, the output
-    values are correctly scaled. The output image has the same sum
-    if the PSF is negligible at the image edges. Otherwise its sum is
-    slightly smaller, because of the edge values described below, and
-    normalizing the output image would make all of its values too
-    large.
+    requires an image whose values would sum to the product of the
+    oversampling factors if the image contained all of the PSF. The
+    values of an image that contains only part of the PSF should sum
+    to that product times the fraction of the flux that is inside the
+    image. If the input image is scaled that way, the output values
+    are correctly scaled. The output image has the same sum as the
+    input image if the PSF is negligible at the image edges. Otherwise
+    its sum is slightly smaller, because of the edge values described
+    below, and normalizing the output image would make all of its
+    values too large.
 
     The accuracy of the result is set by how well the spline through
     the input values represents the PSF. The input grid must therefore
@@ -625,14 +628,16 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     output values within half of a detector pixel of the image edges
     are therefore integrals over only the part of the pixel that is
     inside the grid. They are smaller than the ePSF values at those
-    positions, by a factor of about two at an edge and by more at a
-    corner. All other output values are unaffected. These values
-    matter for PSF photometry only if the fitted region of a source
-    extends to within half of a detector pixel of the edge of the
-    model image. They are not removed from the output image, because
-    a model made from the trimmed image contains less of the source
-    flux and conserves flux no better. The input image should be
-    large enough that the PSF is small at its edges.
+    positions, by a factor of about two at an edge and about four at
+    a corner. If ``midpoints`` is `True`, no output point is on an
+    edge and the factors are smaller. All other output values are
+    unaffected. These values matter for PSF photometry only if the
+    fitted region of a source extends to within half of a detector
+    pixel of the edge of the model image. They are not removed from
+    the output image, because a model made from the trimmed image
+    contains less of the source flux and conserves flux no better.
+    The input image should be large enough that the PSF is small at
+    its edges.
 
     The input values must be samples of the PSF at the grid points.
     The result is less accurate for an image whose values are the
@@ -665,15 +670,19 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     not for the ePSF:
 
     >>> yy, xx = np.mgrid[-7:8, -7:8]
-    >>> for data in (psf, epsf):
+    >>> for name, data in (('psf', psf), ('epsf', epsf)):
     ...     model = ImagePSF(data, oversampling=oversampling)
-    ...     for x_0 in (0.0, 0.5):
+    ...     for x_0 in (0.0, 0.25, 0.5, 0.75):
     ...         model.x_0 = x_0
-    ...         print(f'{model(xx, yy).sum():.3f}')
-    1.127
-    0.997
-    1.000
-    1.000
+    ...         print(f'{name}, x_0={x_0:.1f}: {model(xx, yy).sum():.3f}')
+    psf, x_0=0.0: 1.127
+    psf, x_0=0.2: 1.062
+    psf, x_0=0.5: 0.997
+    psf, x_0=0.8: 1.062
+    epsf, x_0=0.0: 1.000
+    epsf, x_0=0.2: 1.000
+    epsf, x_0=0.5: 1.000
+    epsf, x_0=0.8: 1.000
 
     An optical model with an even oversampling factor typically returns
     an image with an even number of points, with the PSF centered
