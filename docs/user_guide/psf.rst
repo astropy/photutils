@@ -69,8 +69,8 @@ The size of the annulus and the statistic function can be configured in
 The next step is to fit the sources and/or groups. This
 task is performed using an Astropy fitter, for example
 `~astropy.modeling.fitting.TRFLSQFitter`, input via the ``fitter``
-keyword. The image-based PSF models (`~photutils.psf.ImagePSF` and
-`~photutils.psf.GriddedPSFModel`) provide analytic Jacobians that the
+keyword. All of the PSF models provided by `photutils.psf`, both the
+analytic and the image-based models, provide analytic Jacobians that the
 fitters use automatically, avoiding finite-difference approximations
 of the parameter derivatives and speeding up the fits. The shape of
 the region to be fitted can be configured using the ``fit_shape``

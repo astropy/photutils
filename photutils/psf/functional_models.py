@@ -8,7 +8,7 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.utils import ellipse_extent
 from astropy.units import UnitsError
-from scipy.special import erf, j1, jn_zeros, owens_t
+from scipy.special import erf, j0, j1, jn_zeros, ndtr, owens_t
 
 __all__ = [
     'AiryDiskPSF',
@@ -246,6 +246,208 @@ def _gaussian_pixel_fraction(dx, dy, x_std, y_std, rho, sqrt_one_minus_rho2):
     # Rounding in the difference can give values of about -1e-16 far
     # from the peak
     return np.maximum(fraction, 0.0)
+
+
+def _gaussian_edge_integrals(edge, lo, hi, std, rho, sqrt_one_minus_rho2):
+    """
+    Integrate a 2D Gaussian of unit flux, and its derivative across a
+    pixel edge, along that pixel edge.
+
+    Parameters
+    ----------
+    edge : float or `~numpy.ndarray`
+        The position of the pixel edge along the axis perpendicular to
+        it, relative to the Gaussian center and in units of the standard
+        deviation along that axis.
+
+    lo, hi : float or `~numpy.ndarray`
+        The limits of the pixel edge along the other axis, relative to
+        the Gaussian center and in units of the standard deviation along
+        that axis.
+
+    std : float or `~numpy.ndarray`
+        The standard deviation of the Gaussian along the axis
+        perpendicular to the edge.
+
+    rho : float or `~numpy.ndarray`
+        The correlation coefficient of the Gaussian.
+
+    sqrt_one_minus_rho2 : float or `~numpy.ndarray`
+        The square root of ``1 - rho**2``.
+
+    Returns
+    -------
+    integral, deriv_integral : `~numpy.ndarray`
+        The integral along the edge of the Gaussian and of the
+        derivative of the Gaussian with respect to the coordinate
+        perpendicular to the edge.
+    """
+    # Along the edge the Gaussian is a 1D Gaussian with a mean of
+    # rho * edge and a standard deviation of sqrt(1 - rho**2).
+    t_lo = (lo - rho * edge) / sqrt_one_minus_rho2
+    t_hi = (hi - rho * edge) / sqrt_one_minus_rho2
+    norm = 1.0 / np.sqrt(2.0 * np.pi)
+    density = norm * np.exp(-0.5 * edge**2)
+    enclosed = ndtr(t_hi) - ndtr(t_lo)
+    density_diff = norm * (np.exp(-0.5 * t_hi**2) - np.exp(-0.5 * t_lo**2))
+
+    integral = density * enclosed / std
+    deriv_integral = (-density * (edge * enclosed
+                                  + rho / sqrt_one_minus_rho2 * density_diff)
+                      / std**2)
+    return integral, deriv_integral
+
+
+def _separable_axis_terms(lo, hi, std):
+    """
+    Calculate the terms along one axis of the derivatives of the pixel
+    fraction of a 2D Gaussian that is separable along the x and y axes.
+
+    Parameters
+    ----------
+    lo, hi : float or `~numpy.ndarray`
+        The pixel edges along the axis, relative to the Gaussian center
+        and in units of the standard deviation along that axis.
+
+    std : float or `~numpy.ndarray`
+        The standard deviation of the Gaussian along the axis.
+
+    Returns
+    -------
+    fraction, d_center, d_var, density_diff : `~numpy.ndarray`
+        The fraction of the 1D Gaussian between the pixel edges, its
+        partial derivatives with respect to the center and the variance,
+        and the difference of the 1D Gaussian between the pixel edges.
+    """
+    norm = 1.0 / np.sqrt(2.0 * np.pi)
+    density_lo = norm * np.exp(-0.5 * lo**2) / std
+    density_hi = norm * np.exp(-0.5 * hi**2) / std
+    fraction = ndtr(hi) - ndtr(lo)
+    d_center = density_lo - density_hi
+    d_var = 0.5 * (lo * density_lo - hi * density_hi) / std
+
+    return fraction, d_center, d_var, density_hi - density_lo
+
+
+def _gaussian_pixel_fraction_derivs(x_lo, x_hi, y_lo, y_hi, x_std, y_std,
+                                    rho, sqrt_one_minus_rho2):
+    """
+    Calculate the partial derivatives of the fraction of the flux of a
+    2D Gaussian that falls in a pixel.
+
+    The derivatives with respect to the elements of the covariance
+    matrix follow from the Gaussian being a solution of the diffusion
+    equation. The derivative of the Gaussian with respect to a variance
+    is half of its second derivative along that axis, and the derivative
+    with respect to the covariance is its mixed second derivative. The
+    integrals of those derivatives over the pixel reduce to integrals
+    along the pixel edges and to the values of the Gaussian at the pixel
+    corners.
+
+    Parameters
+    ----------
+    x_lo, x_hi, y_lo, y_hi : float or `~numpy.ndarray`
+        The pixel edges relative to the Gaussian center, in units of the
+        standard deviations of the Gaussian along the x and y axes.
+
+    x_std, y_std : float or `~numpy.ndarray`
+        The standard deviations of the Gaussian along the x and y axes.
+
+    rho : float or `~numpy.ndarray`
+        The correlation coefficient of the Gaussian.
+
+    sqrt_one_minus_rho2 : float or `~numpy.ndarray`
+        The square root of ``1 - rho**2``.
+
+    Returns
+    -------
+    d_x_0, d_y_0, d_var_x, d_var_y, d_cov_xy : `~numpy.ndarray`
+        The partial derivatives of the pixel fraction with respect to
+        the x and y positions of the Gaussian center, the variances
+        along the x and y axes, and the covariance.
+    """
+    if _is_separable(rho):
+        # Each derivative is a product of terms along the two axes,
+        # which is much faster to evaluate than the edge integrals.
+        x_frac, x_d_center, x_d_var, x_diff = _separable_axis_terms(
+            x_lo, x_hi, x_std)
+        y_frac, y_d_center, y_d_var, y_diff = _separable_axis_terms(
+            y_lo, y_hi, y_std)
+        return (x_d_center * y_frac, x_frac * y_d_center, x_d_var * y_frac,
+                x_frac * y_d_var, x_diff * y_diff)
+
+    args = (rho, sqrt_one_minus_rho2)
+    x_lo_int, x_lo_deriv = _gaussian_edge_integrals(x_lo, y_lo, y_hi, x_std,
+                                                    *args)
+    x_hi_int, x_hi_deriv = _gaussian_edge_integrals(x_hi, y_lo, y_hi, x_std,
+                                                    *args)
+    y_lo_int, y_lo_deriv = _gaussian_edge_integrals(y_lo, x_lo, x_hi, y_std,
+                                                    *args)
+    y_hi_int, y_hi_deriv = _gaussian_edge_integrals(y_hi, x_lo, x_hi, y_std,
+                                                    *args)
+
+    d_x_0 = x_lo_int - x_hi_int
+    d_y_0 = y_lo_int - y_hi_int
+    d_var_x = 0.5 * (x_hi_deriv - x_lo_deriv)
+    d_var_y = 0.5 * (y_hi_deriv - y_lo_deriv)
+
+    def corner_density(h, k):
+        exponent = (h**2 - 2.0 * rho * h * k + k**2) / sqrt_one_minus_rho2**2
+        return np.exp(-0.5 * exponent)
+
+    d_cov_xy = ((corner_density(x_hi, y_hi) - corner_density(x_lo, y_hi)
+                 - corner_density(x_hi, y_lo) + corner_density(x_lo, y_lo))
+                / (2.0 * np.pi * x_std * y_std * sqrt_one_minus_rho2))
+
+    return d_x_0, d_y_0, d_var_x, d_var_y, d_cov_xy
+
+
+def _circular_gaussian_prf_derivs(x, y, flux, x_0, y_0, sigma):
+    """
+    Calculate the partial derivatives of a circular 2D Gaussian
+    integrated over pixels.
+
+    Parameters
+    ----------
+    x, y : float or array_like
+        The x and y coordinates at which to evaluate the model.
+
+    flux : float
+        Total integrated flux over the entire PSF.
+
+    x_0, y_0 : float
+        Position of the peak along the x and y axes.
+
+    sigma : float
+        The standard deviation of the Gaussian.
+
+    Returns
+    -------
+    result : list of `~numpy.ndarray`
+        The partial derivatives with respect to the flux, the x and y
+        positions, and the standard deviation.
+    """
+    # The Gaussian is separable, so the pixel fraction is the product
+    # of the fractions along each axis.
+    norm = 1.0 / np.sqrt(2.0 * np.pi)
+    sqrt2 = np.sqrt(2.0)
+    fractions = []
+    for offset in (x - x_0, y - y_0):
+        lo = (offset - 0.5) / sigma
+        hi = (offset + 0.5) / sigma
+        density_lo = norm * np.exp(-0.5 * lo**2)
+        density_hi = norm * np.exp(-0.5 * hi**2)
+        fraction = 0.5 * (erf(hi / sqrt2) - erf(lo / sqrt2))
+        d_center = (density_lo - density_hi) / sigma
+        d_sigma = (lo * density_lo - hi * density_hi) / sigma
+        fractions.append((fraction, d_center, d_sigma))
+    (x_frac, x_d_center, x_d_sigma), (y_frac, y_d_center, y_d_sigma) = (
+        fractions)
+
+    return [x_frac * y_frac,
+            flux * x_d_center * y_frac,
+            flux * x_frac * y_d_center,
+            flux * (x_d_sigma * y_frac + x_frac * y_d_sigma)]
 
 
 def _gaussian_amplitude(flux, xsigma, ysigma):
@@ -1294,6 +1496,77 @@ class GaussianPRF(Fittable2DModel):
 
         return flux * fraction
 
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, x_fwhm, y_fwhm, theta):
+        """
+        Calculate the partial derivatives of the pixel-integrated 2D
+        Gaussian function with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        x_fwhm, y_fwhm : float
+            FWHM of the Gaussian along the x and y axes.
+
+        theta : float
+            The counterclockwise rotation angle either as a float (in
+            degrees) or a `~astropy.units.Quantity` angle (optional).
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter. The derivative with respect to ``theta`` is
+            always per degree, even when ``theta`` is input as an
+            angular `~astropy.units.Quantity`.
+        """
+        if not isinstance(theta, u.Quantity):
+            theta = np.deg2rad(theta)
+
+        x_sigma = x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
+        y_sigma = y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
+        cost, sint, x_std, y_std, rho, sqrt_one_minus_rho2 = (
+            _rotated_gaussian_moments(x_sigma, y_sigma, theta))
+        cov_xy = cost * sint * (x_sigma**2 - y_sigma**2)
+
+        dx = x - x_0
+        dy = y - y_0
+        edges = ((dx - 0.5) / x_std, (dx + 0.5) / x_std,
+                 (dy - 0.5) / y_std, (dy + 0.5) / y_std)
+        fraction = _gaussian_pixel_fraction(dx, dy, x_std, y_std, rho,
+                                            sqrt_one_minus_rho2)
+        d_x_0, d_y_0, d_var_x, d_var_y, d_cov_xy = (
+            _gaussian_pixel_fraction_derivs(*edges, x_std, y_std, rho,
+                                            sqrt_one_minus_rho2))
+
+        # Chain rule from the covariance matrix elements to the standard
+        # deviations along the principal axes and the angle
+        d_x_sigma = 2.0 * x_sigma * (cost**2 * d_var_x + sint**2 * d_var_y
+                                     + cost * sint * d_cov_xy)
+        d_y_sigma = 2.0 * y_sigma * (sint**2 * d_var_x + cost**2 * d_var_y
+                                     - cost * sint * d_cov_xy)
+        d_theta = (2.0 * cov_xy * (d_var_y - d_var_x)
+                   + ((cost**2 - sint**2) * (x_sigma**2 - y_sigma**2)
+                      * d_cov_xy))
+
+        # Chain rule for change of variables from sigma to fwhm
+        d_x_fwhm = flux * d_x_sigma * _GAUSSIAN_FWHM_TO_SIGMA
+        d_y_fwhm = flux * d_y_sigma * _GAUSSIAN_FWHM_TO_SIGMA
+        # Chain rule for unit change
+        # theta[rad] => theta[deg] * pi / 180, so drad/dtheta = pi / 180
+        d_theta = flux * d_theta * np.pi / 180.0
+
+        return [fraction, flux * d_x_0, flux * d_y_0, d_x_fwhm, d_y_fwhm,
+                d_theta]
+
     @property
     def input_units(self):
         """
@@ -1559,6 +1832,38 @@ class CircularGaussianPRF(Fittable2DModel):
                    * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
                       - erf((y0 - dpix) / (np.sqrt(2) * sigma)))))
 
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, fwhm):
+        """
+        Calculate the partial derivatives of the pixel-integrated 2D
+        Gaussian function with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        fwhm : float
+            FWHM of the Gaussian.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        derivs = _circular_gaussian_prf_derivs(
+            x, y, flux, x_0, y_0, fwhm * _GAUSSIAN_FWHM_TO_SIGMA)
+        # Chain rule for change of variables from sigma to fwhm
+        derivs[3] = derivs[3] * _GAUSSIAN_FWHM_TO_SIGMA
+        return derivs
+
     @property
     def input_units(self):
         """
@@ -1817,6 +2122,34 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
                     - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
                    * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
                       - erf((y0 - dpix) / (np.sqrt(2) * sigma)))))
+
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, sigma):
+        """
+        Calculate the partial derivatives of the pixel-integrated 2D
+        Gaussian function with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        sigma : float
+            The standard deviation of the Gaussian.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        return _circular_gaussian_prf_derivs(x, y, flux, x_0, y_0, sigma)
 
     @property
     def input_units(self):
@@ -2083,6 +2416,55 @@ class MoffatPSF(Fittable2DModel):
         amp = flux * (beta - 1) / (np.pi * alpha_norm ** 2)
         r2 = (x - x_0) ** 2 + (y - y_0) ** 2
         return amp * (1 + (r2 / alpha**2)) ** (-beta)
+
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, alpha, beta):
+        """
+        Calculate the partial derivatives of the 2D Moffat function with
+        respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        alpha : float
+            The characteristic radius of the Moffat profile.
+
+        beta : float
+            The asymptotic power-law slope of the Moffat profile wings
+            at large radial distances.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        dx = x - x_0
+        dy = y - y_0
+        r2_scaled = (dx**2 + dy**2) / alpha**2
+        base = 1.0 + r2_scaled
+        # The profile for unit flux without the (beta - 1) factor of
+        # the normalization, which is kept apart so that the beta
+        # derivative is finite at beta = 1
+        profile = base ** (-beta) / (np.pi * alpha**2)
+        model = flux * (beta - 1.0) * profile
+
+        d_flux = (beta - 1.0) * profile
+        position_factor = 2.0 * beta * model / (alpha**2 * base)
+        d_x_0 = position_factor * dx
+        d_y_0 = position_factor * dy
+        d_alpha = 2.0 * model / alpha * (beta * r2_scaled / base - 1.0)
+        d_beta = flux * profile * (1.0 - (beta - 1.0) * np.log(base))
+
+        return [d_flux, d_x_0, d_y_0, d_alpha, d_beta]
 
     @property
     def input_units(self):
@@ -2365,6 +2747,79 @@ class AiryDiskPSF(Fittable2DModel):
         z *= (flux / normalization)
 
         return z
+
+    @staticmethod
+    def fit_deriv(x, y, flux, x_0, y_0, radius):
+        """
+        Calculate the partial derivatives of the 2D Airy disk function
+        with respect to the parameters.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            Total integrated flux over the entire PSF.
+
+        x_0, y_0 : float
+            Position of the peak along the x and y axes.
+
+        radius : float
+            The radius of the Airy disk at the first zero.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to each
+            parameter.
+        """
+        scale = radius / AiryDiskPSF._rz
+        dx, dy = np.broadcast_arrays(x - x_0, y - y_0)
+        rt = np.pi * np.hypot(dx, dy) / scale
+        rt = np.atleast_1d(np.asarray(rt, dtype=float))
+
+        # The profile is (2 J1(t) / t)**2 and its derivative with
+        # respect to t is -8 J1(t) J2(t) / t**2. Both are computed
+        # from J1(t) / t and J2(t) / t**2, whose limits as t approaches
+        # zero are 1/2 and 1/8.
+        j1_ratio = np.full(rt.shape, 0.5)
+        nonzero = rt > 0
+        j1_ratio[nonzero] = j1(rt[nonzero]) / rt[nonzero]
+
+        # J2(t) comes from the recurrence J2(t) = 2 J1(t) / t - J0(t),
+        # which is much faster than evaluating it directly. The
+        # recurrence loses precision as t approaches zero, where the
+        # power series of J2(t) / t**2 is used instead.
+        j2_ratio = np.empty(rt.shape)
+        small = rt < 0.3
+        rt2 = rt[small] ** 2
+        j2_ratio[small] = 0.125 * (1.0 - rt2 / 12.0 * (
+            1.0 - rt2 / 32.0 * (1.0 - rt2 / 60.0 * (1.0 - rt2 / 96.0))))
+        large = ~small
+        j2_ratio[large] = ((2.0 * j1_ratio[large] - j0(rt[large]))
+                           / rt[large] ** 2)
+        shape = np.shape(dx)
+        j1_ratio = j1_ratio.reshape(shape)
+        j2_ratio = j2_ratio.reshape(shape)
+        rt = rt.reshape(shape)
+
+        amplitude = np.pi / (4.0 * scale**2)
+        profile = 4.0 * j1_ratio**2
+        # The derivative of the profile divided by t, which is finite
+        # at t = 0
+        d_profile_over_t = -8.0 * j1_ratio * j2_ratio
+
+        d_flux = amplitude * profile
+        position_factor = (-flux * amplitude * d_profile_over_t
+                           * (np.pi / scale) ** 2)
+        d_x_0 = position_factor * dx
+        d_y_0 = position_factor * dy
+        d_scale = (-flux * amplitude / scale
+                   * (2.0 * profile + d_profile_over_t * rt**2))
+        d_radius = d_scale / AiryDiskPSF._rz
+
+        return [d_flux, d_x_0, d_y_0, d_radius]
 
     @property
     def input_units(self):

@@ -280,6 +280,11 @@ New Features
     at the nearest point on the image edge, so its position derivative
     along that axis is zero. [#2393, #2455, #2456]
 
+  - Added an analytic Jacobian (``fit_deriv``) to ``GaussianPRF``,
+    ``CircularGaussianPRF``, ``CircularGaussianSigmaPRF``,
+    ``MoffatPSF``, and ``AiryDiskPSF``. Astropy fitters use it in place
+    of finite-difference derivatives. [#2472]
+
   - Added a ``constrain_fluxes`` method to ``LinkedEPSFStar`` and a
     ``constrain_fluxes`` keyword to ``EPSFBuilder`` (default `True`)
     that constrains the fluxes of linked stars (the same star observed
