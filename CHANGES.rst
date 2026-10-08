@@ -360,7 +360,9 @@ New Features
     image from an oversampled PSF image whose values are samples
     of the PSF and are not integrated over the detector pixels. Image
     PSF models made from such an image do not conserve flux for
-    undersampled PSFs. [#2470]
+    undersampled PSFs. The ``midpoints`` keyword gives an ePSF with
+    the PSF center on its central grid point for a PSF that is
+    centered on an even-sized image. [#2470]
 
 - ``photutils.segmentation``
 

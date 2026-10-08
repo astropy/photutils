@@ -449,6 +449,13 @@ gives a model that conserves flux::
     >>> epsf = make_epsf_from_psf(psf, oversampling=4)  # doctest: +SKIP
     >>> model = ImagePSF(epsf, oversampling=4)  # doctest: +SKIP
 
+An optical model with an even oversampling factor typically returns an
+image with an even number of points, with the PSF centered between
+the four central grid points. The ``midpoints=True`` option makes the
+ePSF at the points midway between the input grid points. The result
+has an odd number of points with the PSF center on its central grid
+point, like the ePSFs made by `~photutils.psf.EPSFBuilder`.
+
 
 Polygon Apertures
 =================

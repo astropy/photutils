@@ -362,6 +362,16 @@ make an ePSF from a sampled PSF::
     >>> epsf = make_epsf_from_psf(psf, oversampling=4)  # doctest: +SKIP
     >>> model = ImagePSF(epsf, oversampling=4)  # doctest: +SKIP
 
+An optical model with an even oversampling factor typically returns
+an image with an even number of points along each axis, with the PSF
+centered between the four central grid points. The image-based models
+accept such an image, and the ePSF made from it, as they are. If an
+ePSF with the PSF center on a grid point is needed, for example to
+compare it with an ePSF made by `~photutils.psf.EPSFBuilder`, use the
+``midpoints=True`` option of `~photutils.psf.make_epsf_from_psf`. It
+makes the ePSF at the points midway between the input grid points, so
+the output image has one fewer point along each axis.
+
 
 .. _psf-photometry-examples:
 

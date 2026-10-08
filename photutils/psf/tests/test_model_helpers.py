@@ -434,6 +434,94 @@ class TestMakeEPSFFromPSF:
             expected = make_epsf_from_psf(psf, oversampling=3)
             assert_allclose(image, expected, rtol=1e-12, atol=1e-15)
 
+    @pytest.mark.parametrize('oversampling', [2, 4, (4, 2)])
+    def test_midpoints_gaussian(self, oversampling):
+        """
+        Test that ``midpoints=True`` puts the center of a PSF that is
+        centered on an even-sized image on the central grid point of
+        the output.
+        """
+        sigma = 0.8
+        scale = np.sqrt(2) * sigma
+        psf_profiles = []
+        epsf_profiles = []
+        for factor in np.broadcast_to(oversampling, 2):
+            n_points = 16 * factor
+            offsets = (np.arange(n_points) - (n_points - 1) / 2) / factor
+            sampled = np.exp(-offsets**2 / (2 * sigma**2))
+            psf_profiles.append(sampled * factor / sampled.sum())
+            midpoints = offsets[:-1] + 0.5 / factor
+            epsf_profiles.append(0.5 * (erf((midpoints + 0.5) / scale)
+                                        - erf((midpoints - 0.5) / scale)))
+        psf = np.outer(*psf_profiles)
+        expected = np.outer(*epsf_profiles)
+
+        result = make_epsf_from_psf(psf, oversampling=oversampling,
+                                    midpoints=True)
+        assert result.shape == (psf.shape[0] - 1, psf.shape[1] - 1)
+        assert result.shape[0] % 2 == 1
+        assert result.shape[1] % 2 == 1
+        assert result.argmax() == result.size // 2
+        assert_allclose(result, result[::-1, ::-1], rtol=1e-10, atol=1e-15)
+        assert_allclose(result.sum(), psf.sum(), rtol=1e-6)
+        atol = 3e-3 if np.min(oversampling) == 2 else 3e-4
+        assert_allclose(result, expected, atol=atol * expected.max())
+
+    def test_midpoints_spline_integral(self):
+        """
+        Test the ``midpoints=True`` result against the integral of the
+        bicubic spline over the pixels centered between the grid
+        points, including the truncated windows at the image edges.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.random((9, 12))
+        result = make_epsf_from_psf(data, oversampling=(2, 3),
+                                    midpoints=True)
+        assert result.shape == (8, 11)
+        yy = np.arange(9.0)
+        xx = np.arange(12.0)
+        spline = RectBivariateSpline(yy, xx, data, kx=3, ky=3, s=0)
+        for idx_y, idx_x in [(0, 0), (4, 6), (7, 10), (1, 9)]:
+            expected = spline.integral(max(idx_y - 0.5, 0),
+                                       min(idx_y + 1.5, 8),
+                                       max(idx_x - 1.0, 0),
+                                       min(idx_x + 2.0, 11)) / 6
+            assert_allclose(result[idx_y, idx_x], expected, rtol=1e-10)
+
+    def test_midpoints_stack(self):
+        """
+        Test ``midpoints=True`` for a 3D stack.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.random((3, 10, 8))
+        result = make_epsf_from_psf(data, oversampling=2, midpoints=True)
+        assert result.shape == (3, 9, 7)
+        for image, psf in zip(result, data, strict=True):
+            expected = make_epsf_from_psf(psf, oversampling=2,
+                                          midpoints=True)
+            assert_allclose(image, expected, rtol=1e-12, atol=1e-15)
+
+    def test_midpoints_model(self):
+        """
+        Test that models made from the ePSFs on the two grids agree
+        and that both conserve flux.
+        """
+        oversampling = 4
+        offsets = (np.arange(80) - 39.5) / oversampling
+        sampled = np.exp(-offsets**2 / (2 * 0.6**2))
+        sampled *= oversampling / sampled.sum()
+        psf = np.outer(sampled, sampled)
+        yy, xx = np.mgrid[-7:8, -7:8]
+        images = []
+        for midpoints in (False, True):
+            epsf = make_epsf_from_psf(psf, oversampling=oversampling,
+                                      midpoints=midpoints)
+            model = ImagePSF(epsf, oversampling=oversampling, x_0=0.3,
+                             y_0=-0.2)
+            images.append(model(xx, yy))
+            assert_allclose(images[-1].sum(), 1.0, atol=2e-5)
+        assert_allclose(images[0], images[1], atol=1e-3 * images[0].max())
+
     def test_input_unchanged(self):
         psf, _ = _sampled_gaussian(0.8, 2, 9)
         psf_orig = psf.copy()

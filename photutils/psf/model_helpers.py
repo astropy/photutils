@@ -487,10 +487,11 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     return GriddedPSFModel(data, fill_value=fill_value)
 
 
-def _integrate_pixel_along_axis(data, half_width, axis):
+def _integrate_pixel_along_axis(data, half_width, axis, *, midpoints=False):
     """
     Integrate the cubic spline through ``data`` over a window centered
-    at each grid point along one axis.
+    at each grid point along one axis, or at each point midway between
+    adjacent grid points.
 
     Parameters
     ----------
@@ -503,22 +504,28 @@ def _integrate_pixel_along_axis(data, half_width, axis):
     axis : int
         The axis along which to integrate.
 
+    midpoints : bool, optional
+        Whether to center the windows midway between adjacent grid
+        points instead of at the grid points.
+
     Returns
     -------
     result : `~numpy.ndarray`
-        The integrals, with the same shape as ``data``. The window is
-        truncated at the first and last grid points.
+        The integrals, with the same shape as ``data``, or with one
+        fewer point along ``axis`` if ``midpoints`` is `True`. The
+        window is truncated at the first and last grid points.
     """
     n_points = data.shape[axis]
     points = np.arange(n_points, dtype=float)
     antiderivative = make_interp_spline(points, data, k=3,
                                         axis=axis).antiderivative()
-    lower = np.clip(points - half_width, 0, n_points - 1)
-    upper = np.clip(points + half_width, 0, n_points - 1)
+    centers = points[:-1] + 0.5 if midpoints else points
+    lower = np.clip(centers - half_width, 0, n_points - 1)
+    upper = np.clip(centers + half_width, 0, n_points - 1)
     return antiderivative(upper) - antiderivative(lower)
 
 
-def make_epsf_from_psf(data, *, oversampling):
+def make_epsf_from_psf(data, *, oversampling, midpoints=False):
     """
     Make an effective PSF (ePSF) image from an oversampled PSF image
     that is not integrated over the detector pixels.
@@ -543,11 +550,34 @@ def make_epsf_from_psf(data, *, oversampling):
         scalar is provided, it is applied to both axes. If two values
         are provided, they must be in ``(y, x)`` order.
 
+    midpoints : bool, optional
+        Whether to make the ePSF at the points midway between the
+        input grid points along each axis, instead of at the input
+        grid points. The output image then has one fewer point along
+        each axis than ``data``.
+
+        Use this option for a PSF that is centered on an image with an
+        even number of points along each axis, which is what an
+        optical model typically returns for an even oversampling
+        factor. The PSF center is then between the four central grid
+        points of ``data``. With ``midpoints=True`` the output image
+        has an odd number of points along each axis and the PSF
+        center is on its central grid point, like the ePSFs that
+        `EPSFBuilder` makes. That is convenient for comparing or
+        combining the result with other ePSFs and for displaying it.
+        The accuracy is the same for either grid, because the same
+        spline is integrated.
+
+        This option is not needed to use the result with `ImagePSF`
+        or `GriddedPSFModel`. Both accept an image with an even
+        number of points, whose center is between grid points.
+
     Returns
     -------
     result : `~numpy.ndarray`
-        The ePSF image(s), with the same shape, grid, and oversampling
-        as ``data``.
+        The ePSF image(s), with the same oversampling as ``data``. The
+        shape and grid are also the same as ``data`` unless
+        ``midpoints`` is `True`.
 
     See Also
     --------
@@ -557,16 +587,28 @@ def make_epsf_from_psf(data, *, oversampling):
     -----
     The input image is interpolated with a bicubic spline. The spline
     is integrated exactly over the area of one detector pixel centered
-    at each grid point, and the result is divided by the number of grid
-    points in a detector pixel. The normalization of the input image is
-    therefore preserved. An input image whose values sum to the product
-    of the oversampling factors gives an ePSF with the same sum, which
-    is the normalization that `ImagePSF` requires.
+    at each output grid point, and the result is divided by the number
+    of grid points in a detector pixel. The normalization of the
+    input image is therefore preserved. An input image whose values
+    sum to the product of the oversampling factors gives an ePSF with
+    the same sum, which is the normalization that `ImagePSF` requires.
 
     The accuracy of the result is set by how well the spline through
     the input values represents the PSF. The input grid must therefore
     sample the PSF well, which generally requires an oversampled image
     for a PSF that is undersampled by the detector pixels.
+
+    The function does not move the PSF within the image. The point at
+    the center of the input image is also at the center of the output
+    image, for either value of ``midpoints``. `GriddedPSFModel`, and
+    `ImagePSF` by default, take the center of the image as the
+    position of the source. The PSF should therefore be centered on
+    the input image. Otherwise, the source positions fitted with the
+    model are all offset by the distance of the PSF center from the
+    image center. For `ImagePSF`, the ``origin`` keyword can be used
+    instead to give the position of the PSF center in the ePSF image.
+    That position is 0.5 smaller along each axis than in the input
+    image if ``midpoints`` is `True`.
 
     The input image is taken to be zero outside of its grid. The
     output values within half of a detector pixel of the image edges
@@ -613,6 +655,22 @@ def make_epsf_from_psf(data, *, oversampling):
     0.997
     1.000
     1.000
+
+    An optical model with an even oversampling factor typically returns
+    an image with an even number of points, with the PSF centered
+    between the four central grid points. Use ``midpoints=True`` to
+    make an ePSF with the PSF center on its central grid point:
+
+    >>> oversampling = 4
+    >>> yy, xx = (np.mgrid[0:60, 0:60] - 29.5) / oversampling
+    >>> psf = np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    >>> psf *= oversampling**2 / psf.sum()
+    >>> epsf = make_epsf_from_psf(psf, oversampling=oversampling,
+    ...                           midpoints=True)
+    >>> print(epsf.shape)
+    (59, 59)
+    >>> print(epsf.argmax() == epsf.size // 2)
+    True
     """
     data = np.asarray(data, dtype=float)
     if data.ndim not in (2, 3):
@@ -628,6 +686,7 @@ def make_epsf_from_psf(data, *, oversampling):
 
     result = data
     for axis, factor in zip((-2, -1), oversampling, strict=True):
-        result = _integrate_pixel_along_axis(result, factor / 2, axis)
+        result = _integrate_pixel_along_axis(result, factor / 2, axis,
+                                             midpoints=midpoints)
         result /= factor
     return result
