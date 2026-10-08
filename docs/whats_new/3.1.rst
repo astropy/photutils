@@ -1195,8 +1195,13 @@ values for a rotated Gaussian with different x and y widths change by
 up to about 1% of the peak for a FWHM of 1 pixel and by less than 0.1%
 for a FWHM of 2 pixels or more. The model now conserves flux for any
 subpixel position of the source. A rotated Gaussian is evaluated with
-Owen's T function, which is several times slower than the product of
-error functions that is still used when the Gaussian is not rotated.
+Owen's T function, which is about four times slower than the product
+of error functions that is still used when the Gaussian is not rotated
+(roughly 0.2 ms instead of 0.05 ms for a 25 x 25 pixel stamp). The
+slower evaluation applies only when ``theta`` is not a multiple of 90
+degrees and the x and y widths differ. Positions that are not on a grid
+with a spacing of one pixel are about ten times slower, because their
+pixels share no corners.
 
 PSF ``decode_flags`` Methods Return a Dictionary
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

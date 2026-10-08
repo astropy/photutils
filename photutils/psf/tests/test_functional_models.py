@@ -375,6 +375,96 @@ class TestGaussianPRFRotated:
                              theta=1e-9)
         assert_allclose(model1(xx, yy), model2(xx, yy), atol=1e-11)
 
+    @pytest.mark.parametrize(('x_0', 'y_0'), [(0.37, -0.13),
+                                              (4012.37, 3011.81)])
+    @pytest.mark.parametrize('layout', ['grid', 'flat', 'holes', 'offset'])
+    def test_shared_corners(self, x_0, y_0, layout):
+        """
+        Test that pixels on a pixel grid, whose shared corners are
+        evaluated once, give the same values as pixels evaluated one at
+        a time.
+
+        The layouts are a 2D grid, a flattened grid, a shuffled list of
+        pixels with some missing, and a grid offset by a fraction of a
+        pixel.
+        """
+        model = GaussianPRF(flux=3.2, x_0=x_0, y_0=y_0, x_fwhm=1.1,
+                            y_fwhm=2.3, theta=33.0)
+        yy, xx = np.mgrid[-6:7, -8:9]
+        xx = xx + np.floor(x_0)
+        yy = yy + np.floor(y_0)
+        if layout == 'flat':
+            xx = xx.ravel()
+            yy = yy.ravel()
+        elif layout == 'holes':
+            rng = np.random.default_rng(0)
+            keep = rng.permutation(xx.size)[:150]
+            xx = xx.ravel()[keep]
+            yy = yy.ravel()[keep]
+        elif layout == 'offset':
+            xx = xx + 0.5
+            yy = yy + 0.25
+
+        result = model(xx, yy)
+        expected = np.array([model(xval, yval) for xval, yval
+                             in zip(xx.ravel(), yy.ravel(), strict=True)])
+        assert result.shape == xx.shape
+        assert_allclose(result.ravel(), expected, rtol=1e-12, atol=1e-15)
+        assert expected.max() > 0.1
+
+    def test_not_on_pixel_grid(self):
+        """
+        Test positions that are not on a grid with a spacing of one
+        pixel, and positions too sparse to share corners.
+        """
+        params = {'flux': 3.2, 'x_0': 0.37, 'y_0': -0.13, 'x_fwhm': 1.1,
+                  'y_fwhm': 2.3, 'theta': 33.0}
+        model = GaussianPRF(**params)
+        yy, xx = np.mgrid[-6:7, -6:7]
+        xx = 0.5 * xx
+        yy = 0.5 * yy
+        expected = _numerical_pixel_integral(GaussianPSF(**params), xx, yy)
+        assert_allclose(model(xx, yy), expected, atol=5e-5 * expected.max())
+
+        yy, xx = np.mgrid[-6:7:4, -6:7:4]
+        expected = _numerical_pixel_integral(GaussianPSF(**params), xx, yy)
+        assert_allclose(model(xx, yy), expected, atol=5e-5 * expected.max())
+
+    @pytest.mark.parametrize('value', [np.nan, np.inf])
+    def test_non_finite_position(self, value):
+        """
+        Test that a non-finite position gives NaN for that pixel only.
+        """
+        model = GaussianPRF(x_0=4.3, y_0=0.2, x_fwhm=1.1, y_fwhm=2.3,
+                            theta=33.0)
+        xx = np.arange(10.0)
+        yy = np.zeros(10)
+        expected = model(xx, yy)
+        xx[2] = value
+        result = model(xx, yy)
+        assert np.isnan(result[2])
+        assert_allclose(np.delete(result, 2), np.delete(expected, 2),
+                        rtol=1e-12)
+
+    def test_model_set(self):
+        """
+        Test that a model set with rotated and unrotated members gives
+        the same values as the individual models.
+        """
+        yy, xx = np.mgrid[-5:6, -5:6]
+        thetas = [0.0, 30.0]
+        model_set = GaussianPRF(flux=[1.0, 2.0], x_0=[0.2, 0.7],
+                                y_0=[0.3, -0.1], x_fwhm=[2.0, 2.0],
+                                y_fwhm=[3.0, 3.0], theta=thetas, n_models=2)
+        result = model_set(xx, yy, model_set_axis=False)
+        for index, theta in enumerate(thetas):
+            model = GaussianPRF(flux=model_set.flux.value[index],
+                                x_0=model_set.x_0.value[index],
+                                y_0=model_set.y_0.value[index], x_fwhm=2.0,
+                                y_fwhm=3.0, theta=theta)
+            assert_allclose(result[index], model(xx, yy), rtol=1e-12,
+                            atol=1e-15)
+
     def test_units(self):
         """
         Test that a rotated model with units gives the same values as

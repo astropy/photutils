@@ -1205,8 +1205,8 @@ API Changes
     along the rotated principal axes of the Gaussian, which was exact
     only for ``theta = 0``. The model values change for a rotated
     Gaussian with different x and y widths, by up to about 1% of the
-    peak for a FWHM of 1 pixel. Such models are several times slower to
-    evaluate. [#2471]
+    peak for a FWHM of 1 pixel. Such models are about four times slower
+    to evaluate on a pixel grid. [#2471]
 
   - The ``PSFPhotometry.decode_flags`` and
     ``IterativePSFPhotometry.decode_flags`` methods now return a
