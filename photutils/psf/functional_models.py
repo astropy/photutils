@@ -2773,6 +2773,19 @@ class MoffatPRF(_PixelQuadratureMixin, MoffatPSF):
     >>> yy, xx = np.mgrid[0:101, 0:101]
     >>> print(f'{model(xx, yy).sum():.2f}')
     71.40
+
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.psf import MoffatPRF
+
+        model = MoffatPRF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower')
     """
 
     def __init__(self, *, flux=MoffatPSF.flux.default,
@@ -3336,6 +3349,21 @@ class AiryDiskPRF(_PixelQuadratureMixin, AiryDiskPSF):
     99.70
     99.70
     99.70
+
+    .. plot::
+        :include-source:
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from astropy.visualization import simple_norm
+        from photutils.psf import AiryDiskPRF
+
+        model = AiryDiskPRF(flux=71.4, x_0=24.3, y_0=25.2, radius=5)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+        norm = simple_norm(data, 'sqrt')
+        fig, ax = plt.subplots()
+        ax.imshow(data, norm=norm, origin='lower')
     """
 
     def __init__(self, *, flux=AiryDiskPSF.flux.default,
