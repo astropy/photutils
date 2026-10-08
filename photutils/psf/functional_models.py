@@ -8,7 +8,7 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.utils import ellipse_extent
 from astropy.units import UnitsError
-from scipy.special import erf, j1, jn_zeros
+from scipy.special import erf, j1, jn_zeros, owens_t
 
 __all__ = [
     'AiryDiskPSF',
@@ -26,6 +26,226 @@ _FLOAT_TINY = float(np.finfo(np.float32).tiny)
 
 # Conversion factor from a Gaussian FWHM to its standard deviation.
 _GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+
+
+def _dimensionless_value(value):
+    """
+    Return the value of a dimensionless `~astropy.units.Quantity` as
+    a plain array, and any other input unchanged.
+    """
+    if isinstance(value, u.Quantity):
+        return value.to_value(u.dimensionless_unscaled)
+    return value
+
+
+def _rotated_gaussian_moments(x_sigma, y_sigma, theta):
+    """
+    Calculate the moments along the x and y axes of a rotated 2D
+    Gaussian.
+
+    Parameters
+    ----------
+    x_sigma, y_sigma : float or `~numpy.ndarray`
+        The standard deviations along the principal axes of the
+        Gaussian.
+
+    theta : float or `~astropy.units.Quantity`
+        The counterclockwise rotation angle, either as a float in
+        radians or as an angular `~astropy.units.Quantity`.
+
+    Returns
+    -------
+    cost, sint : float or `~numpy.ndarray`
+        The cosine and sine of the rotation angle.
+
+    x_std, y_std : float or `~numpy.ndarray`
+        The standard deviations along the x and y axes.
+
+    rho : float or `~numpy.ndarray`
+        The correlation coefficient.
+
+    sqrt_one_minus_rho2 : float or `~numpy.ndarray`
+        The square root of ``1 - rho**2``.
+    """
+    cost = _dimensionless_value(np.cos(theta))
+    sint = _dimensionless_value(np.sin(theta))
+    x_std = np.hypot(cost * x_sigma, sint * y_sigma)
+    y_std = np.hypot(sint * x_sigma, cost * y_sigma)
+    std_product = x_std * y_std
+    rho = _dimensionless_value(
+        cost * sint * (x_sigma**2 - y_sigma**2) / std_product)
+    # The determinant of the covariance matrix is invariant under
+    # rotation, which gives sqrt(1 - rho**2) without loss of precision
+    # for a highly elongated Gaussian.
+    sqrt_one_minus_rho2 = _dimensionless_value(
+        x_sigma * y_sigma / std_product)
+
+    return cost, sint, x_std, y_std, rho, sqrt_one_minus_rho2
+
+
+def _bivariate_normal_corner_term(h, k, rho, sqrt_one_minus_rho2):
+    """
+    Calculate the part of the standard bivariate normal distribution
+    function that does not cancel in the probability of a rectangle.
+
+    The distribution function with a correlation coefficient ``rho`` is
+    ``(ndtr(h) + ndtr(k)) / 2`` minus the returned term, where the term
+    is written with Owen's T function [1]_. The ``ndtr`` terms cancel
+    when the distribution function is differenced over the four corners
+    of a rectangle.
+
+    Parameters
+    ----------
+    h, k : float or `~numpy.ndarray`
+        The standardized coordinates.
+
+    rho : float or `~numpy.ndarray`
+        The correlation coefficient.
+
+    sqrt_one_minus_rho2 : float or `~numpy.ndarray`
+        The square root of ``1 - rho**2``.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        The term to subtract from ``(ndtr(h) + ndtr(k)) / 2`` to get the
+        distribution function.
+
+    References
+    ----------
+    .. [1] Owen, D. B. 1956, Annals of Mathematical Statistics, 27, 1075
+    """
+    h, k, rho, sqrt_one_minus_rho2 = np.broadcast_arrays(
+        h, k, rho, sqrt_one_minus_rho2)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        slope_h = (k - rho * h) / (h * sqrt_one_minus_rho2)
+        slope_k = (h - rho * k) / (k * sqrt_one_minus_rho2)
+    # The slopes take their limiting values where a coordinate is zero.
+    slope_h = np.where(h == 0, np.copysign(np.inf, k), slope_h)
+    slope_k = np.where(k == 0, np.copysign(np.inf, h), slope_k)
+
+    product = h * k
+    opposite_signs = (product < 0) | ((product == 0) & (h + k < 0))
+    term = owens_t(h, slope_h) + owens_t(k, slope_k) + 0.5 * opposite_signs
+
+    # Both slopes are undefined at the origin, where the distribution
+    # function is 1/4 + arcsin(rho) / (2 pi).
+    origin = (h == 0) & (k == 0)
+    return np.where(origin, 0.25 - np.arcsin(rho) / (2.0 * np.pi), term)
+
+
+def _is_separable(rho):
+    """
+    Return whether a 2D Gaussian with the input correlation coefficient
+    is separable along the x and y axes.
+    """
+    return np.all(np.abs(rho) < 1.0e-12)
+
+
+def _pixel_lattice(dx, dy):
+    """
+    Find the grid of pixel corners shared by pixels that lie on a
+    lattice with a spacing of one pixel.
+
+    Parameters
+    ----------
+    dx, dy : float or `~numpy.ndarray`
+        The x and y pixel centers.
+
+    Returns
+    -------
+    result : tuple or `None`
+        The x and y positions of the pixel corners along each axis of
+        the corner grid and the x and y integer indices in that grid of
+        the lower corner of each pixel. `None` is returned if the pixels
+        are not on a lattice with a spacing of one pixel or if the grid
+        would have more corners than twice the number of pixels, in
+        which case the grid saves no evaluations.
+    """
+    dx, dy = np.broadcast_arrays(dx, dy)
+    indices = []
+    edges = []
+    n_corners = 1.0
+    for offset in (dx, dy):
+        lowest = offset.min()
+        highest = offset.max()
+        if not (np.isfinite(lowest) and np.isfinite(highest)):
+            return None
+        steps = offset - lowest
+        index = np.rint(steps)
+        # The offsets are differences from the source position, so
+        # they are on the lattice only to within their rounding
+        tolerance = 8.0 * np.spacing(max(abs(lowest), abs(highest), 1.0))
+        if not np.all(np.abs(steps - index) <= tolerance):
+            return None
+        n_edges = index.max() + 2.0
+        n_corners *= n_edges
+        if n_corners > 2.0 * offset.size:
+            return None
+        indices.append(index.astype(np.intp))
+        edges.append(lowest - 0.5 + np.arange(n_edges))
+
+    return (*edges, *indices)
+
+
+def _gaussian_pixel_fraction(dx, dy, x_std, y_std, rho, sqrt_one_minus_rho2):
+    """
+    Calculate the fraction of the flux of a 2D Gaussian that falls in a
+    pixel.
+
+    Parameters
+    ----------
+    dx, dy : float or `~numpy.ndarray`
+        The x and y pixel centers relative to the Gaussian center.
+
+    x_std, y_std : float or `~numpy.ndarray`
+        The standard deviations of the Gaussian along the x and y axes.
+
+    rho : float or `~numpy.ndarray`
+        The correlation coefficient of the Gaussian.
+
+    sqrt_one_minus_rho2 : float or `~numpy.ndarray`
+        The square root of ``1 - rho**2``.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        The fraction of the flux in each pixel.
+    """
+    x_lo = (dx - 0.5) / x_std
+    x_hi = (dx + 0.5) / x_std
+    y_lo = (dy - 0.5) / y_std
+    y_hi = (dy + 0.5) / y_std
+    if _is_separable(rho):
+        sqrt2 = np.sqrt(2.0)
+        return (0.25 * (erf(x_hi / sqrt2) - erf(x_lo / sqrt2))
+                * (erf(y_hi / sqrt2) - erf(y_lo / sqrt2)))
+
+    args = (rho, sqrt_one_minus_rho2)
+    single_gaussian = all(np.size(value) == 1
+                          for value in (x_std, y_std, rho))
+    if single_gaussian and (lattice := _pixel_lattice(dx, dy)) is not None:
+        # Neighboring pixels share their corners, so each corner of
+        # the grid is evaluated once instead of once for each of the
+        # pixels that touch it.
+        x_edges, y_edges, x_index, y_index = lattice
+        corners = _bivariate_normal_corner_term(
+            x_edges / np.ravel(x_std),
+            y_edges[:, np.newaxis] / np.ravel(y_std),
+            np.ravel(rho), np.ravel(sqrt_one_minus_rho2))
+        fraction = (corners[y_index + 1, x_index]
+                    + corners[y_index, x_index + 1]
+                    - corners[y_index + 1, x_index + 1]
+                    - corners[y_index, x_index])
+        fraction = fraction.reshape(np.shape(x_lo))
+    else:
+        fraction = (_bivariate_normal_corner_term(x_lo, y_hi, *args)
+                    + _bivariate_normal_corner_term(x_hi, y_lo, *args)
+                    - _bivariate_normal_corner_term(x_hi, y_hi, *args)
+                    - _bivariate_normal_corner_term(x_lo, y_lo, *args))
+    # Rounding in the difference can give values of about -1e-16 far
+    # from the peak
+    return np.maximum(fraction, 0.0)
 
 
 def _gaussian_amplitude(flux, xsigma, ysigma):
@@ -740,11 +960,12 @@ class GaussianPRF(Fittable2DModel):
     r"""
     A 2D Gaussian PSF model integrated over pixels.
 
-    This model is evaluated by integrating the 2D Gaussian over pixels
-    along the rotated principal axes of the Gaussian (see Notes),
-    and is equivalent to assuming the PSF is a 2D Gaussian at a
-    *sub-pixel* level. Because it is integrated over pixels, this model
-    is considered a PRF instead of a PSF.
+    This model is evaluated by integrating the 2D Gaussian over the
+    area of a pixel centered at each input position (see Notes), and is
+    equivalent to assuming the PSF is a 2D Gaussian at a *sub-pixel*
+    level. The integral is exact for any rotation angle. Because it is
+    integrated over pixels, this model is considered a PRF instead of a
+    PSF.
 
     The Gaussian is normalized such that the analytical integral over
     the entire 2D plane is equal to the total flux.
@@ -786,7 +1007,35 @@ class GaussianPRF(Fittable2DModel):
 
     Notes
     -----
-    The Gaussian function is defined as:
+    The model is the integral of a 2D Gaussian over a pixel of unit area
+    that is aligned with the x and y axes and centered at :math:`(x,
+    y)`:
+
+    .. math::
+
+        f(x, y) = \int_{y - 0.5}^{y + 0.5} \int_{x - 0.5}^{x + 0.5}
+            g(u, v) \,du \,dv
+
+    where the Gaussian is:
+
+    .. math::
+
+        g(u, v) = \frac{F}{2 \pi \sigma_{x} \sigma_{y}}
+            \exp \left( -\frac{u^{\prime 2}}{2 \sigma_{x}^{2}}
+            - \frac{v^{\prime 2}}{2 \sigma_{y}^{2}} \right)
+
+    .. math::
+
+        u^\prime = (u - x_0) \cos(\theta) + (v - y_0) \sin(\theta)
+
+        v^\prime = -(u - x_0) \sin(\theta) + (v - y_0) \cos(\theta)
+
+    :math:`F` is the total integrated flux, :math:`(x_{0}, y_{0})` is
+    the position of the peak, :math:`\sigma_{x}` and :math:`\sigma_{y}`
+    are the standard deviations along the principal axes of the
+    Gaussian, and :math:`\theta` is the rotation angle of the Gaussian.
+
+    For :math:`\theta = 0` the integral is a product of error functions:
 
     .. math::
 
@@ -794,35 +1043,33 @@ class GaussianPRF(Fittable2DModel):
             \frac{F}{4}
             \left[
                 {\rm erf} \left(
-                    \frac{x^\prime + 0.5}{\sqrt{2} \sigma_{x}} \right) -
+                    \frac{x - x_0 + 0.5}{\sqrt{2} \sigma_{x}} \right) -
                 {\rm erf} \left(
-                    \frac{x^\prime - 0.5}{\sqrt{2} \sigma_{x}} \right)
+                    \frac{x - x_0 - 0.5}{\sqrt{2} \sigma_{x}} \right)
             \right]
             \left[
                 {\rm erf} \left(
-                    \frac{y^\prime + 0.5}{\sqrt{2} \sigma_{y}} \right) -
+                    \frac{y - y_0 + 0.5}{\sqrt{2} \sigma_{y}} \right) -
                 {\rm erf} \left(
-                    \frac{y^\prime - 0.5}{\sqrt{2} \sigma_{y}} \right)
+                    \frac{y - y_0 - 0.5}{\sqrt{2} \sigma_{y}} \right)
             \right]
 
-    where :math:`F` is the total integrated flux, :math:`\sigma_{x}`
-    and :math:`\sigma_{y}` are the standard deviations along the x
-    and y axes, respectively, and :math:`{\rm erf}` denotes the error
-    function.
+    A rotated Gaussian is not separable along the x and y axes.
+    Its integral over the pixel is the probability of a rectangle
+    for a bivariate normal distribution with a nonzero correlation
+    coefficient, which is evaluated with Owen's T function [2]_. That
+    evaluation is about four times slower than the product of error
+    functions (roughly 0.2 ms instead of 0.05 ms for a 25 x 25 pixel
+    stamp). The product of error functions is used whenever the
+    correlation coefficient is zero, which is the case when ``theta``
+    is a multiple of 90 degrees or the x and y widths are equal.
 
-    .. math::
-
-        x^\prime = (x - x_0) \cos(\theta) + (y - y_0) \sin(\theta)
-
-        y^\prime = -(x - x_0) \sin(\theta) + (y - y_0) \cos(\theta)
-
-    where :math:`(x_{0}, y_{0})` is the position of the peak and
-    :math:`\theta` is the rotation angle of the Gaussian.
-
-    The pixel integration is performed along the rotated principal
-    axes of the Gaussian. For ``theta != 0`` the value is therefore an
-    approximation to the integral over the axis-aligned detector pixel,
-    exact only for ``theta = 0``.
+    The rotated evaluation needs the bivariate normal distribution
+    function at the four corners of each pixel. Input positions on a
+    grid with a spacing of one pixel share those corners between
+    neighboring pixels, so each corner is evaluated only once. Other
+    input positions are about ten times slower than the product of
+    error functions.
 
     The FWHMs of the Gaussian along the x and y axes are given by:
 
@@ -837,6 +1084,15 @@ class GaussianPRF(Fittable2DModel):
     .. math::
 
         \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \,dx \,dy = F
+
+    Because the model is integrated over the pixels, its values on a
+    grid with a spacing of one pixel also sum to the total flux, for any
+    subpixel position of the source:
+
+    .. math::
+
+        \sum_{i=-\infty}^{\infty} \sum_{j=-\infty}^{\infty}
+            f(x + i, y + j) = F
 
     The ``x_fwhm``, ``y_fwhm``, and ``theta`` parameters are fixed by
     default. If you wish to fit these parameters, set the ``fixed``
@@ -856,6 +1112,8 @@ class GaussianPRF(Fittable2DModel):
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Gaussian_function
+
+    .. [2] Owen, D. B. 1956, Annals of Mathematical Statistics, 27, 1075
 
     Examples
     --------
@@ -1015,22 +1273,26 @@ class GaussianPRF(Fittable2DModel):
 
         x_sigma = x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
         y_sigma = y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
+        _, _, x_std, y_std, rho, sqrt_one_minus_rho2 = (
+            _rotated_gaussian_moments(x_sigma, y_sigma, theta))
+
         dx = x - x_0
         dy = y - y_0
-        cost = np.cos(theta)
-        sint = np.sin(theta)
-        x0 = dx * cost + dy * sint
-        y0 = -dx * sint + dy * cost
+        if has_units := isinstance(dx, u.Quantity):
+            # A pixel has a size of one in the units of the positions
+            x_std = x_std.to_value(dx.unit)
+            y_std = y_std.to_value(dy.unit)
+            dx = dx.value
+            dy = dy.value
 
-        dpix = 0.5
-        if isinstance(x0, u.Quantity):
-            dpix <<= x0.unit
+        fraction = _gaussian_pixel_fraction(dx, dy, x_std, y_std, rho,
+                                            sqrt_one_minus_rho2)
 
-        return (flux / 4.0
-                * ((erf((x0 + dpix) / (np.sqrt(2) * x_sigma))
-                    - erf((x0 - dpix) / (np.sqrt(2) * x_sigma)))
-                   * (erf((y0 + dpix) / (np.sqrt(2) * y_sigma))
-                      - erf((y0 - dpix) / (np.sqrt(2) * y_sigma)))))
+        if has_units:
+            # Inputs with units give an output with units
+            fraction <<= u.dimensionless_unscaled
+
+        return flux * fraction
 
     @property
     def input_units(self):
