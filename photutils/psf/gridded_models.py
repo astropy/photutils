@@ -158,6 +158,15 @@ class GriddedPSFModel(Fittable2DModel):
     can be used to estimate the missing flux and obtain the proper
     normalization.
 
+    The model is zero outside of the extent of the input ePSF images.
+    The model values on a grid of detector pixels therefore sum to
+    less than ``flux`` by the fraction of the source flux that is
+    outside of the images. That sum also changes with the subpixel
+    position of the source, because the number of detector pixels
+    inside the images changes (see the `ImagePSF` Notes for example
+    values). The input images should therefore be large enough that
+    the ePSF is small at their edges.
+
     Internally, the ePSF grid is reordered so that the reference ePSFs
     are sorted first by their y detector coordinate and then by their x
     detector coordinate.

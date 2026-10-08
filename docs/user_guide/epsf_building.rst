@@ -834,6 +834,27 @@ A smaller factor that still satisfies ``oversampling >= 4 / FWHM`` saves
 run time and memory, and for well-sampled data (a FWHM of 4 pixels or
 more) it gives the same fitted positions and fluxes.
 
+Choosing the ePSF size
+^^^^^^^^^^^^^^^^^^^^^^
+
+The size of the ePSF is set by the size of the star cutouts, or by
+the ``shape`` keyword of :class:`~photutils.psf.EPSFBuilder`. An
+image-based PSF model is zero outside of its image, so the flux of the
+PSF wings beyond the ePSF image is not in the model. Stars subtracted
+with the model leave their outer wings in the residual image, and the
+sum of the model over the detector pixels changes with the subpixel
+position of the star, because the number of detector pixels inside the
+ePSF image changes. For a simulated JWST NIRCam F115W ePSF, that sum
+changes by up to 2.5% for an ePSF that covers 6x6 detector pixels and
+by up to 0.6% for one that covers 16x16 pixels.
+
+The ePSF should therefore extend to where the PSF is small compared
+with the accuracy that is needed. A larger ePSF has a cost. The stars
+must be isolated over the larger cutout, and the outer part of the
+ePSF is built from pixels that are dominated by the background noise.
+The fitted positions and fluxes of the stars do not depend on the ePSF
+size, because only the central pixels of each star are fitted.
+
 Choosing the star sample
 ^^^^^^^^^^^^^^^^^^^^^^^^
 

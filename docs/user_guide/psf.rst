@@ -372,6 +372,19 @@ compare it with an ePSF made by `~photutils.psf.EPSFBuilder`, use the
 makes the ePSF at the points midway between the input grid points, so
 the output image has one fewer point along each axis.
 
+An image-based model is zero outside of its input image, so the flux
+of the PSF wings beyond the image is not in the model. The sum of
+the model over the detector pixels is then smaller than the model
+flux, and it changes with the subpixel position of the source because
+the number of detector pixels inside the image changes. For a
+simulated JWST NIRCam F115W ePSF, the sum changes by up to 2.5% for
+an image that covers 6x6 detector pixels and by up to 0.6% for one
+that covers 16x16 pixels. The ePSF image should therefore be large
+enough that the ePSF is small at its edges. The fluxes and positions
+fitted by the PSF photometry classes are not affected if the fitted
+region of each source is well inside the image, but the model and
+residual images do not include the flux outside of it.
+
 
 .. _psf-photometry-examples:
 

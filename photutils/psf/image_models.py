@@ -136,6 +136,20 @@ class ImagePSF(Fittable2DModel):
     can be used to estimate the missing flux and obtain the proper
     normalization.
 
+    The model is zero outside of the input image. The model values
+    on a grid of detector pixels therefore sum to less than ``flux``
+    by the fraction of the source flux that is outside of the image.
+    That sum also changes with the subpixel position of the source,
+    because the number of detector pixels inside the image changes.
+    For example, for a simulated JWST NIRCam F115W ePSF the sum
+    changes by up to 2.5% for an image that covers 6x6 detector pixels
+    and by up to 0.6% for one that covers 16x16 pixels. The input
+    image should therefore be large enough that the ePSF is small at
+    its edges. The fluxes and positions fitted by the PSF photometry
+    classes are not affected if the fitted region of each source is
+    well inside the image, but the model and residual images that
+    they make do not include the flux outside of it.
+
     Examples
     --------
     In this simple example, we create a PSF image model from a circular
