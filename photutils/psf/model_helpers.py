@@ -715,9 +715,16 @@ def make_epsf_from_psf(data, *, oversampling, midpoints=False):
         raise ValueError(msg)
     oversampling = as_pair('oversampling', oversampling, lower_bound=(0, 0))
 
-    result = data
-    for axis, factor in zip((-2, -1), oversampling, strict=True):
-        result = _integrate_pixel_along_axis(result, factor / 2, axis,
-                                             midpoints=midpoints)
-        result /= factor
-    return result
+    # Integrate a stack one image at a time. The spline coefficients
+    # of the whole stack would use several times the memory of data.
+    images = data if data.ndim == 3 else data[np.newaxis]
+    n_trim = int(midpoints)
+    result = np.empty((images.shape[0], images.shape[1] - n_trim,
+                       images.shape[2] - n_trim))
+    for idx, image in enumerate(images):
+        for axis, factor in zip((-2, -1), oversampling, strict=True):
+            image = _integrate_pixel_along_axis(image, factor / 2, axis,
+                                                midpoints=midpoints)
+            image /= factor
+        result[idx] = image
+    return result if data.ndim == 3 else result[0]
