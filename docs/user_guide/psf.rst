@@ -372,6 +372,37 @@ compare it with an ePSF made by `~photutils.psf.EPSFBuilder`, use the
 makes the ePSF at the points midway between the input grid points, so
 the output image has one fewer point along each axis.
 
+The gridded ePSF models that `STPSF <https://stpsf.readthedocs.io/>`_
+makes with its ``psf_grid`` method (see
+`~photutils.psf.webbpsf_reader`) are already integrated over the
+detector pixels, so `~photutils.psf.make_epsf_from_psf` must not be
+applied to them. STPSF integrates the sampled PSF with a discrete box
+kernel, however, which is a low-order approximation of the integral.
+In tests with STPSF 2.2.0 and an oversampling factor of 4, the ePSF
+peak was too low by 2.5%, 1.1%, and 0.9% for the JWST NIRCam F115W,
+F200W, and F444W filters, and the fluxes fitted with these models
+to stars made from an accurate ePSF were too high by 1.3%, 0.6%,
+and 0.5%. With an oversampling factor of 5 the errors were about a
+third as large and had the opposite sign. When that accuracy matters,
+make the ePSF from the oversampled PSF that the STPSF ``calc_psf``
+method returns, which is sampled at the grid points::
+
+    import stpsf
+    from photutils.psf import ImagePSF, make_epsf_from_psf
+
+    nrc = stpsf.NIRCam()
+    nrc.filter = 'F115W'
+    oversampling = 4
+    hdulist = nrc.calc_psf(fov_pixels=101, oversample=oversampling)
+    psf = hdulist['OVERDIST'].data * oversampling**2
+    epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+    model = ImagePSF(epsf, oversampling=oversampling)
+
+The values that ``calc_psf`` returns sum to the fraction of the flux
+that is inside the field of view, so multiplying them by the square
+of the oversampling factor gives the normalization that
+`~photutils.psf.ImagePSF` requires.
+
 An image-based model is zero outside of its input image, so the flux
 of the PSF wings beyond the image is not in the model. The sum of
 the model over the detector pixels is then smaller than the model

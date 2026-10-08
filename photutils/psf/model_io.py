@@ -616,6 +616,25 @@ def webbpsf_reader(filename):
     -------
     model : `~photutils.psf.GriddedPSFModel`
         The gridded ePSF model.
+
+    Notes
+    -----
+    The STPSF (formerly WebbPSF) ``psf_grid`` method makes these ePSFs
+    from PSFs that are sampled at the points of the oversampled grid.
+    It integrates each PSF over the detector pixels with a discrete
+    box kernel, which is a low-order approximation of the integral.
+    In tests with STPSF 2.2.0, the ePSF peak was too low by 2.5%,
+    1.1%, and 0.9% for the NIRCam F115W, F200W, and F444W filters at
+    an oversampling factor of 4. The fluxes fitted with these models
+    to stars made from an accurate ePSF were too high by 1.3%, 0.6%,
+    and 0.5%. At an oversampling factor of 5 the ePSF peak was too
+    high by 0.8%, 0.4%, and 0.3%, and the fitted fluxes were too low
+    by 0.4%, 0.2%, and 0.2%.
+
+    A more accurate ePSF can be made by applying
+    `~photutils.psf.make_epsf_from_psf` to the oversampled PSF that
+    the STPSF ``calc_psf`` method returns. See :ref:`psf-image-models`
+    for an example.
     """
     from photutils.psf import GriddedPSFModel  # prevent circular import
 
