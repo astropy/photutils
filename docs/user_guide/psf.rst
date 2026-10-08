@@ -7,49 +7,6 @@ The `photutils.psf` subpackage contains tools for model-fitting
 photometry, often called "PSF photometry".
 
 
-.. _psf-terminology:
-
-Terminology
------------
-
-Different astronomy subfields use the terms "PSF", "PRF", or related
-terms in slightly varied ways, especially when colloquial usage is
-taken into account. The `photutils.psf` package aims to be internally
-consistent, following the definitions described here.
-
-We take the Point Spread Function (PSF), or instrumental Point
-Spread Function (iPSF), to be the infinite-resolution and
-infinite-signal-to-noise flux distribution from a point source on
-the detector, after passing through optics, dust, atmosphere, etc.
-By contrast, the function describing the responsivity variations
-across individual *pixels* is the pixel response function. The
-pixel response function is sometimes called the "PRF", but we
-do not use that acronym here to avoid confusion with the "Point
-Response Function" (see below). The convolution of the PSF and
-pixel response function, when discretized onto the detector
-(i.e., a rectilinear grid), is the effective PSF (ePSF) or Point
-Response Function (PRF). The PRF terminology is sometimes used to
-emphasize that the model function describes the response of the
-detector to a point source, rather than the intrinsic instrumental
-PSF (e.g., see the `Spitzer Space Telescope MOPEX documentation
-<https://irsa.ipac.caltech.edu/data/SPITZER/docs/dataanalysistools/tools
-/mopex/mopexusersguide/89/>`_).
-
-In many cases the PSF/PRF/ePSF distinction is unimportant, and the
-PSF/PRF/ePSF is simply called the "PSF" model. However, the distinction
-can be critical when dealing carefully with undersampled data or
-detectors with significant intra-pixel sensitivity variations. For a
-more detailed description of this formalism, see `Anderson & King 2000
-<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_.
-
-In colloquial usage, "PSF photometry" sometimes refers to the
-more general task of model-fitting photometry with the effects of
-the PSF either implicitly or explicitly included in the models,
-regardless of exactly what kind of model is actually being fit. In the
-``photutils.psf`` package, we use "PSF photometry" in this way, as a
-shorthand for the general approach.
-
-
 PSF Photometry Overview
 -----------------------
 
@@ -148,6 +105,97 @@ This is also useful if one is interested in fitting only one or a few
 sources in an image.
 
 
+.. _psf-terminology:
+
+Terminology
+-----------
+
+PSF photometry measures the flux and position of a star by fitting a
+model of how the light of a point source is distributed over the pixels
+of an image. Several closely related terms are used for such models,
+including "PSF", "PRF", and "ePSF", and different astronomy subfields
+use them in slightly different ways. This section defines the terms as
+they are used in `photutils.psf`.
+
+Point Spread Function (PSF)
+    The PSF is the distribution of light from a point source at the
+    detector, after the light has passed through the atmosphere (for
+    ground-based data) and the telescope optics. It is a smooth,
+    continuous function of position that does not depend on the detector
+    pixels. It is sometimes called the instrumental PSF (iPSF) to make
+    that explicit.
+
+Pixel response function
+    A detector does not record the PSF itself. Each pixel collects the
+    light that falls on its area and reports a single value. The pixel
+    response function describes how sensitive a pixel is to light at
+    each position within it. The simplest and most common assumption is
+    that a pixel is equally sensitive over its whole area. Some authors
+    abbreviate the pixel response function as "PRF". We always write it
+    out in full, because we use "PRF" for the Point Response Function
+    defined next.
+
+Effective PSF (ePSF) or Point Response Function (PRF)
+    The ePSF is the PSF as it is recorded by the pixels. Formally, it
+    is the convolution of the PSF and the pixel response function.
+    Its value at a given offset from a source is the fraction of the
+    source flux that is recorded by a pixel centered at that offset.
+    For pixels with a uniform response, that is the integral of the PSF
+    over the area of the pixel. "ePSF" and "PRF" are two names for the
+    same function. The name "ePSF" comes from `Anderson & King 2000
+    <https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_,
+    which describes this formalism in detail. The name "PRF" emphasizes
+    that the function describes the response of the detector to a point
+    source, rather than the PSF of the optics.
+
+The pixel values of an image are samples of the ePSF, not of the PSF.
+Like the PSF, the ePSF is a continuous function, because a pixel could
+be centered at any offset from a source. The image of a star samples
+the ePSF at a spacing of one pixel, at offsets that depend on where the
+center of the star falls within a pixel. An oversampled ePSF samples the
+same function on a finer grid. Each of its values is still the flux in a
+whole detector pixel, not the flux in a subpixel.
+
+A model that is fit to the pixel values of an image should therefore
+represent the ePSF. The names of the models in `photutils.psf` show what
+each model represents:
+
+- The analytic models whose names end in ``PSF`` (e.g.,
+  `~photutils.psf.CircularGaussianPSF`) give the value of the PSF at the
+  input positions. They are not integrated over the pixels.
+
+- The analytic models whose names end in ``PRF`` (e.g.,
+  `~photutils.psf.CircularGaussianPRF`) are integrated over the pixels,
+  assuming that the response is uniform across a pixel.
+
+- The image-based models (`~photutils.psf.ImagePSF` and
+  `~photutils.psf.GriddedPSFModel`) interpolate an input image and do
+  not integrate it over the pixels. Despite the "PSF" in their names,
+  their input images must be ePSFs. An ePSF that is built from observed
+  stars (see :ref:`build-epsf`) includes the actual response of the
+  pixels.
+
+The difference between the PSF and the ePSF is largest for undersampled
+data, where the PSF is narrow compared with a pixel, and for detectors
+with significant sensitivity variations within a pixel. For such data,
+the PSF is much sharper than the image of a star, and the sum of its
+values at the pixel centers changes with the subpixel position of the
+star. The difference is smaller for well-sampled data, but it does
+not vanish, because the integration over a pixel always broadens the
+profile. A PSF model with a known, fixed width is then narrower than
+the image of a star, which biases the fitted flux. The distinction
+is largely inconsequential when the model width is measured directly
+from the pixelated image of a well-sampled star, as the measured width
+already incorporates the effects of broadening.
+
+In common usage, all of these functions are often simply called
+the "PSF", and "PSF photometry" refers to the general technique of
+model-fitting photometry, regardless of exactly which kind of model is
+fit. We use both terms in that broad sense throughout `photutils.psf`
+and this documentation, and we use the specific terms defined above
+where the distinction matters.
+
+
 .. _psf-models:
 
 PSF Models
@@ -211,7 +259,9 @@ You can also create your own custom PSF model using the Astropy modeling
 framework. The PSF model must be a 2D model that is a subclass of
 `~astropy.modeling.Fittable2DModel`. It must have parameters called
 ``x_0``, ``y_0``, and ``flux``, specifying the central position and
-total integrated flux.
+total integrated flux. The value of the model at a position should be
+the flux in a detector pixel centered at that position (see
+:ref:`psf-terminology`), especially for data that are undersampled.
 
 
 Analytic PSF Models
@@ -252,12 +302,36 @@ models are evaluated by sampling the analytic function at the input (x,
 y) coordinates. The PRF models are evaluated by integrating the analytic
 function over the pixel areas.
 
-If one needs a custom PRF model based on an analytical PSF model, an
-efficient option is to first discretize the model on a grid using
-:func:`~astropy.convolution.discretize_model` with the ``'oversample'``
-or ``'integrate'`` mode. The resulting 2D image can then be used as the
-input to `~photutils.psf.ImagePSF` (see :ref:`psf-image-models` below)
-to create an image-based PSF model.
+The values of a PSF model on a grid of detector pixels are the values
+of the PSF at the pixel centers, not the fluxes in the pixels. For a PSF
+that is undersampled by the detector pixels (a FWHM of less than about
+2 pixels), a PSF model is sharper than the sources in the data and the
+sum of its values over the pixels depends on the subpixel position of
+the source. A PRF model should be used for such data.
+
+If one needs a custom PRF model based on an analytical PSF model,
+evaluate the PSF model on an oversampled grid and integrate the result
+over the detector pixels with `~photutils.psf.make_epsf_from_psf`. The
+resulting image can then be used as the input to
+`~photutils.psf.ImagePSF` (see :ref:`psf-image-models` below) with the
+same oversampling factor to create an image-based PSF model::
+
+    >>> import numpy as np
+    >>> from photutils.psf import ImagePSF, MoffatPSF, make_epsf_from_psf
+    >>> oversampling = 4
+    >>> yy, xx = np.mgrid[-50:51, -50:51] / oversampling
+    >>> psf = MoffatPSF(alpha=1.2, beta=2.5)(xx, yy)
+    >>> epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+    >>> model = ImagePSF(epsf, oversampling=oversampling)
+
+The values of the oversampled PSF model sum to the square of the
+oversampling factor, apart from the flux outside of the grid, which is
+the normalization that `~photutils.psf.ImagePSF` requires. Discretizing
+the model on the detector pixel grid with
+:func:`~astropy.convolution.discretize_model` also gives a
+pixel-integrated image, but only for one subpixel position of the
+source. A model made from that image is not accurate at other
+positions unless the PSF is well sampled.
 
 Note that the non-circular Gaussian and Moffat models above have
 additional parameters beyond the standard PSF model parameters of
@@ -270,7 +344,9 @@ Astropy fittable 2D model. However, it is recommended that one use the
 PSF models provided by `photutils.psf` as they are optimized for PSF
 photometry. If a custom PSF model is needed, one can be created using
 the Astropy modeling framework that will provide better performance than
-using :func:`~photutils.psf.make_psf_model`.
+using :func:`~photutils.psf.make_psf_model`. A model made with
+:func:`~photutils.psf.make_psf_model` is evaluated at the input
+positions and is not integrated over the detector pixels.
 
 
 .. _psf-image-models:
@@ -294,6 +370,76 @@ accuracy of the PSF model.
 
 - `~photutils.psf.GriddedPSFModel`: a PSF model that contains a grid of
   image-based ePSF models at fiducial detector positions.
+
+These models interpolate the input image(s) and do not integrate them
+over the detector pixels. The input must therefore be an effective
+PSF (ePSF), in which each value is the fraction of the source flux
+that falls in a whole detector pixel centered at that position
+relative to the source. An oversampled PSF whose values are samples
+of the PSF, such as the output of an optical model, is not an ePSF.
+A model made from such an image is sharper than the sources in the
+data. If the PSF is also undersampled by the detector pixels, the sum
+of the model over the detector pixels changes with the subpixel
+position of the source. Use `~photutils.psf.make_epsf_from_psf` to
+make an ePSF from a sampled PSF::
+
+    >>> from photutils.psf import ImagePSF, make_epsf_from_psf
+    >>> epsf = make_epsf_from_psf(psf, oversampling=4)  # doctest: +SKIP
+    >>> model = ImagePSF(epsf, oversampling=4)  # doctest: +SKIP
+
+An optical model with an even oversampling factor typically returns
+an image with an even number of points along each axis, with the PSF
+centered between the four central grid points. The image-based models
+accept such an image, and the ePSF made from it, as they are. If an
+ePSF with the PSF center on a grid point is needed, for example to
+compare it with an ePSF made by `~photutils.psf.EPSFBuilder`, use the
+``midpoints=True`` option of `~photutils.psf.make_epsf_from_psf`. It
+makes the ePSF at the points midway between the input grid points, so
+the output image has one fewer point along each axis.
+
+The gridded ePSF models that `STPSF <https://stpsf.readthedocs.io/>`_
+makes with its ``psf_grid`` method (see
+`~photutils.psf.webbpsf_reader`) are already integrated over the
+detector pixels, so `~photutils.psf.make_epsf_from_psf` must not be
+applied to them. STPSF integrates the sampled PSF with a discrete box
+kernel, however, which is a low-order approximation of the integral.
+In tests with STPSF 2.2.0 and an oversampling factor of 4, the ePSF
+peak was too low by 2.5%, 1.1%, and 0.9% for the JWST NIRCam F115W,
+F200W, and F444W filters, and the fluxes fitted with these models
+to stars made from an accurate ePSF were too high by 1.3%, 0.6%,
+and 0.5%. With an oversampling factor of 5 the errors were about a
+third as large and had the opposite sign. When that accuracy matters,
+make the ePSF from the oversampled PSF that the STPSF ``calc_psf``
+method returns, which is sampled at the grid points::
+
+    import stpsf
+    from photutils.psf import ImagePSF, make_epsf_from_psf
+
+    nrc = stpsf.NIRCam()
+    nrc.filter = 'F115W'
+    oversampling = 4
+    hdulist = nrc.calc_psf(fov_pixels=101, oversample=oversampling)
+    psf = hdulist['OVERDIST'].data * oversampling**2
+    epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+    model = ImagePSF(epsf, oversampling=oversampling)
+
+The values that ``calc_psf`` returns sum to the fraction of the flux
+that is inside the field of view, so multiplying them by the square
+of the oversampling factor gives the normalization that
+`~photutils.psf.ImagePSF` requires.
+
+An image-based model is zero outside of its input image, so the flux
+of the PSF wings beyond the image is not in the model. The sum of
+the model over the detector pixels is then smaller than the model
+flux, and it changes with the subpixel position of the source because
+the number of detector pixels inside the image changes. For a
+simulated JWST NIRCam F115W ePSF, the sum changes by up to 2.5% for
+an image that covers 6x6 detector pixels and by up to 0.6% for one
+that covers 16x16 pixels. The ePSF image should therefore be large
+enough that the ePSF is small at its edges. The fluxes and positions
+fitted by the PSF photometry classes are not affected if the fitted
+region of each source is well inside the image, but the model and
+residual images do not include the flux outside of it.
 
 
 .. _psf-photometry-examples:
@@ -809,7 +955,10 @@ an image. This function fits the source(s) with a circular
 2D Gaussian PRF model (`~photutils.psf.CircularGaussianPRF`)
 using the `~photutils.psf.PSFPhotometry` class. If your sources
 are non-circular or non-Gaussian, you can fit them with the
-`~photutils.psf.PSFPhotometry` class and a different PSF model.
+`~photutils.psf.PSFPhotometry` class and a different PSF model. Because
+the model is integrated over the pixels, the returned FWHM is the FWHM
+of the Gaussian before that integration, which is smaller than the FWHM
+of the pixelated image of a source.
 
 For example, let's estimate the FWHM of the sources in our example image
 defined above::

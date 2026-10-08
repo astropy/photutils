@@ -616,6 +616,21 @@ def webbpsf_reader(filename):
     -------
     model : `~photutils.psf.GriddedPSFModel`
         The gridded ePSF model.
+
+    Notes
+    -----
+    The STPSF (formerly WebbPSF) ``psf_grid`` method makes these ePSFs
+    from PSFs that are sampled at the points of the oversampled grid.
+    It integrates each PSF over the detector pixels with a discrete
+    box kernel, which is a low-order approximation of the integral.
+    The ePSF peak and the fluxes fitted with these models can
+    therefore be in error by up to a few percent for the filters
+    with the narrowest PSFs.
+
+    A more accurate ePSF can be made by applying
+    `~photutils.psf.make_epsf_from_psf` to the oversampled PSF that
+    the STPSF ``calc_psf`` method returns. See :ref:`psf-image-models`
+    for the measured errors and an example.
     """
     from photutils.psf import GriddedPSFModel  # prevent circular import
 

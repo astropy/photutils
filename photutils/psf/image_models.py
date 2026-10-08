@@ -36,15 +36,16 @@ class ImagePSF(Fittable2DModel):
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        A 2D array containing the PSF image. The x and y dimensions
+        A 2D array containing the ePSF image. The x and y dimensions
         must both be at least 4 pixels. All values must be finite. By
-        default, the PSF peak is assumed to be centered in the input
-        image (see ``origin``). See the Notes section for details on the
-        required normalization of the input image.
+        default, the ePSF peak is assumed to be centered in the input
+        image (see ``origin``). See the Notes section for the definition
+        of an ePSF and for details on the required normalization of the
+        input image.
 
     flux : float, optional
         The flux scaling factor. This corresponds to the total source flux,
-        assuming the input PSF image is properly normalized.
+        assuming the input ePSF image is properly normalized.
 
     x_0, y_0 : float, optional
         The x and y positions of a feature in the image in the output
@@ -84,13 +85,39 @@ class ImagePSF(Fittable2DModel):
     See Also
     --------
     GriddedPSFModel : A model for a grid of ePSF models.
+    make_epsf_from_psf : Make an ePSF image from a sampled PSF.
 
     Notes
     -----
+    The input image must be an effective PSF (ePSF). Each value of an
+    ePSF is the fraction of the source flux that falls in a whole
+    detector pixel centered at that position relative to the source,
+    even when the image is oversampled. The model interpolates the
+    input image and does not integrate it over the detector pixels.
+    Evaluating the model at a position ``(x, y)`` therefore gives the
+    flux in a detector pixel centered at ``(x, y)``, which can be any
+    fractional pixel position.
+
+    Because each value is the flux in a whole detector pixel, the model
+    values sum to ``flux`` only when the model is evaluated on a grid
+    with a spacing of one detector pixel. That holds for any values of
+    ``x_0`` and ``y_0``. On a finer grid the pixels overlap, and the
+    sum is larger than ``flux`` by the ratio of the pixel area to the
+    area of a grid cell.
+
+    An oversampled image that is not an ePSF, such as a PSF sampled at
+    the points of a fine grid or binned into subpixels, is not converted
+    to an ePSF by this model. The model is then sharper than a source
+    in the data. For an undersampled PSF, the sum of the model values
+    over the detector pixels can also change with the subpixel position
+    of the source. Such an image should first be integrated over the
+    area of a detector pixel centered at each of its grid points, which
+    is what `make_epsf_from_psf` does.
+
     The fitted ``flux`` parameter represents the total source flux,
-    provided the input PSF image is properly normalized. The fitted flux
-    is a multiplicative scale factor applied to the input PSF after
-    accounting for any oversampling.
+    provided the input ePSF image is properly normalized. The fitted
+    flux is a multiplicative scale factor applied to the input ePSF
+    after accounting for any oversampling.
 
     For a fully sampled ePSF (i.e., no oversampling), the sum of
     the ePSF values over an infinite grid is 1.0. Because ePSFs are
@@ -104,32 +131,70 @@ class ImagePSF(Fittable2DModel):
     image will generally have a smaller sum because it does not contain
     the full PSF wings.
 
-    If the input PSF image covers only a finite region of the PSF,
+    If the input ePSF image covers only a finite region of the PSF,
     correction factors based on the encircled or ensquared energy
     can be used to estimate the missing flux and obtain the proper
     normalization.
 
+    The model is zero outside of the input image. The model values
+    on a grid of detector pixels therefore sum to less than ``flux``
+    by the fraction of the source flux that is outside of the image.
+    That sum also changes with the subpixel position of the source,
+    because the number of detector pixels inside the image changes
+    (see :ref:`psf-image-models` for example values). The input
+    image should therefore be large enough that the ePSF is small at
+    its edges. The fluxes and positions fitted by the PSF photometry
+    classes are not affected if the fitted region of each source is
+    well inside the image, but the model and residual images that
+    they make do not include the flux outside of it.
+
     Examples
     --------
-    In this simple example, we create a PSF image model from a Circular
-    Gaussian PSF. In this case, one should use the `CircularGaussianPSF`
-    model directly as a PSF model. However, this example demonstrates
-    how to create an image PSF model from an input image.
+    In this simple example, we create a PSF image model from a circular
+    Gaussian that is integrated over the pixels, which is an ePSF with
+    no oversampling. In this case, one should use the
+    `CircularGaussianPRF` model directly as a PSF model. However, this
+    example demonstrates how to create an image PSF model from an input
+    image.
 
     .. plot::
         :include-source:
 
         import matplotlib.pyplot as plt
         import numpy as np
-        from photutils.psf import CircularGaussianPSF, ImagePSF
+        from photutils.psf import CircularGaussianPRF, ImagePSF
 
-        gaussian_psf = CircularGaussianPSF(x_0=12, y_0=12, fwhm=3.2)
+        gaussian_prf = CircularGaussianPRF(x_0=12, y_0=12, fwhm=3.2)
         yy, xx = np.mgrid[:25, :25]
-        psf_data = gaussian_psf(xx, yy)
+        psf_data = gaussian_prf(xx, yy)
         psf_model = ImagePSF(psf_data, x_0=12, y_0=12, flux=10)
         data = psf_model(xx, yy)
         fig, ax = plt.subplots()
         ax.imshow(data, origin='lower')
+
+    An oversampled PSF whose values are samples of the PSF, such as
+    the output of an optical model, must be converted to an ePSF before
+    it is used as the input image. Here, a narrow Gaussian PSF is
+    sampled on a grid that is oversampled by a factor of 4 and then
+    integrated over the detector pixels with `make_epsf_from_psf`:
+
+    >>> import numpy as np
+    >>> from photutils.psf import ImagePSF, make_epsf_from_psf
+    >>> oversampling = 4
+    >>> yy, xx = np.mgrid[-30:31, -30:31] / oversampling
+    >>> sigma = 0.5  # detector pixels
+    >>> psf = np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    >>> psf *= oversampling**2 / psf.sum()
+    >>> epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+    >>> model = ImagePSF(epsf, oversampling=oversampling, x_0=0.3,
+    ...                  y_0=-0.4)
+
+    The model values on a grid of detector pixels sum to the model
+    flux for any subpixel position of the source:
+
+    >>> yy, xx = np.mgrid[-7:8, -7:8]
+    >>> print(f'{model(xx, yy).sum():.3f}')
+    1.000
     """
 
     flux = Parameter(default=1,

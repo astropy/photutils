@@ -356,6 +356,14 @@ New Features
     is the ``fit_shape`` box around the initial position, trimmed to
     the input image. [#2450]
 
+  - Added a ``make_epsf_from_psf`` function that makes an ePSF
+    image from an oversampled PSF image whose values are samples
+    of the PSF and are not integrated over the detector pixels. Image
+    PSF models made from such an image do not conserve flux for
+    undersampled PSFs. The ``midpoints`` keyword gives an ePSF with
+    the PSF center on its central grid point for a PSF that is
+    centered on an even-sized image. [#2470]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``

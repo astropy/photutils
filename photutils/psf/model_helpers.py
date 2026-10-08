@@ -13,11 +13,13 @@ from astropy.nddata import NDData
 from astropy.units import Quantity
 from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
+from scipy.interpolate import make_interp_spline
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._parameters import as_pair
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-__all__ = ['grid_from_epsfs', 'make_psf_model']
+__all__ = ['grid_from_epsfs', 'make_epsf_from_psf', 'make_psf_model']
 
 
 def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
@@ -49,6 +51,10 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
 
         It is *not* needed for any of the PSF models provided by
         Photutils.
+
+    The output PSF model is evaluated at the input positions like
+    the input ``model``. It is not integrated over the detector pixels
+    (see the Notes section).
 
     Parameters
     ----------
@@ -116,6 +122,16 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     fail, e.g., return zero for a non-zero model. This can happen when
     the model function is sharply localized relative to the size of the
     integration interval.
+
+    That integration is used only to normalize the model. The values
+    of the output model on a grid of detector pixels are the values of
+    the input ``model`` at the pixel centers, not the fluxes in the
+    pixels. For a PSF that is undersampled by the detector pixels, such
+    a model is sharper than a source in the data and the sum of its
+    values over the pixels depends on the subpixel position of the
+    source. To integrate a model over the pixels, evaluate it on an
+    oversampled grid, make an ePSF image from the result with
+    `make_epsf_from_psf`, and use that image with `ImagePSF`.
 
     Examples
     --------
@@ -469,3 +485,246 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     data = NDData(data_cube, meta=meta)
 
     return GriddedPSFModel(data, fill_value=fill_value)
+
+
+def _integrate_pixel_along_axis(data, half_width, axis, *, midpoints=False):
+    """
+    Integrate the cubic spline through ``data`` over a window centered
+    at each grid point along one axis, or at each point midway between
+    adjacent grid points.
+
+    Parameters
+    ----------
+    data : `~numpy.ndarray`
+        The data array.
+
+    half_width : float
+        The half width of the integration window in grid points.
+
+    axis : int
+        The axis along which to integrate.
+
+    midpoints : bool, optional
+        Whether to center the windows midway between adjacent grid
+        points instead of at the grid points.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        The integrals, with the same shape as ``data``, or with one
+        fewer point along ``axis`` if ``midpoints`` is `True`. The
+        window is truncated at the first and last grid points.
+    """
+    n_points = data.shape[axis]
+    points = np.arange(n_points, dtype=float)
+    antiderivative = make_interp_spline(points, data, k=3,
+                                        axis=axis).antiderivative()
+    centers = points[:-1] + 0.5 if midpoints else points
+    lower = np.clip(centers - half_width, 0, n_points - 1)
+    upper = np.clip(centers + half_width, 0, n_points - 1)
+    return antiderivative(upper) - antiderivative(lower)
+
+
+def make_epsf_from_psf(data, *, oversampling, midpoints=False):
+    """
+    Make an effective PSF (ePSF) image from an oversampled PSF image
+    that is not integrated over the detector pixels.
+
+    The image-based PSF models (`ImagePSF` and `GriddedPSFModel`)
+    require ePSF images. Each value of an ePSF is the fraction of the
+    source flux that falls in a whole detector pixel centered at that
+    position relative to the source. This function makes such an image
+    from an oversampled PSF whose values are samples of the PSF at the
+    grid points, such as the output of an optical model.
+
+    Parameters
+    ----------
+    data : 2D or 3D `~numpy.ndarray`
+        The oversampled PSF image. A 3D array is a stack of PSF images
+        with shape ``(n_psfs, ny, nx)``, such as the data of a
+        `GriddedPSFModel`. The x and y dimensions must both be at
+        least 4 pixels. All values must be finite. A masked array
+        with masked values is not allowed. The units of a
+        `~astropy.units.Quantity` are dropped.
+
+    oversampling : int or array_like (int)
+        The integer oversampling factor(s) of the PSF image. If a
+        scalar is provided, it is applied to both axes. If two values
+        are provided, they must be in ``(y, x)`` order.
+
+    midpoints : bool, optional
+        Whether to make the ePSF at the points midway between the
+        input grid points along each axis, instead of at the input
+        grid points. The output image then has one fewer point along
+        each axis than ``data``.
+
+        Use this option for a PSF that is centered on an image with an
+        even number of points along each axis, which is what an
+        optical model typically returns for an even oversampling
+        factor. The PSF center is then between the four central grid
+        points of ``data``. With ``midpoints=True`` the output image
+        has an odd number of points along each axis and the PSF
+        center is on its central grid point, like the ePSFs that
+        `EPSFBuilder` makes. That is convenient for comparing or
+        combining the result with other ePSFs and for displaying it.
+        The accuracy is the same for either grid, because the same
+        spline is integrated.
+
+        This option is not needed to use the result with `ImagePSF`
+        or `GriddedPSFModel`. Both accept an image with an even
+        number of points, whose center is between grid points.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        The ePSF image(s), with the same oversampling as ``data``. The
+        shape and grid are also the same as ``data`` unless
+        ``midpoints`` is `True`. The result is always a plain array
+        without units.
+
+    See Also
+    --------
+    ImagePSF, GriddedPSFModel
+
+    Notes
+    -----
+    The input image is interpolated with a bicubic spline. The spline
+    is integrated exactly over the area of one detector pixel centered
+    at each output grid point, and the result is divided by the number
+    of grid points in a detector pixel. The output values are
+    therefore on the same scale as the input values, and the output
+    image is not normalized.
+
+    Normalize the input image, not the output image. `ImagePSF`
+    requires an image whose values would sum to the product of the
+    oversampling factors if the image contained all of the PSF. The
+    values of an image that contains only part of the PSF should sum
+    to that product times the fraction of the flux that is inside the
+    image. If the input image is scaled that way, the output values
+    are correctly scaled. The output image has the same sum as the
+    input image if the PSF is negligible at the image edges. Otherwise
+    its sum is slightly smaller, because of the edge values described
+    below, and normalizing the output image would make all of its
+    values too large.
+
+    The accuracy of the result is set by how well the spline through
+    the input values represents the PSF. The input grid must therefore
+    sample the PSF well, which generally requires an oversampled image
+    for a PSF that is undersampled by the detector pixels.
+
+    The function does not move the PSF within the image. The point at
+    the center of the input image is also at the center of the output
+    image, for either value of ``midpoints``. `GriddedPSFModel`, and
+    `ImagePSF` by default, take the center of the image as the
+    position of the source. The PSF should therefore be centered on
+    the input image. Otherwise, the source positions fitted with the
+    model are all offset by the distance of the PSF center from the
+    image center. For `ImagePSF`, the ``origin`` keyword can be used
+    instead to give the position of the PSF center in the ePSF image.
+    That position is 0.5 smaller along each axis than in the input
+    image if ``midpoints`` is `True`.
+
+    The input image is taken to be zero outside of its grid. The
+    output values within half of a detector pixel of the image edges
+    are therefore integrals over only the part of the pixel that is
+    inside the grid. They are smaller than the ePSF values at those
+    positions, by a factor of about two at an edge and about four at
+    a corner. If ``midpoints`` is `True`, no output point is on an
+    edge and the factors are smaller. All other output values are
+    unaffected. These values matter for PSF photometry only if the
+    fitted region of a source extends to within half of a detector
+    pixel of the edge of the model image. They are not removed from
+    the output image, because a model made from the trimmed image
+    contains less of the source flux and conserves flux no better.
+    The input image should be large enough that the PSF is small at
+    its edges.
+
+    The input values must be samples of the PSF at the grid points.
+    The result is less accurate for an image whose values are the
+    fluxes in the cells of the oversampled grid, because such an image
+    is already integrated over the area of one cell.
+
+    A model made from the output image conserves flux. The model
+    values on a grid of detector pixels sum to the model flux for any
+    subpixel position of the source, apart from the flux that falls
+    outside of the image. A model made directly from a PSF that is
+    sampled at points does not have this property when the PSF is
+    undersampled by the detector pixels.
+
+    Examples
+    --------
+    Make an ePSF from a narrow Gaussian PSF that is sampled at the
+    points of a grid that is oversampled by a factor of 5:
+
+    >>> import numpy as np
+    >>> from photutils.psf import ImagePSF, make_epsf_from_psf
+    >>> oversampling = 5
+    >>> yy, xx = np.mgrid[-37:38, -37:38] / oversampling
+    >>> sigma = 0.42  # detector pixels
+    >>> psf = np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    >>> psf *= oversampling**2 / psf.sum()
+    >>> epsf = make_epsf_from_psf(psf, oversampling=oversampling)
+
+    The sum of the `ImagePSF` model over the detector pixels depends
+    on the subpixel position of the source for the sampled PSF, but
+    not for the ePSF:
+
+    >>> yy, xx = np.mgrid[-7:8, -7:8]
+    >>> for name, data in (('psf', psf), ('epsf', epsf)):
+    ...     model = ImagePSF(data, oversampling=oversampling)
+    ...     for x_0 in (0.0, 0.25, 0.5, 0.75):
+    ...         model.x_0 = x_0
+    ...         print(f'{name}, x_0={x_0:.1f}: {model(xx, yy).sum():.3f}')
+    psf, x_0=0.0: 1.127
+    psf, x_0=0.2: 1.062
+    psf, x_0=0.5: 0.997
+    psf, x_0=0.8: 1.062
+    epsf, x_0=0.0: 1.000
+    epsf, x_0=0.2: 1.000
+    epsf, x_0=0.5: 1.000
+    epsf, x_0=0.8: 1.000
+
+    An optical model with an even oversampling factor typically returns
+    an image with an even number of points, with the PSF centered
+    between the four central grid points. Use ``midpoints=True`` to
+    make an ePSF with the PSF center on its central grid point:
+
+    >>> oversampling = 4
+    >>> yy, xx = (np.mgrid[0:60, 0:60] - 29.5) / oversampling
+    >>> psf = np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    >>> psf *= oversampling**2 / psf.sum()
+    >>> epsf = make_epsf_from_psf(psf, oversampling=oversampling,
+    ...                           midpoints=True)
+    >>> print(epsf.shape)
+    (59, 59)
+    >>> print(epsf.argmax() == epsf.size // 2)
+    True
+    """
+    if np.ma.is_masked(data):
+        msg = 'data must not have masked values'
+        raise ValueError(msg)
+    data = np.asarray(data, dtype=float)
+    if data.ndim not in (2, 3):
+        msg = 'data must be a 2D or 3D array'
+        raise ValueError(msg)
+    if data.shape[-2] < 4 or data.shape[-1] < 4:
+        msg = 'The x and y dimensions of data must both be at least 4'
+        raise ValueError(msg)
+    if not np.all(np.isfinite(data)):
+        msg = 'All elements of data must be finite'
+        raise ValueError(msg)
+    oversampling = as_pair('oversampling', oversampling, lower_bound=(0, 0))
+
+    # Integrate a stack one image at a time. The spline coefficients
+    # of the whole stack would use several times the memory of data.
+    images = data if data.ndim == 3 else data[np.newaxis]
+    n_trim = int(midpoints)
+    result = np.empty((images.shape[0], images.shape[1] - n_trim,
+                       images.shape[2] - n_trim))
+    for idx, image in enumerate(images):
+        for axis, factor in zip((-2, -1), oversampling, strict=True):
+            image = _integrate_pixel_along_axis(image, factor / 2, axis,
+                                                midpoints=midpoints)
+            image /= factor
+        result[idx] = image
+    return result if data.ndim == 3 else result[0]

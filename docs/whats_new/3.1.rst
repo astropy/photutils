@@ -428,6 +428,35 @@ image. For grouped fits, the region is the box of each source, not the
 union of the boxes of the group.
 
 
+Making an ePSF from a Sampled PSF
+=================================
+
+The new `~photutils.psf.make_epsf_from_psf` function makes an
+effective PSF (ePSF) image from an oversampled PSF image whose values
+are samples of the PSF, such as the output of an optical model. The
+image-based PSF models `~photutils.psf.ImagePSF` and
+`~photutils.psf.GriddedPSFModel` interpolate their input images and do
+not integrate them over the detector pixels. They therefore require
+ePSF images, in which each value is the flux in a whole detector pixel
+centered at that position. A model made from a sampled PSF is sharper
+than the sources in the data. If the PSF is also undersampled by the
+detector pixels, the total flux of the evaluated model changes with the
+subpixel position of the source. The new function integrates the image
+over the area of a detector pixel centered at each grid point, which
+gives a model that conserves flux::
+
+    >>> from photutils.psf import ImagePSF, make_epsf_from_psf
+    >>> epsf = make_epsf_from_psf(psf, oversampling=4)  # doctest: +SKIP
+    >>> model = ImagePSF(epsf, oversampling=4)  # doctest: +SKIP
+
+An optical model with an even oversampling factor typically returns an
+image with an even number of points, with the PSF centered between
+the four central grid points. The ``midpoints=True`` option makes the
+ePSF at the points midway between the input grid points. The result
+has an odd number of points with the PSF center on its central grid
+point, like the ePSFs made by `~photutils.psf.EPSFBuilder`.
+
+
 Polygon Apertures
 =================
 

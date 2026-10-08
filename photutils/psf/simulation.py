@@ -35,6 +35,13 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         two-dimensional such that it accepts 2 inputs (e.g., x and y)
         and provides 1 output.
 
+        The model is evaluated at the center of each pixel. To simulate
+        the pixelated image of a source, the value of the model at a
+        position must be the flux in a pixel centered at that position,
+        as for the analytic models whose names end in ``PRF`` and for
+        an image-based model made from an ePSF (see
+        :ref:`psf-terminology`).
+
     n_sources : int
         The number of sources to generate. If ``min_separation`` is too
         large, the number of requested sources may not fit within the

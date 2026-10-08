@@ -104,8 +104,38 @@ class GriddedPSFModel(Fittable2DModel):
         :func:`~photutils.psf.stdpsf_reader` with the provided
         parameters.
 
+    See Also
+    --------
+    ImagePSF : A model for a single ePSF image.
+    make_epsf_from_psf : Make an ePSF image from a sampled PSF.
+
     Notes
     -----
+    The input images must be effective PSFs (ePSFs). Each value of an
+    ePSF is the fraction of the source flux that falls in a whole
+    detector pixel centered at that position relative to the source,
+    even when the image is oversampled. The model interpolates the
+    input images and does not integrate them over the detector pixels.
+    Evaluating the model at a position ``(x, y)`` therefore gives the
+    flux in a detector pixel centered at ``(x, y)``, which can be any
+    fractional pixel position.
+
+    Because each value is the flux in a whole detector pixel, the model
+    values sum to ``flux`` only when the model is evaluated on a grid
+    with a spacing of one detector pixel. That holds for any values of
+    ``x_0`` and ``y_0``. On a finer grid the pixels overlap, and the
+    sum is larger than ``flux`` by the ratio of the pixel area to the
+    area of a grid cell.
+
+    Oversampled images that are not ePSFs, such as PSFs sampled at the
+    points of a fine grid or binned into subpixels, are not converted
+    to ePSFs by this model. The model is then sharper than a source
+    in the data. For an undersampled PSF, the sum of the model values
+    over the detector pixels can also change with the subpixel position
+    of the source. Such images should first be integrated over the
+    area of a detector pixel centered at each of their grid points,
+    which is what `make_epsf_from_psf` does.
+
     The fitted ``flux`` parameter represents the total source flux,
     provided the input ePSF images are properly normalized. The fitted
     flux is a multiplicative scale factor applied to the input ePSF
@@ -128,6 +158,15 @@ class GriddedPSFModel(Fittable2DModel):
     can be used to estimate the missing flux and obtain the proper
     normalization.
 
+    The model is zero outside of the extent of the input ePSF images.
+    The model values on a grid of detector pixels therefore sum to
+    less than ``flux`` by the fraction of the source flux that is
+    outside of the images. That sum also changes with the subpixel
+    position of the source, because the number of detector pixels
+    inside the images changes (see :ref:`psf-image-models` for example
+    values). The input images should therefore be large enough that
+    the ePSF is small at their edges.
+
     Internally, the ePSF grid is reordered so that the reference ePSFs
     are sorted first by their y detector coordinate and then by their x
     detector coordinate.
@@ -144,6 +183,36 @@ class GriddedPSFModel(Fittable2DModel):
     the four bounding grid planes are evaluated together by a compiled
     kernel, which also computes the analytic partial derivatives used by
     `fit_deriv`.
+
+    Examples
+    --------
+    Oversampled PSFs whose values are samples of the PSF, such as the
+    output of an optical model, must be converted to ePSFs before they
+    are used as the input images. Here, four narrow Gaussian PSFs are
+    sampled on a grid that is oversampled by a factor of 4 and then
+    integrated over the detector pixels with `make_epsf_from_psf`:
+
+    >>> import numpy as np
+    >>> from astropy.nddata import NDData
+    >>> from photutils.psf import GriddedPSFModel, make_epsf_from_psf
+    >>> oversampling = 4
+    >>> yy, xx = np.mgrid[-30:31, -30:31] / oversampling
+    >>> sigmas = (0.5, 0.55, 0.6, 0.65)  # detector pixels
+    >>> psfs = np.array([np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+    ...                  for sigma in sigmas])
+    >>> psfs *= oversampling**2 / psfs.sum(axis=(1, 2), keepdims=True)
+    >>> epsfs = make_epsf_from_psf(psfs, oversampling=oversampling)
+    >>> meta = {'grid_xypos': [(0, 0), (100, 0), (0, 100), (100, 100)],
+    ...         'oversampling': oversampling}
+    >>> model = GriddedPSFModel(NDData(epsfs, meta=meta), x_0=40.3,
+    ...                         y_0=29.6)
+
+    The model values on a grid of detector pixels sum to the model
+    flux for any subpixel position of the source:
+
+    >>> yy, xx = np.mgrid[23:38, 33:48]
+    >>> print(f'{model(xx, yy).sum():.3f}')
+    1.000
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '

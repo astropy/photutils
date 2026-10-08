@@ -223,6 +223,14 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     region. If ``fwhm`` is `None`, then the initial guess for the FWHM
     is half the mean of the x and y sizes of the ``fit_shape`` values.
 
+    The `~photutils.psf.CircularGaussianPRF` model is a Gaussian that
+    is integrated over the pixels. Its FWHM is the FWHM of the Gaussian
+    before that integration, which is smaller than the FWHM of the
+    pixelated image of the source. The integration over a pixel adds
+    1/12 pixel**2 to the variance of the profile, so the two widths
+    differ by about 3% for a FWHM of 3 pixels, 6% for 2 pixels, and 25%
+    for 1 pixel.
+
     Examples
     --------
     Fit a 2D Gaussian model to an image containing only one source
@@ -415,6 +423,14 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     flux is the sum of the pixel values within the fitting region. If
     ``fwhm`` is `None`, then the initial guess for the FWHM is half the
     mean of the x and y sizes of the ``fit_shape`` values.
+
+    The `~photutils.psf.CircularGaussianPRF` model is a Gaussian that
+    is integrated over the pixels. The returned FWHM is the FWHM of the
+    Gaussian before that integration, which is smaller than the FWHM
+    of the pixelated image of the source. The integration over a pixel
+    adds 1/12 pixel**2 to the variance of the profile, so the two widths
+    differ by about 3% for a FWHM of 3 pixels, 6% for 2 pixels, and 25%
+    for 1 pixel.
 
     This function captures warnings using the process-global warning
     machinery, so concurrent calls from multiple threads may

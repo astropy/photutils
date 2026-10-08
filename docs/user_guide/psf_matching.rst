@@ -148,6 +148,41 @@ The input source and target PSFs must satisfy these requirements:
 * **Centered** (recommended but not required): The peak of the PSF
   should be at the center of the array.
 
+* **Sampled like the image**: The PSFs should represent a point source
+  as it appears in the image that will be convolved, at the pixel scale
+  of that image. That includes the integration of the PSF over the
+  detector pixels (see :ref:`psf-terminology`).
+
+The last requirement matters only for PSFs that are undersampled by
+the pixels. The kernel is the ratio of the Fourier transforms of the
+two PSFs. The integration over a detector pixel multiplies both
+transforms by the same factor when the two PSFs have the same detector
+pixel size, so it cancels in the ratio. For PSFs that are well sampled
+(a FWHM of more than about 2.5 pixels), PSFs that are sampled at the
+pixel centers and PSFs that are integrated over the pixels therefore
+give the same kernel.
+
+For an undersampled source PSF the two differ, because a PSF that is
+sampled at points is aliased more than one that is integrated over the
+pixels. In tests with Gaussian PSFs, the kernels made from
+pixel-integrated PSFs gave matched images with about half the error
+of the kernels made from PSFs sampled at points. The error was still
+2 to 4% of the peak of the matched image for a source PSF with a FWHM
+of 1.2 pixels, and about 0.1% for a FWHM of 1.65 pixels. An
+undersampled image cannot be matched exactly by a kernel at its own
+pixel scale, whichever PSFs are used.
+
+If the two PSFs come from images with different detector pixel sizes,
+the pixel integration does not cancel, and each PSF should include the
+pixel integration of its own image.
+:func:`~photutils.psf_matching.resize_psf` interpolates a PSF and does
+not integrate it over the pixels. An oversampled PSF that is sampled at
+points, such as the output of an optical model, should first be
+integrated over the detector pixels with
+:func:`~photutils.psf.make_epsf_from_psf`. For a result with an odd
+number of points, every ``oversampling``-th point counted from the
+central point is then the PSF at the pixel scale of the image.
+
 
 Noiseless Gaussian Example
 ---------------------------

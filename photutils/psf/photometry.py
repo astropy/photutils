@@ -560,6 +560,23 @@ class PSFPhotometry:
         flux parameters. The model must be two-dimensional such that it
         accepts 2 inputs (e.g., x and y) and provides 1 output.
 
+        The model is evaluated at the center of each pixel, and the
+        result is compared with the pixel value. The value of the model
+        at a position must therefore be the flux in a pixel centered at
+        that position, as for the analytic models whose names end in
+        ``PRF`` and for an image-based model made from an ePSF (see
+        :ref:`psf-terminology`). A model that is not integrated over
+        the pixels gives biased fluxes and positions for undersampled
+        data.
+
+        The fitted source positions are the fitted values of the model
+        position parameters. For an image-based model, they give the
+        position of the center of the model image, or of the
+        ``origin`` of an `ImagePSF`. The PSF must therefore be centered
+        on that point of the model image. Otherwise, the fitted
+        positions are all offset by the distance of the PSF center
+        from that point.
+
     fit_shape : int or length-2 array_like
         The rectangular shape around the initial source position that
         will be used to define the PSF-fitting data. If ``fit_shape``
