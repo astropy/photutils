@@ -3,6 +3,7 @@
 Tests for the utils module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -253,12 +254,13 @@ class TestResizePSF:
         """
         Test that resizing returns an odd-shaped output.
 
-        For a (5,5) input with ratio=2.0, ceil gives 10 (even), so one
-        pixel is added to give (11, 11).
+        For a (5, 5) input with ratio=2.0, the output grid spans the 4
+        input pixels between the outermost pixel centers in 8 steps,
+        which gives (9, 9).
         """
         psf = _make_gaussian_psf(5, 1.5)
         result = resize_psf(psf, 0.1, 0.05)
-        assert result.shape == (11, 11)
+        assert result.shape == (9, 9)
         assert_allclose(result.sum(), psf.sum())
 
     def test_resize_odd_output(self):
@@ -278,6 +280,160 @@ class TestResizePSF:
             result = resize_psf(psf, 0.1, scale_out)
             assert result.shape[0] % 2 == 1
             assert result.shape[1] % 2 == 1
+
+    @pytest.mark.parametrize(('size', 'std', 'scale_in', 'scale_out'),
+                             [(101, 4.0, 0.25, 1.0),
+                              (101, 4.0, 0.25, 0.5),
+                              (51, 3.0, 0.5, 0.25),
+                              (51, 3.0, 1.0, 0.6),
+                              (201, 10.0, 0.1, 0.3),
+                              (41, 3.0, 0.3, 0.2)])
+    def test_pixel_scale(self, size, std, scale_in, scale_out):
+        """
+        Test that the output has exactly the requested pixel scale.
+
+        A well-sampled Gaussian that is resized must match the same
+        Gaussian evaluated on a grid with the output pixel scale.
+        """
+        psf = _make_gaussian_psf(size, std)
+        result = resize_psf(psf, scale_in, scale_out)
+
+        n_out = result.shape[0]
+        offsets = (np.arange(n_out) - n_out // 2) * scale_out / scale_in
+        assert np.abs(offsets).max() <= size // 2
+        profile = np.exp(-offsets**2 / (2 * std**2))
+        expected = np.outer(profile, profile)
+        expected /= expected.sum()
+        assert_allclose(result, expected, atol=1e-3 * expected.max())
+
+        # The second moment gives the width in output pixels
+        xx = np.arange(n_out) - n_out // 2
+        marginal = result.sum(axis=0)
+        sigma = np.sqrt(np.sum(marginal * xx**2) / marginal.sum())
+        assert_allclose(sigma, std * scale_in / scale_out, rtol=1e-3)
+
+    def test_same_scale(self):
+        """
+        Test that resizing to the same pixel scale returns the input.
+        """
+        psf = _make_gaussian_psf(11, 2.0)
+        result = resize_psf(psf, 0.1, 0.1)
+        assert_allclose(result, psf, rtol=1e-12, atol=1e-15)
+
+    def test_integer_downsample(self):
+        """
+        Test that an integer change of the pixel scale samples the
+        input at every nth pixel from its center.
+        """
+        psf = _make_gaussian_psf(101, 6.0)
+        result = resize_psf(psf, 0.25, 1.0)
+        assert result.shape == (25, 25)
+        expected = psf[2::4, 2::4]
+        expected = expected / expected.sum() * psf.sum()
+        assert_allclose(result, expected, rtol=1e-10, atol=1e-15)
+
+    def test_within_input(self):
+        """
+        Test that the output grid ends at the outermost pixel centers
+        of the input, so that no output value is extrapolated or
+        padded.
+        """
+        psf = np.ones((25, 25))
+        result = resize_psf(psf, 1.0, 0.25)
+        # The input pixel centers span -12 to 12 pixels from the
+        # center, which is 96 steps of the output pixel scale
+        assert result.shape == (97, 97)
+        assert_allclose(result, psf.sum() / 97**2, rtol=1e-10)
+
+        # A round trip returns the input shape
+        result2 = resize_psf(result, 0.25, 1.0)
+        assert result2.shape == psf.shape
+
+    @pytest.mark.parametrize(('size', 'scale_out', 'n_out'),
+                             [(25, 0.3, 81), (25, 3.0, 9), (25, 13.0, 1),
+                              (11, 0.7, 15), (1, 0.5, 1), (1, 2.0, 1)])
+    def test_output_size(self, size, scale_out, n_out):
+        """
+        Test the output size for pixel scale ratios that are not
+        integers and for sizes that reduce to a single pixel.
+        """
+        psf = _make_gaussian_psf(size, max(size / 8, 1.0))
+        result = resize_psf(psf, 1.0, scale_out)
+        assert result.shape == (n_out, n_out)
+        assert_allclose(result.sum(), psf.sum())
+
+    @pytest.mark.parametrize('order', [0, 1, 2, 3, 4, 5])
+    @pytest.mark.parametrize('scale_out',
+                             [0.03, 0.05, 0.07, 0.1, 0.13, 0.2, 0.31])
+    def test_centered(self, order, scale_out):
+        """
+        Test that the output is symmetric about the central output
+        pixel for every spline order.
+        """
+        psf = _make_gaussian_psf(31, 2.5)
+        result = resize_psf(psf, 0.1, scale_out, order=order)
+        assert_allclose(result, result[::-1, ::-1], rtol=1e-10,
+                        atol=1e-15)
+        assert_allclose(result, result.T, rtol=1e-10, atol=1e-15)
+
+        # The peak is unique only for the interpolating orders.
+        # Nearest-neighbor interpolation can repeat the central value.
+        center = result.shape[0] // 2
+        assert result[center, center] == result.max()
+        if order > 0:
+            idx = np.unravel_index(np.argmax(result), result.shape)
+            assert idx == (center, center)
+
+    @pytest.mark.parametrize(('size', 'scale_in', 'scale_out', 'n_out'),
+                             [(11, 0.022, 0.01, 23),
+                              (51, 0.022, 0.025, 45),
+                              (11, 0.022, 0.055, 5),
+                              (51, 0.022, 0.55, 3)])
+    def test_whole_number_size(self, size, scale_in, scale_out, n_out):
+        """
+        Test that roundoff in a half size that is a whole number does
+        not remove pixels from the output.
+        """
+        psf = _make_gaussian_psf(size, size / 8)
+        result = resize_psf(psf, scale_in, scale_out)
+        assert result.shape == (n_out, n_out)
+
+    def test_quantity_pixel_scales(self):
+        """
+        Test pixel scales that are quantities with different units.
+        """
+        psf = _make_gaussian_psf(11, 2.0)
+        expected = resize_psf(psf, 0.1, 0.05)
+        result = resize_psf(psf, 0.1 * u.arcsec, 50 * u.mas)
+        assert isinstance(result, np.ndarray)
+        assert_allclose(result, expected, rtol=1e-12, atol=1e-15)
+
+        with pytest.raises(TypeError):
+            resize_psf(psf, 0.1 * u.arcsec, 0.05 * u.pix)
+
+    def test_zero_sum_output(self):
+        """
+        Test that a resized PSF with a zero sum raises ValueError.
+        """
+        psf = np.zeros((5, 5))
+        psf[0, 0] = 1.0
+        match = 'resized PSF has a zero sum'
+        with pytest.raises(ValueError, match=match):
+            resize_psf(psf, 1.0, 3.0, order=1)
+
+    def test_rectangular(self):
+        """
+        Test a PSF with different sizes along the two axes.
+        """
+        yy, xx = np.mgrid[-10:11, -20:21]
+        psf = np.exp(-(xx**2 + yy**2) / (2 * 3.0**2))
+        psf /= psf.sum()
+        result = resize_psf(psf, 1.0, 0.5)
+        assert result.shape == (41, 81)
+        yy, xx = np.mgrid[-20:21, -40:41] / 2
+        expected = np.exp(-(xx**2 + yy**2) / (2 * 3.0**2))
+        expected /= expected.sum()
+        assert_allclose(result, expected, atol=1e-3 * expected.max())
 
     def test_non_2d(self):
         """
