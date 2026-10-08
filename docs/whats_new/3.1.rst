@@ -465,6 +465,27 @@ has an odd number of points with the PSF center on its central grid
 point, like the ePSFs made by `~photutils.psf.EPSFBuilder`.
 
 
+Pixel-Integrated Moffat and Airy Disk Models
+============================================
+
+The new `~photutils.psf.MoffatPRF` and `~photutils.psf.AiryDiskPRF`
+models are the Moffat and Airy disk profiles integrated
+over the detector pixels. They have the same parameters as
+`~photutils.psf.MoffatPSF` and `~photutils.psf.AiryDiskPSF`, which are
+evaluated at the pixel centers. A model that is evaluated at the pixel
+centers is sharper than the image of a source, so it gives biased fluxes
+and positions when it is fit to the pixel values of an image. The bias
+is a few percent for a FWHM of 2 to 3 pixels and tens of percent for
+an undersampled PSF, where it also depends on the subpixel position of
+the source. The new models remove that bias and their shape parameters
+can be fit. Every analytic PSF model in `photutils.psf` now has a
+pixel-integrated counterpart, which should be used for PSF photometry.
+
+The integral over each pixel is computed with Gauss-Legendre quadrature.
+The number of nodes along each axis of a pixel is set by the ``n_nodes``
+keyword.
+
+
 Polygon Apertures
 =================
 

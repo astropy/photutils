@@ -280,6 +280,12 @@ New Features
     at the nearest point on the image edge, so its position derivative
     along that axis is zero. [#2393, #2455, #2456]
 
+  - Added ``MoffatPRF`` and ``AiryDiskPRF`` models, which are Moffat
+    and Airy disk profiles integrated over the detector pixels. Unlike
+    ``MoffatPSF`` and ``AiryDiskPSF``, they conserve flux for an
+    undersampled PSF and give unbiased fluxes when fit to the pixel
+    values of an image, with fittable shape parameters. [#2473]
+
   - Added an analytic Jacobian (``fit_deriv``) to ``GaussianPRF``,
     ``CircularGaussianPRF``, ``CircularGaussianSigmaPRF``,
     ``MoffatPSF``, and ``AiryDiskPSF``. Astropy fitters use it in place
