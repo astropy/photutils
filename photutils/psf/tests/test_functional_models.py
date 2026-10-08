@@ -204,7 +204,9 @@ class TestFitDeriv:
 
     @pytest.mark.parametrize(('model_class', 'params'),
                              [(GaussianPSF, gaussian_params),
-                              (CircularGaussianPSF, circular_params)])
+                              (CircularGaussianPSF, circular_params),
+                              (CircularGaussianPRF, circular_params),
+                              (CircularGaussianSigmaPRF, circular_params)])
     def test_fit_deriv(self, model_class, params):
         model = model_class()
         derivs = model.fit_deriv(self.xx, self.yy, *params)
@@ -233,6 +235,110 @@ class TestFitDeriv:
         derivs = GaussianPSF.fit_deriv(1.0, 1.0, 0.0, 0.0, 0.0, 2.0,
                                        3.0, 10.0)
         assert np.isfinite(derivs[0])
+
+    @pytest.mark.parametrize('params', [
+        gaussian_params,
+        (71.4, 24.3, 25.2, 1.0, 1.4, 45.0),
+        (71.4, 24.5, 24.5, 0.8, 2.4, -60.0),
+        (71.4, 24.0, 25.0, 2.0, 3.0, 0.0),
+        (71.4, 24.3, 25.2, 3.0, 1.2, 90.0),
+        (71.4, 24.3, 25.2, 2.0, 2.0, 30.0),
+    ])
+    def test_gaussian_prf_fit_deriv(self, params):
+        """
+        Test the GaussianPRF derivatives for undersampled, rotated, and
+        unrotated Gaussians, including sources on a pixel corner and at
+        a pixel center.
+
+        The step of the numerical derivative is larger than for the
+        other models because the rotated model is a difference of
+        terms of order unity, which leaves rounding noise in a
+        difference over a very small step.
+        """
+        model = GaussianPRF()
+        derivs = model.fit_deriv(self.xx, self.yy, *params)
+        assert len(derivs) == len(params)
+        for index in range(len(params)):
+            assert derivs[index].shape == self.xx.shape
+            numerical = self.numerical_deriv(model, params, index,
+                                             step=1e-4)
+            assert_allclose(derivs[index], numerical, rtol=1e-5, atol=1e-8)
+
+    @pytest.mark.parametrize('fwhm', [0.9, 2.1])
+    def test_circular_prf_fit_deriv(self, fwhm):
+        """
+        Test the derivatives of the circular Gaussian PRF models,
+        including an undersampled Gaussian.
+        """
+        params = (71.4, 24.5, 25.2, fwhm)
+        sigma_params = (*params[:3], fwhm * gaussian_fwhm_to_sigma)
+        for model, model_params in ((CircularGaussianPRF(), params),
+                                    (CircularGaussianSigmaPRF(),
+                                     sigma_params)):
+            derivs = model.fit_deriv(self.xx, self.yy, *model_params)
+            for index in range(len(model_params)):
+                numerical = self.numerical_deriv(model, model_params, index)
+                assert_allclose(derivs[index], numerical, rtol=1e-5,
+                                atol=1e-8)
+
+    def test_circular_prf_fwhm_deriv(self):
+        """
+        Test that the circular Gaussian PRF FWHM derivative is the sum
+        of the x and y FWHM derivatives of the elliptical Gaussian PRF.
+        """
+        flux, x_0, y_0, fwhm = self.circular_params
+        circular = CircularGaussianPRF.fit_deriv(self.xx, self.yy, flux,
+                                                 x_0, y_0, fwhm)
+        elliptical = GaussianPRF.fit_deriv(self.xx, self.yy, flux, x_0, y_0,
+                                           fwhm, fwhm, 0.0)
+        assert_allclose(circular[3], elliptical[3] + elliptical[4])
+        for index in range(3):
+            assert_allclose(circular[index], elliptical[index])
+
+    def test_gaussian_prf_fit_deriv_theta_quantity(self):
+        """
+        Test that a Quantity theta gives the same derivatives as a
+        float theta in degrees.
+        """
+        params = (71.4, 24.3, 25.2, 2.0, 3.0)
+        derivs1 = GaussianPRF.fit_deriv(self.xx, self.yy, *params, 30.0)
+        derivs2 = GaussianPRF.fit_deriv(self.xx, self.yy, *params,
+                                        30.0 * u.deg)
+        for deriv1, deriv2 in zip(derivs1, derivs2, strict=True):
+            assert_allclose(deriv1, deriv2)
+
+    @pytest.mark.parametrize(('model_class', 'params'), [
+        (GaussianPRF, (0.0, 0.0, 0.0, 2.0, 3.0, 10.0)),
+        (CircularGaussianPRF, (0.0, 0.0, 0.0, 2.0)),
+        (CircularGaussianSigmaPRF, (0.0, 0.0, 0.0, 2.0)),
+    ])
+    def test_prf_fit_deriv_zero_flux(self, model_class, params):
+        """
+        Test that the flux derivative is the model for unit flux when
+        the flux is zero.
+        """
+        derivs = model_class.fit_deriv(1.0, 1.0, *params)
+        expected = model_class().evaluate(1.0, 1.0, 1.0, *params[1:])
+        assert_allclose(derivs[0], expected)
+        assert derivs[0] > 0
+
+    def test_gaussian_prf_fit_free_shape(self):
+        """
+        Test fitting an undersampled rotated Gaussian PRF with free
+        shape parameters using the analytic derivatives.
+        """
+        model = GaussianPRF(flux=71.4, x_0=12.3, y_0=11.8, x_fwhm=1.6,
+                            y_fwhm=2.7, theta=33.0)
+        yy, xx = np.mgrid[0:25, 0:25]
+        data = model(xx, yy)
+
+        model_init = GaussianPRF(flux=60.0, x_0=12.0, y_0=12.0, x_fwhm=2.0,
+                                 y_fwhm=2.5, theta=20.0)
+        for name in ('x_fwhm', 'y_fwhm', 'theta'):
+            getattr(model_init, name).fixed = False
+        fitter = TRFLSQFitter()
+        fit_model = fitter(model_init, xx, yy, data)
+        assert_allclose(fit_model.parameters, model.parameters, rtol=1e-6)
 
     def test_circular_fit_free_fwhm(self):
         """
