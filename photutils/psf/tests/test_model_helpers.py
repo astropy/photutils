@@ -344,17 +344,24 @@ class TestGridFromEPSFs:
         assert psf_grid.meta['fill_value'] == 0.0
 
 
-def _sampled_gaussian(sigma, oversampling, size):
+def _sampled_gaussian(sigma, oversampling, size, *, midpoints=False):
     """
     Make a Gaussian PSF sampled at the points of an oversampled grid
     and the matching pixel-integrated ePSF.
+
+    The PSF is centered on a grid with an odd number of points. If
+    ``midpoints`` is `True`, it is instead centered on a grid with an
+    even number of points and the ePSF is at the points midway between
+    the grid points.
     """
     oversampling = np.broadcast_to(oversampling, 2)
     profiles = []
     for factor in oversampling:
-        n_points = size * factor + (size * factor + 1) % 2
-        offsets = (np.arange(n_points) - n_points // 2) / factor
+        n_points = size * factor + (size * factor + 1 + midpoints) % 2
+        offsets = (np.arange(n_points) - (n_points - 1) / 2) / factor
         sampled = np.exp(-offsets**2 / (2 * sigma**2))
+        if midpoints:
+            offsets = offsets[:-1] + 0.5 / factor
         scale = np.sqrt(2) * sigma
         integrated = 0.5 * (erf((offsets + 0.5) / scale)
                             - erf((offsets - 0.5) / scale))
@@ -442,20 +449,10 @@ class TestMakeEPSFFromPSF:
         centered on an even-sized image on the central grid point of
         the output.
         """
-        sigma = 0.8
-        scale = np.sqrt(2) * sigma
-        psf_profiles = []
-        epsf_profiles = []
-        for factor in np.broadcast_to(oversampling, 2):
-            n_points = 16 * factor
-            offsets = (np.arange(n_points) - (n_points - 1) / 2) / factor
-            sampled = np.exp(-offsets**2 / (2 * sigma**2))
-            psf_profiles.append(sampled * factor / sampled.sum())
-            midpoints = offsets[:-1] + 0.5 / factor
-            epsf_profiles.append(0.5 * (erf((midpoints + 0.5) / scale)
-                                        - erf((midpoints - 0.5) / scale)))
-        psf = np.outer(*psf_profiles)
-        expected = np.outer(*epsf_profiles)
+        psf, expected = _sampled_gaussian(0.8, oversampling, 16,
+                                          midpoints=True)
+        assert psf.shape[0] % 2 == 0
+        assert psf.shape[1] % 2 == 0
 
         result = make_epsf_from_psf(psf, oversampling=oversampling,
                                     midpoints=True)
@@ -523,10 +520,25 @@ class TestMakeEPSFFromPSF:
             assert_allclose(images[-1].sum(), 1.0, atol=2e-5)
         assert_allclose(images[0], images[1], atol=1e-3 * images[0].max())
 
-    def test_input_unchanged(self):
+    def test_oversampling_larger_than_image(self):
+        """
+        Test that every window covers the whole image when the
+        oversampling is larger than the image.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.random((9, 12))
+        result = make_epsf_from_psf(data, oversampling=50)
+        spline = RectBivariateSpline(np.arange(9.0), np.arange(12.0), data,
+                                     kx=3, ky=3, s=0)
+        expected = spline.integral(0, 8, 0, 11) / 50**2
+        assert result.shape == data.shape
+        assert_allclose(result, expected, rtol=1e-10)
+
+    @pytest.mark.parametrize('midpoints', [False, True])
+    def test_input_unchanged(self, midpoints):
         psf, _ = _sampled_gaussian(0.8, 2, 9)
         psf_orig = psf.copy()
-        make_epsf_from_psf(psf, oversampling=2)
+        make_epsf_from_psf(psf, oversampling=2, midpoints=midpoints)
         assert_equal(psf, psf_orig)
 
     def test_units_dropped(self):
@@ -571,3 +583,9 @@ class TestMakeEPSFFromPSF:
         match = 'oversampling must be > 0'
         with pytest.raises(ValueError, match=match):
             make_epsf_from_psf(np.ones((10, 10)), oversampling=0)
+
+        match = 'oversampling must have integer values'
+        for oversampling in (2.5, 4.0):
+            with pytest.raises(ValueError, match=match):
+                make_epsf_from_psf(np.ones((10, 10)),
+                                   oversampling=oversampling)
