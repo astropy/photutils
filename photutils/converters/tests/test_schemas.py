@@ -430,6 +430,7 @@ GRID_XYPOS = _ndarray(GRID_XYPOS_VALUES)
 # functional-model schema, as is ``theta`` for the elliptical Gaussians
 # and ``oversampling`` for the STDPSF grid.
 REQUIRED_PSF_PARAMS = {
+    'airy_disk_prf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'radius': 4.0},
     'airy_disk_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'radius': 4.0},
     'circular_gaussian_prf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0,
                               'fwhm': 4.0},
@@ -441,6 +442,8 @@ REQUIRED_PSF_PARAMS = {
                      'y_fwhm': 5.0},
     'gaussian_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'x_fwhm': 4.0,
                      'y_fwhm': 5.0},
+    'moffat_prf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'alpha': 4.0,
+                   'beta': 5.0},
     'moffat_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'alpha': 4.0,
                    'beta': 5.0},
     'image_psf': {'data': PSF_IMAGE},
@@ -456,7 +459,7 @@ REQUIRED_PSF_PARAMS = {
 
 # The models whose parameters are all plain numbers, so that a reference
 # model can be built from the same required parameters.
-FUNCTIONAL_PSF_STEMS = list(REQUIRED_PSF_PARAMS)[:7]
+FUNCTIONAL_PSF_STEMS = list(REQUIRED_PSF_PARAMS)[:9]
 
 
 def _psf_yaml(stem, params):
@@ -494,6 +497,8 @@ def test_optional_psf_params_use_defaults(stem):
     for name, value in params.items():
         assert getattr(model, name) == value
     assert model.bbox_factor == reference.bbox_factor
+    if hasattr(model, 'n_nodes'):
+        assert model.n_nodes == reference.n_nodes
     if hasattr(model, 'theta'):
         assert model.theta == reference.theta
 

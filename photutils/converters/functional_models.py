@@ -8,12 +8,14 @@ from asdf_astropy.converters.transform.core import (TransformConverterBase,
 
 from photutils.converters._utils import optional_params
 
-__all__ = ['AiryDiskPSFConverter',
+__all__ = ['AiryDiskPRFConverter',
+           'AiryDiskPSFConverter',
            'CircularGaussianPRFConverter',
            'CircularGaussianPSFConverter',
            'CircularGaussianSigmaPRFConverter',
            'GaussianPRFConverter',
            'GaussianPSFConverter',
+           'MoffatPRFConverter',
            'MoffatPSFConverter',
            ]
 
@@ -28,11 +30,14 @@ class _PSFModelConverter(TransformConverterBase):
 
     Every parameter is written to the file. Those in
     ``optional_model_params``, and ``bbox_factor``, may be absent when
-    reading, in which case the model class supplies its default.
+    reading, in which case the model class supplies its default. The
+    same holds for the model attributes in ``optional_attributes``,
+    which are not model parameters.
     """
 
     model_params = ()
     optional_model_params = ()
+    optional_attributes = ()
 
     def _model_class(self):
         """
@@ -48,6 +53,8 @@ class _PSFModelConverter(TransformConverterBase):
         node = {name: parameter_to_value(getattr(model, name))
                 for name in names}
         node['bbox_factor'] = model.bbox_factor
+        for name in self.optional_attributes:
+            node[name] = getattr(model, name)
         return node
 
     def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
@@ -57,7 +64,7 @@ class _PSFModelConverter(TransformConverterBase):
         model = self._model_class()(
             **params,
             **optional_params(node, *self.optional_model_params,
-                              'bbox_factor'),
+                              'bbox_factor', *self.optional_attributes),
         )
 
         # The file stores only the fixed=True entries and the non-empty
@@ -72,6 +79,17 @@ class _PSFModelConverter(TransformConverterBase):
             model.bounds[name] = (None, None)
 
         return model
+
+
+class AiryDiskPRFConverter(_PSFModelConverter):
+    """
+    ASDF converter for AiryDiskPRF.
+    """
+
+    tags = ('tag:astropy.org:photutils/psf/airy_disk_prf-*',)
+    types = ('photutils.psf.AiryDiskPRF',)
+    model_params = ('radius',)
+    optional_attributes = ('n_nodes',)
 
 
 class AiryDiskPSFConverter(_PSFModelConverter):
@@ -134,6 +152,17 @@ class GaussianPSFConverter(_PSFModelConverter):
     types = ('photutils.psf.GaussianPSF',)
     model_params = ('x_fwhm', 'y_fwhm')
     optional_model_params = ('theta',)
+
+
+class MoffatPRFConverter(_PSFModelConverter):
+    """
+    ASDF converter for MoffatPRF.
+    """
+
+    tags = ('tag:astropy.org:photutils/psf/moffat_prf-*',)
+    types = ('photutils.psf.MoffatPRF',)
+    model_params = ('alpha', 'beta')
+    optional_attributes = ('n_nodes',)
 
 
 class MoffatPSFConverter(_PSFModelConverter):

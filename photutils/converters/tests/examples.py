@@ -14,15 +14,17 @@ from astropy.coordinates import Angle, SkyCoord
 from astropy.nddata import NDData
 
 from photutils import aperture
-from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
+from photutils.psf import (AiryDiskPRF, AiryDiskPSF, CircularGaussianPRF,
                            CircularGaussianPSF, CircularGaussianSigmaPRF,
                            GaussianPRF, GaussianPSF, GriddedPSFModel, ImagePSF,
-                           MoffatPSF, STDPSFGrid)
+                           MoffatPRF, MoffatPSF, STDPSFGrid)
 
 # The directory holding the STDPSF test files
 PSF_DATA_DIR = Path(__file__).resolve().parents[2] / 'psf' / 'tests' / 'data'
 
 parameters = {
+    'AiryDiskPRF': ['flux', 'x_0', 'y_0', 'radius', 'bbox_factor',
+                    'n_nodes'],
     'AiryDiskPSF': ['flux', 'x_0', 'y_0', 'radius', 'bbox_factor'],
     'CircularGaussianPRF': ['flux', 'x_0', 'y_0', 'fwhm', 'bbox_factor'],
     'CircularGaussianPSF': ['flux', 'x_0', 'y_0', 'fwhm', 'bbox_factor'],
@@ -32,6 +34,8 @@ parameters = {
                     'bbox_factor'],
     'GaussianPSF': ['flux', 'x_0', 'y_0', 'x_fwhm', 'y_fwhm', 'theta',
                     'bbox_factor'],
+    'MoffatPRF': ['flux', 'x_0', 'y_0', 'alpha', 'beta', 'bbox_factor',
+                  'n_nodes'],
     'MoffatPSF': ['flux', 'x_0', 'y_0', 'alpha', 'beta', 'bbox_factor'],
     'ImagePSF': ['data', 'flux', 'x_0', 'y_0', 'oversampling',
                  'fill_value', 'origin'],
@@ -162,6 +166,43 @@ def gaussian_psf():
                         x_fwhm=2, y_fwhm=2,
                         theta=0, bbox_factor=3),
             parameters['GaussianPSF'])
+
+
+def airy_disk_prf_units():
+    """
+    Return an AiryDiskPRF with units.
+    """
+    return (AiryDiskPRF(flux=1 * u.Jy, x_0=0 * u.pix, y_0=0 * u.pix,
+                        radius=1 * u.pix, bbox_factor=2, n_nodes=5),
+            parameters['AiryDiskPRF'])
+
+
+def airy_disk_prf():
+    """
+    Return an AiryDiskPRF without units.
+    """
+    return (AiryDiskPRF(flux=2, x_0=1, y_0=1, radius=2, bbox_factor=3,
+                        n_nodes=7),
+            parameters['AiryDiskPRF'])
+
+
+def moffat_prf_units():
+    """
+    Return a MoffatPRF with units.
+    """
+    return (MoffatPRF(flux=71.4 * u.Jy,
+                      x_0=24.3 * u.pix, y_0=25.2 * u.pix,
+                      alpha=5.1 * u.pix, beta=3.2, n_nodes=5),
+            parameters['MoffatPRF'])
+
+
+def moffat_prf():
+    """
+    Return a MoffatPRF without units.
+    """
+    return (MoffatPRF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2,
+                      n_nodes=7),
+            parameters['MoffatPRF'])
 
 
 def moffat_psf_units():
