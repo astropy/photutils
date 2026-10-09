@@ -1005,6 +1005,23 @@ once per star and the star residuals are stacked in a single vectorized
 operation.
 
 
+Extracting Stars from Plain Arrays
+==================================
+
+The `~photutils.psf.extract_stars` function now accepts a plain 2D
+array, or a list of 2D arrays, as the input ``data``. The image no
+longer needs to be wrapped in an `~astropy.nddata.NDData` object::
+
+    >>> from photutils.psf import extract_stars
+    >>> stars = extract_stars(data, catalog, size=25)  # doctest: +SKIP
+
+The stars extracted from a plain array are given uniform weights,
+and the star positions must be input in pixel coordinates. The
+masked pixels of a `~numpy.ma.MaskedArray` are given zero weight. An
+`~astropy.nddata.NDData` object is still needed to input an uncertainty,
+a mask, or a WCS along with the image.
+
+
 Symmetry Centroid
 =================
 

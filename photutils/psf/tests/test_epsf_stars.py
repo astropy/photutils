@@ -1326,10 +1326,6 @@ class TestExtractStars:
         """
         Test extract_stars input validation.
         """
-        match = 'data must be a single NDData object or list of NDData objects'
-        with pytest.raises(TypeError, match=match):
-            extract_stars(np.ones(3), stars_table)
-
         match = 'All catalog elements must be Table objects'
         with pytest.raises(TypeError, match=match):
             extract_stars(stars_nddata, [(1, 1), (2, 2), (3, 3)])
@@ -1341,6 +1337,84 @@ class TestExtractStars:
         match = "the catalog must have a 'skycoord' column"
         with pytest.raises(ValueError, match=match):
             extract_stars([stars_nddata, stars_nddata], stars_table)
+
+    def test_array_input(self, stars_data, stars_nddata, stars_table):
+        """
+        Test that a plain array gives the same stars as NDData.
+        """
+        stars = extract_stars(stars_data, stars_table, size=11)
+        expected = extract_stars(stars_nddata, stars_table, size=11)
+        assert len(stars) == len(expected) == 4
+        for star, expected_star in zip(stars, expected, strict=True):
+            assert_array_equal(star.data, expected_star.data)
+            assert_array_equal(star.weights, np.ones((11, 11)))
+            assert star.flux == expected_star.flux
+            assert_array_equal(star.center, expected_star.center)
+            assert star.wcs_large is None
+
+    def test_array_list_input(self, stars_data, stars_nddata, stars_table):
+        """
+        Test a list of arrays and a list mixing arrays and NDData.
+        """
+        catalogs = [stars_table, stars_table]
+        stars = extract_stars([stars_data, stars_data], catalogs, size=11)
+        assert len(stars) == 8
+
+        stars = extract_stars([stars_data, stars_nddata], catalogs, size=11)
+        assert len(stars) == 8
+        assert_array_equal(stars[0].data, stars[4].data)
+
+    def test_masked_array_input(self, stars_data, stars_table):
+        """
+        Test that the mask of a masked array zeros the star weights.
+        """
+        mask = np.zeros(stars_data.shape, dtype=bool)
+        mask[15, 15] = True
+        data = np.ma.array(stars_data, mask=mask)
+        stars = extract_stars(data, stars_table, size=11)
+        assert stars[0].weights[5, 5] == 0
+        assert np.count_nonzero(stars[0].weights == 0) == 1
+        assert_array_equal(stars[1].weights, np.ones((11, 11)))
+
+    def test_unmasked_masked_array_input(self, stars_data, stars_table):
+        """
+        Test a masked array that has no masked values.
+        """
+        stars = extract_stars(np.ma.array(stars_data), stars_table, size=11)
+        assert len(stars) == 4
+        assert_array_equal(stars[0].weights, np.ones((11, 11)))
+
+    def test_quantity_input(self, stars_data, stars_table):
+        """
+        Test that the unit of a Quantity array is ignored.
+        """
+        stars = extract_stars(stars_data * u.Jy, stars_table, size=11)
+        expected = extract_stars(stars_data, stars_table, size=11)
+        assert not isinstance(stars[0].data, u.Quantity)
+        assert_array_equal(stars[0].data, expected[0].data)
+
+    def test_array_input_invalid(self, simple_data, simple_table):
+        """
+        Test invalid array inputs.
+        """
+        match = 'All input images must be 2D'
+        with pytest.raises(ValueError, match=match):
+            extract_stars(np.ones(3), simple_table)
+        with pytest.raises(ValueError, match=match):
+            extract_stars(np.ones((2, 50, 50)), simple_table)
+
+        # A nested list is not interpreted as a 2D image
+        match = 'All data elements must be 2D arrays or NDData objects'
+        with pytest.raises(TypeError, match=match):
+            extract_stars(simple_data.tolist(), simple_table)
+
+        skycoord_table = Table()
+        skycoord_table['skycoord'] = [SkyCoord(0, 0, unit='deg')]
+        match = 'must be an NDData object with a wcs attribute'
+        with pytest.raises(ValueError, match=match):
+            extract_stars(simple_data, skycoord_table)
+        with pytest.raises(ValueError, match=match):
+            extract_stars([simple_data, simple_data], skycoord_table)
 
     def test_empty_catalog(self, simple_nddata):
         """
@@ -1377,7 +1451,7 @@ class TestExtractStars:
         table['y'] = [25]
 
         # Test invalid data type
-        match = 'must be a single NDData object or list of NDData objects'
+        match = 'data must be a 2D array, an NDData object, or a list'
         with pytest.raises(TypeError, match=match):
             extract_stars('not_nddata', table)
 
@@ -1412,13 +1486,13 @@ class TestExtractStars:
         Test data input validation.
         """
         # Test invalid data types in list
-        match = 'All data elements must be NDData objects'
+        match = 'All data elements must be 2D arrays or NDData objects'
         with pytest.raises(TypeError, match=match):
             extract_stars(['not_nddata'], simple_table)
 
         # Test NDData with no data array
         empty_nddata = NDData(np.array([]))  # Provide empty array
-        match = 'must contain 2D data'
+        match = 'All input images must be 2D'
         with pytest.raises(ValueError, match=match):
             extract_stars(empty_nddata, simple_table)
 
@@ -1444,7 +1518,7 @@ class TestExtractStars:
         skycoord_table = Table()
         skycoord_table['skycoord'] = [SkyCoord(0, 0, unit='deg')]
 
-        match = 'NDData object must have a wcs attribute'
+        match = 'must be an NDData object with a wcs attribute'
         with pytest.raises(ValueError, match=match):
             extract_stars(simple_nddata, skycoord_table)
 
@@ -1805,7 +1879,7 @@ class TestExtractStars:
         table['skycoord'] = [SkyCoord(0, 0, unit='deg')]
 
         # Should raise because images don't have WCS
-        match = 'must have a wcs attribute'
+        match = 'must be an NDData object with a wcs attribute'
         with pytest.raises(ValueError, match=match):
             extract_stars([nddata1, nddata2], table, size=11)
 
@@ -1822,7 +1896,7 @@ class TestExtractStars:
         table['skycoord'] = [SkyCoord(0, 0, unit='deg')]
 
         # Should raise because NDData does not have WCS
-        match = 'NDData object must have a wcs attribute'
+        match = 'must be an NDData object with a wcs attribute'
         with pytest.raises(ValueError, match=match):
             extract_stars(nddata, table, size=11)
 
@@ -1854,7 +1928,7 @@ class TestExtractStars:
 
         # A skycoord-only catalog paired with an image lacking a WCS
         # raises an error
-        match = 'the corresponding NDData object must have a wcs'
+        match = 'the corresponding image must be an NDData object'
         with pytest.raises(ValueError, match=match):
             extract_stars([nddata1, nddata2], [table2, table1], size=11)
 

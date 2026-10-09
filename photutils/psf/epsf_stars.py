@@ -844,28 +844,32 @@ def _normalize_data_input(data):
     """
     Normalize the input data to a list of NDData objects.
 
+    Any `~numpy.ndarray` is wrapped in an `~astropy.nddata.NDData`
+    object. Other list elements are returned unchanged.
+
     Parameters
     ----------
-    data : `~astropy.nddata.NDData` or list of `~astropy.nddata.NDData`
+    data : `~numpy.ndarray`, `~astropy.nddata.NDData`, or list of these
         The input data to normalize.
 
     Returns
     -------
-    data : list of `~astropy.nddata.NDData`
-        The normalized list of NDData objects.
+    data : list
+        The normalized list of images.
 
     Raises
     ------
     TypeError
-        If the input data is not an NDData object or list of NDData
-        objects.
+        If the input data is not an array, an NDData object, or a list.
     """
-    if isinstance(data, NDData):
-        return [data]
-    if isinstance(data, list):
-        return data
-    msg = 'data must be a single NDData object or list of NDData objects'
-    raise TypeError(msg)
+    if isinstance(data, (NDData, np.ndarray)):
+        data = [data]
+    elif not isinstance(data, list):
+        msg = ('data must be a 2D array, an NDData object, or a list of '
+               '2D arrays or NDData objects')
+        raise TypeError(msg)
+    return [NDData(img) if isinstance(img, np.ndarray) else img
+            for img in data]
 
 
 def _normalize_catalog_input(catalogs):
@@ -914,12 +918,12 @@ def _validate_nddata_list(data):
     """
     for i, img in enumerate(data):
         if not isinstance(img, NDData):
-            msg = (f'All data elements must be NDData objects. '
-                   f'Element {i} is {type(img)}')
+            msg = (f'All data elements must be 2D arrays or NDData '
+                   f'objects. Element {i} is {type(img)}')
             raise TypeError(msg)
         if img.data.ndim != 2:
-            msg = (f'All NDData objects must contain 2D data. '
-                   f'Object at index {i} has {img.data.ndim}D data')
+            msg = (f'All input images must be 2D. The image at index '
+                   f'{i} has {img.data.ndim}D data')
             raise ValueError(msg)
 
 
@@ -972,13 +976,14 @@ def _validate_coordinate_consistency(data, catalogs):
     if len(catalogs) == 1 and len(data) > 1:
         # Single catalog with multiple images requires skycoord and WCS
         if 'skycoord' not in catalogs[0].colnames:
-            msg = ('When inputting a single catalog with multiple NDData '
-                   "objects, the catalog must have a 'skycoord' column.")
+            msg = ('When inputting a single catalog with multiple images, '
+                   "the catalog must have a 'skycoord' column.")
             raise ValueError(msg)
 
         if any(img.wcs is None for img in data):
-            msg = ('When inputting a single catalog with multiple NDData '
-                   'objects, each NDData object must have a wcs attribute.')
+            msg = ('When inputting a single catalog with multiple images, '
+                   'each image must be an NDData object with a wcs '
+                   'attribute.')
             raise ValueError(msg)
     else:
         # Multiple catalogs (or single catalog with single image)
@@ -998,8 +1003,8 @@ def _validate_coordinate_consistency(data, catalogs):
                 if (data_idx < len(data)
                         and data[data_idx].wcs is None):
                     msg = (f'When catalog at index {i} contains only skycoord '
-                           f'positions, the corresponding NDData object must '
-                           'have a wcs attribute.')
+                           'positions, the corresponding image must be an '
+                           'NDData object with a wcs attribute.')
                     raise ValueError(msg)
 
         if len(data) != len(catalogs):
@@ -1018,14 +1023,23 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
     Parameters
     ----------
-    data : `~astropy.nddata.NDData` or list of `~astropy.nddata.NDData`
-        A `~astropy.nddata.NDData` object or a list of
-        `~astropy.nddata.NDData` objects containing the 2D image(s) from
-        which to extract the stars. If the input ``catalogs`` contain
-        only the sky coordinates (i.e., not the pixel coordinates) of
-        the stars then each of the `~astropy.nddata.NDData` objects must
-        have a valid ``wcs`` attribute. Any ``unit`` attribute of the
-        `~astropy.nddata.NDData` objects is ignored.
+    data : 2D `~numpy.ndarray`, `~astropy.nddata.NDData`, or list of these
+        A 2D `~numpy.ndarray`, a `~astropy.nddata.NDData` object, or
+        a list of 2D arrays and/or `~astropy.nddata.NDData` objects
+        containing the 2D image(s) from which to extract the stars.
+
+        A plain array carries no uncertainty or WCS, so its
+        stars are given uniform weights and the star positions
+        must be in pixel coordinates. If the array is a
+        `~numpy.ma.MaskedArray`, its masked pixels are given zero
+        weight. Use a `~astropy.nddata.NDData` object to input an
+        uncertainty, mask, or WCS.
+
+        If the input ``catalogs`` contain only the sky coordinates
+        (i.e., not the pixel coordinates) of the stars then each image
+        must be a `~astropy.nddata.NDData` object with a valid ``wcs``
+        attribute. Any unit of an input `~astropy.units.Quantity` or
+        `~astropy.nddata.NDData` object is ignored.
 
     catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
         A catalog or list of catalogs of sources to be extracted from
@@ -1274,6 +1288,8 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     # until we know which cutouts we need
     uncertainty_info = _prepare_uncertainty_info(data)
     data_mask = data.mask  # Cache mask reference
+    if data_mask is np.ma.nomask:
+        data_mask = None
 
     stars = []
     n_nonfinite_weights = 0
