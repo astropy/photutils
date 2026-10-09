@@ -7,9 +7,10 @@ import astropy.units as u
 import numpy as np
 from astropy.convolution import discretize_model
 from astropy.modeling import Model
-from astropy.nddata import NoOverlapError, overlap_slices
+from astropy.nddata import NoOverlapError
 from astropy.table import Table
 
+from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 

@@ -246,6 +246,34 @@ def test_make_model_image_no_overlap():
     assert np.sum(data) == 0
 
 
+@pytest.mark.parametrize('per_source', [False, True])
+def test_make_model_image_edge_no_overlap(per_source):
+    """
+    Test that a source whose model box ends exactly at the lower edge of
+    the image is skipped.
+
+    Regression test for the array-valued ``model_shape`` being compared
+    to a tuple in ``overlap_slices``.
+    """
+    params = QTable()
+    params['x_0'] = [50.0, -16.0, 50.0]
+    params['y_0'] = [50.0, 50.0, -16.0]
+    params['flux'] = [100.0, 100.0, 100.0]
+    model = CircularGaussianPSF(fwhm=2.0)
+    shape = (100, 100)
+    model_shape = (31, 31)
+
+    ref_image = make_model_image(shape, model, params[:1],
+                                 model_shape=model_shape)
+    if per_source:
+        params['model_shape'] = [31, 31, 31]
+        image = make_model_image(shape, model, params)
+    else:
+        image = make_model_image(shape, model, params,
+                                 model_shape=model_shape)
+    assert_allclose(image, ref_image)
+
+
 def test_make_model_image_inputs():
     """
     Test that the appropriate exceptions are raised for invalid inputs.

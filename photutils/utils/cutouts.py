@@ -6,9 +6,10 @@ Tools for generating 2D image cutouts.
 from functools import cached_property
 
 import numpy as np
-from astropy.nddata import extract_array, overlap_slices
+from astropy.nddata import extract_array
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._overlap import overlap_slices
 from photutils.utils._round import round_half_away
 
 __all__ = ['CutoutImage']

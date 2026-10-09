@@ -1569,6 +1569,27 @@ def test_flag2_boundaries():
     assert_equal(phot['flags'][[0, 1, 4, 5]], [1, 1, 1, 1])
 
 
+def test_flag64_edge_no_overlap():
+    """
+    Test flag=64 for a source whose fit region ends exactly at the lower
+    edge of the image.
+
+    Regression test for the array-valued ``fit_shape`` being compared to
+    a tuple in ``overlap_slices``.
+    """
+    psf_model = CircularGaussianPRF(fwhm=3.0)
+    data = np.zeros((21, 21))
+    init_params = QTable()
+    init_params['x_0'] = [-3.0, 10.0]
+    init_params['y_0'] = [10.0, -3.0]
+    init_params['flux'] = [500.0, 500.0]
+    psfphot = PSFPhotometry(psf_model, (5, 5))
+    phot = psfphot(data, init_params=init_params)
+    assert len(phot) == 2
+    assert np.all((phot['flags'] & 64) == 64)
+    assert np.all(phot['n_pixels_fit'] == 0)
+
+
 def test_flag64_no_overlap():
     """
     Test flag=64 for source with no overlap (completely outside).

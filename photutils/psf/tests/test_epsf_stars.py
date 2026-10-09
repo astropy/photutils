@@ -1442,6 +1442,23 @@ class TestExtractStars:
             stars = extract_stars(simple_nddata, table, size=11)
         assert len(stars) == 0
 
+    def test_star_cutout_ends_at_image_edge(self, simple_nddata):
+        """
+        Test extraction with a star whose cutout ends exactly at the
+        lower edge of the image.
+
+        Regression test for the array-valued ``size`` being compared to
+        a tuple in ``overlap_slices``.
+        """
+        table = Table()
+        table['x'] = [-6, 25]
+        table['y'] = [25, -6]
+
+        match = '2 star cutout\\(s\\) were not extracted'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, table, size=11)
+        assert len(stars) == 0
+
     def test_invalid_input_types(self, simple_nddata):
         """
         Test extraction with invalid input types.
