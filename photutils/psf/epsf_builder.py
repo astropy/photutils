@@ -1756,7 +1756,9 @@ class EPSFBuilder:
         its core instead, use `~photutils.centroids.centroid_symmetry`,
         which is the center definition of Anderson 2016. With the
         default ``recentering_boxsize`` it measures the symmetry within
-        about 1.5 detector pixels of the center.
+        about 1.5 detector pixels of the center. It needs a box of
+        at least 5 oversampled pixels, so it cannot be used with a
+        ``recentering_boxsize`` of 3 and an ``oversampling`` of 1.
 
     recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid

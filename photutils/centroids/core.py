@@ -10,6 +10,7 @@ import numpy as np
 from astropy.nddata import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.interpolate import RectBivariateSpline
+from scipy.ndimage import gaussian_filter
 from scipy.optimize import minimize
 
 from photutils.centroids._utils import _process_data_mask
@@ -144,13 +145,20 @@ def centroid_symmetry(data, *, mask=None, radius=None):
 
     .. warning::
 
-        The result is less accurate if masked or non-finite values lie
-        within ``radius`` of the center. The pairs that are excluded
-        then change with the trial center, which biases the position of
-        the minimum. In a test with a Gaussian source with a standard
-        deviation of 2 pixels, a single masked pixel 1.7 pixels from the
-        center changed the result by 0.02 pixels, and a masked column at
-        that distance by 0.2 pixels.
+        The result is less accurate if masked or non-finite values
+        lie within ``radius`` of the center. The data are interpolated
+        between the pixels, so a masked value is first replaced by
+        a weighted mean of the unmasked values around it, which is
+        only an estimate. In a test with a Gaussian source with a
+        standard deviation of 2 pixels, a single masked pixel 1.7 pixels
+        from the center changed the result by 0.002 pixels, and a masked
+        column at that distance by 0.01 pixels. The changes were larger
+        for a narrower source.
+
+        The search starts at the maximum value of the data. A bright
+        outlier such as a hot pixel or a cosmic ray near the source
+        should be masked, because a single bright pixel is symmetric
+        about itself.
 
     Parameters
     ----------
@@ -260,10 +268,19 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     if np.all(bad) or np.ptp(data[~bad]) == 0:
         return np.full(2, np.nan)
 
-    # The spline needs finite values. The pairs that include a masked
-    # value are excluded in _asymmetry.
+    # The spline needs finite values, and a masked value also changes
+    # the spline at the adjacent positions. The masked values are
+    # therefore replaced by a Gaussian-weighted mean of the unmasked
+    # values around them. The pairs that include a masked value are
+    # excluded in _asymmetry.
     if np.any(bad):
-        data = np.where(bad, 0.0, data)
+        total = gaussian_filter(np.where(bad, 0.0, data), 1.0,
+                                mode='constant')
+        weight = gaussian_filter((~bad).astype(float), 1.0,
+                                 mode='constant')
+        fill = np.divide(total, weight, out=np.zeros_like(total),
+                         where=weight > 0)
+        data = np.where(bad, fill, data)
     else:
         bad = None
     spline = RectBivariateSpline(np.arange(ny), np.arange(nx), data)

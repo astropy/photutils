@@ -295,15 +295,46 @@ def test_centroid_symmetry_asymmetric_source():
     assert centroid_com(data)[0] - 10.3 > 0.3
 
 
+@pytest.mark.parametrize(('index', 'atol'), [((9, 12), 3.0e-3),
+                                             ((10, 10), 3.0e-3),
+                                             ((slice(None), 12), 0.015)])
+def test_centroid_symmetry_mask(index, atol):
+    """
+    Test centroid_symmetry with a masked pixel near the center, a
+    masked peak pixel, and a masked column near the center.
+
+    The masked values have a large value to test that they have no
+    effect on the result.
+    """
+    data = make_gaussian_source((21, 21), 1.0, 10.3, 9.6, 2.0, 2.0, 0)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[index] = True
+    data[mask] = 1000.0
+    xycen = centroid_symmetry(data, mask=mask)
+    assert_allclose(xycen, (10.3, 9.6), atol=atol)
+
+
+def test_centroid_symmetry_hot_pixel():
+    """
+    Test that a bright outlier near the source must be masked.
+    """
+    data = make_gaussian_source((21, 21), 1.0, 10.3, 9.6, 2.0, 2.0, 0)
+    data[9, 16] = 3.0
+    xycen = centroid_symmetry(data, radius=3)
+    assert_allclose(xycen, (16, 9), atol=0.05)
+
+    xycen = centroid_symmetry(data, mask=(data == 3.0), radius=3)
+    assert_allclose(xycen, (10.3, 9.6), atol=2.0e-3)
+
+
 def test_centroid_symmetry_nan():
     """
-    Test centroid_symmetry with a non-finite value and with a mask.
+    Test that a non-finite value gives the same result as a mask.
     """
     data = make_gaussian_source((21, 21), 1.0, 10.3, 9.6, 2.0, 2.0, 0)
     mask = np.zeros(data.shape, dtype=bool)
     mask[9, 12] = True
     xycen = centroid_symmetry(data, mask=mask)
-    assert_allclose(xycen, (10.3, 9.6), atol=0.05)
 
     data[9, 12] = np.nan
     match = 'Input data contains non-finite values'
@@ -368,10 +399,15 @@ def test_centroid_symmetry_invalid_inputs():
     with pytest.raises(ValueError, match=match):
         centroid_symmetry(data, mask=np.zeros((3, 3), dtype=bool))
 
+
+@pytest.mark.parametrize('shape', [(3, 3), (3, 11), (0, 0)])
+def test_centroid_symmetry_small_data(shape):
+    """
+    Test centroid_symmetry with data that are too small.
+    """
     match = 'data must have at least 4 pixels along each axis'
-    for shape in ((3, 3), (3, 11), (0, 0)):
-        with pytest.raises(ValueError, match=match):
-            centroid_symmetry(np.ones(shape))
+    with pytest.raises(ValueError, match=match):
+        centroid_symmetry(np.ones(shape))
 
 
 def test_centroid_symmetry_mutation():
