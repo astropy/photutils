@@ -76,7 +76,7 @@ def _get_path(filename, *, location='local', cache=True, show_progress=False):
     return path
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def get_path(filename, location='local', cache=True, show_progress=False):
     """
     Get the local path for a given file.
@@ -131,7 +131,7 @@ def _load_fits_as_imagehdu(path):
     return fits.ImageHDU(data, header)
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def load_spitzer_image(show_progress=False):
     """
     Load a 4.5 micron Spitzer image.
@@ -154,7 +154,7 @@ def load_spitzer_image(show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def load_spitzer_catalog(show_progress=False):
     """
     Load a 4.5 micron Spitzer catalog.
@@ -212,7 +212,7 @@ def load_irac_psf(channel, show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def load_star_image(show_progress=False):
     """
     Load an optical image of stars.
