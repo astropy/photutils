@@ -10,12 +10,13 @@ from functools import cached_property
 import astropy.units as u
 import numpy as np
 from astropy.nddata import (NDData, NoOverlapError, PartialOverlapError,
-                            StdDevUncertainty, overlap_slices)
+                            StdDevUncertainty)
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
 from photutils.psf.utils import _interpolate_missing_data
+from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import as_pair
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']

@@ -13,7 +13,7 @@ from typing import NamedTuple
 
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.nddata import NoOverlapError, PartialOverlapError, overlap_slices
+from astropy.nddata import NoOverlapError, PartialOverlapError
 from astropy.stats import SigmaClip
 from astropy.table import Table
 from astropy.utils.decorators import deprecated, deprecated_attribute
@@ -26,6 +26,7 @@ from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.image_models import ImagePSF
 from photutils.psf.utils import _interpolate_missing_data
+from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
                                          create_default_sigmaclip)
 from photutils.utils._progress_bars import add_progress_bar

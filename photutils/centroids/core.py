@@ -8,7 +8,6 @@ import numbers
 import warnings
 
 import numpy as np
-from astropy.nddata import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage import gaussian_filter, map_coordinates
@@ -17,6 +16,7 @@ from scipy.optimize import minimize
 from photutils.centroids._utils import _process_data_mask
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr

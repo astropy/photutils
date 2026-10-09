@@ -5,7 +5,7 @@ Tests for the cutouts module.
 
 import numpy as np
 import pytest
-from astropy.nddata import PartialOverlapError
+from astropy.nddata import NoOverlapError, PartialOverlapError
 from numpy.testing import assert_equal
 
 from photutils.aperture import BoundingBox
@@ -100,6 +100,19 @@ class TestCutoutImage:
                                           slice(457, 500, None))
         assert cutout.slices_cutout == (slice(0, 46, None),
                                         slice(0, 43, None))
+
+    @pytest.mark.parametrize('shape', [(31, 31), [31, 31],
+                                       np.array([31, 31])])
+    def test_cutout_edge_no_overlap(self, shape):
+        """
+        Test that a cutout ending exactly at the lower edge of the data
+        raises NoOverlapError for any array-like shape.
+        """
+        data = np.zeros((100, 100))
+        match = 'Arrays do not overlap'
+        for position in ((50, -16), (-16, 50)):
+            with pytest.raises(NoOverlapError, match=match):
+                CutoutImage(data, position, shape)
 
     def test_cutout_copy(self):
         """
