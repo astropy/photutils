@@ -219,6 +219,69 @@ def test_centroid_symmetry_small_array():
     assert_allclose(xycen, (2.1, 1.9), atol=0.01)
 
 
+@pytest.mark.parametrize(('shape', 'radius'), [((4, 4), None),
+                                               ((10, 10), 4.2),
+                                               ((6, 8), None),
+                                               ((21, 9), None),
+                                               ((9, 31), 3)])
+def test_centroid_symmetry_shapes(shape, radius):
+    """
+    Test centroid_symmetry with even and rectangular shapes.
+
+    The search area of the first two cases lies between the pixel
+    centers.
+    """
+    xc = (shape[1] - 1) / 2 + 0.1
+    yc = (shape[0] - 1) / 2 - 0.1
+    data = make_gaussian_source(shape, 1.0, xc, yc, 1.2, 1.2, 0)
+    xycen = centroid_symmetry(data, radius=radius)
+    assert_allclose(xycen, (xc, yc), atol=0.015)
+
+
+@pytest.mark.parametrize('size', [101, 201, 401])
+@pytest.mark.parametrize('noise', [False, True])
+def test_centroid_symmetry_large_array(size, noise):
+    """
+    Test that the search stays on a compact source in a large array.
+
+    The featureless region around the source is also symmetric.
+    """
+    xc = (size - 1) / 2 + 0.3
+    yc = (size - 1) / 2 - 0.2
+    data = make_gaussian_source((size, size), 100.0, xc, yc, 1.5, 1.5, 0)
+    if noise:
+        rng = np.random.default_rng(1)
+        data += rng.normal(0, 1.0, data.shape)
+    xycen = centroid_symmetry(data, radius=3)
+    assert_allclose(xycen, (xc, yc), atol=0.02)
+
+
+def test_centroid_symmetry_search_area():
+    """
+    Test that the result is on the edge of the search area if the
+    source lies outside of it.
+    """
+    data = make_gaussian_source((101, 101), 1.0, 70.3, 30.6, 1.5, 1.5, 0)
+    xycen = centroid_symmetry(data)
+    assert_allclose(xycen, (69.7, 30.6), atol=1.0e-3)
+
+    xycen = centroid_symmetry(data, radius=3)
+    assert_allclose(xycen, (70.3, 30.6), atol=2.0e-3)
+
+
+def test_centroid_symmetry_centroid_sources():
+    """
+    Test centroid_symmetry as the centroid function of
+    centroid_sources.
+    """
+    data = make_4gaussians_image()
+    data -= np.median(data[0:30, 0:125])
+    x, y = centroid_sources(data, (91, 151), (61, 24),
+                            centroid_func=centroid_symmetry)
+    assert_allclose(x, (90, 150), atol=0.1)
+    assert_allclose(y, (60, 25), atol=0.1)
+
+
 def test_centroid_symmetry_asymmetric_source():
     """
     Test that centroid_symmetry is insensitive to structure beyond the
@@ -257,9 +320,39 @@ def test_centroid_symmetry_all_masked():
     mask = np.ones(data.shape, dtype=bool)
     assert np.all(np.isnan(centroid_symmetry(data, mask=mask)))
 
-    # Only the peak is unmasked, so there are no pairs
+    # Only two adjacent values are unmasked, so there are no pairs
+    mask[10, 10:12] = False
+    assert np.all(np.isnan(centroid_symmetry(data, mask=mask)))
+
+    # The search area is masked
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[5:16, 5:16] = True
+    assert np.all(np.isnan(centroid_symmetry(data, mask=mask)))
+
+
+@pytest.mark.parametrize('value', [0.0, 1.0])
+def test_centroid_symmetry_constant(value):
+    """
+    Test centroid_symmetry with constant data, which are symmetric
+    about every position.
+    """
+    data = np.full((21, 21), value)
+    assert np.all(np.isnan(centroid_symmetry(data)))
+
+    mask = np.ones(data.shape, dtype=bool)
     mask[10, 10] = False
     assert np.all(np.isnan(centroid_symmetry(data, mask=mask)))
+
+
+@pytest.mark.parametrize('radius', [-1, 0.5, 5, 20, np.nan, np.inf])
+def test_centroid_symmetry_invalid_radius(radius):
+    """
+    Test centroid_symmetry with an invalid radius.
+    """
+    data = np.ones((11, 11))
+    match = 'radius must be at least 1'
+    with pytest.raises(ValueError, match=match):
+        centroid_symmetry(data, radius=radius)
 
 
 def test_centroid_symmetry_invalid_inputs():
@@ -267,11 +360,6 @@ def test_centroid_symmetry_invalid_inputs():
     Test centroid_symmetry with invalid inputs.
     """
     data = np.ones((11, 11))
-    match = 'radius must be at least 1'
-    for radius in (0.5, 5, 20):
-        with pytest.raises(ValueError, match=match):
-            centroid_symmetry(data, radius=radius)
-
     match = 'data must be a 2D array'
     with pytest.raises(ValueError, match=match):
         centroid_symmetry(np.ones(11))
@@ -279,6 +367,11 @@ def test_centroid_symmetry_invalid_inputs():
     match = 'data and mask must have the same shape'
     with pytest.raises(ValueError, match=match):
         centroid_symmetry(data, mask=np.zeros((3, 3), dtype=bool))
+
+    match = 'data must have at least 4 pixels along each axis'
+    for shape in ((3, 3), (3, 11), (0, 0)):
+        with pytest.raises(ValueError, match=match):
+            centroid_symmetry(np.ones(shape))
 
 
 def test_centroid_symmetry_mutation():

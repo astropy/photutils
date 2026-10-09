@@ -94,7 +94,7 @@ centroiding functions::
 
     >>> x3, y3 = centroid_symmetry(data)
     >>> print(np.array((x3, y3)))
-    [19.98462259 20.0077971 ]
+    [19.98462513 20.0077986 ]
 
 ::
 
