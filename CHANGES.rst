@@ -340,7 +340,7 @@ New Features
     statistics of each building and refinement iteration, an
     ``initial_epsf`` attribute that holds the image of the input ePSF
     (if any), and a ``plot_iterations`` method that plots the ePSF after
-    each iteration and its change from the previous one. [#2466]
+    each iteration and its change from the previous one. [#2466, #2477]
 
   - Added a ``wing_smoothing`` keyword to ``EPSFBuilder`` (default
     `True`). The wings of the final ePSF, beyond 3.5 FWHM from its

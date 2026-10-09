@@ -1265,8 +1265,8 @@ class EPSFBuildResults:
         msg = 'EPSFBuildResults index must be 0 (epsf) or 1 (fitted_stars)'
         raise IndexError(msg)
 
-    def plot_iterations(self, *, iterations=None, figsize=None,
-                        cmap='viridis', diff_cmap='RdBu_r'):
+    def plot_iterations(self, *, iterations=None, show_smoothed=None,
+                        figsize=None, cmap='viridis', diff_cmap='RdBu_r'):
         """
         Plot the ePSF after each iteration and its change from the
         previous iteration.
@@ -1281,11 +1281,12 @@ class EPSFBuildResults:
         scratch.
 
         If the wings of the final ePSF were smoothed (see the
-        ``wing_smoothing`` keyword of `EPSFBuilder`), the figure has
-        one more row at the bottom. It shows the returned ePSF and its
-        difference from the ePSF of the last iteration, which is the
-        change made by the wing smoothing. This row is always plotted,
-        whatever the value of ``iterations``.
+        ``wing_smoothing`` keyword of `EPSFBuilder`), the figure can
+        have one more row at the bottom. It shows the returned ePSF
+        and its difference from the ePSF of the last iteration, which
+        is the change made by the wing smoothing. By default, this row
+        is plotted only if all the iterations are plotted. Use the
+        ``show_smoothed`` keyword to always or never plot it.
 
         Parameters
         ----------
@@ -1295,6 +1296,13 @@ class EPSFBuildResults:
             `None`, all the iterations are plotted. The figure has one
             row per iteration, so select a few iterations to get a
             compact figure.
+
+        show_smoothed : bool or `None`, optional
+            Whether to plot the row of the wing-smoothed final ePSF. If
+            `None`, the row is plotted only if all the iterations are
+            plotted. If `True`, the row is always plotted. If `False`,
+            the row is never plotted. This keyword has no effect if the
+            wing smoothing did not change the ePSF.
 
         figsize : tuple of 2 float or `None`, optional
             The figure (width, height) in inches. If `None`, the figure
@@ -1349,9 +1357,11 @@ class EPSFBuildResults:
         norm = simple_norm(final, 'log', percent=99.0)
 
         # The wing smoothing is not an iteration, so the smoothed ePSF
-        # is plotted in a row of its own (None) after the iterations
+        # is plotted in a row of its own (None) after the iterations.
         rows = list(iterations)
-        if not np.array_equal(self.epsf.data, final):
+        if show_smoothed is None:
+            show_smoothed = np.unique(iterations).size == n_total
+        if show_smoothed and not np.array_equal(self.epsf.data, final):
             rows.append(None)
 
         n_rows = len(rows)
