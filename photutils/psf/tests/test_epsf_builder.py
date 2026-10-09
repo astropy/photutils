@@ -3955,8 +3955,10 @@ def test_wing_smoothing_build(epsf_test_data):
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_wing_smoothing_plot_iterations(epsf_test_data):
     """
-    The figure has a last row for the smoothed ePSF, whatever the
-    selected iterations, only if the wing smoothing changed the ePSF.
+    The figure has a last row for the smoothed ePSF only if the wing
+    smoothing changed the ePSF. By default that row is plotted only if
+    all the iterations are plotted, and ``show_smoothed`` overrides
+    that choice.
     """
     import matplotlib.pyplot as plt
 
@@ -3980,7 +3982,25 @@ def test_wing_smoothing_plot_iterations(epsf_test_data):
         assert titles.count(final_title) == n_extra
         plt.close(fig)
 
+        # All the iterations, selected explicitly
+        fig = result.plot_iterations(iterations=np.arange(1, n_total + 1))
+        assert len(fig.axes) == 4 * (n_total + n_extra)
+        plt.close(fig)
+
+        fig = result.plot_iterations(show_smoothed=False)
+        assert len(fig.axes) == 4 * n_total
+        titles = [ax.get_title() for ax in fig.axes]
+        assert final_title not in titles
+        plt.close(fig)
+
+        # A subset of the iterations does not show the smoothed ePSF
         fig = result.plot_iterations(iterations=1)
+        assert len(fig.axes) == 4
+        titles = [ax.get_title() for ax in fig.axes]
+        assert final_title not in titles
+        plt.close(fig)
+
+        fig = result.plot_iterations(iterations=1, show_smoothed=True)
         assert len(fig.axes) == 4 * (1 + n_extra)
         if wing_smoothing:
             # The last row shows the returned ePSF and the change made

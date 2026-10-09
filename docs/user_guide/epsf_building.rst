@@ -534,8 +534,10 @@ compare the ePSFs built with and without the smoothing.
 
 The smoothing is applied after the last iteration, so it is not part
 of ``iteration_epsfs`` or ``iteration_info``. The ``plot_iterations``
-method shows the smoothed ePSF and the change made by the smoothing in
-a last row of its figure.
+method shows the smoothed ePSF and the change made by the smoothing
+in a last row of its figure when all the iterations are plotted. Set
+``show_smoothed=True`` to also plot that row with a subset of the
+iterations, or ``show_smoothed=False`` to never plot it.
 
 Set ``wing_smoothing=False`` to keep the wings as built::
 
