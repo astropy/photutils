@@ -140,8 +140,9 @@ Testing an installed Photutils
 
 To test your installed version of Photutils, you can run the test suite
 using the `pytest`_ command. Running the test suite requires installing
-the `pytest-astropy <https://github.com/astropy/pytest-astropy>`_ (0.12
-or later) package.
+the test dependencies::
+
+    python -m pip install "photutils[test]"
 
 To run the test suite, use the following command::
 

@@ -22,6 +22,10 @@ General
 
 - The ``asdf-astropy`` package is now an optional dependency. [#2211]
 
+- The ``pytest-astropy`` package is no longer required to run the test
+  suite. The ``test`` extra now lists the individual pytest plugins.
+  [#2486]
+
 - scikit-image is no longer an optional dependency. The compiled
   watershed kernel replaced its only runtime use. [#2439]
 
