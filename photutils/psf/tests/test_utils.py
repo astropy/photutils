@@ -246,7 +246,24 @@ def test_fit_fwhm_convergence_warning_not_swallowed():
         fit_fwhm(data)
     warning_msgs = [str(w.message) for w in record]
     assert any('fit_shape is None' in msg for msg in warning_msgs)
-    assert any('may not have converged' in msg for msg in warning_msgs)
+
+    # Only the fit_fwhm convergence message is emitted, not the
+    # PSFPhotometry one that refers to the results table
+    convergence_msgs = [msg for msg in warning_msgs
+                        if 'may not have converged' in msg]
+    assert len(convergence_msgs) == 1
+    assert '"xypos" and "fit_shape"' in convergence_msgs[0]
+
+
+def test_fit_2dgaussian_convergence_warning():
+    """
+    Test that fit_2dgaussian emits the PSFPhotometry convergence
+    warning.
+    """
+    data = np.ones((25, 25))
+    match = 'check the "flags" column in the output table'
+    with pytest.warns(AstropyUserWarning, match=match):
+        fit_2dgaussian(data, fit_shape=25, fix_fwhm=False)
 
 
 @pytest.mark.parametrize('with_units', [False, True])

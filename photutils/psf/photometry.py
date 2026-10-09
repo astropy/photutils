@@ -827,6 +827,10 @@ class PSFPhotometry:
             self._param_mapper, self.fit_shape, xy_bounds=self.xy_bounds,
         )
 
+        # Callers that report non-convergence themselves set this to
+        # False
+        self._warn_no_convergence = True
+
         # Used by the __repr__ method and the output table metadata
         self._attrs = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
                        'fitter_maxiters', 'xy_bounds', 'aperture_radius',
@@ -1667,7 +1671,8 @@ class PSFPhotometry:
         return self._results_assembler.assemble_results_table(
             init_params, fit_params, data_shape, self._state,
             self._calc_fit_metrics, self._define_flags,
-            self.__class__.__name__, metadata_attrs)
+            self.__class__.__name__, metadata_attrs,
+            warn_no_convergence=self._warn_no_convergence)
 
     @staticmethod
     def _coerce_nddata(data):

@@ -1483,7 +1483,8 @@ class PSFResultsAssembler:
 
     def assemble_results_table(self, init_params, fit_params, data_shape,
                                state, calc_fit_metrics_func, define_flags_func,
-                               class_name, metadata_attrs):
+                               class_name, metadata_attrs, *,
+                               warn_no_convergence=True):
         """
         Assemble the final results table.
 
@@ -1520,6 +1521,10 @@ class PSFResultsAssembler:
 
         metadata_attrs : dict
             Dictionary of metadata attributes to add to the table.
+
+        warn_no_convergence : bool, optional
+            Whether to emit a warning if one or more fits may not have
+            converged.
 
         Returns
         -------
@@ -1579,7 +1584,8 @@ class PSFResultsAssembler:
 
         # Check for fit convergence warnings before cleaning up state
         fit_error_indices = state.get('fit_error_indices')
-        if (fit_error_indices is not None and len(fit_error_indices) > 0):
+        if (warn_no_convergence and fit_error_indices is not None
+                and len(fit_error_indices) > 0):
             msg = ('One or more fit(s) may not have converged. Please '
                    'check the "flags" column in the output table.')
             warnings.warn(msg, AstropyUserWarning)
