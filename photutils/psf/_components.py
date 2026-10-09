@@ -770,7 +770,7 @@ class PSFDataProcessor:
         y_cen = row[self.param_mapper.init_colnames['y']]
 
         try:
-            slc_lg, _ = overlap_slices(data.shape, self.fit_shape,
+            slc_lg, _ = overlap_slices(data.shape, tuple(self.fit_shape),
                                        (y_cen, x_cen), mode='trim')
         except NoOverlapError:
             return {'valid': False,

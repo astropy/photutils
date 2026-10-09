@@ -595,7 +595,7 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
                                      lower_bound=(0, 0),
                                      upper_bound=data.shape, check_odd=True)
 
-            slc_data, _ = overlap_slices(data.shape, search_boxsize,
+            slc_data, _ = overlap_slices(data.shape, tuple(search_boxsize),
                                          (yidx, xidx), mode='trim')
             cutout = data[slc_data]
             yidx, xidx = np.unravel_index(np.nanargmax(cutout), cutout.shape)
@@ -611,7 +611,7 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
         return np.array((xidx, yidx), dtype=float)
 
     # Extract the fitting region
-    slc_data, _ = overlap_slices(data.shape, fit_boxsize, (yidx, xidx),
+    slc_data, _ = overlap_slices(data.shape, tuple(fit_boxsize), (yidx, xidx),
                                  mode='trim')
     xidx0, xidx1 = (slc_data[1].start, slc_data[1].stop)
     yidx0, yidx1 = (slc_data[0].start, slc_data[0].stop)

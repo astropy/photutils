@@ -1540,7 +1540,7 @@ class EPSFFitter:
         if fit_boxsize is not None:
             try:
                 xcenter, ycenter = star.cutout_center
-                large_slc, _ = overlap_slices(star.shape, fit_boxsize,
+                large_slc, _ = overlap_slices(star.shape, tuple(fit_boxsize),
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):
@@ -2791,7 +2791,7 @@ class EPSFBuilder:
 
             # Get a cutout around the expected center for centroiding
             slices_large, _ = overlap_slices(
-                epsf_data.shape, oversampled_box,
+                epsf_data.shape, tuple(oversampled_box),
                 (ycenter, xcenter))
             epsf_cutout = epsf_data[slices_large]
             mask = ~np.isfinite(epsf_cutout)
@@ -3083,7 +3083,7 @@ class EPSFBuilder:
         if fit_shape is not None:
             try:
                 xcenter, ycenter = star.cutout_center
-                large_slc, _ = overlap_slices(star.shape, fit_shape,
+                large_slc, _ = overlap_slices(star.shape, tuple(fit_shape),
                                               (ycenter, xcenter),
                                               mode='strict')
             except (PartialOverlapError, NoOverlapError):

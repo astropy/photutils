@@ -1,0 +1,82 @@
+Metadata-Version: 2.1
+Name: pytest-filter-subpackage
+Version: 0.2.0
+Summary: Pytest plugin for filtering based on sub-packages
+Home-page: https://github.com/astropy/pytest-filter-subpackage
+Author: The Astropy Developers
+Author-email: astropy.team@gmail.com
+License: BSD
+Keywords: pytest,py.test
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Framework :: Pytest
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Testing
+Classifier: Topic :: Utilities
+Requires-Python: >=3.8
+Description-Content-Type: text/x-rst
+License-File: LICENSE.rst
+Requires-Dist: pytest >=4.6
+Requires-Dist: packaging
+Provides-Extra: test
+Requires-Dist: pytest ; extra == 'test'
+Requires-Dist: pytest-doctestplus ; extra == 'test'
+Requires-Dist: pytest-cov ; extra == 'test'
+
+========================
+pytest-filter-subpackage
+========================
+
+.. image:: https://dev.azure.com/astropy-project/pytest-filter-subpackage/_apis/build/status/astropy.pytest-filter-subpackage?branchName=main
+   :target: https://dev.azure.com/astropy-project/pytest-filter-subpackage/_build/latest?definitionId=5&branchName=main
+
+This package contains a simple plugin for the `pytest`_ framework that provides a
+shortcut to testing all code and documentation for a given sub-package.
+
+.. _pytest: https://pytest.org/en/latest/
+
+Installation
+------------
+
+The ``pytest-filter-subpackage`` plugin can be installed using ``pip``::
+
+    $ pip install pytest-filter-subpackage
+
+It is also possible to install the latest development version from the source
+repository::
+
+    $ git clone https://github.com/astropy/pytest-filter-subpackage
+    $ cd pytest-filter-subpackage
+    $ pip install .
+
+In either case, the plugin will automatically be registered for use with
+``pytest``.
+
+Usage
+-----
+
+This plugin provides a ``-P`` option which takes a comma-separated list
+of sub-package names (without the top-level package name)::
+
+    pytest -P wcs,io.fits
+
+which is equivalent to::
+
+    pytest **/wcs **/io/fits
+
+When used in conjunction with `pytest-doctestplus
+<http://github.com/astropy/pytest-doctestplus>`_ this will result in both
+the narrative documentation and code being tested for a given sub-package.
+
+License
+-------
+This plugin is licensed under a 3-clause BSD style license - see the
+``LICENSE.rst`` file.

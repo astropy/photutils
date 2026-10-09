@@ -1,0 +1,367 @@
+from collections import OrderedDict, defaultdict
+from dataclasses import dataclass
+
+import numpy as np
+import pytest
+
+from astropy.io import fits
+from astropy.utils import metadata
+from astropy.utils.metadata import (
+    MergeConflictError,
+    MetaData,
+    common_dtype,
+    enable_merge_strategies,
+    merge,
+)
+from astropy.utils.metadata.utils import result_type
+
+
+class OrderedDictSubclass(OrderedDict):
+    pass
+
+
+class MetaBaseTest:
+    def test_none(self):
+        d = self.test_class(*self.args)
+        assert isinstance(d.meta, dict)
+        assert len(d.meta) == 0
+
+    @pytest.mark.parametrize(
+        "meta",
+        ([{"a": 1}, OrderedDict([("a", 1)]), OrderedDictSubclass([("a", 1)])]),
+    )
+    def test_mapping_init(self, meta):
+        d = self.test_class(*self.args, meta=meta)
+        assert type(d.meta) == type(meta)
+        assert d.meta["a"] == 1
+
+    @pytest.mark.parametrize("meta", (["ceci n'est pas un meta", 1.2, [1, 2, 3]]))
+    def test_non_mapping_init(self, meta):
+        with pytest.raises(TypeError):
+            self.test_class(*self.args, meta=meta)
+
+    @pytest.mark.parametrize(
+        "meta",
+        ([{"a": 1}, OrderedDict([("a", 1)]), OrderedDictSubclass([("a", 1)])]),
+    )
+    def test_mapping_set(self, meta):
+        d = self.test_class(*self.args, meta=meta)
+        assert type(d.meta) == type(meta)
+        assert d.meta["a"] == 1
+
+    @pytest.mark.parametrize("meta", (["ceci n'est pas un meta", 1.2, [1, 2, 3]]))
+    def test_non_mapping_set(self, meta):
+        with pytest.raises(TypeError):
+            d = self.test_class(*self.args, meta=meta)
+
+    def test_meta_fits_header(self):
+        header = fits.header.Header()
+        header.set("observer", "Edwin Hubble")
+        header.set("exptime", "3600")
+
+        d = self.test_class(*self.args, meta=header)
+
+        assert d.meta["OBSERVER"] == "Edwin Hubble"
+
+
+class ExampleData:
+    meta = MetaData()
+
+    def __init__(self, meta=None):
+        self.meta = meta
+
+
+class TestMetaExampleData(MetaBaseTest):
+    test_class = ExampleData
+    args = ()
+
+
+@dataclass
+class ExampleDataclass:
+    meta: MetaData = MetaData()  # noqa: RUF009
+
+
+class TestMetaExampleDataclass(MetaBaseTest):
+    test_class = ExampleDataclass
+    args = ()
+
+
+@dataclass(frozen=True)
+class ExampleFrozenDataclass:
+    meta: MetaData = MetaData()  # noqa: RUF009
+
+
+class TestMetaExampleFrozenDataclass(MetaBaseTest):
+    test_class = ExampleFrozenDataclass
+    args = ()
+
+
+def test_metadata_default():
+    data = ExampleDataclass()
+    data.meta["a"] = 1
+    assert isinstance(data.meta, OrderedDict)
+
+
+def test_metadata_default_factory():
+    """Test the default_factory argument to MetaData."""
+
+    class ExampleData:
+        meta = MetaData(default_factory=defaultdict)
+
+        def __init__(self, meta=None):
+            self.meta = meta
+
+    data = ExampleData()
+    assert isinstance(data.meta, defaultdict)
+    assert len(data.meta) == 0
+
+
+def test_metadata_merging_conflict_exception():
+    """Regression test for issue #3294.
+
+    Ensure that an exception is raised when a metadata conflict exists
+    and ``metadata_conflicts='error'`` has been set.
+    """
+    data1 = ExampleData()
+    data2 = ExampleData()
+    data1.meta["somekey"] = {"x": 1, "y": 1}
+    data2.meta["somekey"] = {"x": 1, "y": 999}
+    with pytest.raises(MergeConflictError):
+        merge(data1.meta, data2.meta, metadata_conflicts="error")
+
+
+def test_metadata_merging():
+    # Recursive merge
+    meta1 = {
+        "k1": {
+            "k1": [1, 2],
+            "k2": 2,
+        },
+        "k2": 2,
+        "k4": (1, 2),
+    }
+    meta2 = {
+        "k1": {"k1": [3]},
+        "k3": 3,
+        "k4": (3,),
+    }
+    out = merge(meta1, meta2, metadata_conflicts="error")
+    assert out == {
+        "k1": {
+            "k2": 2,
+            "k1": [1, 2, 3],
+        },
+        "k2": 2,
+        "k3": 3,
+        "k4": (1, 2, 3),
+    }
+
+    # Merge two ndarrays
+    meta1 = {"k1": np.array([1, 2])}
+    meta2 = {"k1": np.array([3])}
+    out = merge(meta1, meta2, metadata_conflicts="error")
+    assert np.all(out["k1"] == np.array([1, 2, 3]))
+
+    # Merge list and np.ndarray
+    meta1 = {"k1": [1, 2]}
+    meta2 = {"k1": np.array([3])}
+    assert np.all(out["k1"] == np.array([1, 2, 3]))
+
+    # Can't merge two scalar types
+    meta1 = {"k1": 1}
+    meta2 = {"k1": 2}
+    with pytest.raises(MergeConflictError):
+        merge(meta1, meta2, metadata_conflicts="error")
+
+    # Conflicting shape
+    meta1 = {"k1": np.array([1, 2])}
+    meta2 = {"k1": np.array([[3]])}
+    with pytest.raises(MergeConflictError):
+        merge(meta1, meta2, metadata_conflicts="error")
+
+    # Conflicting array type
+    meta1 = {"k1": np.array([1, 2])}
+    meta2 = {"k1": np.array(["3"])}
+    with pytest.raises(MergeConflictError):
+        merge(meta1, meta2, metadata_conflicts="error")
+
+    # Conflicting array type with 'silent' merging
+    meta1 = {"k1": np.array([1, 2])}
+    meta2 = {"k1": np.array(["3"])}
+    out = merge(meta1, meta2, metadata_conflicts="silent")
+    assert np.all(out["k1"] == np.array(["3"]))
+
+
+def test_metadata_merging_new_strategy():
+    original_merge_strategies = list(metadata.MERGE_STRATEGIES)
+
+    class MergeNumbersAsList(metadata.MergeStrategy):
+        """
+        Scalar float or int values are joined in a list.
+        """
+
+        types = ((int, float), (int, float))
+
+        @classmethod
+        def merge(cls, left, right):
+            return [left, right]
+
+    class MergeConcatStrings(metadata.MergePlus):
+        """
+        Scalar string values are concatenated
+        """
+
+        types = (str, str)
+        enabled = False
+
+    # Normally can't merge two scalar types
+    meta1 = {"k1": 1, "k2": "a"}
+    meta2 = {"k1": 2, "k2": "b"}
+
+    # Enable new merge strategy
+    with enable_merge_strategies(MergeNumbersAsList, MergeConcatStrings):
+        assert MergeNumbersAsList.enabled
+        assert MergeConcatStrings.enabled
+        out = merge(meta1, meta2, metadata_conflicts="error")
+    assert out["k1"] == [1, 2]
+    assert out["k2"] == "ab"
+    assert not MergeNumbersAsList.enabled
+    assert not MergeConcatStrings.enabled
+
+    # Confirm the default enabled=False behavior
+    with pytest.raises(MergeConflictError):
+        merge(meta1, meta2, metadata_conflicts="error")
+
+    # Enable all MergeStrategy subclasses
+    with enable_merge_strategies(metadata.MergeStrategy):
+        assert MergeNumbersAsList.enabled
+        assert MergeConcatStrings.enabled
+        out = merge(meta1, meta2, metadata_conflicts="error")
+    assert out["k1"] == [1, 2]
+    assert out["k2"] == "ab"
+    assert not MergeNumbersAsList.enabled
+    assert not MergeConcatStrings.enabled
+
+    metadata.MERGE_STRATEGIES = original_merge_strategies
+
+
+def test_result_type_string():
+    u3 = np.array(["123"])
+    u4 = np.array(["1234"])
+    b3 = np.array([b"123"])
+    b5 = np.array([b"12345"])
+    assert result_type([u3, u4]) == np.dtype("U4")
+    assert result_type([b5, u4]) == np.dtype("U5")
+    assert result_type([b3, b5]) == np.dtype("S5")
+
+
+def test_result_type_basic():
+    i8 = np.array(1, dtype=np.int64)
+    f8 = np.array(1, dtype=np.float64)
+    u3 = np.array("123")
+
+    with pytest.raises(MergeConflictError):
+        result_type([i8, u3])
+
+    assert result_type([i8, i8]) == np.dtype("i8")
+    assert result_type([i8, f8]) == np.dtype("f8")
+
+
+@pytest.mark.parametrize("function", [result_type, common_dtype])
+def test_finding_common_type_exhaustive(function):
+    """
+    Test that allowed combinations are those expected.
+    """
+    dtype = [
+        ("int", int),
+        ("uint8", np.uint8),
+        ("float32", np.float32),
+        ("float64", np.float64),
+        ("str", "S2"),
+        ("uni", "U2"),
+        ("bool", bool),
+        ("object", np.object_),
+    ]
+    arr = np.empty(1, dtype=dtype)
+    fail = set()
+    succeed = set()
+    for name1, _ in dtype:
+        for name2, _ in dtype:
+            try:
+                function([arr[name1], arr[name2]])
+                succeed.add(f"{name1} {name2}")
+            except MergeConflictError:
+                fail.add(f"{name1} {name2}")
+
+    # known bad combinations
+    bad = {
+        "str int",
+        "str bool",
+        "uint8 bool",
+        "uint8 str",
+        "object float32",
+        "bool object",
+        "uni uint8",
+        "int str",
+        "bool str",
+        "bool float64",
+        "bool uni",
+        "str float32",
+        "uni float64",
+        "uni object",
+        "bool uint8",
+        "object float64",
+        "float32 bool",
+        "str uint8",
+        "uni bool",
+        "float64 bool",
+        "float64 object",
+        "int bool",
+        "uni int",
+        "uint8 object",
+        "int uni",
+        "uint8 uni",
+        "float32 uni",
+        "object uni",
+        "bool float32",
+        "uni float32",
+        "object str",
+        "int object",
+        "str float64",
+        "object int",
+        "float64 uni",
+        "bool int",
+        "object bool",
+        "object uint8",
+        "float32 object",
+        "str object",
+        "float64 str",
+        "float32 str",
+    }
+    assert fail == bad
+
+    good = {
+        "float64 int",
+        "int int",
+        "uint8 float64",
+        "uint8 int",
+        "str uni",
+        "float32 float32",
+        "float64 float64",
+        "float64 uint8",
+        "float64 float32",
+        "int uint8",
+        "int float32",
+        "uni str",
+        "int float64",
+        "uint8 float32",
+        "float32 int",
+        "float32 uint8",
+        "bool bool",
+        "uint8 uint8",
+        "str str",
+        "float32 float64",
+        "object object",
+        "uni uni",
+    }
+    assert succeed == good

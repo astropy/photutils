@@ -347,7 +347,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
             mod_shape = model_shape
 
         try:
-            slc_lg, _ = overlap_slices(shape, mod_shape, (y0, x0), mode='trim')
+            slc_lg, _ = overlap_slices(shape, tuple(mod_shape), (y0, x0),
+                                       mode='trim')
         except NoOverlapError:
             continue
 

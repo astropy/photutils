@@ -1311,7 +1311,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             continue
 
         try:
-            large_slc, _ = overlap_slices(data.data.shape, size,
+            large_slc, _ = overlap_slices(data.data.shape, tuple(size),
                                           (ycenter, xcenter), mode='strict')
         except (PartialOverlapError, NoOverlapError):
             stars.append(None)
