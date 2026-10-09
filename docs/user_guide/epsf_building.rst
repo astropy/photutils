@@ -58,9 +58,10 @@ and the star sample.
 
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 
-    >>> from photutils.datasets import load_simulated_hst_star_image
-    >>> hdu = load_simulated_hst_star_image()  # doctest: +REMOTE_DATA
-    >>> data = hdu.data  # doctest: +REMOTE_DATA
+    >>> from astropy.io import fits
+    >>> url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+    ...        'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    >>> data = fits.getdata(url)  # doctest: +REMOTE_DATA
 
 The simulated image does not contain any background or noise, so let's
 add those to the image::
@@ -74,12 +75,13 @@ Let's show the image:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from astropy.io import fits
     from astropy.visualization import simple_norm
-    from photutils.datasets import (load_simulated_hst_star_image,
-                                    make_noise_image)
+    from photutils.datasets import make_noise_image
 
-    hdu = load_simulated_hst_star_image()
-    data = hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    data = fits.getdata(url)
     data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
                              stddev=5.0, seed=0)
 
@@ -118,13 +120,14 @@ Let's show the detected stars overlaid on the image:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from astropy.io import fits
     from astropy.visualization import simple_norm
-    from photutils.datasets import (load_simulated_hst_star_image,
-                                    make_noise_image)
+    from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
 
-    hdu = load_simulated_hst_star_image()
-    data = hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    data = fits.getdata(url)
     data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
                              stddev=5.0, seed=0)
 
@@ -249,19 +252,20 @@ show the first 25 of them:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.io import fits
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
     from astropy.visualization import simple_norm
-    from photutils.datasets import (load_simulated_hst_star_image,
-                                    make_noise_image)
+    from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
     from photutils.psf import extract_stars
     from photutils.utils import circular_footprint
     from scipy.ndimage import binary_dilation
 
-    hdu = load_simulated_hst_star_image()
-    data = hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    data = fits.getdata(url)
     data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
                              stddev=5.0, seed=0)
     finder = DAOStarFinder(threshold=100.0, fwhm=1.5)
@@ -387,19 +391,20 @@ Finally, let's show the constructed ePSF:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.io import fits
     from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
     from astropy.visualization import simple_norm
-    from photutils.datasets import (load_simulated_hst_star_image,
-                                    make_noise_image)
+    from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
     from photutils.psf import EPSFBuilder, extract_stars
     from photutils.utils import circular_footprint
     from scipy.ndimage import binary_dilation
 
-    hdu = load_simulated_hst_star_image()
-    data = hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    data = fits.getdata(url)
     data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
                              stddev=5.0, seed=0)
 
