@@ -1083,8 +1083,15 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
     else:
         smin = rng.uniform(-5.0, 5.0, n_src)
         smax = smin + 10.0 ** rng.uniform(-3.0, 3.0, n_src)
-        smin[1] = 0.0
-        smax[1] = np.finfo(dtype).smallest_subnormal
+        # The subnormal range exercises the zero-step case. It is
+        # skipped on platforms where array arithmetic flushes subnormals
+        # to zero (e.g., float32 with ARMv7 NEON), which makes the range
+        # degenerate.
+        subnormal = np.full(16, np.finfo(dtype).smallest_subnormal,
+                            dtype=dtype)
+        if np.all(subnormal - np.zeros(16, dtype=dtype) > 0):
+            smin[1] = 0.0
+            smax[1] = subnormal[0]
     smin[0] = 0
     smin = smin.astype(dtype)
     smax = smax.astype(dtype)
@@ -1123,10 +1130,10 @@ def test_source_stats_matches_reference(dtype):
     driver_data = np.ascontiguousarray(data, dtype=np.float64)
     labels = np.asarray(segm.labels, dtype=np.int64)
     slc = segm.slices[0]
-    y0 = np.array([slc[0].start])
-    y1 = np.array([slc[0].stop])
-    x0 = np.array([slc[1].start])
-    x1 = np.array([slc[1].stop])
+    y0 = np.array([slc[0].start], dtype=np.int64)
+    y1 = np.array([slc[0].stop], dtype=np.int64)
+    x0 = np.array([slc[1].start], dtype=np.int64)
+    x1 = np.array([slc[1].stop], dtype=np.int64)
     smin, smax, ssum = deblend_source_stats(driver_data, segm.data,
                                             labels, y0, y1, x0, x1)
 
@@ -1169,10 +1176,10 @@ def make_packed_pair():
     segm = detect_sources(data, 10, 5)
     assert segm.n_labels == 2
     labels = np.asarray(segm.labels, dtype=np.int64)
-    y0 = np.array([slc[0].start for slc in segm.slices])
-    y1 = np.array([slc[0].stop for slc in segm.slices])
-    x0 = np.array([slc[1].start for slc in segm.slices])
-    x1 = np.array([slc[1].stop for slc in segm.slices])
+    y0 = np.array([slc[0].start for slc in segm.slices], dtype=np.int64)
+    y1 = np.array([slc[0].stop for slc in segm.slices], dtype=np.int64)
+    x0 = np.array([slc[1].start for slc in segm.slices], dtype=np.int64)
+    x1 = np.array([slc[1].stop for slc in segm.slices], dtype=np.int64)
     sizes = (y1 - y0) * (x1 - x0)
     offsets = np.concatenate(([0], np.cumsum(sizes))).astype(np.intp)
     return data, segm, (labels, y0, y1, x0, x1), offsets
@@ -1464,8 +1471,10 @@ def test_source_stats_all_nan():
     segment = np.ones((3, 4), dtype=np.int32)
     labels = np.array([1], dtype=np.int64)
     smin, smax, ssum = deblend_source_stats(data, segment, labels,
-                                            np.array([0]), np.array([3]),
-                                            np.array([0]), np.array([4]))
+                                            np.array([0], dtype=np.int64),
+                                            np.array([3], dtype=np.int64),
+                                            np.array([0], dtype=np.int64),
+                                            np.array([4], dtype=np.int64))
     assert np.isnan(smin[0])
     assert np.isnan(smax[0])
     assert ssum[0] == 0.0
