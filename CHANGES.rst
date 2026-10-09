@@ -300,7 +300,7 @@ New Features
 
   - The ``extract_stars`` function now accepts a plain 2D array, or a
     list of 2D arrays, as the input ``data``. An ``NDData`` object is
-    needed only to input an uncertainty, a mask, or a WCS. [#2480]
+    needed only to input an uncertainty, a mask, or a WCS. [#2481]
 
   - Added a ``constrain_fluxes`` method to ``LinkedEPSFStar`` and a
     ``constrain_fluxes`` keyword to ``EPSFBuilder`` (default `True`)
