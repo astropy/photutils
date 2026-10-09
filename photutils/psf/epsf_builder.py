@@ -1114,7 +1114,8 @@ class EPSFBuildResults:
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
-        pixels, over all of the successfully fitted stars. This includes
+        pixels, over all of the successfully fitted stars, relative to
+        the median displacement of those stars. This includes
         the stars that the ``converged_fraction`` of the builder allows
         to remain unconverged, so it can be much larger than the
         ``center_accuracy`` for a converged build. Use it together with
@@ -1168,8 +1169,9 @@ class EPSFBuildResults:
         (``converged``), the fraction of the successfully fitted stars
         whose centers moved by less than the center accuracy in that
         iteration (``converged_fraction``), the largest center movement
-        in pixels (``max_center_shift``), the number of stars whose
-        fit failed (``n_fit_failed``), and the largest absolute change
+        in pixels relative to the median movement
+        (``max_center_shift``), the number of stars whose fit
+        failed (``n_fit_failed``), and the largest absolute change
         of the ePSF image from the previous iteration as a fraction
         of the ePSF peak (``max_epsf_change``). The change of the
         first iteration is measured from ``initial_epsf``, or from
@@ -1794,12 +1796,18 @@ class EPSFBuilder:
         The desired accuracy for the centers of stars. The
         building iterations will stop when the centers of at least
         ``converged_fraction`` of the successfully fitted stars change
-        by less than ``center_accuracy`` pixels between iterations.
+        by less than ``center_accuracy`` pixels between iterations (see
+        ``converged_fraction``).
 
     converged_fraction : float, optional
         The fraction of the successfully fitted stars whose centers
         must change by less than ``center_accuracy`` pixels between
         iterations for the build to be considered converged. The
+        change of each center is measured relative to the median change
+        of all the centers, which must also be less than
+        ``center_accuracy``. A change that is common to all the stars
+        is a shift of the center of the ePSF. It changes neither the
+        shape of the ePSF nor the relative positions of the stars. The
         default of 0.95 allows a small number of stars (e.g., spurious
         detections or contaminated cutouts) whose centers never settle
         to not prevent convergence. Set to 1.0 to require all stars
@@ -2971,6 +2979,12 @@ class EPSFBuilder:
         ``converged_fraction`` of the successfully fitted stars moved by
         less than the configured center accuracy.
 
+        The movement is measured relative to the median movement of
+        the stars. A shift of the center of the ePSF moves all of the
+        star centers by the same amount, which changes neither the
+        shape of the ePSF nor the relative positions of the stars. The
+        median movement must itself be less than the center accuracy.
+
         Parameters
         ----------
         stars : `EPSFStars` object
@@ -3012,13 +3026,21 @@ class EPSFBuilder:
             # center movement could be measured.
             return False, 0.0, np.nan, new_centers
 
+        # Remove the movement that is common to the stars. The median
+        # of fewer than 3 stars is not a common movement.
         dx_dy_good = dx_dy[good_stars]
+        common_dist_sq = 0.0
+        if len(dx_dy_good) >= 3:
+            common = np.median(dx_dy_good, axis=0)
+            common_dist_sq = float(np.sum(common * common))
+            dx_dy_good = dx_dy_good - common
         center_dist_sq = np.sum(dx_dy_good * dx_dy_good, axis=1,
                                 dtype=np.float64)
 
         converged_fraction = float(
             np.mean(center_dist_sq < self.center_accuracy_sq))
-        converged = converged_fraction >= self.converged_fraction
+        converged = (converged_fraction >= self.converged_fraction
+                     and common_dist_sq < self.center_accuracy_sq)
 
         return (converged, converged_fraction, float(np.max(center_dist_sq)),
                 new_centers)

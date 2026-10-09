@@ -4446,6 +4446,24 @@ class TestConvergedFraction:
         assert result.converged == (result.final_converged_fraction
                                     >= builder.converged_fraction)
 
+    def test_common_shift(self, stars):
+        """
+        The star centers are compared after their median change is
+        removed, but a build whose stars all keep moving together by
+        more than the center accuracy is not converged.
+        """
+        maxiters = 4
+        fitter = _ShiftingFitter(len(stars), len(stars))
+        builder = EPSFBuilder(oversampling=1, maxiters=maxiters,
+                              center_accuracy=1e-2, fitter=fitter,
+                              progress_bar=False)
+        result = builder(stars)
+
+        assert result.final_converged_fraction == 1.0
+        assert result.final_center_accuracy < 1e-2
+        assert result.converged is False
+        assert result.iterations == maxiters
+
     def test_failed_fits_ignored(self, stars):
         """
         Stars whose fit failed do not count toward the fraction.

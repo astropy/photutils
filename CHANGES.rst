@@ -1268,6 +1268,14 @@ API Changes
     ``recentering_func=centroid_com`` for the previous behavior.
     [#XXXX]
 
+  - The convergence of an ``EPSFBuilder`` build is now measured from
+    the changes of the star centers relative to their median change,
+    which must also be less than ``center_accuracy``. A change that is
+    common to all the stars is a shift of the ePSF center and no longer
+    delays the convergence. Some builds stop one iteration earlier.
+    The ``final_center_accuracy`` attribute and the ``max_center_shift``
+    column of ``iteration_info`` are the relative changes. [#XXXX]
+
   - ``GaussianPRF`` is now integrated exactly over the detector pixels
     for any rotation angle. Previously, the integration was performed
     along the rotated principal axes of the Gaussian, which was exact
