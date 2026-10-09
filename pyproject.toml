@@ -62,7 +62,11 @@ test = [
     'asdf >= 3.3',
     'asdf-astropy >= 0.10',
     'pytest-asdf-plugin',
-    'pytest-astropy >= 0.12',
+    'pytest >= 8.0',
+    'pytest-astropy-header >= 0.2.2',
+    'pytest-doctestplus >= 1.4',
+    'pytest-filter-subpackage >= 0.2',
+    'pytest-remotedata >= 0.4.1',
     'pytest-xdist >= 3.7',
     'tox >= 4.18',
 ]
