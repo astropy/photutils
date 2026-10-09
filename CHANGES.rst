@@ -298,6 +298,10 @@ New Features
     ``MoffatPSF``, and ``AiryDiskPSF``. Astropy fitters use it in place
     of finite-difference derivatives. [#2472]
 
+  - The ``extract_stars`` function now accepts a plain 2D array, or a
+    list of 2D arrays, as the input ``data``. An ``NDData`` object is
+    needed only to input an uncertainty, a mask, or a WCS. [#2480]
+
   - Added a ``constrain_fluxes`` method to ``LinkedEPSFStar`` and a
     ``constrain_fluxes`` keyword to ``EPSFBuilder`` (default `True`)
     that constrains the fluxes of linked stars (the same star observed

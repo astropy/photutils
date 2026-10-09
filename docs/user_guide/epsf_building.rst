@@ -205,21 +205,19 @@ from the image::
     ...     data, sigma=2.0, mask=star_mask)  # doctest: +REMOTE_DATA
     >>> data -= median_val  # doctest: +REMOTE_DATA
 
-The :func:`~photutils.psf.extract_stars` function requires the input
-data as an `~astropy.nddata.NDData` object. An `~astropy.nddata.NDData`
-object is easy to create from our data array::
-
-    >>> from astropy.nddata import NDData
-    >>> nddata = NDData(data=data)  # doctest: +REMOTE_DATA
-
 We are now ready to create our star cutouts using the
-:func:`~photutils.psf.extract_stars` function. For this simple example
-we are extracting stars from a single image using a single catalog. The
-:func:`~photutils.psf.extract_stars` function can also extract stars
-from multiple images using a separate catalog for each image or a single
-catalog. When using a single catalog with multiple images, the star
-positions must be in sky coordinates (as `~astropy.coordinates.SkyCoord`
-objects) and the `~astropy.nddata.NDData` objects must contain valid
+:func:`~photutils.psf.extract_stars` function. The input image can be
+a plain 2D array, as in this example, or an `~astropy.nddata.NDData`
+object. An `~astropy.nddata.NDData` object is needed to input an
+uncertainty, a mask, or a WCS along with the image.
+
+For this simple example we are extracting stars from a single image
+using a single catalog. The :func:`~photutils.psf.extract_stars`
+function can also extract stars from multiple images using a separate
+catalog for each image or a single catalog. When using a single
+catalog with multiple images, the star positions must be in sky
+coordinates (as `~astropy.coordinates.SkyCoord` objects) and the
+images must be `~astropy.nddata.NDData` objects that contain valid
 `~astropy.wcs.WCS` objects. In the case of using multiple images (i.e.,
 dithered images) and a single catalog, the same physical star will be
 "linked" across images, meaning it will be constrained to have the same
@@ -229,7 +227,7 @@ sky coordinate and, by default, the same flux in each input image (see
 Let's extract the 25x25 pixel cutouts of our selected stars::
 
     >>> from photutils.psf import extract_stars
-    >>> stars = extract_stars(nddata, stars_tbl, size=25)  # doctest: +REMOTE_DATA
+    >>> stars = extract_stars(data, stars_tbl, size=25)  # doctest: +REMOTE_DATA
 
 The function returns an `~photutils.psf.EPSFStars` object containing the
 cutouts of our selected stars that will be used to build the ePSF. Let's
@@ -253,7 +251,6 @@ show the first 25 of them:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.io import fits
-    from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
     from astropy.visualization import simple_norm
@@ -290,9 +287,7 @@ show the first 25 of them:
                                                         mask=star_mask)
     data -= median_val
 
-    nddata = NDData(data=data)
-
-    stars = extract_stars(nddata, stars_tbl, size=25)
+    stars = extract_stars(data, stars_tbl, size=25)
 
     nrows = 5
     ncols = 5
@@ -392,7 +387,6 @@ Finally, let's show the constructed ePSF:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.io import fits
-    from astropy.nddata import NDData
     from astropy.stats import sigma_clipped_stats
     from astropy.table import Table
     from astropy.visualization import simple_norm
@@ -430,9 +424,7 @@ Finally, let's show the constructed ePSF:
                                                         mask=star_mask)
     data -= median_val
 
-    nddata = NDData(data=data)
-
-    stars = extract_stars(nddata, stars_tbl, size=25)
+    stars = extract_stars(data, stars_tbl, size=25)
 
     epsf_builder = EPSFBuilder(oversampling=4, progress_bar=False)
     epsf, fitted_stars = epsf_builder(stars)
@@ -781,7 +773,7 @@ any of the `~astropy.nddata.NDUncertainty` subclasses (e.g.,
 `~astropy.nddata.StdDevUncertainty`)::
 
     >>> import numpy as np
-    >>> from astropy.nddata import StdDevUncertainty
+    >>> from astropy.nddata import NDData, StdDevUncertainty
     >>> uncertainty = StdDevUncertainty(np.sqrt(np.abs(data)))  # doctest: +REMOTE_DATA, +SKIP
     >>> nddata = NDData(data=data, uncertainty=uncertainty)  # doctest: +REMOTE_DATA, +SKIP
 
