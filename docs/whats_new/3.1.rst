@@ -1005,6 +1005,18 @@ once per star and the star residuals are stacked in a single vectorized
 operation.
 
 
+Symmetry Centroid
+=================
+
+The new `~photutils.centroids.centroid_symmetry` function calculates the
+center of a source as the point about which its core is most symmetric
+under a rotation by 180 degrees. This is the definition of the center
+of an ePSF of Anderson 2016 (WFC3 ISR 2016-12). Unlike the center of
+mass, it is insensitive to asymmetric structure around the core. It can
+be used as the ``recentering_func`` of `~photutils.psf.EPSFBuilder` to
+center an ePSF on its core.
+
+
 Circular Apertures as Ellipses
 ==============================
 

@@ -188,6 +188,13 @@ New Features
     the local backgrounds using multiple threads. The results are
     identical to the single-threaded computation. [#2367]
 
+- ``photutils.centroids``
+
+  - Added a ``centroid_symmetry`` function that calculates the center
+    of a source as its point of maximal point symmetry. It can be used
+    as the ``recentering_func`` of ``EPSFBuilder`` to center an ePSF on
+    its core instead of its center of mass. [#2475]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``
