@@ -590,12 +590,15 @@ m) WFC3/IR (0.13 arcsec per pixel) at 1.1 microns, :math:`\nu_c = 2.4
     * - greater than about 1
       - HST WFC3/IR F110W, JWST NIRCam F070W, JWST NIRISS F090W, Roman
         WFI F062 and F106
-      - The default, or 0.9. The ePSF has real signal up to nearly one
-        cycle per pixel. In tests the default recovered the peak of
-        these ePSFs to within about 1 percent, except for HST WFC3/IR
-        F110W (3 percent low), which 0.9 recovered to within 0.2
-        percent. For the others 0.9 increased the noise in the core by
-        10 to 65 percent.
+      - The default, or 0.85 with more iterations. The ePSF has real
+        signal up to nearly one cycle per pixel. In tests the default
+        recovered the peak of these ePSFs to within about 1 percent,
+        except for HST WFC3/IR F110W (3 percent low). A value of 0.85
+        with a ``maxiters`` of 15 to 20 recovered the peaks to within
+        0.3 percent and lowered the largest residual in the core by
+        10 to 35 percent. For F110W it left the peak 1.5 percent low,
+        and 0.9 recovered it to within 0.3 percent. For the others 0.9
+        gave larger residuals than 0.85.
     * - about 0.9 to 1
       - HST WFC3/IR F160W
       - The default (0.8)
@@ -606,13 +609,15 @@ m) WFC3/IR (0.13 arcsec per pixel) at 1.1 microns, :math:`\nu_c = 2.4
         cycle per pixel. In tests 0.7 lowered the residuals in the core
         by 10 to 40 percent and converged in fewer iterations.
 
-Try 0.9 for a strongly undersampled detector if the default ePSF is too
-broad, i.e., if the stars have positive residuals at their centers after
-the fitted ePSF is subtracted::
+Try 0.85 with more iterations for a strongly undersampled detector whose
+cutoff frequency is well above one cycle per pixel::
 
-    >>> epsf_builder = EPSFBuilder(oversampling=4, alias_passband=0.9,
+    >>> epsf_builder = EPSFBuilder(oversampling=4, alias_passband=0.85,
     ...                            maxiters=20,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
+Try 0.9 only if that ePSF is still too broad, i.e., if the stars have
+positive residuals at their centers after the fitted ePSF is subtracted.
 
 Do not use 0.7 unless the cutoff frequency is known to be low. It leaves
 the peak of a strongly undersampled ePSF low by 2 to 6 percent.
@@ -621,10 +626,16 @@ A passband that is wider than needed has a cost. A star that is sampled
 once per pixel constrains the frequencies near one cycle per pixel only
 weakly, because a small shift of the star center has nearly the same
 effect on its pixel values. A wider passband therefore makes the build
-converge more slowly and makes it more sensitive to noise. Use 0.9 only
-with a large star sample (a few hundred stars), allow more iterations
-(``maxiters`` of 20 or more), and check that the build converged. Do not
-use it with an oversampling factor of 2.
+converge more slowly and makes it more sensitive to noise. With the
+default ``maxiters`` of 10, the peak of an ePSF built with a passband of
+0.85 or 0.9 is too high by up to about 1 percent. Use a passband above
+the default only with a large star sample (a few hundred stars) and an
+oversampling factor of 4 or more, allow more iterations (``maxiters``
+of 15 to 20), and check that the build converged. Do not use it with an
+oversampling factor of 2 or 3. In tests with stars of different shapes
+at those factors, the additional iterations biased the fitted star
+centers toward particular subpixel phases, and at a factor of 3 some
+builds grew a checkerboard pattern.
 
 The filter acts separately along the x and y axes. The signal that it
 removes from an undersampled ePSF therefore shows as a faint ripple

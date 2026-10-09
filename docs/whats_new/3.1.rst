@@ -913,10 +913,11 @@ PSF has essentially no signal at one cycle per input pixel. However,
 that is the frequency at which the star-pixel sampling lattice aliases
 onto the oversampled grid. The new ``alias_passband`` keyword sets the
 passband of this filter. The ePSF of a strongly undersampled detector
-(e.g., HST WFC3/IR F110W, JWST NIRCam F070W, or Roman WFI F062) has
-real signal just below one cycle per pixel, and ``alias_passband=0.9``
-recovers the peak of such an ePSF more accurately than the default. See
-the ePSF building user guide for how to choose the value.
+(e.g., HST WFC3/IR F110W, JWST NIRCam F070W, or Roman WFI F062) has real
+signal just below one cycle per pixel, and a value of 0.85 or 0.9 with
+more iterations recovers the peak of such an ePSF more accurately than
+the default. See the ePSF building user guide for how to choose the
+value.
 
 After the building iterations, the ePSF is now refined
 (``refinement_iters``, 5 by default) for an oversampling factor of 4

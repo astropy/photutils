@@ -323,12 +323,12 @@ New Features
     controls the low-pass filter that is applied to an oversampled
     ePSF in each iteration. The filter removes structure that repeats
     with a period of one detector pixel or shorter. The keyword sets
-    the highest spatial frequency that the filter leaves unchanged, in
-    cycles per detector pixel, which corresponds to a period of ``1 /
-    alias_passband`` detector pixels. A value of 0.9 recovers the peak
-    of the ePSF of a strongly undersampled detector, 0.7 rejects more
-    noise for better-sampled data, and `None` turns the filter off.
-    [#2465]
+    the highest spatial frequency that the filter leaves unchanged,
+    in cycles per detector pixel, which corresponds to a period of
+    ``1 / alias_passband`` detector pixels. A value of 0.85 or 0.9
+    recovers the peak of the ePSF of a strongly undersampled detector,
+    0.7 rejects more noise for better-sampled data, and `None` turns the
+    filter off. [#2465]
 
   - Added a ``refinement_iters`` keyword to ``EPSFBuilder`` (default
     5). After the building iterations, the ePSF is refined for an

@@ -1743,13 +1743,15 @@ class EPSFBuilder:
           and F106): the ePSF has real signal up to nearly one cycle per
           pixel. In tests the default recovered the peak of such ePSFs
           to within about 1 percent, except for the sharpest ones, whose
-          peak was 3 percent low. A value of 0.9 recovered that peak to
-          within 0.2 percent, but it increased the noise in the core of
-          the other ePSFs by 10 to 65 percent. Try 0.9 if the default
-          ePSF is too broad, i.e., if the stars have positive residuals
-          at their centers after the fitted ePSF is subtracted. It needs
-          a large star sample (a few hundred stars) and more iterations
-          (``maxiters`` of 20 or more).
+          peak was 3 percent low. A value of 0.85 with a ``maxiters``
+          of 15 to 20 recovered the peaks to within 0.3 percent and
+          lowered the residuals in the core by 10 to 35 percent, except
+          for the sharpest ePSF, which needed 0.9. Try 0.9 only if the
+          ePSF built with 0.85 is still too broad, i.e., if the stars
+          have positive residuals at their centers after the fitted ePSF
+          is subtracted. A value above the default needs a large star
+          sample (a few hundred stars), an ``oversampling`` of 4 or
+          more, and more iterations.
 
         * ``cutoff`` less than about 0.9 (e.g., JWST NIRCam F115W and
           redder, JWST MIRI, or most ground-based data): the ePSF has
