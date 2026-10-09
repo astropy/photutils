@@ -5,12 +5,23 @@ Tests for the simulation module.
 
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian2D
+from astropy.modeling.models import Const2D, Gaussian2D
 from astropy.table import Table
 from numpy.testing import assert_equal
 
-from photutils.psf import (CircularGaussianPRF, make_psf_model,
-                           make_psf_model_image)
+from photutils.psf import CircularGaussianPRF, make_psf_model_image
+
+
+def make_compound_psf_model():
+    """
+    Make a compound PSF model whose x, y, and flux parameters are
+    defined by the ``x_name``, ``y_name``, and ``flux_name`` attributes.
+    """
+    psf_model = Gaussian2D(amplitude=1.0 / (2.0 * np.pi)) * Const2D(1.0)
+    psf_model.x_name = 'x_mean_0'
+    psf_model.y_name = 'y_mean_0'
+    psf_model.flux_name = 'amplitude_1'
+    return psf_model
 
 
 def test_make_psf_model_image():
@@ -49,8 +60,7 @@ def test_make_psf_model_image():
 def test_make_psf_model_image_custom():
     shape = (401, 451)
     n_sources = 100
-    model = Gaussian2D()
-    psf_model = make_psf_model(model, x_name='x_mean', y_name='y_mean')
+    psf_model = make_compound_psf_model()
     data, params = make_psf_model_image(shape, psf_model, n_sources,
                                         model_shape=(11, 11))
     assert data.shape == shape
@@ -61,12 +71,11 @@ def test_make_psf_model_image_custom():
 def test_make_psf_model_image_flux_mapping():
     """
     Test that the flux kwarg maps to the flux parameter name of a
-    model made with make_psf_model.
+    model with a ``flux_name`` attribute.
     """
     shape = (100, 100)
     n_sources = 5
-    model = Gaussian2D()
-    psf_model = make_psf_model(model, x_name='x_mean', y_name='y_mean')
+    psf_model = make_compound_psf_model()
     flux = (100, 200)
     _, params = make_psf_model_image(shape, psf_model, n_sources,
                                      model_shape=(11, 11), flux=flux,

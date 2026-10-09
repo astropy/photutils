@@ -23,6 +23,15 @@ from photutils.psf.model_helpers import _integrate_model, _InverseShift
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
+def call_make_psf_model(*args, **kwargs):
+    """
+    Call the deprecated ``make_psf_model`` and check its warning.
+    """
+    match = 'make_psf_model was deprecated in version 3.1'
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        return make_psf_model(*args, **kwargs)
+
+
 def test_inverse_shift():
     model = _InverseShift(10)
     assert model(1) == -9.0
@@ -114,7 +123,7 @@ def test_make_psf_model(moffat_source, kwargs, tols):
     if kwargs['y_name'] is None:
         guess_moffat.y_0 = 0
 
-    psf_model = make_psf_model(guess_moffat, **kwargs)
+    psf_model = call_make_psf_model(guess_moffat, **kwargs)
     fitter = TRFLSQFitter()
     fit_model = fitter(psf_model, xx, yy, data)
     xytol, fluxtol = tols
@@ -138,8 +147,8 @@ def test_make_psf_model_units():
     model.amplitude = (model.amplitude.unit * (model.alpha - 1.0)
                        / (np.pi * model.gamma**2))  # normalize to flux=1
 
-    psf_model = make_psf_model(model, x_name='x_0', y_name='y_0',
-                               normalize=True)
+    psf_model = call_make_psf_model(model, x_name='x_0', y_name='y_0',
+                                    normalize=True)
     yy, xx = np.mgrid[:51, :51]
     data1 = model(xx, yy)
     data2 = psf_model(xx, yy)
@@ -149,8 +158,8 @@ def test_make_psf_model_units():
 def test_make_psf_model_compound():
     model = (Const2D(0.0) + Const2D(1.0) + Gaussian2D(1, 5, 5, 1, 1)
              * Const2D(1.0) * Const2D(1.0))
-    psf_model = make_psf_model(model, x_name='x_mean_2', y_name='y_mean_2',
-                               normalize=True)
+    psf_model = call_make_psf_model(model, x_name='x_mean_2',
+                                    y_name='y_mean_2', normalize=True)
     assert psf_model.x_name == 'x_mean_4'
     assert psf_model.y_name == 'y_mean_4'
     assert psf_model.flux_name == 'amplitude_7'
@@ -160,9 +169,9 @@ def test_make_psf_model_inputs():
     model = Gaussian2D(1, 5, 5, 1, 1)
     match = 'parameter name not found in the input model'
     with pytest.raises(ValueError, match=match):
-        make_psf_model(model, x_name='x_mean_0', y_name='y_mean')
+        call_make_psf_model(model, x_name='x_mean_0', y_name='y_mean')
     with pytest.raises(ValueError, match=match):
-        make_psf_model(model, x_name='x_mean', y_name='y_mean_10')
+        call_make_psf_model(model, x_name='x_mean', y_name='y_mean_10')
 
 
 def test_make_psf_model_invalid_flux_name():
@@ -171,21 +180,21 @@ def test_make_psf_model_invalid_flux_name():
     """
     match = 'parameter name not found in the input model'
     with pytest.raises(ValueError, match=match):
-        make_psf_model(Moffat2D(), x_name='x_0', y_name='y_0',
-                       flux_name='invalid')
+        call_make_psf_model(Moffat2D(), x_name='x_0', y_name='y_0',
+                            flux_name='invalid')
 
     model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(1.0)
     with pytest.raises(ValueError, match=match):
-        make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
-                       flux_name='invalid')
+        call_make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                            flux_name='invalid')
 
 
 def test_make_psf_model_integral():
     model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
     match = 'Cannot normalize the model because the integrated flux is zero'
     with pytest.raises(ValueError, match=match):
-        make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
-                       normalize=True)
+        call_make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                            normalize=True)
 
 
 def test_make_psf_model_normalize_dx_dy():
@@ -194,8 +203,8 @@ def test_make_psf_model_normalize_dx_dy():
     dx != dy.
     """
     gauss = Gaussian2D(1, 0, 0, 1, 1)
-    psf = make_psf_model(gauss, x_name='x_mean', y_name='y_mean',
-                         dx=11, dy=21, subsample=10)
+    psf = call_make_psf_model(gauss, x_name='x_mean', y_name='y_mean',
+                              dx=11, dy=21, subsample=10)
     yy, xx = np.mgrid[-10:11, -10:11]
     total = psf(xx, yy).sum()
     assert_allclose(total, 1.0, atol=1e-3)
@@ -212,9 +221,9 @@ def test_make_psf_model_offset():
     Test to ensure the offset is in the correct direction.
     """
     moffat = Moffat2D(x_0=0, y_0=0, alpha=4.8)
-    psfmod1 = make_psf_model(moffat.copy(), x_name='x_0', y_name='y_0',
-                             normalize=False)
-    psfmod2 = make_psf_model(moffat.copy(), normalize=False)
+    psfmod1 = call_make_psf_model(moffat.copy(), x_name='x_0', y_name='y_0',
+                                  normalize=False)
+    psfmod2 = call_make_psf_model(moffat.copy(), normalize=False)
     moffat.x_0 = 10
     psfmod1.x_0_2 = 10
     psfmod2.offset_0 = 10

@@ -44,9 +44,8 @@ class IterativePSFPhotometry:
         named ``x_0``, ``y_0``, and ``flux``, corresponding to the
         center (x, y) position and flux, or it must have 'x_name',
         'y_name', and 'flux_name' attributes that map to the x, y, and
-        flux parameters (i.e., a model output from `make_psf_model`).
-        The model must be two-dimensional such that it accepts 2 inputs
-        (e.g., x and y) and provides 1 output.
+        flux parameters. The model must be two-dimensional such that it
+        accepts 2 inputs (e.g., x and y) and provides 1 output.
 
         The model is evaluated at the center of each pixel, and the
         result is compared with the pixel value. The value of the model

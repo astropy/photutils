@@ -1253,6 +1253,12 @@ API Changes
     module-level ``decode_psf_flags`` function is unchanged and still
     returns lists. [#2400]
 
+  - The ``make_psf_model`` function is now deprecated and will be
+    removed in version 4.0. Use one of the PSF models provided by
+    ``photutils.psf``, an ``ImagePSF`` made from the output of
+    ``make_epsf_from_psf``, or a custom astropy ``Fittable2DModel``
+    with ``x_0``, ``y_0``, and ``flux`` parameters instead. [#2478]
+
   - Defining a custom interpolator for ``ImagePSF``, either by
     overriding the ``interpolator`` attribute in a subclass or by
     assigning an interpolator to it on a model, is now deprecated and

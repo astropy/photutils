@@ -477,16 +477,23 @@ def test_residual_image_localbkg_invalid_sources(test_data):
 @pytest.mark.parametrize('fit_stddev', [False, True])
 def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     """
-    Test compound models output from ``make_psf_model``.
+    Test a compound model whose x, y, and flux parameters are defined
+    by the ``x_name``, ``y_name``, and ``flux_name`` attributes.
     """
     data, error, sources = test_data
     x_stddev = y_stddev = 1.2
-    psf_func = Gaussian2D(amplitude=1, x_mean=0, y_mean=0, x_stddev=x_stddev,
-                          y_stddev=y_stddev)
-    psf_model = make_psf_model(psf_func, x_name='x_mean', y_name='y_mean')
-    if fit_stddev:
-        psf_model.x_stddev_2.fixed = False
-        psf_model.y_stddev_2.fixed = False
+    amplitude = 1.0 / (2.0 * np.pi * x_stddev * y_stddev)
+    psf_model = Gaussian2D(amplitude=amplitude, x_mean=0, y_mean=0,
+                           x_stddev=x_stddev,
+                           y_stddev=y_stddev) * Const2D(1.0)
+    psf_model.x_name = 'x_mean_0'
+    psf_model.y_name = 'y_mean_0'
+    psf_model.flux_name = 'amplitude_1'
+    psf_model.amplitude_0.fixed = True
+    psf_model.theta_0.fixed = True
+    if not fit_stddev:
+        psf_model.x_stddev_0.fixed = True
+        psf_model.y_stddev_0.fixed = True
 
     fit_shape = (5, 5)
     finder = DAOStarFinder(5.0, 3.0)
@@ -498,7 +505,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     assert len(phot) == len(sources)
 
     if fit_stddev:
-        cols = ('x_stddev_2', 'y_stddev_2')
+        cols = ('x_stddev_0', 'y_stddev_0')
         suffixes = ('_init', '_fit', '_err')
         colnames = [col + suffix for suffix in suffixes for col in cols]
         for colname in colnames:
@@ -528,7 +535,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     assert len(phot) == len(sources)
 
     if fit_stddev:
-        cols = ('x_stddev_2', 'y_stddev_2')
+        cols = ('x_stddev_0', 'y_stddev_0')
         suffixes = ('_init', '_fit', '_err')
         colnames = [col + suffix for suffix in suffixes for col in cols]
         for colname in colnames:
@@ -907,10 +914,11 @@ def test_compound_image_psf_spline_not_rebuilt(spline_builds):
         data += scene_psf.evaluate(xx, yy, flux, xval, yval)
     init = Table({'x': xpos + 0.2, 'y': ypos - 0.1, 'flux': 0.9 * fluxes})
 
-    psf_model = make_psf_model(ImagePSF(psf_data) + Const2D(0.0),
-                               x_name='x_0_0', y_name='y_0_0',
-                               flux_name='flux_0')
-    psf_model.amplitude_3.fixed = True
+    psf_model = ImagePSF(psf_data) + Const2D(0.0)
+    psf_model.x_name = 'x_0_0'
+    psf_model.y_name = 'y_0_0'
+    psf_model.flux_name = 'flux_0'
+    psf_model.amplitude_1.fixed = True
     psf_model(20.0, 20.0)
     spline_builds.count = 0
     phot = PSFPhotometry(psf_model, (11, 11))
@@ -1418,11 +1426,15 @@ def test_make_psf_model():
     amplitude = 1.0 / (2 * np.pi * sigma**2)
     xcen = ycen = 0.0
     psf0 = Gaussian2D(amplitude, xcen, ycen, sigma, sigma)
-    psf1 = make_psf_model(psf0, x_name='x_mean', y_name='y_mean',
-                          normalize=normalize)
-    psf2 = make_psf_model(psf0, normalize=normalize)
-    psf3 = make_psf_model(psf0, x_name='x_mean', normalize=normalize)
-    psf4 = make_psf_model(psf0, y_name='y_mean', normalize=normalize)
+    with pytest.warns(PhotutilsDeprecationWarning):
+        psf1 = make_psf_model(psf0, x_name='x_mean', y_name='y_mean',
+                              normalize=normalize)
+    with pytest.warns(PhotutilsDeprecationWarning):
+        psf2 = make_psf_model(psf0, normalize=normalize)
+    with pytest.warns(PhotutilsDeprecationWarning):
+        psf3 = make_psf_model(psf0, x_name='x_mean', normalize=normalize)
+    with pytest.warns(PhotutilsDeprecationWarning):
+        psf4 = make_psf_model(psf0, y_name='y_mean', normalize=normalize)
 
     yy, xx = np.mgrid[0:101, 0:101]
     psf = psf1.copy()

@@ -22,6 +22,14 @@ from photutils.utils.exceptions import PhotutilsDeprecationWarning
 __all__ = ['grid_from_epsfs', 'make_epsf_from_psf', 'make_psf_model']
 
 
+@deprecated(since='3.1',
+            message=('make_psf_model was deprecated in version 3.1 and will '
+                     'be removed in version 4.0. Use one of the PSF models '
+                     'provided by photutils.psf, an ImagePSF made from the '
+                     'output of make_epsf_from_psf, or a custom astropy '
+                     'Fittable2DModel with x_0, y_0, and flux parameters '
+                     'instead.'),
+            warning_type=PhotutilsDeprecationWarning)
 def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
                    normalize=True, dx=50, dy=50, subsample=100,
                    use_dblquad=False):
@@ -138,7 +146,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     >>> from astropy.modeling.models import Gaussian2D
     >>> from photutils.psf import make_psf_model
     >>> model = Gaussian2D(x_stddev=2, y_stddev=2)
-    >>> psf_model = make_psf_model(model, x_name='x_mean', y_name='y_mean')
+    >>> psf_model = make_psf_model(model, x_name='x_mean',
+    ...                            y_name='y_mean')  # doctest: +SKIP
     >>> print(psf_model.param_names)  # doctest: +SKIP
     ('amplitude_2', 'x_mean_2', 'y_mean_2', 'x_stddev_2', 'y_stddev_2',
      'theta_2', 'amplitude_3', 'amplitude_4')

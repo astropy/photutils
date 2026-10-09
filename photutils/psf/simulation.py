@@ -29,11 +29,10 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
     psf_model : 2D `astropy.modeling.Model`
         The PSF model. The model must have parameters named ``x_0``,
         ``y_0``, and ``flux``, corresponding to the center (x, y)
-        position and flux, or it must have 'x_name', 'y_name', and
-        'flux_name' attributes that map to the x, y, and flux parameters
-        (i.e., a model output from `make_psf_model`). The model must be
-        two-dimensional such that it accepts 2 inputs (e.g., x and y)
-        and provides 1 output.
+        position and flux, or it must have 'x_name', 'y_name',
+        and 'flux_name' attributes that map to the x, y, and flux
+        parameters. The model must be two-dimensional such that it
+        accepts 2 inputs (e.g., x and y) and provides 1 output.
 
         The model is evaluated at the center of each pixel. To simulate
         the pixelated image of a source, the value of the model at a
@@ -76,18 +75,18 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         progress bar requires that the `tqdm <https://tqdm.github.io/>`_
         optional dependency be installed.
 
-    **kwargs
+    **kwargs : dict
         Keyword arguments are accepted for additional model parameters.
         The values should be 2-tuples of the lower and upper bounds for
         the parameter range. The parameter values will be uniformly
-        sampled over the half-open interval defined by the lower
-        and upper bounds (i.e., the lower bound is inclusive and
-        the upper bound is exclusive). A ``flux`` keyword is mapped
-        to the model's flux parameter name (e.g., for models output
-        from `make_psf_model`). If the parameter is not in the input
-        ``psf_model`` parameter names, it will be ignored. Keywords
-        matching the model's x and y position parameter names are also
-        ignored because the source positions are randomly generated.
+        sampled over the half-open interval defined by the lower and
+        upper bounds (i.e., the lower bound is inclusive and the upper
+        bound is exclusive). A ``flux`` keyword is mapped to the model's
+        flux parameter name (e.g., for models with a ``flux_name``
+        attribute). If the parameter is not in the input ``psf_model``
+        parameter names, it will be ignored. Keywords matching the
+        model's x and y position parameter names are also ignored
+        because the source positions are randomly generated.
 
     Returns
     -------

@@ -629,8 +629,7 @@ def _get_psf_model_main_params(psf_model):
 
     The PSF model must have parameters called 'x_0', 'y_0', and
     'flux' or it must have 'x_name', 'y_name', and 'flux_name'
-    attributes (i.e., output from `make_psf_model`). Otherwise, a
-    `ValueError` is raised.
+    attributes. Otherwise, a `ValueError` is raised.
 
     The PSF model must be a subclass of `astropy.modeling.Model`. It
     must also be two-dimensional and have a single output.
