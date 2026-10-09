@@ -6,6 +6,7 @@ Tests for the model_helpers module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.io import fits
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Const2D, Gaussian2D, Moffat2D
 from astropy.nddata import NDData
@@ -15,7 +16,6 @@ from numpy.testing import assert_allclose, assert_equal
 from scipy.interpolate import RectBivariateSpline
 from scipy.special import erf
 
-from photutils import datasets
 from photutils.detection import find_peaks
 from photutils.psf import (EPSFBuilder, ImagePSF, extract_stars,
                            grid_from_epsfs, make_epsf_from_psf, make_psf_model)
@@ -234,8 +234,9 @@ class TestGridFromEPSFs:
         self.cutout_size = cutout_size
 
         # Make simulated image
-        hdu = datasets.load_simulated_hst_star_image()
-        data = hdu.data
+        url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+               'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+        data = fits.getdata(url)
 
         # Break up the image into four quadrants
         q1 = data[0:500, 0:500]

@@ -403,8 +403,10 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'hst_wfc3ir_f160w_simulated_starfield.fits'
         hdulist.writeto(filepath)
 
-        with patch('photutils.datasets.load._get_path',
-                   return_value=str(filepath)):
+        match = 'deprecated in version 3.1 .* removed in version 4.0'
+        with (pytest.warns(PhotutilsDeprecationWarning, match=match),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath))):
             hdu = load.load_simulated_hst_star_image()
 
         assert isinstance(hdu, fits.ImageHDU)
@@ -427,10 +429,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'hst_wfc3ir_f160w_simulated_starfield.fits'
         hdulist.writeto(filepath)
 
-        with (
-            patch('photutils.datasets.load._get_path',
-                  return_value=str(filepath)) as mock_get_path,
-        ):
+        with (pytest.warns(PhotutilsDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath)) as mock_get_path):
             hdu = load.load_simulated_hst_star_image(show_progress=True)
 
         assert isinstance(hdu, fits.ImageHDU)

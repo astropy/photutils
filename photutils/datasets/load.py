@@ -8,8 +8,7 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import download_file, get_pkg_data_filename
 
-from photutils.utils._deprecation import (deprecated,
-                                          deprecated_positional_kwargs)
+from photutils.utils._deprecation import deprecated
 
 __all__ = [
     'get_path',
@@ -240,7 +239,7 @@ def load_star_image(show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated(since='3.1', until='4.0')
 def load_simulated_hst_star_image(show_progress=False):
     """
     Load a simulated HST WFC3/IR F160W image of stars.
@@ -257,20 +256,6 @@ def load_simulated_hst_star_image(show_progress=False):
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         A FITS image HDU containing the simulated HST star image.
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from astropy.visualization import simple_norm
-        from photutils.datasets import load_simulated_hst_star_image
-
-        hdu = load_simulated_hst_star_image()
-        fig, ax = plt.subplots()
-        norm = simple_norm(hdu.data, 'sqrt', percent=99.5)
-        ax.imshow(hdu.data, norm=norm, origin='lower')
     """
     path = _get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
                      location='photutils-datasets',
