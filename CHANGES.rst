@@ -624,6 +624,11 @@ Bug Fixes
     set in (nx, ny) order. The WCS transformation itself was unaffected.
     [#2374]
 
+  - Fixed ``make_model_image`` raising a ``ValueError`` for a source
+    whose model bounding box ends exactly at the lower edge of the
+    image. Such sources do not overlap the image and are now skipped.
+    [#2484]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``
@@ -1020,6 +1025,12 @@ Bug Fixes
     precision, which limited the model values to about 8 significant
     digits. [#2455]
 
+  - Fixed ``PSFPhotometry``, ``IterativePSFPhotometry``, and
+    ``extract_stars`` raising a ``ValueError`` for a source whose fit
+    region or cutout ends exactly at the lower edge of the image. Such
+    sources do not overlap the image and are now flagged or skipped.
+    [#2484]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.
@@ -1118,6 +1129,10 @@ Bug Fixes
     bounding box disabled. Previously, sources within half a pixel of
     the array edge received NaN Jacobians and pixel scales because the
     finite-difference offsets fell outside the bounding box. [#2425]
+  - Fixed ``CutoutImage`` raising a ``ValueError`` instead of a
+    ``NoOverlapError`` when ``shape`` is a NumPy array and the cutout
+    ends exactly at the lower edge of the data. [#2484]
+
 
 API Changes
 ^^^^^^^^^^^
