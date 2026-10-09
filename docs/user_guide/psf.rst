@@ -982,8 +982,11 @@ using the `~photutils.psf.PSFPhotometry` class. If your sources
 are non-circular or non-Gaussian, you can fit them with the
 `~photutils.psf.PSFPhotometry` class and a different PSF model. Because
 the model is integrated over the pixels, the returned FWHM is the FWHM
-of the Gaussian before that integration, which is smaller than the FWHM
-of the pixelated image of a source.
+of the Gaussian before that integration, which is smaller than the
+FWHM of the pixelated image of a source. The integration over a pixel
+adds 1/12 pixel**2 to the variance of the profile, so the FWHM of the
+pixelated image is approximately ``sqrt(fwhm**2 + 8 * ln(2) / 12)``, or
+``sqrt(fwhm**2 + 0.462)``, in pixels.
 
 For example, let's estimate the FWHM of the sources in our example image
 defined above::
@@ -998,6 +1001,13 @@ defined above::
     >>> print(fwhm)
     [2.70584007 2.71009548 2.67319293 2.6932673  2.6674289  2.69499608
      2.68722503 2.73280482 2.7200538  2.68340968]
+
+The FWHM of the pixelated image of each source is then::
+
+    >>> fwhm_pixelated = np.sqrt(fwhm**2 + 8 * np.log(2) / 12)
+    >>> print(fwhm_pixelated)
+    [2.78992056 2.79405124 2.7582746  2.7777328  2.75268918 2.7794075
+     2.77187227 2.81608425 2.80372005 2.76817332]
 
 
 Convenience Gaussian Fitting Function

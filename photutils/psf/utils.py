@@ -428,13 +428,13 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
 
     The `~photutils.psf.CircularGaussianPRF` model is a Gaussian that
     is integrated over the pixels. The returned FWHM is the FWHM of the
-    Gaussian before that integration, which is smaller than the FWHM
-    of the pixelated image of the source. The integration over a pixel
-    adds 1/12 pixel**2 to the variance of the profile, so the FWHM of
-    the pixelated image is approximately ``sqrt(fwhm**2 + 8 * ln(2) /
-    12)``, or ``sqrt(fwhm**2 + 0.462)``, in pixels. The two widths
-    differ by about 3% for a FWHM of 3 pixels, 6% for 2 pixels, and 21%
-    for 1 pixel.
+    Gaussian before that integration, which is smaller than the FWHM of
+    the pixelated image of the source. The integration over a pixel adds
+    1/12 pixel**2 to the variance of the profile, so the FWHM of the
+    pixelated image is approximately ``sqrt(fwhm**2 + 8 * ln(2) / 12)``,
+    or ``sqrt(fwhm**2 + 0.462)``, in pixels. The two widths differ by
+    about 3% for a FWHM of 3 pixels, 6% for 2 pixels, and 21% for 1
+    pixel.
 
     This function captures warnings using the process-global warning
     machinery, so concurrent calls from multiple threads may
