@@ -7,28 +7,11 @@ positionally.
 import numpy as np
 import pytest
 
-from photutils.datasets.load import load_irac_psf
 from photutils.datasets.model_params import make_random_models_table
 from photutils.datasets.noise import apply_poisson_noise, make_noise_image
 from photutils.datasets.wcs import make_gwcs, make_wcs
 from photutils.utils._optional_deps import HAS_GWCS
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
-
-
-class TestLoadIracPsfPositionalKwargs:
-    """
-    Test that load_irac_psf warns for positional optional args.
-    """
-
-    @pytest.mark.remote_data
-    def test_positional_warns(self):
-        match = 'load_irac_psf'
-        with pytest.warns(PhotutilsDeprecationWarning, match=match):
-            load_irac_psf(1, False)  # noqa: FBT003
-
-    @pytest.mark.remote_data
-    def test_keyword_no_warning(self):
-        load_irac_psf(1, show_progress=False)
 
 
 class TestMakeRandomModelsTablePositionalKwargs:

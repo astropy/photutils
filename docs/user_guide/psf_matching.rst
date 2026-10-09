@@ -455,27 +455,29 @@ Matching Spitzer IRAC PSFs
 
 For this example, let's generate a matching kernel to go
 from the Spitzer/IRAC channel 1 (3.6 microns) PSF to the
-channel 4 (8.0 microns) PSF. We load the PSFs using the
-:func:`~photutils.datasets.load_irac_psf` convenience function::
+channel 4 (8.0 microns) PSF. We load the PSF images from the
+`photutils-datasets <https://github.com/astropy/photutils-datasets>`_
+repository using :func:`astropy.io.fits.getdata`, which downloads and
+caches the remote files::
 
-    >>> from photutils.datasets import load_irac_psf
-    >>> ch1_hdu = load_irac_psf(channel=1)  # doctest: +REMOTE_DATA
-    >>> ch4_hdu = load_irac_psf(channel=4)  # doctest: +REMOTE_DATA
-    >>> ch1_psf = ch1_hdu.data  # doctest: +REMOTE_DATA
-    >>> ch4_psf = ch4_hdu.data  # doctest: +REMOTE_DATA
+    >>> from astropy.io import fits
+    >>> url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+    ...        'data/irac_ch{}_flight.fits')
+    >>> ch1_psf = fits.getdata(url.format(1))  # doctest: +REMOTE_DATA
+    >>> ch4_psf = fits.getdata(url.format(4))  # doctest: +REMOTE_DATA
 
 Let's display the images:
 
 .. plot::
 
     import matplotlib.pyplot as plt
+    from astropy.io import fits
     from astropy.visualization import SimpleNorm
-    from photutils.datasets import load_irac_psf
 
-    ch1_hdu = load_irac_psf(channel=1)
-    ch4_hdu = load_irac_psf(channel=4)
-    ch1_psf = ch1_hdu.data
-    ch4_psf = ch4_hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/irac_ch{}_flight.fits')
+    ch1_psf = fits.getdata(url.format(1))
+    ch4_psf = fits.getdata(url.format(4))
 
     fig, ax = plt.subplots(ncols=2, figsize=(9, 4))
 
@@ -533,15 +535,15 @@ Let's display the matching kernel results from all methods:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from astropy.io import fits
     from astropy.visualization import SimpleNorm
-    from photutils.datasets import load_irac_psf
     from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
 
-    ch1_hdu = load_irac_psf(channel=1)
-    ch4_hdu = load_irac_psf(channel=4)
-    ch1_psf = ch1_hdu.data
-    ch4_psf = ch4_hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/irac_ch{}_flight.fits')
+    ch1_psf = fits.getdata(url.format(1))
+    ch4_psf = fits.getdata(url.format(4))
 
     window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
     regularization = 0.0001
@@ -578,17 +580,17 @@ channel 4 PSF:
 .. plot::
 
     import matplotlib.pyplot as plt
+    from astropy.io import fits
     from astropy.visualization import SimpleNorm
     from scipy.signal import fftconvolve
 
-    from photutils.datasets import load_irac_psf
     from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
 
-    ch1_hdu = load_irac_psf(channel=1)
-    ch4_hdu = load_irac_psf(channel=4)
-    ch1_psf = ch1_hdu.data
-    ch4_psf = ch4_hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/irac_ch{}_flight.fits')
+    ch1_psf = fits.getdata(url.format(1))
+    ch4_psf = fits.getdata(url.format(4))
 
     window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
     regularization = 0.0001
@@ -649,16 +651,16 @@ channel 4 PSF target:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.io import fits
     from scipy.signal import fftconvolve
 
-    from photutils.datasets import load_irac_psf
     from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
 
-    ch1_hdu = load_irac_psf(channel=1)
-    ch4_hdu = load_irac_psf(channel=4)
-    ch1_psf = ch1_hdu.data
-    ch4_psf = ch4_hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/irac_ch{}_flight.fits')
+    ch1_psf = fits.getdata(url.format(1))
+    ch4_psf = fits.getdata(url.format(4))
 
     window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
     regularization = 0.0001
@@ -714,17 +716,17 @@ agrees with the channel 4 target:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.io import fits
     from scipy.signal import fftconvolve
 
-    from photutils.datasets import load_irac_psf
     from photutils.profiles import CurveOfGrowth
     from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
 
-    ch1_hdu = load_irac_psf(channel=1)
-    ch4_hdu = load_irac_psf(channel=4)
-    ch1_psf = ch1_hdu.data
-    ch4_psf = ch4_hdu.data
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/irac_ch{}_flight.fits')
+    ch1_psf = fits.getdata(url.format(1))
+    ch4_psf = fits.getdata(url.format(4))
 
     window = SplitCosineBellWindow(alpha=0.15, beta=0.3)
     regularization = 0.0001

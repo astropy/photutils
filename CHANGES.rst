@@ -1185,6 +1185,10 @@ API Changes
 
 - ``photutils.datasets``
 
+  - The ``load_irac_psf`` and ``load_simulated_hst_star_image``
+    functions are now deprecated and will be removed in version 4.0.
+    [#2476]
+
   - ``make_model_image`` now also skips sources that have a
     non-finite ``'local_bkg'`` value. Previously, a non-finite local
     background was added to the source region, propagating NaN or

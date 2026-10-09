@@ -69,11 +69,14 @@ noise. We will then estimate the background and background noise using
 sigma-clipped statistics::
 
     >>> import numpy as np
+    >>> from astropy.io import fits
     >>> from astropy.stats import sigma_clipped_stats
-    >>> from photutils.datasets import (load_simulated_hst_star_image,
-    ...                                 make_noise_image)
-    >>> hdu = load_simulated_hst_star_image()  # doctest: +REMOTE_DATA
-    >>> data = hdu.data + make_noise_image(hdu.data.shape, distribution='gaussian', mean=10.0, stddev=5.0, seed=0)  # doctest: +REMOTE_DATA
+    >>> from photutils.datasets import make_noise_image
+    >>> url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+    ...        'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    >>> data = fits.getdata(url)  # doctest: +REMOTE_DATA
+    >>> data += make_noise_image(data.shape, distribution='gaussian',
+    ...                          mean=10.0, stddev=5.0, seed=0)  # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)  # doctest: +REMOTE_DATA
     >>> print(np.array((mean, median, std)))  # doctest: +REMOTE_DATA
     [10.44410657 10.39699777  5.09141794]
@@ -130,17 +133,18 @@ Let's plot the image and mark the location of detected sources:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.io import fits
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import simple_norm
     from photutils.aperture import CircularAperture
-    from photutils.datasets import (load_simulated_hst_star_image,
-                                    make_noise_image)
+    from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
 
-    hdu = load_simulated_hst_star_image()
-    data = hdu.data + make_noise_image(hdu.data.shape,
-                                       distribution='gaussian',
-                                       mean=10.0, stddev=5.0, seed=0)
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    data = fits.getdata(url)
+    data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
+                             stddev=5.0, seed=0)
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = 5.0 * std
     daofind = DAOStarFinder(threshold, fwhm=2.5, sharpness_range=(0.2, 1.5))
@@ -176,17 +180,18 @@ rectangular regions. No sources will be detected in the masked regions:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.io import fits
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import simple_norm
     from photutils.aperture import CircularAperture, RectangularAperture
-    from photutils.datasets import (load_simulated_hst_star_image,
-                                    make_noise_image)
+    from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
 
-    hdu = load_simulated_hst_star_image()
-    data = hdu.data + make_noise_image(hdu.data.shape,
-                                       distribution='gaussian',
-                                       mean=10.0, stddev=5.0, seed=0)
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    data = fits.getdata(url)
+    data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
+                             stddev=5.0, seed=0)
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = 5.0 * std
     daofind = DAOStarFinder(threshold, fwhm=2.5, sharpness_range=(0.2, 1.5))
@@ -257,17 +262,18 @@ Let's plot the location of the detected peaks in the image:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from astropy.io import fits
     from astropy.stats import sigma_clipped_stats
     from astropy.visualization import simple_norm
     from photutils.aperture import CircularAperture
-    from photutils.datasets import (load_simulated_hst_star_image,
-                                    make_noise_image)
+    from photutils.datasets import make_noise_image
     from photutils.detection import find_peaks
 
-    hdu = load_simulated_hst_star_image()
-    data = hdu.data + make_noise_image(hdu.data.shape,
-                                       distribution='gaussian',
-                                       mean=10.0, stddev=5.0, seed=0)
+    url = ('https://github.com/astropy/photutils-datasets/raw/main/'
+           'data/hst_wfc3ir_f160w_simulated_starfield.fits')
+    data = fits.getdata(url)
+    data += make_noise_image(data.shape, distribution='gaussian', mean=10.0,
+                             stddev=5.0, seed=0)
     mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     threshold = median + (5.0 * std)
     tbl = find_peaks(data, threshold, box_size=11)

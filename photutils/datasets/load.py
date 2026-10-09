@@ -8,8 +8,7 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import download_file, get_pkg_data_filename
 
-from photutils.utils._deprecation import (deprecated,
-                                          deprecated_positional_kwargs)
+from photutils.utils._deprecation import deprecated
 
 __all__ = [
     'get_path',
@@ -77,7 +76,7 @@ def _get_path(filename, *, location='local', cache=True, show_progress=False):
     return path
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def get_path(filename, location='local', cache=True, show_progress=False):
     """
     Get the local path for a given file.
@@ -132,7 +131,7 @@ def _load_fits_as_imagehdu(path):
     return fits.ImageHDU(data, header)
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def load_spitzer_image(show_progress=False):
     """
     Load a 4.5 micron Spitzer image.
@@ -155,7 +154,7 @@ def load_spitzer_image(show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def load_spitzer_catalog(show_progress=False):
     """
     Load a 4.5 micron Spitzer catalog.
@@ -179,7 +178,7 @@ def load_spitzer_catalog(show_progress=False):
     return Table.read(path)
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated(since='3.1', until='4.0')
 def load_irac_psf(channel, show_progress=False):
     """
     Load a Spitzer IRAC PSF image.
@@ -202,33 +201,6 @@ def load_irac_psf(channel, show_progress=False):
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         The IRAC PSF in a FITS image HDU.
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from astropy.visualization import simple_norm
-        from photutils.datasets import load_irac_psf
-
-        hdu1 = load_irac_psf(1)
-        hdu2 = load_irac_psf(2)
-        hdu3 = load_irac_psf(3)
-        hdu4 = load_irac_psf(4)
-
-        norm = simple_norm(hdu1.data, stretch='log')
-
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
-        ax1.imshow(hdu1.data, norm=norm, origin='lower')
-        ax1.set_title('IRAC Ch1 PSF')
-        ax2.imshow(hdu2.data, norm=norm, origin='lower')
-        ax2.set_title('IRAC Ch2 PSF')
-        ax3.imshow(hdu3.data, norm=norm, origin='lower')
-        ax3.set_title('IRAC Ch3 PSF')
-        ax4.imshow(hdu4.data, norm=norm, origin='lower')
-        ax4.set_title('IRAC Ch4 PSF')
-        fig.tight_layout()
     """
     channel = int(channel)
     if channel < 1 or channel > 4:
@@ -240,7 +212,7 @@ def load_irac_psf(channel, show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated(since='3.0')
+@deprecated(since='3.0', until='4.0')
 def load_star_image(show_progress=False):
     """
     Load an optical image of stars.
@@ -267,7 +239,7 @@ def load_star_image(show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated(since='3.1', until='4.0')
 def load_simulated_hst_star_image(show_progress=False):
     """
     Load a simulated HST WFC3/IR F160W image of stars.
@@ -284,20 +256,6 @@ def load_simulated_hst_star_image(show_progress=False):
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         A FITS image HDU containing the simulated HST star image.
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from astropy.visualization import simple_norm
-        from photutils.datasets import load_simulated_hst_star_image
-
-        hdu = load_simulated_hst_star_image()
-        fig, ax = plt.subplots()
-        norm = simple_norm(hdu.data, 'sqrt', percent=99.5)
-        ax.imshow(hdu.data, norm=norm, origin='lower')
     """
     path = _get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
                      location='photutils-datasets',
