@@ -999,8 +999,8 @@ defined above::
     >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5),
     ...                 fwhm=2)
     >>> print(fwhm)
-    [2.70584007 2.71009548 2.67319293 2.6932673  2.6674289  2.69499608
-     2.68722503 2.73280482 2.7200538  2.68340968]
+    [2.70583788 2.71009672 2.67319671 2.69326964 2.66743315 2.69499684
+     2.68722492 2.73280668 2.72006396 2.68340929]
 
 The FWHM of the pixelated image of each source is then::
 
