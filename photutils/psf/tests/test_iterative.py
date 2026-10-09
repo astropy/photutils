@@ -8,7 +8,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.modeling.models import Gaussian2D
+from astropy.modeling.models import Const2D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
@@ -18,7 +18,7 @@ from photutils.background import LocalBackground, MMMBackground
 from photutils.datasets import make_model_image, make_noise_image
 from photutils.detection import DAOStarFinder
 from photutils.psf import (CircularGaussianPRF, IterativePSFPhotometry,
-                           SourceGrouper, make_psf_model, make_psf_model_image)
+                           SourceGrouper, make_psf_model_image)
 from photutils.psf.flags import decode_psf_flags
 from photutils.utils.exceptions import (NoDetectionsWarning,
                                         PhotutilsDeprecationWarning)
@@ -66,11 +66,15 @@ FINDER_COLUMN_NAMES = [
 @pytest.mark.parametrize('mode', ['new', 'all'])
 def test_iterative_psf_photometry_compound(mode):
     x_stddev = y_stddev = 1.7
-    psf_func = Gaussian2D(amplitude=1, x_mean=0, y_mean=0, x_stddev=x_stddev,
-                          y_stddev=y_stddev)
-    psf_model = make_psf_model(psf_func, x_name='x_mean', y_name='y_mean')
-    psf_model.x_stddev_2.fixed = False
-    psf_model.y_stddev_2.fixed = False
+    amplitude = 1.0 / (2.0 * np.pi * x_stddev * y_stddev)
+    psf_model = Gaussian2D(amplitude=amplitude, x_mean=0, y_mean=0,
+                           x_stddev=x_stddev,
+                           y_stddev=y_stddev) * Const2D(1.0)
+    psf_model.x_name = 'x_mean_0'
+    psf_model.y_name = 'y_mean_0'
+    psf_model.flux_name = 'amplitude_1'
+    psf_model.amplitude_0.fixed = True
+    psf_model.theta_0.fixed = True
 
     other_params = {psf_model.flux_name: (500, 700)}
 
@@ -100,7 +104,7 @@ def test_iterative_psf_photometry_compound(mode):
     assert isinstance(phot, QTable)
     assert len(phot) == len(true_params)
 
-    cols = ('x_stddev_2', 'y_stddev_2')
+    cols = ('x_stddev_0', 'y_stddev_0')
     suffixes = ('_init', '_fit', '_err')
     colnames = [col + suffix for suffix in suffixes for col in cols]
     for colname in colnames:
@@ -129,7 +133,7 @@ def test_iterative_psf_photometry_compound(mode):
     assert isinstance(phot, QTable)
     assert len(phot) == len(true_params)
 
-    cols = ('x_stddev_2', 'y_stddev_2')
+    cols = ('x_stddev_0', 'y_stddev_0')
     suffixes = ('_init', '_fit', '_err')
     colnames = [col + suffix for suffix in suffixes for col in cols]
     for colname in colnames:

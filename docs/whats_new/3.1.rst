@@ -1118,6 +1118,20 @@ because its process startup and data-pickling overheads made it slower
 than the serial implementation. Use the new ``n_threads`` keyword for
 multithreaded deblending instead.
 
+``make_psf_model`` Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :func:`~photutils.psf.make_psf_model` function is deprecated
+and will be removed in version 4.0. The PSF models provided by
+`photutils.psf` now cover the Gaussian, Moffat, and Airy disk profiles
+that it was mostly used to wrap, and they are faster to fit. The models
+that it returns are also not integrated over the detector pixels, and
+their flux is not the total flux if a shape parameter is fit. For
+other PSF profiles, make an `~photutils.psf.ImagePSF` from the output
+of :func:`~photutils.psf.make_epsf_from_psf`, or define a custom
+`~astropy.modeling.Fittable2DModel` with ``x_0``, ``y_0``, and ``flux``
+parameters (see :ref:`psf-custom-models`).
+
 ``EPSFBuildResult`` Renamed to ``EPSFBuildResults``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

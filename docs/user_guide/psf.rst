@@ -363,15 +363,68 @@ additional parameters beyond the standard PSF model parameters of
 position and flux (``x_0``, ``y_0``, and ``flux``), which are fixed by
 default as described above.
 
-Photutils also provides a convenience function called
-:func:`~photutils.psf.make_psf_model` that creates a PSF model from an
-Astropy fittable 2D model. However, it is recommended that one use the
-PSF models provided by `photutils.psf` as they are optimized for PSF
-photometry. If a custom PSF model is needed, one can be created using
-the Astropy modeling framework that will provide better performance than
-using :func:`~photutils.psf.make_psf_model`. A model made with
-:func:`~photutils.psf.make_psf_model` is evaluated at the input
-positions and is not integrated over the detector pixels.
+.. _psf-custom-models:
+
+Custom PSF Models
+^^^^^^^^^^^^^^^^^
+
+It is recommended that one use the PSF models provided by
+`photutils.psf` because they are optimized for PSF photometry. If a
+different PSF profile is needed, there are two ways to make a model for
+it.
+
+If the shape of the PSF is known and does not need to be fit, evaluate
+the profile on an oversampled grid and use the result to make an
+image-based model with :func:`~photutils.psf.make_epsf_from_psf` and
+`~photutils.psf.ImagePSF`, as shown above for the Moffat profile. This
+is the recommended approach because the resulting model is integrated
+over the detector pixels.
+
+If the shape parameters of the PSF need to be fit, define a model with
+the Astropy modeling framework. The PSF photometry classes accept any
+`~astropy.modeling.Fittable2DModel` that has parameters named ``x_0``,
+``y_0``, and ``flux``. The model must be normalized so that ``flux`` is
+the total flux of the source for any values of the shape parameters. For
+example, a PSF model that is the sum of two circular Gaussians with the
+same center::
+
+    >>> import numpy as np
+    >>> from astropy.modeling import Fittable2DModel, Parameter
+    >>> class DoubleGaussianPSF(Fittable2DModel):
+    ...     flux = Parameter(default=1.0)
+    ...     x_0 = Parameter(default=0.0)
+    ...     y_0 = Parameter(default=0.0)
+    ...     sigma_core = Parameter(default=1.0, fixed=True)
+    ...     sigma_wing = Parameter(default=3.0, fixed=True)
+    ...     wing_ratio = Parameter(default=0.1, fixed=True)
+    ...
+    ...     @staticmethod
+    ...     def evaluate(x, y, flux, x_0, y_0, sigma_core, sigma_wing,
+    ...                  wing_ratio):
+    ...         r2 = (x - x_0)**2 + (y - y_0)**2
+    ...         core = np.exp(-0.5 * r2 / sigma_core**2)
+    ...         wing = wing_ratio * np.exp(-0.5 * r2 / sigma_wing**2)
+    ...         norm = 2.0 * np.pi * (sigma_core**2
+    ...                               + wing_ratio * sigma_wing**2)
+    ...         return flux * (core + wing) / norm
+
+    >>> model = DoubleGaussianPSF(sigma_core=1.2, sigma_wing=3.5)
+
+This model is evaluated at the input positions and is not integrated
+over the detector pixels, so it has the same limitations as the ``*PSF``
+models described above. It is sharper than the sources in the data,
+and its fitted fluxes are biased unless the PSF is well sampled by the
+detector pixels. For accurate photometry, the ``evaluate`` method should
+instead return the profile integrated over each pixel, as the ``*PRF``
+models provided by `photutils.psf` do.
+
+A model whose position and flux parameters have other names can also be
+used if it has ``x_name``, ``y_name``, and ``flux_name`` attributes that
+contain the names of those parameters.
+
+The :func:`~photutils.psf.make_psf_model` function, which wraps an
+Astropy fittable 2D model in a compound model, is deprecated and will be
+removed in version 4.0. Use one of the two approaches above instead.
 
 
 .. _psf-image-models:
