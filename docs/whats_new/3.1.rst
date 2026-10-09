@@ -1175,6 +1175,16 @@ unchanged, but :func:`~photutils.psf.decode_psf_flags` now returns the
 new names, so code that compares decoded names with the old names must
 be updated.
 
+``load_irac_psf`` Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :func:`~photutils.datasets.load_irac_psf` function is deprecated
+and will be removed in version 4.0. The Spitzer/IRAC PSF images remain
+available in the `photutils-datasets
+<https://github.com/astropy/photutils-datasets>`_ repository and can
+be loaded directly with :func:`astropy.io.fits.getdata`, as shown in
+the :ref:`PSF matching <psf_matching>` user guide.
+
 Removed Deprecations
 --------------------
 

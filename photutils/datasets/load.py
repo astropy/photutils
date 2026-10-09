@@ -179,7 +179,7 @@ def load_spitzer_catalog(show_progress=False):
     return Table.read(path)
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated(since='3.1', until='4.0')
 def load_irac_psf(channel, show_progress=False):
     """
     Load a Spitzer IRAC PSF image.
@@ -202,33 +202,6 @@ def load_irac_psf(channel, show_progress=False):
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         The IRAC PSF in a FITS image HDU.
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from astropy.visualization import simple_norm
-        from photutils.datasets import load_irac_psf
-
-        hdu1 = load_irac_psf(1)
-        hdu2 = load_irac_psf(2)
-        hdu3 = load_irac_psf(3)
-        hdu4 = load_irac_psf(4)
-
-        norm = simple_norm(hdu1.data, stretch='log')
-
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
-        ax1.imshow(hdu1.data, norm=norm, origin='lower')
-        ax1.set_title('IRAC Ch1 PSF')
-        ax2.imshow(hdu2.data, norm=norm, origin='lower')
-        ax2.set_title('IRAC Ch2 PSF')
-        ax3.imshow(hdu3.data, norm=norm, origin='lower')
-        ax3.set_title('IRAC Ch3 PSF')
-        ax4.imshow(hdu4.data, norm=norm, origin='lower')
-        ax4.set_title('IRAC Ch4 PSF')
-        fig.tight_layout()
     """
     channel = int(channel)
     if channel < 1 or channel > 4:

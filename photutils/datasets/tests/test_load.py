@@ -118,10 +118,10 @@ def test_load_irac_psf_invalid_channel():
     number is provided.
     """
     match = 'channel must be 1, 2, 3, or 4'
-    with pytest.raises(ValueError, match=match):
-        load.load_irac_psf(0)
-    with pytest.raises(ValueError, match=match):
-        load.load_irac_psf(5)
+    for channel in (0, 5):
+        with (pytest.warns(PhotutilsDeprecationWarning),
+              pytest.raises(ValueError, match=match)):
+            load.load_irac_psf(channel)
 
 
 @pytest.mark.remote_data
@@ -279,8 +279,10 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'irac_ch1_flight.fits'
         hdulist.writeto(filepath)
 
-        with patch('photutils.datasets.load._get_path',
-                   return_value=str(filepath)):
+        match = 'deprecated in version 3.1 .* removed in version 4.0'
+        with (pytest.warns(PhotutilsDeprecationWarning, match=match),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath))):
             hdu = load.load_irac_psf(1)
 
         assert isinstance(hdu, fits.ImageHDU)
@@ -302,8 +304,9 @@ class TestLoadFunctionsMocked:
             filepath = tmp_path / f'irac_ch{channel}_flight.fits'
             hdulist.writeto(filepath, overwrite=True)
 
-            with patch('photutils.datasets.load._get_path',
-                       return_value=str(filepath)):
+            with (pytest.warns(PhotutilsDeprecationWarning),
+                  patch('photutils.datasets.load._get_path',
+                        return_value=str(filepath))):
                 hdu = load.load_irac_psf(channel)
 
             assert isinstance(hdu, fits.ImageHDU)
@@ -322,10 +325,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'irac_ch2_flight.fits'
         hdulist.writeto(filepath)
 
-        with (
-            patch('photutils.datasets.load._get_path',
-                  return_value=str(filepath)) as mock_get_path,
-        ):
+        with (pytest.warns(PhotutilsDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath)) as mock_get_path):
             hdu = load.load_irac_psf(2, show_progress=True)
 
         assert isinstance(hdu, fits.ImageHDU)
