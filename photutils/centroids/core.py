@@ -9,6 +9,8 @@ import warnings
 import numpy as np
 from astropy.nddata import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
+from scipy.interpolate import RectBivariateSpline
+from scipy.optimize import minimize
 
 from photutils.centroids._utils import _process_data_mask
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
@@ -19,7 +21,7 @@ from photutils.utils._repr import make_repr
 from photutils.utils._round import round_half_away
 
 __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
-           'centroid_sources']
+           'centroid_sources', 'centroid_symmetry']
 
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -114,6 +116,223 @@ def centroid_com(data, mask=None):
     # Output array is reversed to give (x, y) order (e.g., for 2D data)
     return np.array([np.sum(indices[axis] * data) / total
                      for axis in range(data.ndim)])[::-1]
+
+
+def centroid_symmetry(data, *, mask=None, radius=None):
+    """
+    Calculate the center of a 2D array as its point of maximal point
+    symmetry.
+
+    The center is the position about which the data within ``radius``
+    are most symmetric under a rotation by 180 degrees. It is found by
+    minimizing the sum of the absolute differences between the data
+    values at opposite offsets from the center.
+
+    This is the definition of the center of an effective
+    PSF (ePSF) of `Anderson 2016 (WFC3 ISR 2016-12)
+    <https://ui.adsabs.harvard.edu/abs/2016wfc..rept...12A/abstract>`_.
+    Unlike the center of mass (`centroid_com`), it depends only on the
+    core of the source and is insensitive to asymmetric structure beyond
+    ``radius``.
+
+    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    automatically masked. The final mask is a logical OR combination
+    of the input ``mask``, the automatically generated mask for
+    non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. A pair of opposite offsets is used only if
+    both of its data values are unmasked.
+
+    .. warning::
+
+        The result is less accurate if masked or non-finite values lie
+        within ``radius`` of the center. The pairs that are excluded
+        then change with the trial center, which biases the position of
+        the minimum. In a test with a Gaussian source with a standard
+        deviation of 2 pixels, a single masked pixel 1.7 pixels from the
+        center changed the result by 0.02 pixels, and a masked column at
+        that distance by 0.2 pixels.
+
+    Parameters
+    ----------
+    data : 2D array_like
+        The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
+        The image should be a background-subtracted cutout image
+        containing a single source near its center.
+
+    mask : 2D bool `~numpy.ndarray`, optional
+        A boolean mask, with the same shape as ``data``, where a `True`
+        value indicates the corresponding element of ``data`` is masked.
+        If ``data`` is a `~numpy.ma.MaskedArray`, its mask will be
+        combined (using bitwise OR) with the input ``mask``.
+
+    radius : float or `None`, optional
+        The radius (in pixels) of the circular region around the center
+        in which the symmetry is measured. If `None`, the radius is 0.3
+        times the smaller dimension of ``data`` (e.g., 1.5 pixels for a
+        5x5 array). The radius must be at least 1 pixel and smaller than
+        half of the smaller dimension of ``data`` minus one half.
+
+    Returns
+    -------
+    centroid : `~numpy.ndarray`
+        The ``(x, y)`` coordinates of the center. An array of NaN values
+        is returned if no pair of opposite offsets is unmasked.
+
+    See Also
+    --------
+    centroid_com, centroid_quadratic
+
+    Notes
+    -----
+    The asymmetry that is minimized is
+
+    .. math::
+        A(x_c, y_c) = \\sum_{|u| \\le r}
+            \\left| I(x_c + u_x, y_c + u_y)
+            - I(x_c - u_x, y_c - u_y) \\right|
+
+    where the sum is over the offsets :math:`u` on a grid with a spacing
+    of one pixel within the radius :math:`r`, and :math:`I` is the data
+    interpolated with a bicubic spline.
+
+    The region must stay within the array, so the center is searched
+    only within ``(min(data.shape) - 1) / 2 - radius`` pixels of the
+    center of the array along each axis. The source should therefore
+    be roughly centered in ``data``. A region without a source is also
+    symmetric, so the search starts at the maximum value within that
+    area and finds the minimum of the asymmetry nearest to it.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from photutils.centroids import centroid_symmetry
+    >>> from photutils.datasets import make_4gaussians_image
+    >>> data = make_4gaussians_image()
+    >>> data -= np.median(data[0:30, 0:125])
+    >>> data = data[40:80, 70:110]
+    >>> x1, y1 = centroid_symmetry(data)
+    >>> print(np.array((x1, y1)))
+    [19.98462259 20.0077971 ]
+
+    .. plot::
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from photutils.centroids import centroid_symmetry
+        from photutils.datasets import make_4gaussians_image
+
+        data = make_4gaussians_image()
+        data -= np.median(data[0:30, 0:125])
+        data = data[40:80, 70:110]
+        xycen = centroid_symmetry(data)
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.imshow(data, origin='lower')
+        ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
+        ax.legend()
+    """
+    (data,), _ = process_quantities((data,), ('data',))
+    data = _process_data_mask(data, mask, ndim=2, fill_value=np.nan)
+    ny, nx = data.shape
+    half_size = (min(ny, nx) - 1) / 2
+
+    if radius is None:
+        radius = 0.3 * min(ny, nx)
+    if radius < 1 or radius >= half_size:
+        msg = ('radius must be at least 1 and less than half of the '
+               'smaller dimension of data minus one half')
+        raise ValueError(msg)
+
+    # The spline needs finite values. The pairs that include a masked
+    # value are excluded below.
+    bad = ~np.isfinite(data)
+    has_bad = bool(np.any(bad))
+    if has_bad:
+        data = np.where(bad, 0.0, data)
+    spline = RectBivariateSpline(np.arange(ny), np.arange(nx), data,
+                                 kx=min(3, nx - 1), ky=min(3, ny - 1))
+
+    # One offset of each opposite pair within the radius
+    n_max = int(radius)
+    y_off, x_off = np.mgrid[-n_max:n_max + 1, -n_max:n_max + 1]
+    keep = ((np.hypot(x_off, y_off) <= radius)
+            & ((y_off > 0) | ((y_off == 0) & (x_off > 0))))
+    x_off = x_off[keep].astype(float)
+    y_off = y_off[keep].astype(float)
+
+    def is_bad(x, y):
+        """
+        Return whether the pixels nearest to the positions are masked.
+
+        Parameters
+        ----------
+        x, y : 1D `~numpy.ndarray`
+            The positions.
+
+        Returns
+        -------
+        result : 1D bool `~numpy.ndarray`
+            Whether the nearest pixel of each position is masked.
+        """
+        xidx = np.clip(np.round(x).astype(int), 0, nx - 1)
+        yidx = np.clip(np.round(y).astype(int), 0, ny - 1)
+        return bad[yidx, xidx]
+
+    def asymmetry(xy):
+        """
+        Return the mean absolute difference of the opposite pairs.
+
+        Parameters
+        ----------
+        xy : tuple of 2 floats
+            The ``(x, y)`` trial center.
+
+        Returns
+        -------
+        result : float
+            The asymmetry about the trial center.
+        """
+        x1 = xy[0] + x_off
+        y1 = xy[1] + y_off
+        x2 = xy[0] - x_off
+        y2 = xy[1] - y_off
+        diff = np.abs(spline.ev(y1, x1) - spline.ev(y2, x2))
+        if has_bad:
+            good = ~(is_bad(x1, y1) | is_bad(x2, y2))
+            if not np.any(good):
+                return np.inf
+            return np.mean(diff[good])
+        return np.mean(diff)
+
+    # The region must stay within the array
+    x_center = (nx - 1) / 2
+    y_center = (ny - 1) / 2
+    x_margin = x_center - radius
+    y_margin = y_center - radius
+    x_bounds = (x_center - x_margin, x_center + x_margin)
+    y_bounds = (y_center - y_margin, y_center + y_margin)
+
+    # A featureless region is also symmetric, so the search starts at
+    # the maximum value within the allowed region and a coarse search is
+    # made only within one pixel of it.
+    yslc = slice(int(np.ceil(y_bounds[0])), int(np.floor(y_bounds[1])) + 1)
+    xslc = slice(int(np.ceil(x_bounds[0])), int(np.floor(x_bounds[1])) + 1)
+    region = np.where(bad[yslc, xslc], -np.inf, data[yslc, xslc])
+    if not np.any(np.isfinite(region)):
+        return np.full(2, np.nan)
+    ypeak, xpeak = np.unravel_index(np.argmax(region), region.shape)
+    x_grid = np.clip(xpeak + xslc.start + np.arange(-1.0, 1.1, 0.5),
+                     *x_bounds)
+    y_grid = np.clip(ypeak + yslc.start + np.arange(-1.0, 1.1, 0.5),
+                     *y_bounds)
+    values = np.array([[asymmetry((x, y)) for x in x_grid] for y in y_grid])
+    if not np.any(np.isfinite(values)):
+        return np.full(2, np.nan)
+    yidx, xidx = np.unravel_index(np.argmin(values), values.shape)
+
+    result = minimize(asymmetry, (x_grid[xidx], y_grid[yidx]),
+                      method='Nelder-Mead', bounds=(x_bounds, y_bounds),
+                      options={'xatol': 1.0e-5, 'fatol': 0.0})
+    return np.array(result.x)
 
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')

@@ -1749,7 +1749,14 @@ class EPSFBuilder:
         A callable object that is used to calculate the centroid of a
         2D array. The callable must accept a 2D `~numpy.ndarray`, have
         a ``mask`` keyword and optionally an ``error`` keyword. The
-        callable object must return a tuple of (x, y) centroids.
+        callable object must return a tuple of (x, y) centroids. The
+        default is `~photutils.centroids.centroid_com`, the center of
+        mass. The center of mass of an asymmetric ePSF is pulled toward
+        the asymmetric structure around its core. To center the ePSF on
+        its core instead, use `~photutils.centroids.centroid_symmetry`,
+        which is the center definition of Anderson 2016. With the
+        default ``recentering_boxsize`` it measures the symmetry within
+        1.5 pixels of the center.
 
     recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid
@@ -1993,7 +2000,8 @@ class EPSFBuilder:
     * The ePSF is centered on its center of mass in a 5x5 pixel box
       by default. Anderson requires equal values half a pixel on either
       side of the center (2000) or centers the ePSF on its point of
-      maximal symmetry within a radius of 1.5 pixels (2016).
+      maximal symmetry within a radius of 1.5 pixels (2016). The latter
+      is available as ``recentering_func=centroid_symmetry``.
 
     * The ePSF is normalized so that its values sum to the product of
       the oversampling factors over the whole grid. Fitted fluxes are

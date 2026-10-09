@@ -987,7 +987,8 @@ from the two publications.
         pixels.
       - The center of mass in a 5x5 pixel box is shifted to the
         center of the grid (``recentering_func`` and
-        ``recentering_boxsize``).
+        ``recentering_boxsize``). The ISR 2016-12 definition is
+        available as `~photutils.centroids.centroid_symmetry`.
     * - Normalization
       - The pixel values of a star of unit flux sum to 1 over its
         central 5x5 pixels (AK2000) or within a radius of 5.5 pixels
@@ -1063,11 +1064,14 @@ tests.
 
 **Centering.** The definition of the center of an ePSF is arbitrary
 as long as the same ePSF is used to build and to fit. The centering
-definitions agree for a symmetric ePSF. For an asymmetric ePSF they
-differ by a small constant offset. The offset has no effect on
-photometry or on relative astrometry made with the same ePSF, because
-the fitted star positions shift with it. Positions measured with ePSFs
-that were centered differently differ by that offset. The recentering
+definitions agree for a symmetric ePSF. For an asymmetric ePSF
+they differ by a small constant offset. The offset has no effect
+on photometry or on relative astrometry made with the same ePSF,
+because the fitted star positions shift with it. Positions measured
+with ePSFs that were centered differently differ by that offset.
+The center of mass is more sensitive to asymmetric structure around
+the core than the symmetry definition of ISR 2016-12, which is
+available as `~photutils.centroids.centroid_symmetry`. The recentering
 function and box can be changed with ``recentering_func`` and
 ``recentering_boxsize``.
 

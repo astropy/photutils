@@ -17,7 +17,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
-                                 centroid_quadratic)
+                                 centroid_quadratic, centroid_symmetry)
 from photutils.datasets import make_model_image
 from photutils.psf import (CircularGaussianPRF, EPSFBuilder, EPSFBuildResults,
                            EPSFFitter, EPSFStar, EPSFStars, ImagePSF,
@@ -1485,6 +1485,7 @@ class TestEPSFBuilder:
                                                 centroid_1dg,
                                                 centroid_2dg,
                                                 centroid_quadratic,
+                                                centroid_symmetry,
                                                 ])
     def test_recentering(self, epsf_test_data, centering_func):
         """
