@@ -16,6 +16,7 @@ from scipy import interpolate
 from scipy.spatial import QhullError
 
 from photutils.centroids import centroid_com
+from photutils.psf.flags import PSF_FLAGS
 from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.utils import CutoutImage
 from photutils.utils._flags import define_flag_docstring
@@ -287,6 +288,30 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
       4  8.4214 12.0369   3.2026 192.3530
       5 76.9412 35.9061   6.6600 126.6130
     """
+    return _fit_2dgaussian(data, xypos=xypos, fwhm=fwhm, fix_fwhm=fix_fwhm,
+                           fit_shape=fit_shape, mask=mask, error=error)
+
+
+def _fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
+                    fit_shape=None, mask=None, error=None,
+                    warn_no_convergence=True):
+    """
+    Fit a 2D Gaussian model to one or more sources in an image.
+
+    The parameters are the same as for `fit_2dgaussian`, with the
+    addition of ``warn_no_convergence``.
+
+    Parameters
+    ----------
+    warn_no_convergence : bool, optional
+        Whether the `~photutils.psf.PSFPhotometry` object emits its
+        warning if one or more fits may not have converged.
+
+    Returns
+    -------
+    result : `~photutils.psf.PSFPhotometry`
+        The PSF-fitting photometry results.
+    """
     # Prevent circular import
     from photutils.psf.photometry import PSFPhotometry
 
@@ -353,6 +378,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         model.fwhm.fixed = False
 
     phot = PSFPhotometry(model, fit_shape)
+    phot._warn_no_convergence = warn_no_convergence
     _ = phot(data, mask=mask, error=error, init_params=init_params)
 
     return phot
@@ -436,9 +462,10 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     about 3% for a FWHM of 3 pixels, 6% for 2 pixels, and 21% for 1
     pixel.
 
-    This function captures warnings using the process-global warning
-    machinery, so concurrent calls from multiple threads may
-    misattribute warnings on non-free-threaded Python builds.
+    The fitter warnings are suppressed during the fits using the
+    process-global warning filters, so warnings raised by other threads
+    while this function runs may also be suppressed on
+    non-free-threaded Python builds.
 
     Examples
     --------
@@ -471,26 +498,14 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     >>> fwhms
     array([5.69467204, 5.21376414, 7.65508658, 3.20255356, 6.66003098])
     """
-    with warnings.catch_warnings(record=True) as fit_warnings:
-        phot = fit_2dgaussian(data, xypos=xypos, fwhm=fwhm, fix_fwhm=False,
-                              fit_shape=fit_shape, mask=mask, error=error)
+    phot = _fit_2dgaussian(data, xypos=xypos, fwhm=fwhm, fix_fwhm=False,
+                           fit_shape=fit_shape, mask=mask, error=error,
+                           warn_no_convergence=False)
 
-    # Re-emit the captured warnings, mapping fitter convergence warnings
-    # to a single actionable message and passing all others through
-    # verbatim
-    convergence_warning = False
-    for warning in fit_warnings:
-        wmsg = str(warning.message)
-        if 'fit_shape is None' in wmsg:
-            warnings.warn(wmsg, warning.category)
-        elif ('may not have converged' in wmsg
-                or 'fit may be unsuccessful' in wmsg):
-            convergence_warning = True
-        else:
-            warnings.warn_explicit(warning.message, warning.category,
-                                   warning.filename, warning.lineno)
-
-    if convergence_warning:
+    # The PSFPhotometry warning refers to its results table, which is
+    # not returned here
+    flags = np.asarray(phot.results['flags'])
+    if np.any(flags & PSF_FLAGS.NO_CONVERGENCE):
         msg = ('One or more fit(s) may not have converged. Please '
                'carefully check your results. You may need to change '
                'the input "xypos" and "fit_shape" parameters.')
