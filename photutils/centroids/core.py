@@ -4,13 +4,14 @@ Tools for centroiding sources.
 """
 
 import inspect
+import numbers
 import warnings
 
 import numpy as np
 from astropy.nddata import overlap_slices
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.interpolate import RectBivariateSpline
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, map_coordinates
 from scipy.optimize import minimize
 
 from photutils.centroids._utils import _process_data_mask
@@ -140,20 +141,20 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     automatically masked. The final mask is a logical OR combination
     of the input ``mask``, the automatically generated mask for
     non-finite values, and the mask of the input ``data`` if it is a
-    `~numpy.ma.MaskedArray`. A pair of opposite offsets is used only if
-    both of its data values are unmasked.
+    `~numpy.ma.MaskedArray`. The pairs of opposite offsets with a
+    position near a masked value are given a lower weight or are not
+    used.
 
     .. warning::
 
-        The result is less accurate if masked or non-finite values
-        lie within ``radius`` of the center. The data are interpolated
-        between the pixels, so a masked value is first replaced by
-        a weighted mean of the unmasked values around it, which is
-        only an estimate. In a test with a Gaussian source with a
-        standard deviation of 2 pixels, a single masked pixel 1.7 pixels
-        from the center changed the result by 0.002 pixels, and a masked
-        column at that distance by 0.01 pixels. The changes were larger
-        for a narrower source.
+        The result is less accurate if masked or non-finite values lie
+        within ``radius`` of the center. The data are interpolated
+        between the pixels, so a masked value is first replaced by a
+        weighted mean of the unmasked values around it, which is only an
+        estimate. In tests with a noiseless Gaussian source and a single
+        masked pixel adjacent to its peak pixel, the result changed by
+        up to 0.002 pixels for a standard deviation of 2 pixels, 0.03
+        pixels for 1.2 pixels, and 0.2 pixels for 0.9 pixels.
 
         The search starts at the maximum value of the data. A bright
         outlier such as a hot pixel or a cosmic ray near the source
@@ -205,10 +206,19 @@ def centroid_symmetry(data, *, mask=None, radius=None):
             \\left| I(x_c + u_x, y_c + u_y)
             - I(x_c - u_x, y_c - u_y) \\right|
 
-    where the sum is over the :math:`N` unmasked pairs of opposite
-    offsets :math:`\\pm u` on a grid with a spacing of one pixel within
-    the radius :math:`r`, and :math:`I` is the data interpolated with a
-    bicubic spline.
+    where the sum is over the :math:`N` pairs of opposite offsets
+    :math:`\\pm u` on a grid with a spacing of one pixel within the
+    radius :math:`r`, and :math:`I` is the data interpolated with a
+    bicubic spline. If there are masked values, the mean is a weighted
+    mean. The weight of a position decreases linearly from 1 to 0 as
+    it moves from an unmasked pixel halfway to a masked pixel, and the
+    weight of a pair is the product of the weights of its two positions.
+
+    The interpolation is less accurate for an undersampled source. For
+    a noiseless Gaussian source, the error of the result is up to about
+    0.01 pixels for a standard deviation of 1 pixel or less (a FWHM of
+    2.4 pixels or less), 0.005 pixels for 1.2 pixels, and less than
+    0.001 pixels for 1.5 pixels or more.
 
     The region must stay within the array, so the center is searched
     only within ``(n - 1) / 2 - radius`` pixels of the center of the
@@ -258,6 +268,9 @@ def centroid_symmetry(data, *, mask=None, radius=None):
 
     if radius is None:
         radius = 0.3 * min(ny, nx)
+    if not isinstance(radius, numbers.Real):
+        msg = 'radius must be a real number or None'
+        raise TypeError(msg)
     if not 1 <= radius < half_size:
         msg = ('radius must be at least 1 and less than half of the '
                'smaller dimension of data minus one half')
@@ -271,8 +284,8 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     # The spline needs finite values, and a masked value also changes
     # the spline at the adjacent positions. The masked values are
     # therefore replaced by a Gaussian-weighted mean of the unmasked
-    # values around them. The pairs that include a masked value are
-    # excluded in _asymmetry.
+    # values around them. The pairs near a masked value are given a
+    # lower weight in _asymmetry.
     if np.any(bad):
         total = gaussian_filter(np.where(bad, 0.0, data), 1.0,
                                 mode='constant')
@@ -281,8 +294,10 @@ def centroid_symmetry(data, *, mask=None, radius=None):
         fill = np.divide(total, weight, out=np.zeros_like(total),
                          where=weight > 0)
         data = np.where(bad, fill, data)
+        good = (~bad).astype(float)
     else:
         bad = None
+        good = None
     spline = RectBivariateSpline(np.arange(ny), np.arange(nx), data)
 
     # One offset of each opposite pair within the radius
@@ -292,7 +307,7 @@ def centroid_symmetry(data, *, mask=None, radius=None):
             & ((y_off > 0) | ((y_off == 0) & (x_off > 0))))
     x_off = x_off[keep].astype(float)
     y_off = y_off[keep].astype(float)
-    args = (spline, x_off, y_off, bad)
+    args = (spline, x_off, y_off, good)
 
     # The region must stay within the array
     x_center = (nx - 1) / 2
@@ -346,10 +361,10 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     return np.array(result.x)
 
 
-def _asymmetry(xy, spline, x_off, y_off, bad):
+def _asymmetry(xy, spline, x_off, y_off, good):
     """
-    Calculate the mean absolute difference of the data values at
-    opposite offsets from a trial center.
+    Calculate the weighted mean absolute difference of the data values
+    at opposite offsets from a trial center.
 
     Parameters
     ----------
@@ -362,16 +377,20 @@ def _asymmetry(xy, spline, x_off, y_off, bad):
     x_off, y_off : 1D `~numpy.ndarray`
         The x and y offsets of one position of each opposite pair.
 
-    bad : 2D bool `~numpy.ndarray` or `None`
-        The mask of the data values that are excluded. A pair is
-        excluded if the pixel nearest to either of its positions is
-        masked. If `None`, all of the pairs are used.
+    good : 2D float `~numpy.ndarray` or `None`
+        An array that is 1 where the data values are unmasked and 0
+        where they are masked. The weight of a position decreases
+        linearly from 1 to 0 as it moves from an unmasked pixel halfway
+        to a masked pixel, and the weight of a pair is the product of
+        the weights of its two positions. The weights are a continuous
+        function of the trial center, which keeps the asymmetry
+        continuous. If `None`, all of the pairs have equal weight.
 
     Returns
     -------
     result : float
         The asymmetry about the trial center. It is infinite if every
-        pair is excluded.
+        pair has zero weight.
     """
     x1 = xy[0] + x_off
     y1 = xy[1] + y_off
@@ -379,18 +398,17 @@ def _asymmetry(xy, spline, x_off, y_off, bad):
     y2 = xy[1] - y_off
     diff = np.abs(spline.ev(y1, x1) - spline.ev(y2, x2))
 
-    if bad is not None:
-        ny, nx = bad.shape
-        good = np.ones(diff.shape, dtype=bool)
-        for x, y in ((x1, y1), (x2, y2)):
-            xidx = np.clip(np.round(x).astype(int), 0, nx - 1)
-            yidx = np.clip(np.round(y).astype(int), 0, ny - 1)
-            good &= ~bad[yidx, xidx]
-        if not np.any(good):
-            return np.inf
-        diff = diff[good]
+    if good is None:
+        return np.mean(diff)
 
-    return np.mean(diff)
+    weights = 1.0
+    for x, y in ((x1, y1), (x2, y2)):
+        frac = map_coordinates(good, (y, x), order=1, mode='nearest')
+        weights = weights * np.clip(2.0 * frac - 1.0, 0.0, 1.0)
+    total = np.sum(weights)
+    if total <= 0:
+        return np.inf
+    return np.sum(weights * diff) / total
 
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')

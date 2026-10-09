@@ -1508,6 +1508,63 @@ class TestEPSFBuilder:
         assert epsf is not None
         assert epsf.data.shape == (11, 11)
 
+    @pytest.mark.parametrize('oversampling', [1, 2])
+    def test_recentering_symmetry_asymmetric_psf(self, oversampling):
+        """
+        Test that centroid_symmetry centers an asymmetric ePSF on its
+        core and that centroid_com centers it on its center of mass.
+        """
+        # A Gaussian core with a faint lobe 3 pixels from its center
+        model_oversampling = 4
+        size = 21 * model_oversampling + 1
+        center = (size - 1) / 2
+        yy, xx = np.mgrid[:size, :size]
+        std = 1.2 * model_oversampling
+        psf_data = np.exp(-((xx - center) ** 2 + (yy - center) ** 2)
+                          / (2 * std ** 2))
+        x_lobe = center + 3 * model_oversampling
+        y_lobe = center + model_oversampling
+        psf_data += 0.15 * np.exp(-((xx - x_lobe) ** 2 + (yy - y_lobe) ** 2)
+                                  / (2 * model_oversampling ** 2))
+        psf_model = ImagePSF(psf_data, oversampling=model_oversampling)
+
+        rng = np.random.default_rng(0)
+        xgrid, ygrid = np.meshgrid(np.arange(30, 300, 45),
+                                   np.arange(30, 300, 45))
+        n_stars = xgrid.size
+        params = Table()
+        params['x_0'] = xgrid.ravel() + rng.uniform(-0.5, 0.5, n_stars)
+        params['y_0'] = ygrid.ravel() + rng.uniform(-0.5, 0.5, n_stars)
+        params['flux'] = rng.uniform(5000, 20000, n_stars)
+        data = make_model_image((315, 315), psf_model, params,
+                                model_shape=(21, 21))
+        init_stars = Table()
+        init_stars['x'] = params['x_0']
+        init_stars['y'] = params['y_0']
+        stars = extract_stars(NDData(data), init_stars, size=21)
+
+        # The recentering box of the ePSF in oversampled pixels
+        half_box = (5 * oversampling) // 2
+        centers = {}
+        for func in (centroid_com, centroid_symmetry):
+            builder = EPSFBuilder(oversampling=oversampling,
+                                  recentering_func=func, maxiters=5,
+                                  progress_bar=False)
+            epsf, _ = builder(stars)
+            idx = (epsf.data.shape[0] - 1) // 2
+            slc = slice(idx - half_box, idx + half_box + 1)
+            box = epsf.data[slc, slc]
+            centers[func] = (centroid_com(box) - half_box,
+                             centroid_symmetry(box) - half_box)
+
+        com, symmetry = centers[centroid_com]
+        assert_allclose(com, 0, atol=1.0e-3)
+        assert np.hypot(*symmetry) > 0.03
+
+        com, symmetry = centers[centroid_symmetry]
+        assert_allclose(symmetry, 0, atol=1.0e-3)
+        assert np.hypot(*com) > 0.03
+
     @pytest.mark.parametrize('shape', [(25, 25), (19, 25), (25, 19)])
     def test_shape_parameters(self, epsf_test_data, shape):
         """
