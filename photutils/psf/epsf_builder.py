@@ -1065,6 +1065,7 @@ class _IterationRecord(NamedTuple):
     converged: bool
     converged_fraction: float
     max_center_dist_sq: float
+    common_center_dist_sq: float
     n_fit_failed: int
 
 
@@ -1162,43 +1163,49 @@ class EPSFBuildResults:
         changed the ePSF.
 
     iteration_info : `~astropy.table.Table`
-        A table with one row for each image in ``iteration_epsfs``. The
-        columns are the iteration number (``iteration``, starting at 1),
-        the kind of iteration (``stage``, ``'build'`` or ``'refine'``),
-        whether the star centers had converged in that iteration
-        (``converged``), the fraction of the successfully fitted stars
-        whose centers moved by less than the center accuracy in that
-        iteration (``converged_fraction``), the largest center movement
-        in pixels relative to the median movement
-        (``max_center_shift``), the number of stars whose fit
-        failed (``n_fit_failed``), and the largest absolute change
+        A table with one row for each image in ``iteration_epsfs``.
+        The columns are the iteration number (``iteration``, starting
+        at 1), the kind of iteration (``stage``, ``'build'`` or
+        ``'refine'``), whether the star centers had converged in that
+        iteration (``converged``), the fraction of the successfully
+        fitted stars whose centers moved by less than the center
+        accuracy in that iteration (``converged_fraction``), the largest
+        center movement in pixels relative to the median movement
+        (``max_center_shift``), the size of the median movement in
+        pixels (``common_center_shift``), the number of stars whose
+        fit failed (``n_fit_failed``), and the largest absolute change
         of the ePSF image from the previous iteration as a fraction
         of the ePSF peak (``max_epsf_change``). The change of the
-        first iteration is measured from ``initial_epsf``, or from
-        an empty ePSF if the ePSF was built from scratch. The last
-        row gives the ``converged``, ``final_converged_fraction``,
-        and ``final_center_accuracy`` values of the results. The last
-        ``'build'`` row tells whether the building iterations converged,
-        which ``converged`` alone does not when the ePSF was refined.
+        first iteration is measured from ``initial_epsf``, or from an
+        empty ePSF if the ePSF was built from scratch. The last row
+        gives the ``converged``, ``final_converged_fraction``, and
+        ``final_center_accuracy`` values of the results. An iteration
+        has not converged while ``common_center_shift`` is not less
+        than the ``center_accuracy`` of the builder, even if the
+        ``converged_fraction`` is large enough. The last ``'build'``
+        row tells whether the building iterations converged, which
+        ``converged`` alone does not when the ePSF was refined.
 
     initial_epsf : 2D `~numpy.ndarray` or `None`
         The image of the input ePSF that the build started from, or
         `None` if the ePSF was built from scratch.
 
     center_asymmetry : 1D `~numpy.ndarray` or `None`
-        The ``(x, y)`` offset, in detector pixels, of the center of
-        mass of the final ePSF from its symmetry center. The center
-        of mass is measured in a 5x5 pixel box, and the symmetry
-        center is the point about which the core of the ePSF is most
-        symmetric (see `~photutils.centroids.centroid_symmetry`). The
-        two centers agree for a symmetric ePSF. For an asymmetric
-        ePSF, this offset is the amount by which the star positions
-        measured with the ePSF depend on the definition of its center
-        (the ``recentering_func`` keyword of `EPSFBuilder`). Positions
-        measured with an ePSF centered on its center of mass are
-        larger by this offset than positions measured with the same
-        ePSF centered on its symmetry center. The value does not
-        depend on which definition was used to build the ePSF.
+        The ``(x, y)`` offset, in detector pixels, of the center of mass
+        of the final ePSF from its symmetry center. The center of mass
+        is measured in a 5x5 pixel box, and the symmetry center is the
+        point about which the core of the ePSF is most symmetric (see
+        `~photutils.centroids.centroid_symmetry`). The two centers agree
+        for a symmetric ePSF. For an asymmetric ePSF, this offset is
+        the amount by which the star positions measured with the ePSF
+        depend on the definition of its center (the ``recentering_func``
+        keyword of `EPSFBuilder`). Positions measured with an ePSF
+        centered on its center of mass are larger by this offset than
+        positions measured with the same ePSF centered on its symmetry
+        center. The value does not depend on which definition was used
+        to build the ePSF. It is `None` if the ePSF is not larger
+        than the 5x5 pixel box, where the centers cannot be measured
+        reliably.
 
     Notes
     -----
@@ -1781,18 +1788,21 @@ class EPSFBuilder:
         have a ``mask`` keyword and optionally an ``error`` keyword.
         The callable object must return a tuple of (x, y) centroids.
         The default is `~photutils.centroids.centroid_symmetry`, the
-        point about which the core of the ePSF is most symmetric,
-        which is the center definition of Anderson 2016. With the
-        default ``recentering_boxsize`` it measures the symmetry
-        within about 1.5 detector pixels of the center. It needs
-        a box of at least 5 oversampled pixels and an ePSF that
-        is not constant. If it cannot be calculated (e.g., with a
-        ``recentering_boxsize`` of 3 and an ``oversampling`` of 1), the
-        center of mass (`~photutils.centroids.centroid_com`) is used
-        instead. The center of mass of an asymmetric ePSF is pulled
-        toward the asymmetric structure around its core, so the two
-        definitions give centers that differ by a constant offset (up to
-        about 0.1 pixel for undersampled space-telescope PSFs).
+        point about which the core of the ePSF is most symmetric, which
+        is the center definition of Anderson 2016. With the default
+        ``recentering_boxsize`` it measures the symmetry within about
+        1.5 detector pixels of the center. It needs a box of at least
+        5 oversampled pixels and an ePSF that is not constant. If it
+        cannot be calculated (e.g., with a ``recentering_boxsize``
+        of 3 and an ``oversampling`` of 1), the center of mass
+        (`~photutils.centroids.centroid_com`) is used instead, and
+        a warning is emitted if the box is too small. This fallback
+        applies only to `~photutils.centroids.centroid_symmetry` itself
+        and not to a function that wraps it. The center of mass of
+        an asymmetric ePSF is pulled toward the asymmetric structure
+        around its core, so the two definitions give centers that differ
+        by a constant offset (up to about 0.1 pixel for undersampled
+        space-telescope PSFs).
 
     recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid
@@ -2122,6 +2132,13 @@ class EPSFBuilder:
         self.recentering_boxsize = as_pair('recentering_boxsize',
                                            recentering_boxsize,
                                            lower_bound=(3, 1), check_odd=True)
+        if (recentering_func is centroid_symmetry
+                and np.any(self.recentering_boxsize * self.oversampling < 4)):
+            msg = ('The recentering box (recentering_boxsize times '
+                   'oversampling) is smaller than the 5 oversampled pixels '
+                   'that centroid_symmetry needs. The ePSF will be centered '
+                   'on its center of mass (centroid_com) instead.')
+            warnings.warn(msg, AstropyUserWarning)
 
         if isinstance(smoothing_kernel, str):
             if smoothing_kernel not in ('auto', 'quartic', 'quadratic'):
@@ -2935,9 +2952,16 @@ class EPSFBuilder:
 
         Returns
         -------
-        offset : 1D `~numpy.ndarray`
-            The ``(x, y)`` offset in undersampled pixels.
+        offset : 1D `~numpy.ndarray` or `None`
+            The ``(x, y)`` offset in undersampled pixels, or `None` if
+            the ePSF is not larger than the box.
         """
+        # The box in oversampled pixels, as in _find_epsf_center
+        box = 5 * self.oversampling
+        box += 1 - box % 2
+        if np.any(np.array(epsf.data.shape) <= box):
+            return None
+
         centers = []
         for centroid_func in (centroid_com, centroid_symmetry):
             _, shift = self._find_epsf_center(
@@ -3075,7 +3099,11 @@ class EPSFBuilder:
 
         max_center_dist_sq : float
             The maximum squared center movement of the successfully
-            fitted stars.
+            fitted stars, relative to their median movement.
+
+        common_center_dist_sq : float
+            The squared median movement of the successfully fitted
+            stars.
 
         new_centers : `~numpy.ndarray`
             Updated star center positions.
@@ -3092,7 +3120,7 @@ class EPSFBuilder:
             # is unreachable from build_epsf (all-failed fits raise
             # earlier), but guards direct calls. NaN indicates that no
             # center movement could be measured.
-            return False, 0.0, np.nan, new_centers
+            return False, 0.0, np.nan, np.nan, new_centers
 
         # Remove the movement that is common to the stars. The median
         # of fewer than 3 stars is not a common movement.
@@ -3111,7 +3139,7 @@ class EPSFBuilder:
                      and common_dist_sq < self.center_accuracy_sq)
 
         return (converged, converged_fraction, float(np.max(center_dist_sq)),
-                new_centers)
+                common_dist_sq, new_centers)
 
     def _fit_stars(self, epsf, stars):
         """
@@ -3620,10 +3648,12 @@ class EPSFBuilder:
 
             # Check convergence based on center movements
             (converged, converged_fraction, max_center_dist_sq,
+             common_center_dist_sq,
              centers) = self._check_convergence(stars, centers, fit_failed)
             history.append(_IterationRecord(
                 epsf.data.copy(), 'build', converged, converged_fraction,
-                max_center_dist_sq, int(np.sum(fit_failed))))
+                max_center_dist_sq, common_center_dist_sq,
+                int(np.sum(fit_failed))))
 
             # Update progress bar
             progress_reporter.update()
@@ -3650,12 +3680,13 @@ class EPSFBuilder:
                 epsf, stars, fit_failed = self._process_iteration(
                     stars, epsf, iter_num + refine_num, refine=True)
                 (converged, converged_fraction, max_center_dist_sq,
+                 common_center_dist_sq,
                  centers) = self._check_convergence(stars, centers,
                                                     fit_failed)
                 history.append(_IterationRecord(
                     epsf.data.copy(), 'refine', converged,
                     converged_fraction, max_center_dist_sq,
-                    int(np.sum(fit_failed))))
+                    common_center_dist_sq, int(np.sum(fit_failed))))
                 refine_reporter.update()
             refine_reporter.close()
             final_center_accuracy = float(max_center_dist_sq ** 0.5)
@@ -3712,10 +3743,13 @@ class EPSFBuilder:
                                        for record in history]
         table['max_center_shift'] = [float(record.max_center_dist_sq) ** 0.5
                                      for record in history]
+        table['common_center_shift'] = [
+            float(record.common_center_dist_sq) ** 0.5 for record in history]
         table['n_fit_failed'] = [record.n_fit_failed for record in history]
         table['max_epsf_change'] = changes
         table['converged_fraction'].info.format = '.3f'
         table['max_center_shift'].info.format = '.3g'
+        table['common_center_shift'].info.format = '.3g'
         table['max_epsf_change'].info.format = '.3g'
         return table
 

@@ -1057,8 +1057,11 @@ previous centering.
 The convergence of a build is now measured from the changes of the star
 centers relative to their median change. A change that is common to all
 the stars is a shift of the center of the ePSF, which changes neither
-its shape nor the relative positions of the stars. With this criterion
-the ``converged`` flag does not depend on the recentering function.
+its shape nor the relative positions of the stars. The median change
+must itself be less than ``center_accuracy``, and it is reported in the
+new ``common_center_shift`` column of ``iteration_info``. With this
+criterion the ``converged`` flag depends much less on the recentering
+function.
 
 
 Circular Apertures as Ellipses

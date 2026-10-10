@@ -1525,11 +1525,29 @@ class TestEPSFBuilder:
                               epsf_test_data['init_stars'][:4], size=11)
         kwargs = {'oversampling': 1, 'recentering_boxsize': 3,
                   'maxiters': 3, 'progress_bar': False}
-        epsf, _ = EPSFBuilder(**kwargs)(stars)
+        match = 'centered on its center of mass'
+        with pytest.warns(AstropyUserWarning, match=match):
+            builder = EPSFBuilder(**kwargs)
+        epsf, _ = builder(stars)
         epsf_com, _ = EPSFBuilder(recentering_func=centroid_com,
                                   **kwargs)(stars)
         assert np.all(np.isfinite(epsf.data))
         assert_allclose(epsf.data, epsf_com.data)
+
+    def test_center_asymmetry_small_epsf(self, epsf_test_data):
+        """
+        Test that center_asymmetry is None for an ePSF that is not
+        larger than the 5x5 pixel box in which it is measured.
+        """
+        init_stars = epsf_test_data['init_stars'][:10]
+        kwargs = {'oversampling': 1, 'maxiters': 2, 'progress_bar': False}
+        stars = extract_stars(epsf_test_data['nddata'], init_stars, size=5)
+        result = EPSFBuilder(**kwargs)(stars)
+        assert result.center_asymmetry is None
+
+        stars = extract_stars(epsf_test_data['nddata'], init_stars, size=7)
+        result = EPSFBuilder(**kwargs)(stars)
+        assert result.center_asymmetry.shape == (2,)
 
     @pytest.mark.parametrize('oversampling', [1, 2])
     def test_recentering_symmetry_asymmetric_psf(self, oversampling):
@@ -1571,9 +1589,12 @@ class TestEPSFBuilder:
         centers = {}
         asymmetry = {}
         for func in (centroid_com, centroid_symmetry):
-            builder = EPSFBuilder(oversampling=oversampling,
-                                  recentering_func=func, maxiters=5,
-                                  progress_bar=False)
+            # The symmetry center is the default
+            kwargs = {}
+            if func is centroid_com:
+                kwargs['recentering_func'] = func
+            builder = EPSFBuilder(oversampling=oversampling, maxiters=5,
+                                  progress_bar=False, **kwargs)
             result = builder(stars)
             epsf = result.epsf
             asymmetry[func] = result.center_asymmetry
@@ -1749,14 +1770,15 @@ class TestEPSFBuilder:
         centers = np.array([[2.0, 2.0]])
         fit_failed = np.array([True])  # All stars failed
 
-        converged, fraction, max_dist_sq, _ = builder._check_convergence(
-            stars, centers, fit_failed)
+        (converged, fraction, max_dist_sq, common_dist_sq,
+         _) = builder._check_convergence(stars, centers, fit_failed)
 
         # Should return False (not converged) when no good stars
         assert converged is False
         assert fraction == 0.0
         # No center movement could be measured
         assert np.isnan(max_dist_sq)
+        assert np.isnan(common_dist_sq)
 
     def test_resample_residuals_no_good_stars(self, epsf_test_data):
         """
@@ -3640,7 +3662,8 @@ class TestIterationHistory:
         info = result.iteration_info
         assert info.colnames == ['iteration', 'stage', 'converged',
                                  'converged_fraction', 'max_center_shift',
-                                 'n_fit_failed', 'max_epsf_change']
+                                 'common_center_shift', 'n_fit_failed',
+                                 'max_epsf_change']
         assert info['converged'].dtype == bool
         assert_array_equal(info['converged'],
                            info['converged_fraction'] >= 0.95)
@@ -3650,6 +3673,7 @@ class TestIterationHistory:
         assert np.all((info['converged_fraction'] >= 0)
                       & (info['converged_fraction'] <= 1))
         assert np.all(info['max_center_shift'] >= 0)
+        assert np.all(info['common_center_shift'] >= 0)
         assert np.all(info['n_fit_failed'] == 0)
 
         # The first iteration starts from an empty ePSF, and the ePSF
@@ -4480,6 +4504,11 @@ class TestConvergedFraction:
         assert result.final_center_accuracy < 1e-2
         assert result.converged is False
         assert result.iterations == maxiters
+
+        # The common movement is what prevents the convergence
+        info = result.iteration_info
+        assert not np.any(info['converged'])
+        assert np.all(info['common_center_shift'] > 0.4)
 
     def test_failed_fits_ignored(self, stars):
         """
