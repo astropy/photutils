@@ -230,6 +230,20 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     and finds the minimum of the asymmetry nearest to it. The source
     must therefore be positive.
 
+    If the source lies far outside of that area, the asymmetry decreases
+    away from the source and the search moves away from it. This case
+    is recognized by the mean of the data values at the center and at
+    the offsets within ``radius``, which is then less than half of its
+    value at the starting position. The returned position is then the
+    nearby position in that area where this mean is largest, which for
+    a single source is the position nearest to it. The mean uses the
+    estimates that replace the masked values. The two means are compared
+    as a ratio, so the data must be background subtracted, and this
+    case is not recognized if the mean at the starting position is not
+    positive. If the noise is comparable to the data values near that
+    area, the source cannot be recognized and the returned position is
+    not meaningful.
+
     Examples
     --------
     >>> import numpy as np
@@ -330,6 +344,8 @@ def centroid_symmetry(data, *, mask=None, radius=None):
         if not np.any(np.isfinite(region)):
             return np.full(2, np.nan)
     ypeak, xpeak = np.unravel_index(np.argmax(region), region.shape)
+    xy_peak = np.array((np.clip(xpeak + xslc.start, *x_bounds),
+                        np.clip(ypeak + yslc.start, *y_bounds)))
     steps = np.linspace(-1.0, 1.0, 5)
     x_grid = np.unique(np.clip(xpeak + xslc.start + steps, *x_bounds))
     y_grid = np.unique(np.clip(ypeak + yslc.start + steps, *y_bounds))
@@ -346,19 +362,144 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     # would reach the featureless region around the source. The steps
     # here are a fraction of a pixel and they point toward the center
     # of the allowed region to stay within the bounds.
-    x_step = min(0.25, x_margin) * (1 if x_init <= x_center else -1)
-    y_step = min(0.25, y_margin) * (1 if y_init <= y_center else -1)
-    initial_simplex = [(x_init, y_init), (x_init + x_step, y_init),
-                       (x_init, y_init + y_step)]
-
+    #
     # The scale of the asymmetry depends on the data, so only the size
-    # of the simplex is used to stop the search
-    options = {'initial_simplex': initial_simplex, 'xatol': 1.0e-5,
-               'fatol': np.inf}
-    result = minimize(_asymmetry, (x_init, y_init), args=args,
-                      method='Nelder-Mead', bounds=(x_bounds, y_bounds),
-                      options=options)
-    return np.array(result.x)
+    # of the simplex is used to stop the search.
+    #
+    # The positions outside of the bounds are moved onto them, so a
+    # simplex next to an edge can collapse onto it and then never leave
+    # it, even if the minimum is a fraction of the step inside. If the
+    # asymmetry is lower just inside of a result on an edge, the search
+    # is therefore repeated from that result with a smaller step.
+    bounds = (x_bounds, y_bounds)
+    xy_center = np.array((x_center, y_center))
+    xy_margin = np.array((x_margin, y_margin))
+    xatol = 1.0e-5
+    step = 0.25
+    while True:
+        x_step, y_step = (np.minimum(step, xy_margin)
+                          * np.where((x_init, y_init) <= xy_center, 1, -1))
+        initial_simplex = [(x_init, y_init), (x_init + x_step, y_init),
+                           (x_init, y_init + y_step)]
+        options = {'initial_simplex': initial_simplex, 'xatol': xatol,
+                   'fatol': np.inf}
+        result = minimize(_asymmetry, (x_init, y_init), args=args,
+                          method='Nelder-Mead', bounds=bounds,
+                          options=options)
+        xycen = np.array(result.x)
+        step /= 4
+        if step < xatol or not _is_lower_inside(xycen, result.fun, args,
+                                                bounds, 10 * xatol):
+            break
+        x_init, y_init = xycen
+
+    # If the source lies far outside of the allowed region, the region
+    # around the starting position is beyond the wings of the source
+    # where the asymmetry decreases away from the source, and the search
+    # moves away from the source. The mean of the data values within
+    # the radius is then much lower at the result than at the starting
+    # position. For a source in the allowed region it is about the same
+    # or larger, because the brightest pixel is near the source. The
+    # position in the allowed region that is nearest to the source is
+    # the one where the mean is largest. The mean is a smooth function
+    # of the position, so a gradient-based search is used. It starts at
+    # the brightest pixel so that it is not drawn to another source.
+    #
+    # The factor of 0.5 separates the two cases in tests with Gaussian
+    # sources. The ratio of the two means was at least 0.79 for sources
+    # in the allowed region with noise of up to 30% of the peak value,
+    # and at most 0.40 for noiseless sources at 1.8 to 3 times the size
+    # of the allowed region from its center. The ratio has no meaning
+    # if the mean at the starting position is not positive.
+    mean_args = (spline, x_off, y_off, np.ptp(data))
+    peak_mean = -_negative_mean(xy_peak, *mean_args)[0]
+    result_mean = -_negative_mean(xycen, *mean_args)[0]
+    if peak_mean > 0 and result_mean < 0.5 * peak_mean:
+        result = minimize(_negative_mean, xy_peak, args=mean_args,
+                          method='L-BFGS-B', jac=True, bounds=bounds,
+                          options={'ftol': 0.0, 'gtol': 1.0e-10})
+        xycen = np.array(result.x)
+
+    return xycen
+
+
+def _is_lower_inside(xy, value, args, bounds, step):
+    """
+    Determine whether the asymmetry is lower just inside of a position
+    on an edge of the allowed region.
+
+    Parameters
+    ----------
+    xy : 1D `~numpy.ndarray`
+        The ``(x, y)`` position.
+
+    value : float
+        The asymmetry at ``xy``.
+
+    args : tuple
+        The arguments of `_asymmetry` after the trial center.
+
+    bounds : tuple of 2 tuples of 2 floats
+        The ``(lower, upper)`` bounds of the allowed region along the x
+        and y axes.
+
+    step : float
+        The distance (in pixels) from the edge at which the asymmetry
+        is calculated.
+
+    Returns
+    -------
+    result : bool
+        `True` if ``xy`` is on an edge and the asymmetry is lower at a
+        position that is ``step`` inside of it along any of the axes
+        with an edge or along all of them.
+    """
+    lower, upper = np.transpose(bounds)
+    inward = (np.isclose(xy, lower, rtol=0.0, atol=0.1 * step).astype(float)
+              - np.isclose(xy, upper, rtol=0.0, atol=0.1 * step))
+    axes = np.flatnonzero(inward)
+    trials = [inward * (np.arange(2) == axis) for axis in axes]
+    if axes.size == 2:
+        trials.append(inward)
+    return any(_asymmetry(xy + step * trial, *args) < value
+               for trial in trials)
+
+
+def _negative_mean(xy, spline, x_off, y_off, scale):
+    """
+    Calculate the negative of the mean of the data values at a trial
+    center and at the pairs of opposite offsets from it, and its
+    gradient.
+
+    Parameters
+    ----------
+    xy : tuple of 2 floats
+        The ``(x, y)`` trial center.
+
+    spline : `~scipy.interpolate.RectBivariateSpline`
+        The spline that interpolates the data.
+
+    x_off, y_off : 1D `~numpy.ndarray`
+        The x and y offsets of one position of each opposite pair.
+
+    scale : float
+        The value by which the mean is divided, which makes the gradient
+        independent of the scale of the data.
+
+    Returns
+    -------
+    result : float
+        The negative of the scaled mean of the data values.
+
+    gradient : 1D `~numpy.ndarray`
+        The derivatives of ``result`` with respect to ``x`` and ``y``.
+    """
+    x_pos = xy[0] + np.concatenate((x_off, -x_off, (0.0,)))
+    y_pos = xy[1] + np.concatenate((y_off, -y_off, (0.0,)))
+    result = -np.mean(spline.ev(y_pos, x_pos)) / scale
+    gradient = -np.array((np.mean(spline.ev(y_pos, x_pos, dy=1)),
+                          np.mean(spline.ev(y_pos, x_pos, dx=1)))) / scale
+    return result, gradient
 
 
 def _asymmetry(xy, spline, x_off, y_off, good):
