@@ -1569,11 +1569,14 @@ class TestEPSFBuilder:
         # The recentering box of the ePSF in oversampled pixels
         half_box = (5 * oversampling) // 2
         centers = {}
+        asymmetry = {}
         for func in (centroid_com, centroid_symmetry):
             builder = EPSFBuilder(oversampling=oversampling,
                                   recentering_func=func, maxiters=5,
                                   progress_bar=False)
-            epsf, _ = builder(stars)
+            result = builder(stars)
+            epsf = result.epsf
+            asymmetry[func] = result.center_asymmetry
             idx = (epsf.data.shape[0] - 1) // 2
             slc = slice(idx - half_box, idx + half_box + 1)
             box = epsf.data[slc, slc]
@@ -1587,6 +1590,17 @@ class TestEPSFBuilder:
         com, symmetry = centers[centroid_symmetry]
         assert_allclose(symmetry, 0, atol=1.0e-3)
         assert np.hypot(*com) > 0.03
+
+        # The offset between the two centers (in detector pixels) does
+        # not depend on the recentering function of the build. It is
+        # measured iteratively, so it is only close to the single
+        # measurement of the symmetry center made above.
+        _, symmetry = centers[centroid_com]
+        assert asymmetry[centroid_com].shape == (2,)
+        assert_allclose(asymmetry[centroid_com], -symmetry / oversampling,
+                        atol=0.01)
+        assert_allclose(asymmetry[centroid_symmetry],
+                        asymmetry[centroid_com], atol=5.0e-3)
 
     @pytest.mark.parametrize('shape', [(25, 25), (19, 25), (25, 19)])
     def test_shape_parameters(self, epsf_test_data, shape):
@@ -3613,6 +3627,9 @@ class TestIterationHistory:
             assert data.shape == result.epsf.data.shape
             assert np.all(np.isfinite(data))
         assert_array_equal(result.iteration_epsfs[-1], result.epsf.data)
+
+        # The two centers of a symmetric ePSF agree
+        assert_allclose(result.center_asymmetry, 0, atol=2.0e-3)
 
         # The images are copies, not views of one array
         assert (result.iteration_epsfs[0]

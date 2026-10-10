@@ -1185,6 +1185,21 @@ class EPSFBuildResults:
         The image of the input ePSF that the build started from, or
         `None` if the ePSF was built from scratch.
 
+    center_asymmetry : 1D `~numpy.ndarray` or `None`
+        The ``(x, y)`` offset, in detector pixels, of the center of
+        mass of the final ePSF from its symmetry center. The center
+        of mass is measured in a 5x5 pixel box, and the symmetry
+        center is the point about which the core of the ePSF is most
+        symmetric (see `~photutils.centroids.centroid_symmetry`). The
+        two centers agree for a symmetric ePSF. For an asymmetric
+        ePSF, this offset is the amount by which the star positions
+        measured with the ePSF depend on the definition of its center
+        (the ``recentering_func`` keyword of `EPSFBuilder`). Positions
+        measured with an ePSF centered on its center of mass are
+        larger by this offset than positions measured with the same
+        ePSF centered on its symmetry center. The value does not
+        depend on which definition was used to build the ePSF.
+
     Notes
     -----
     This result object maintains backward compatibility by implementing
@@ -1222,6 +1237,8 @@ class EPSFBuildResults:
                                          repr=False)
     initial_epsf: np.ndarray | None = field(default=None, compare=False,
                                             repr=False)
+    center_asymmetry: np.ndarray | None = field(default=None, compare=False,
+                                                repr=False)
 
     def __iter__(self):
         """
@@ -2750,10 +2767,29 @@ class EPSFBuilder:
             return centroid
         return centroid_func(cutout, mask=mask)
 
-    def _recenter_epsf(self, epsf, *, centroid_func=None, box_size=None,
-                       maxiters=None, center_accuracy=None):
+    def _recenter_epsf(self, epsf, **kwargs):
         """
         Recenter the ePSF data by shifting to the array center.
+
+        Parameters
+        ----------
+        epsf : `ImagePSF` object
+            The ePSF model containing the data to be recentered.
+
+        **kwargs : dict, optional
+            The keywords of `_find_epsf_center`.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The recentered ePSF data array with the same shape as input.
+        """
+        return self._find_epsf_center(epsf, **kwargs)[0]
+
+    def _find_epsf_center(self, epsf, *, centroid_func=None, box_size=None,
+                          maxiters=None, center_accuracy=None):
+        """
+        Find the center of the ePSF and shift it to the array center.
 
         This method uses iterative centroiding to find the center of the
         ePSF and applies sub-pixel shifts using spline interpolation via
@@ -2794,6 +2830,10 @@ class EPSFBuilder:
         -------
         result : 2D `~numpy.ndarray`
             The recentered ePSF data array with the same shape as input.
+
+        shift : tuple of 2 floats
+            The ``(x, y)`` offset of the measured center from the center
+            of the ePSF grid, in undersampled pixels.
         """
         # Use instance defaults if not specified
         if centroid_func is None:
@@ -2876,7 +2916,35 @@ class EPSFBuilder:
                                       x_0=x_origin - dx_total,
                                       y_0=y_origin - dy_total)
 
-        return epsf_data
+        return epsf_data, (dx_total, dy_total)
+
+    def _measure_center_asymmetry(self, epsf):
+        """
+        Measure the offset of the center of mass of an ePSF from its
+        symmetry center.
+
+        Both centers are measured in a 5x5 pixel box at the center of
+        the ePSF grid, independent of the recentering function and box
+        of the builder, by iterating until the center found in the box
+        is the center of the box.
+
+        Parameters
+        ----------
+        epsf : `ImagePSF` object
+            The ePSF model.
+
+        Returns
+        -------
+        offset : 1D `~numpy.ndarray`
+            The ``(x, y)`` offset in undersampled pixels.
+        """
+        centers = []
+        for centroid_func in (centroid_com, centroid_symmetry):
+            _, shift = self._find_epsf_center(
+                epsf, centroid_func=centroid_func, box_size=(5, 5),
+                maxiters=20)
+            centers.append(shift)
+        return np.subtract(*centers)
 
     def _build_epsf_step(self, stars, *, epsf=None, refine=False):
         """
@@ -3431,6 +3499,8 @@ class EPSFBuilder:
             iteration_info = self._make_iteration_info(
                 history, initial_epsf=initial_epsf)
 
+        center_asymmetry = self._measure_center_asymmetry(epsf)
+
         return EPSFBuildResults(
             epsf=epsf,
             fitted_stars=stars,
@@ -3445,6 +3515,7 @@ class EPSFBuilder:
             iteration_epsfs=iteration_epsfs,
             iteration_info=iteration_info,
             initial_epsf=initial_epsf,
+            center_asymmetry=center_asymmetry,
         )
 
     def build_epsf(self, stars, *, epsf=None):

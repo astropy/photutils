@@ -937,6 +937,12 @@ convergence statistics of each iteration (``iteration_info``). The new
 change from the previous iteration, which shows whether the build has
 stopped changing and where it is still changing.
 
+The new ``center_asymmetry`` attribute of the results is the offset of
+the center of mass of the built ePSF from its symmetry center (see
+`~photutils.centroids.centroid_symmetry`). The center of an asymmetric
+ePSF is a convention, and this offset is the amount by which the star
+positions measured with the ePSF depend on that convention.
+
 The wings of the final ePSF are now smoothed more strongly than its core
 (``wing_smoothing``, `True` by default). Beyond 3.5 FWHM from the center,
 where the ePSF is faint and varies slowly, each value is replaced by a

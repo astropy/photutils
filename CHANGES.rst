@@ -350,6 +350,11 @@ New Features
     (if any), and a ``plot_iterations`` method that plots the ePSF after
     each iteration and its change from the previous one. [#2466, #2477]
 
+  - Added a ``center_asymmetry`` attribute to ``EPSFBuildResults`` that
+    gives the offset of the center of mass of the built ePSF from its
+    symmetry center, i.e., how much the measured star positions depend
+    on the definition of the ePSF center. [#XXXX]
+
   - Added a ``wing_smoothing`` keyword to ``EPSFBuilder`` (default
     `True`). The wings of the final ePSF, beyond 3.5 FWHM from its
     center, are now smoothed with least-squares quadratic fits in boxes
