@@ -22,7 +22,7 @@ from scipy.ndimage import convolve
 from scipy.signal import fftconvolve
 from scipy.stats import chi2 as chi2_dist
 
-from photutils.centroids import centroid_com
+from photutils.centroids import centroid_com, centroid_symmetry
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.image_models import ImagePSF
 from photutils.psf.utils import _interpolate_missing_data
@@ -1757,19 +1757,23 @@ class EPSFBuilder:
         `None` then no sigma clipping will be performed.
 
     recentering_func : callable, optional
-        A callable object that is used to calculate the centroid of a
-        2D array. The callable must accept a 2D `~numpy.ndarray`, have
-        a ``mask`` keyword and optionally an ``error`` keyword. The
-        callable object must return a tuple of (x, y) centroids. The
-        default is `~photutils.centroids.centroid_com`, the center of
-        mass. The center of mass of an asymmetric ePSF is pulled toward
-        the asymmetric structure around its core. To center the ePSF on
-        its core instead, use `~photutils.centroids.centroid_symmetry`,
+        A callable object that is used to calculate the centroid of
+        a 2D array. The callable must accept a 2D `~numpy.ndarray`,
+        have a ``mask`` keyword and optionally an ``error`` keyword.
+        The callable object must return a tuple of (x, y) centroids.
+        The default is `~photutils.centroids.centroid_symmetry`, the
+        point about which the core of the ePSF is most symmetric,
         which is the center definition of Anderson 2016. With the
-        default ``recentering_boxsize`` it measures the symmetry within
-        about 1.5 detector pixels of the center. It needs a box of
-        at least 5 oversampled pixels, so it cannot be used with a
-        ``recentering_boxsize`` of 3 and an ``oversampling`` of 1.
+        default ``recentering_boxsize`` it measures the symmetry
+        within about 1.5 detector pixels of the center. It needs
+        a box of at least 5 oversampled pixels and an ePSF that
+        is not constant. If it cannot be calculated (e.g., with a
+        ``recentering_boxsize`` of 3 and an ``oversampling`` of 1), the
+        center of mass (`~photutils.centroids.centroid_com`) is used
+        instead. The center of mass of an asymmetric ePSF is pulled
+        toward the asymmetric structure around its core, so the two
+        definitions give centers that differ by a constant offset (up to
+        about 0.1 pixel for undersampled space-telescope PSFs).
 
     recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid
@@ -2010,11 +2014,10 @@ class EPSFBuilder:
       oversampling factors greater than 1 (see ``alias_passband``).
       Anderson applies none.
 
-    * The ePSF is centered on its center of mass in a 5x5 pixel box
-      by default. Anderson requires equal values half a pixel on either
-      side of the center (2000) or centers the ePSF on its point of
-      maximal symmetry within a radius of 1.5 pixels (2016). The latter
-      is available as ``recentering_func=centroid_symmetry``.
+    * The ePSF is centered on its point of maximal symmetry within
+      a radius of about 1.5 pixels by default, as in Anderson (2016).
+      Anderson (2000) requires equal values half a pixel on either
+      side of the center.
 
     * The ePSF is normalized so that its values sum to the product of
       the oversampling factors over the whole grid. Fitted fluxes are
@@ -2057,7 +2060,8 @@ class EPSFBuilder:
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='auto', alias_passband='auto',
                  sigma_clip=SIGMA_CLIP,
-                 recentering_func=centroid_com, recentering_boxsize=(5, 5),
+                 recentering_func=centroid_symmetry,
+                 recentering_boxsize=(5, 5),
                  recentering_maxiters=20, center_accuracy=1.0e-3,
                  converged_fraction=0.95, fitter=None, fit_shape='auto',
                  fitter_maxiters=100, constrain_fluxes=True, maxiters=10,
@@ -2702,6 +2706,42 @@ class EPSFBuilder:
 
         return epsf_data * (oversampling_product / current_sum)
 
+    @staticmethod
+    def _centroid_cutout(centroid_func, cutout, mask):
+        """
+        Calculate the centroid of an ePSF cutout.
+
+        The symmetry center cannot be calculated for a cutout that is
+        too small for it or that has no source (e.g., constant data).
+        The center of mass is used in those cases.
+
+        Parameters
+        ----------
+        centroid_func : callable
+            The centroid function.
+
+        cutout : 2D `~numpy.ndarray`
+            The cutout of the ePSF data.
+
+        mask : 2D bool `~numpy.ndarray`
+            The mask of the non-finite values of ``cutout``.
+
+        Returns
+        -------
+        xcenter, ycenter : float
+            The centroid in the pixel coordinates of the cutout.
+        """
+        if centroid_func is centroid_symmetry:
+            # centroid_symmetry needs at least 4 pixels along each axis
+            # and a radius (0.3 times the smaller size) of at least 1
+            centroid = np.full(2, np.nan)
+            if min(cutout.shape) >= 4:
+                centroid = centroid_symmetry(cutout, mask=mask)
+            if not np.all(np.isfinite(centroid)):
+                centroid = centroid_com(cutout, mask=mask)
+            return centroid
+        return centroid_func(cutout, mask=mask)
+
     def _recenter_epsf(self, epsf, *, centroid_func=None, box_size=None,
                        maxiters=None, center_accuracy=None):
         """
@@ -2798,7 +2838,8 @@ class EPSFBuilder:
             mask = ~np.isfinite(epsf_cutout)
 
             # Find the centroid in the cutout (in oversampled pixel coords)
-            xcenter_new, ycenter_new = centroid_func(epsf_cutout, mask=mask)
+            xcenter_new, ycenter_new = self._centroid_cutout(
+                centroid_func, epsf_cutout, mask)
 
             # Convert cutout coordinates to full array coordinates
             xcenter_new += slices_large[1].start

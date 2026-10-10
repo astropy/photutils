@@ -984,10 +984,11 @@ from the two publications.
         the center. ISR 2016-12 shifts the ePSF to the position where
         it is most symmetric about its center within a radius of 1.5
         pixels.
-      - The center of mass in a 5x5 pixel box is shifted to the
-        center of the grid (``recentering_func`` and
-        ``recentering_boxsize``). The ISR 2016-12 definition is
-        available as `~photutils.centroids.centroid_symmetry`.
+      - The ISR 2016-12 definition
+        (`~photutils.centroids.centroid_symmetry`), measured in a 5x5
+        pixel box. The offsets are spaced more finely than the grid
+        points for oversampling factors less than 4
+        (``recentering_func`` and ``recentering_boxsize``).
     * - Normalization
       - The pixel values of a star of unit flux sum to 1 over its
         central 5x5 pixels (AK2000) or within a radius of 5.5 pixels
@@ -1068,11 +1069,15 @@ they differ by a small constant offset. The offset has no effect
 on photometry or on relative astrometry made with the same ePSF,
 because the fitted star positions shift with it. Positions measured
 with ePSFs that were centered differently differ by that offset.
-The center of mass is more sensitive to asymmetric structure around
-the core than the symmetry definition of ISR 2016-12, which is
-available as `~photutils.centroids.centroid_symmetry`. The recentering
-function and box can be changed with ``recentering_func`` and
-``recentering_boxsize``.
+:class:`~photutils.psf.EPSFBuilder` uses the symmetry definition of
+ISR 2016-12 (`~photutils.centroids.centroid_symmetry`) by default.
+The center of mass (`~photutils.centroids.centroid_com`), which was
+the default before version 3.1, is more sensitive to asymmetric
+structure around the core. In tests with simulated JWST and Roman
+PSFs it was offset from the position of the source in the optical
+model by up to 0.1 pixel, compared with 0.05 pixel or less for the
+symmetry center. The recentering function and box can be changed with
+``recentering_func`` and ``recentering_boxsize``.
 
 **Normalization and background.** These two conventions set the flux
 scale and must be kept in mind when ePSFs from the two sources are

@@ -1029,9 +1029,24 @@ The new `~photutils.centroids.centroid_symmetry` function calculates the
 center of a source as the point about which its core is most symmetric
 under a rotation by 180 degrees. This is the definition of the center
 of an ePSF of Anderson 2016 (WFC3 ISR 2016-12). Unlike the center of
-mass, it is insensitive to asymmetric structure around the core. It can
-be used as the ``recentering_func`` of `~photutils.psf.EPSFBuilder` to
-center an ePSF on its core.
+mass, it is insensitive to asymmetric structure around the core.
+
+It is now the default ``recentering_func`` of
+`~photutils.psf.EPSFBuilder`, which previously centered the ePSF on its
+center of mass in a 5x5 pixel box. The center of an asymmetric PSF is a
+convention, and the star positions that are fit with an ePSF follow the
+convention of that ePSF. The center of mass is pulled toward asymmetric
+structure around the core, such as an uneven first diffraction ring.
+In tests with simulated JWST and Roman PSFs, the positions fit with
+a center-of-mass ePSF were offset from the position of the source in
+the optical model by up to 0.1 pixel, and by 0.05 pixel or less with
+a symmetry-centered ePSF. The offset is the same for every star, so
+it does not affect relative positions measured with one ePSF, but it
+differs from filter to filter. The accuracy of the built ePSF and of
+the fitted fluxes is unchanged. Positions fit with a newly built ePSF
+therefore differ from those of earlier versions by a constant offset for
+an asymmetric PSF. Use ``recentering_func=centroid_com`` to restore the
+previous centering.
 
 
 Circular Apertures as Ellipses

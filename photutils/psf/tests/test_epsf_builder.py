@@ -1508,6 +1508,29 @@ class TestEPSFBuilder:
         assert epsf is not None
         assert epsf.data.shape == (11, 11)
 
+    def test_recentering_default(self):
+        """
+        Test that the ePSF is centered on its symmetry center by
+        default.
+        """
+        builder = EPSFBuilder(progress_bar=False)
+        assert builder.recentering_func is centroid_symmetry
+
+    def test_recentering_symmetry_small_box(self, epsf_test_data):
+        """
+        Test that the center of mass is used when the recentering box is
+        too small for centroid_symmetry.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:4], size=11)
+        kwargs = {'oversampling': 1, 'recentering_boxsize': 3,
+                  'maxiters': 3, 'progress_bar': False}
+        epsf, _ = EPSFBuilder(**kwargs)(stars)
+        epsf_com, _ = EPSFBuilder(recentering_func=centroid_com,
+                                  **kwargs)(stars)
+        assert np.all(np.isfinite(epsf.data))
+        assert_allclose(epsf.data, epsf_com.data)
+
     @pytest.mark.parametrize('oversampling', [1, 2])
     def test_recentering_symmetry_asymmetric_psf(self, oversampling):
         """
