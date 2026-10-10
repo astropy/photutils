@@ -1115,9 +1115,9 @@ class EPSFBuildResults:
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
-        pixels, over all of the successfully fitted stars, relative to
-        the median displacement of those stars. This includes
-        the stars that the ``converged_fraction`` of the builder allows
+        pixels, over all of the successfully fitted stars, relative
+        to the median displacement of those stars. This includes the
+        stars that the ``converged_fraction`` of the builder allows
         to remain unconverged, so it can be much larger than the
         ``center_accuracy`` for a converged build. Use it together with
         ``final_converged_fraction`` to assess the convergence quality.
@@ -1172,8 +1172,8 @@ class EPSFBuildResults:
         accuracy in that iteration (``converged_fraction``), the largest
         center movement in pixels relative to the median movement
         (``max_center_shift``), the size of the median movement in
-        pixels (``common_center_shift``, which is zero if fewer than 3
-        stars were successfully fitted), the number of stars whose
+        pixels (``common_center_shift``, which is zero if fewer than
+        3 stars were successfully fitted), the number of stars whose
         fit failed (``n_fit_failed``), and the largest absolute change
         of the ePSF image from the previous iteration as a fraction
         of the ePSF peak (``max_epsf_change``). The change of the
@@ -1834,18 +1834,18 @@ class EPSFBuilder:
     converged_fraction : float, optional
         The fraction of the successfully fitted stars whose centers
         must change by less than ``center_accuracy`` pixels between
-        iterations for the build to be considered converged. The
-        change of each center is measured relative to the median change
-        of all the centers, which must also be less than
-        ``center_accuracy``. A change that is common to all the stars
-        is a shift of the center of the ePSF. It changes neither the
-        shape of the ePSF nor the relative positions of the stars. The
-        default of 0.95 allows a small number of stars (e.g., spurious
-        detections or contaminated cutouts) whose centers never settle
-        to not prevent convergence. Set to 1.0 to require all stars
-        to converge. The fraction achieved in the final iteration is
-        reported in the ``final_converged_fraction`` attribute of the
-        returned `EPSFBuildResults`.
+        iterations for the build to be considered converged. The change
+        of each center is measured relative to the median change of all
+        the centers, which must also be less than ``center_accuracy``.
+        A change that is common to all the stars is a shift of the
+        center of the ePSF. It changes neither the shape of the ePSF
+        nor the relative positions of the stars. The default of 0.95
+        allows a small number of stars (e.g., spurious detections or
+        contaminated cutouts) whose centers never settle to not prevent
+        convergence. Set to 1.0 to require all stars to converge.
+        The fraction achieved in the final iteration is reported in
+        the ``final_converged_fraction`` attribute of the returned
+        `EPSFBuildResults`.
 
     fitter : `~astropy.modeling.fitting.Fitter` or `EPSFFitter`, optional
         A `~astropy.modeling.fitting.Fitter` object used to fit the
@@ -2056,8 +2056,8 @@ class EPSFBuilder:
 
     * The ePSF is centered on its point of maximal symmetry within
       a radius of about 1.5 pixels by default, as in Anderson (2016).
-      Anderson (2000) requires equal values half a pixel on either
-      side of the center.
+      Anderson (2000) requires equal values half a pixel on either side
+      of the center.
 
     * The ePSF is normalized so that its values sum to the product of
       the oversampling factors over the whole grid. Fitted fluxes are
@@ -2762,9 +2762,9 @@ class EPSFBuilder:
         too small for it or that has no source (e.g., constant data).
         It is also searched only near the center of the cutout. If the
         source lies outside of that area, the result is on the edge of
-        the area, and it can be the edge that is farthest from the
-        source. The center of mass, which always moves toward the
-        source, is used in those cases.
+        the area and is not the center of the source. The center of
+        mass, which always moves toward the source, is used in those
+        cases.
 
         Parameters
         ----------
@@ -3067,11 +3067,11 @@ class EPSFBuilder:
         ``converged_fraction`` of the successfully fitted stars moved by
         less than the configured center accuracy.
 
-        The movement is measured relative to the median movement of
-        the stars. A shift of the center of the ePSF moves all of the
-        star centers by the same amount, which changes neither the
-        shape of the ePSF nor the relative positions of the stars. The
-        median movement must itself be less than the center accuracy.
+        The movement is measured relative to the median movement of the
+        stars. A shift of the center of the ePSF moves all of the star
+        centers by the same amount, which changes neither the shape of
+        the ePSF nor the relative positions of the stars. The median
+        movement must itself be less than the center accuracy.
 
         Parameters
         ----------

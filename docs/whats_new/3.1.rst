@@ -937,8 +937,8 @@ convergence statistics of each iteration (``iteration_info``). The new
 change from the previous iteration, which shows whether the build has
 stopped changing and where it is still changing.
 
-The new ``center_asymmetry`` attribute of the results is the offset of
-the center of mass of the built ePSF from its symmetry center (see
+The new ``center_asymmetry`` attribute of the results is the offset
+of the center of mass of the built ePSF from its symmetry center (see
 `~photutils.centroids.centroid_symmetry`). The center of an asymmetric
 ePSF is a convention, and this offset is the amount by which the star
 positions measured with the ePSF depend on that convention.
@@ -1033,9 +1033,9 @@ Symmetry Centroid
 
 The new `~photutils.centroids.centroid_symmetry` function calculates the
 center of a source as the point about which its core is most symmetric
-under a rotation by 180 degrees. This is the definition of the center
-of an ePSF of Anderson 2016 (WFC3 ISR 2016-12). Unlike the center of
-mass, it is insensitive to asymmetric structure around the core.
+under a rotation by 180 degrees. This is the definition of the center of
+an ePSF of Anderson 2016 (WFC3 ISR 2016-12). Unlike the center of mass,
+it is insensitive to asymmetric structure around the core.
 
 It is now the default ``recentering_func`` of
 `~photutils.psf.EPSFBuilder`, which previously centered the ePSF on its
