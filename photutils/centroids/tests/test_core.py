@@ -19,6 +19,7 @@ from photutils.centroids.core import (CentroidQuadratic, centroid_com,
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.centroids.tests.helpers import make_gaussian_source
 from photutils.datasets import make_4gaussians_image, make_noise_image
+from photutils.psf import CircularGaussianPRF
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
@@ -267,6 +268,121 @@ def test_centroid_symmetry_search_area():
 
     xycen = centroid_symmetry(data, radius=3)
     assert_allclose(xycen, (70.3, 30.6), atol=2.0e-3)
+
+
+@pytest.mark.parametrize(('size', 'fwhm'),
+                         [(5, 1.5), (10, 3.0), (11, 3.0), (11, 5.0),
+                          (21, 6.0), (21, 10.0)])
+@pytest.mark.parametrize('factor', [1.5, 2.0, 3.0])
+@pytest.mark.parametrize('direction',
+                         [(-1.0, -1.0), (1.0, 0.0), (0.0, -1.0), (1.0, -0.4)])
+def test_centroid_symmetry_far_outside_search_area(size, fwhm, factor,
+                                                   direction):
+    """
+    Test that the result is on the edge of the search area nearest to
+    the source if the source lies far outside of it.
+
+    A featureless region is also symmetric, so the asymmetry decreases
+    away from a source that lies well beyond the search area.
+    """
+    center = (size - 1) / 2
+    margin = center - 0.3 * size
+    offset = factor * margin * np.array(direction)
+    model = CircularGaussianPRF(flux=1.0, x_0=center + offset[0],
+                                y_0=center + offset[1], fwhm=fwhm)
+    yy, xx = np.mgrid[:size, :size]
+    data = model(xx, yy)
+
+    xycen = centroid_symmetry(data)
+    expected = center + np.clip(offset, -margin, margin)
+    assert_allclose(xycen, expected, atol=0.05)
+
+
+def test_centroid_symmetry_far_outside_inputs():
+    """
+    Test a source far outside of the search area with noise, with
+    masked values, and in an array that is not square.
+    """
+    yy, xx = np.mgrid[:21, :21]
+    model = CircularGaussianPRF(flux=1.0, x_0=0.75, y_0=0.75, fwhm=10.0)
+    data = model(xx, yy)
+    expected = (6.3, 6.3)
+
+    rng = np.random.default_rng(0)
+    noise = rng.normal(0.0, 0.01 * np.max(data), data.shape)
+    xycen = centroid_symmetry(data + noise)
+    assert_allclose(xycen, expected, atol=0.05)
+
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[3:6, 3:6] = True
+    xycen = centroid_symmetry(data, mask=mask)
+    assert_allclose(xycen, expected, atol=0.05)
+
+    # The search area is 4.5 to 9.5 in x and 4.5 to 25.5 in y
+    yy, xx = np.mgrid[:31, :15]
+    model = CircularGaussianPRF(flux=1.0, x_0=13.25, y_0=3.0, fwhm=4.0)
+    xycen = centroid_symmetry(model(xx, yy))
+    assert_allclose(xycen, (9.5, 4.5), atol=0.05)
+
+
+@pytest.mark.parametrize('offset', [0.0, 0.2, 1.0, 2.0])
+def test_centroid_symmetry_negative_data(offset):
+    """
+    Test that the result for a source in the search area does not
+    change if a constant is subtracted from the data, including one that
+    makes all of the data values negative.
+    """
+    core = make_gaussian_source((21, 21), 1.0, 10.3, 9.6, 2.0, 2.0, 0)
+    lobe = make_gaussian_source((21, 21), 0.1, 14.5, 10.0, 1.5, 1.5, 0)
+    data = core + lobe
+    expected = centroid_symmetry(data, radius=3)
+
+    xycen = centroid_symmetry(data - offset * np.max(data), radius=3)
+    assert_allclose(xycen, expected, atol=1.0e-4)
+
+    xycen = centroid_symmetry(data - offset * np.max(data))
+    assert_allclose(xycen, centroid_symmetry(data), atol=1.0e-4)
+
+
+@pytest.mark.parametrize('neighbor_flux', [0.5, 2.0, 5.0, 20.0])
+def test_centroid_symmetry_search_area_neighbor(neighbor_flux):
+    """
+    Test that the result stays on the edge of the search area nearest
+    to a source just outside of it if there is a brighter source beyond
+    the opposite edge.
+    """
+    yy, xx = np.mgrid[:21, :21]
+    source = CircularGaussianPRF(flux=1.0, x_0=5.9, y_0=10.3, fwhm=4.0)
+    neighbor = CircularGaussianPRF(flux=neighbor_flux, x_0=19.5, y_0=9.0,
+                                   fwhm=4.0)
+    data = source(xx, yy) + neighbor(xx, yy)
+
+    xycen = centroid_symmetry(data)
+    assert_allclose(xycen, (6.3, 10.3), atol=0.05)
+
+
+@pytest.mark.parametrize(('size', 'fwhm'),
+                         [(10, 3.0), (11, 3.0), (11, 5.0), (21, 6.0),
+                          (21, 10.0)])
+@pytest.mark.parametrize('inset', [0.02, 0.05, 0.1, 0.2])
+@pytest.mark.parametrize('direction',
+                         [(-1.0, -1.0), (1.0, 0.3), (-0.4, 1.0)])
+def test_centroid_symmetry_near_search_area_edge(size, fwhm, inset,
+                                                 direction):
+    """
+    Test that the result is not on the edge of the search area if the
+    source lies a fraction of a pixel inside of it.
+    """
+    center = (size - 1) / 2
+    margin = center - 0.3 * size
+    offset = (margin - inset) * np.array(direction)
+    model = CircularGaussianPRF(flux=1.0, x_0=center + offset[0],
+                                y_0=center + offset[1], fwhm=fwhm)
+    yy, xx = np.mgrid[:size, :size]
+    data = model(xx, yy)
+
+    xycen = centroid_symmetry(data)
+    assert_allclose(xycen, center + offset, atol=0.006)
 
 
 def test_centroid_symmetry_centroid_sources():

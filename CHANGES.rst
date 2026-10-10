@@ -197,7 +197,7 @@ New Features
   - Added a ``centroid_symmetry`` function that calculates the center
     of a source as its point of maximal point symmetry. It can be used
     as the ``recentering_func`` of ``EPSFBuilder`` to center an ePSF on
-    its core instead of its center of mass. [#2475]
+    its core instead of its center of mass. [#2475, #2487]
 
 - ``photutils.detection``
 
