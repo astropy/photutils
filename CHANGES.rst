@@ -195,9 +195,9 @@ New Features
 - ``photutils.centroids``
 
   - Added a ``centroid_symmetry`` function that calculates the center
-    of a source as its point of maximal point symmetry. It can be used
-    as the ``recentering_func`` of ``EPSFBuilder`` to center an ePSF on
-    its core instead of its center of mass. [#2475, #2487]
+    of a source as its point of maximal point symmetry. It is the
+    default ``recentering_func`` of ``EPSFBuilder``, which centers an
+    ePSF on its core instead of its center of mass. [#2475, #2488]
 
 - ``photutils.detection``
 
@@ -349,6 +349,11 @@ New Features
     ``initial_epsf`` attribute that holds the image of the input ePSF
     (if any), and a ``plot_iterations`` method that plots the ePSF after
     each iteration and its change from the previous one. [#2466, #2477]
+
+  - Added a ``center_asymmetry`` attribute to ``EPSFBuildResults`` that
+    gives the offset of the center of mass of the built ePSF from its
+    symmetry center, i.e., how much the measured star positions depend
+    on the definition of the ePSF center. [#2488]
 
   - Added a ``wing_smoothing`` keyword to ``EPSFBuilder`` (default
     `True`). The wings of the final ePSF, beyond 3.5 FWHM from its
@@ -1256,6 +1261,27 @@ API Changes
     for values outside the documented ranges. [#2369]
 
 - ``photutils.psf``
+
+  - The default ``recentering_func`` of ``EPSFBuilder`` is now
+    ``centroid_symmetry`` instead of ``centroid_com``. The ePSF is
+    centered on the point about which its core is most symmetric,
+    which is the definition of Anderson 2016, instead of its center
+    of mass. For an asymmetric PSF the star positions fit with the
+    built ePSF change by a constant offset, up to about 0.1 pixel
+    for undersampled space-telescope PSFs. The center of mass is
+    still used if the symmetry center cannot be calculated, and a
+    warning is emitted if the recentering box is too small for it. Use
+    ``recentering_func=centroid_com`` for the previous behavior. [#2488]
+
+  - The convergence of an ``EPSFBuilder`` build is now measured from
+    the changes of the star centers relative to their median change,
+    which must also be less than ``center_accuracy``. A change that
+    is common to all the stars is a shift of the ePSF center, and
+    one that is smaller than ``center_accuracy`` no longer delays
+    the convergence. The ``final_center_accuracy`` attribute and the
+    ``max_center_shift`` column of ``iteration_info`` are the relative
+    changes, and the new ``common_center_shift`` column is the median
+    change. [#2488]
 
   - ``GaussianPRF`` is now integrated exactly over the detector pixels
     for any rotation angle. Previously, the integration was performed

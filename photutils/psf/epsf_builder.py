@@ -22,7 +22,7 @@ from scipy.ndimage import convolve
 from scipy.signal import fftconvolve
 from scipy.stats import chi2 as chi2_dist
 
-from photutils.centroids import centroid_com
+from photutils.centroids import centroid_com, centroid_symmetry
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
 from photutils.psf.image_models import ImagePSF
 from photutils.psf.utils import _interpolate_missing_data
@@ -1065,6 +1065,7 @@ class _IterationRecord(NamedTuple):
     converged: bool
     converged_fraction: float
     max_center_dist_sq: float
+    common_center_dist_sq: float
     n_fit_failed: int
 
 
@@ -1114,8 +1115,9 @@ class EPSFBuildResults:
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
-        pixels, over all of the successfully fitted stars. This includes
-        the stars that the ``converged_fraction`` of the builder allows
+        pixels, over all of the successfully fitted stars, relative
+        to the median displacement of those stars. This includes the
+        stars that the ``converged_fraction`` of the builder allows
         to remain unconverged, so it can be much larger than the
         ``center_accuracy`` for a converged build. Use it together with
         ``final_converged_fraction`` to assess the convergence quality.
@@ -1161,27 +1163,50 @@ class EPSFBuildResults:
         changed the ePSF.
 
     iteration_info : `~astropy.table.Table`
-        A table with one row for each image in ``iteration_epsfs``. The
-        columns are the iteration number (``iteration``, starting at 1),
-        the kind of iteration (``stage``, ``'build'`` or ``'refine'``),
-        whether the star centers had converged in that iteration
-        (``converged``), the fraction of the successfully fitted stars
-        whose centers moved by less than the center accuracy in that
-        iteration (``converged_fraction``), the largest center movement
-        in pixels (``max_center_shift``), the number of stars whose
+        A table with one row for each image in ``iteration_epsfs``.
+        The columns are the iteration number (``iteration``, starting
+        at 1), the kind of iteration (``stage``, ``'build'`` or
+        ``'refine'``), whether the star centers had converged in that
+        iteration (``converged``), the fraction of the successfully
+        fitted stars whose centers moved by less than the center
+        accuracy in that iteration (``converged_fraction``), the largest
+        center movement in pixels relative to the median movement
+        (``max_center_shift``), the size of the median movement in
+        pixels (``common_center_shift``, which is zero if fewer than
+        3 stars were successfully fitted), the number of stars whose
         fit failed (``n_fit_failed``), and the largest absolute change
         of the ePSF image from the previous iteration as a fraction
         of the ePSF peak (``max_epsf_change``). The change of the
-        first iteration is measured from ``initial_epsf``, or from
-        an empty ePSF if the ePSF was built from scratch. The last
-        row gives the ``converged``, ``final_converged_fraction``,
-        and ``final_center_accuracy`` values of the results. The last
-        ``'build'`` row tells whether the building iterations converged,
-        which ``converged`` alone does not when the ePSF was refined.
+        first iteration is measured from ``initial_epsf``, or from an
+        empty ePSF if the ePSF was built from scratch. The last row
+        gives the ``converged``, ``final_converged_fraction``, and
+        ``final_center_accuracy`` values of the results. An iteration
+        has not converged while ``common_center_shift`` is not less
+        than the ``center_accuracy`` of the builder, even if the
+        ``converged_fraction`` is large enough. The last ``'build'``
+        row tells whether the building iterations converged, which
+        ``converged`` alone does not when the ePSF was refined.
 
     initial_epsf : 2D `~numpy.ndarray` or `None`
         The image of the input ePSF that the build started from, or
         `None` if the ePSF was built from scratch.
+
+    center_asymmetry : 1D `~numpy.ndarray` or `None`
+        The ``(x, y)`` offset, in detector pixels, of the center of mass
+        of the final ePSF from its symmetry center. The center of mass
+        is measured in a 5x5 pixel box, and the symmetry center is the
+        point about which the core of the ePSF is most symmetric (see
+        `~photutils.centroids.centroid_symmetry`). The two centers agree
+        for a symmetric ePSF. For an asymmetric ePSF, this offset is
+        the amount by which the star positions measured with the ePSF
+        depend on the definition of its center (the ``recentering_func``
+        keyword of `EPSFBuilder`). Positions measured with an ePSF
+        centered on its center of mass are larger by this offset than
+        positions measured with the same ePSF centered on its symmetry
+        center. The value does not depend on which definition was used
+        to build the ePSF. It is `None` if the ePSF is not larger
+        than the 5x5 pixel box, where the centers cannot be measured
+        reliably.
 
     Notes
     -----
@@ -1220,6 +1245,8 @@ class EPSFBuildResults:
                                          repr=False)
     initial_epsf: np.ndarray | None = field(default=None, compare=False,
                                             repr=False)
+    center_asymmetry: np.ndarray | None = field(default=None, compare=False,
+                                                repr=False)
 
     def __iter__(self):
         """
@@ -1757,19 +1784,30 @@ class EPSFBuilder:
         `None` then no sigma clipping will be performed.
 
     recentering_func : callable, optional
-        A callable object that is used to calculate the centroid of a
-        2D array. The callable must accept a 2D `~numpy.ndarray`, have
-        a ``mask`` keyword and optionally an ``error`` keyword. The
-        callable object must return a tuple of (x, y) centroids. The
-        default is `~photutils.centroids.centroid_com`, the center of
-        mass. The center of mass of an asymmetric ePSF is pulled toward
-        the asymmetric structure around its core. To center the ePSF on
-        its core instead, use `~photutils.centroids.centroid_symmetry`,
+        A callable object that is used to calculate the centroid of
+        a 2D array. The callable must accept a 2D `~numpy.ndarray`,
+        have a ``mask`` keyword and optionally an ``error`` keyword.
+        The callable object must return a tuple of (x, y) centroids.
+        The default is `~photutils.centroids.centroid_symmetry`, the
+        point about which the core of the ePSF is most symmetric,
         which is the center definition of Anderson 2016. With the
-        default ``recentering_boxsize`` it measures the symmetry within
-        about 1.5 detector pixels of the center. It needs a box of
-        at least 5 oversampled pixels, so it cannot be used with a
-        ``recentering_boxsize`` of 3 and an ``oversampling`` of 1.
+        default ``recentering_boxsize`` it measures the symmetry
+        within about 1.5 detector pixels of the center. It needs
+        a box of at least 5 oversampled pixels and an ePSF that
+        is not constant. If it cannot be calculated (e.g., with a
+        ``recentering_boxsize`` of 3 and an ``oversampling`` of 1),
+        the center of mass (`~photutils.centroids.centroid_com`) is
+        used instead, and a warning is emitted if the box is too
+        small. The center of mass is also used for a recentering step
+        in which the ePSF is far from the center of the box (e.g.,
+        if the input star positions share a large offset), where the
+        symmetry center cannot be found. This fallback applies only
+        to `~photutils.centroids.centroid_symmetry` itself and not to
+        a function that wraps it. The center of mass of an asymmetric
+        ePSF is pulled toward the asymmetric structure around its core,
+        so the two definitions give centers that differ by a constant
+        offset (up to about 0.1 pixel for undersampled space-telescope
+        PSFs).
 
     recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid
@@ -1790,18 +1828,24 @@ class EPSFBuilder:
         The desired accuracy for the centers of stars. The
         building iterations will stop when the centers of at least
         ``converged_fraction`` of the successfully fitted stars change
-        by less than ``center_accuracy`` pixels between iterations.
+        by less than ``center_accuracy`` pixels between iterations (see
+        ``converged_fraction``).
 
     converged_fraction : float, optional
         The fraction of the successfully fitted stars whose centers
         must change by less than ``center_accuracy`` pixels between
-        iterations for the build to be considered converged. The
-        default of 0.95 allows a small number of stars (e.g., spurious
-        detections or contaminated cutouts) whose centers never settle
-        to not prevent convergence. Set to 1.0 to require all stars
-        to converge. The fraction achieved in the final iteration is
-        reported in the ``final_converged_fraction`` attribute of the
-        returned `EPSFBuildResults`.
+        iterations for the build to be considered converged. The change
+        of each center is measured relative to the median change of all
+        the centers, which must also be less than ``center_accuracy``.
+        A change that is common to all the stars is a shift of the
+        center of the ePSF. It changes neither the shape of the ePSF
+        nor the relative positions of the stars. The default of 0.95
+        allows a small number of stars (e.g., spurious detections or
+        contaminated cutouts) whose centers never settle to not prevent
+        convergence. Set to 1.0 to require all stars to converge.
+        The fraction achieved in the final iteration is reported in
+        the ``final_converged_fraction`` attribute of the returned
+        `EPSFBuildResults`.
 
     fitter : `~astropy.modeling.fitting.Fitter` or `EPSFFitter`, optional
         A `~astropy.modeling.fitting.Fitter` object used to fit the
@@ -2010,11 +2054,10 @@ class EPSFBuilder:
       oversampling factors greater than 1 (see ``alias_passband``).
       Anderson applies none.
 
-    * The ePSF is centered on its center of mass in a 5x5 pixel box
-      by default. Anderson requires equal values half a pixel on either
-      side of the center (2000) or centers the ePSF on its point of
-      maximal symmetry within a radius of 1.5 pixels (2016). The latter
-      is available as ``recentering_func=centroid_symmetry``.
+    * The ePSF is centered on its point of maximal symmetry within
+      a radius of about 1.5 pixels by default, as in Anderson (2016).
+      Anderson (2000) requires equal values half a pixel on either side
+      of the center.
 
     * The ePSF is normalized so that its values sum to the product of
       the oversampling factors over the whole grid. Fitted fluxes are
@@ -2057,7 +2100,8 @@ class EPSFBuilder:
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='auto', alias_passband='auto',
                  sigma_clip=SIGMA_CLIP,
-                 recentering_func=centroid_com, recentering_boxsize=(5, 5),
+                 recentering_func=centroid_symmetry,
+                 recentering_boxsize=(5, 5),
                  recentering_maxiters=20, center_accuracy=1.0e-3,
                  converged_fraction=0.95, fitter=None, fit_shape='auto',
                  fitter_maxiters=100, constrain_fluxes=True, maxiters=10,
@@ -2093,6 +2137,13 @@ class EPSFBuilder:
         self.recentering_boxsize = as_pair('recentering_boxsize',
                                            recentering_boxsize,
                                            lower_bound=(3, 1), check_odd=True)
+        if (recentering_func is centroid_symmetry
+                and np.any(self.recentering_boxsize * self.oversampling < 4)):
+            msg = ('The recentering box (recentering_boxsize times '
+                   'oversampling) is smaller than the 5 oversampled pixels '
+                   'that centroid_symmetry needs. The ePSF will be centered '
+                   'on its center of mass (centroid_com) instead.')
+            warnings.warn(msg, AstropyUserWarning)
 
         if isinstance(smoothing_kernel, str):
             if smoothing_kernel not in ('auto', 'quartic', 'quadratic'):
@@ -2702,10 +2753,56 @@ class EPSFBuilder:
 
         return epsf_data * (oversampling_product / current_sum)
 
-    def _recenter_epsf(self, epsf, *, centroid_func=None, box_size=None,
-                       maxiters=None, center_accuracy=None):
+    @staticmethod
+    def _centroid_cutout(centroid_func, cutout, mask):
         """
-        Recenter the ePSF data by shifting to the array center.
+        Calculate the centroid of an ePSF cutout.
+
+        The symmetry center cannot be calculated for a cutout that is
+        too small for it or that has no source (e.g., constant data).
+        It is also searched only near the center of the cutout. If the
+        source lies outside of that area, the result is on the edge of
+        the area and is not the center of the source. The center of
+        mass, which always moves toward the source, is used in those
+        cases.
+
+        Parameters
+        ----------
+        centroid_func : callable
+            The centroid function.
+
+        cutout : 2D `~numpy.ndarray`
+            The cutout of the ePSF data.
+
+        mask : 2D bool `~numpy.ndarray`
+            The mask of the non-finite values of ``cutout``.
+
+        Returns
+        -------
+        xcenter, ycenter : float
+            The centroid in the pixel coordinates of the cutout.
+        """
+        if centroid_func is centroid_symmetry:
+            # centroid_symmetry needs at least 4 pixels along each axis
+            # and a radius (0.3 times the smaller size) of at least 1
+            centroid = np.full(2, np.nan)
+            if min(cutout.shape) >= 4:
+                centroid = centroid_symmetry(cutout, mask=mask)
+
+                # The search area of centroid_symmetry
+                center = (np.array(cutout.shape[::-1]) - 1) / 2
+                margin = center - 0.3 * min(cutout.shape)
+                if np.any(np.abs(centroid - center) > margin - 1.0e-3):
+                    centroid = np.full(2, np.nan)
+            if not np.all(np.isfinite(centroid)):
+                centroid = centroid_com(cutout, mask=mask)
+            return centroid
+        return centroid_func(cutout, mask=mask)
+
+    def _find_epsf_center(self, epsf, *, centroid_func=None, box_size=None,
+                          maxiters=None, center_accuracy=None):
+        """
+        Find the center of the ePSF and shift it to the array center.
 
         This method uses iterative centroiding to find the center of the
         ePSF and applies sub-pixel shifts using spline interpolation via
@@ -2746,6 +2843,10 @@ class EPSFBuilder:
         -------
         result : 2D `~numpy.ndarray`
             The recentered ePSF data array with the same shape as input.
+
+        shift : tuple of 2 floats
+            The ``(x, y)`` offset of the measured center from the center
+            of the ePSF grid, in undersampled pixels.
         """
         # Use instance defaults if not specified
         if centroid_func is None:
@@ -2798,7 +2899,8 @@ class EPSFBuilder:
             mask = ~np.isfinite(epsf_cutout)
 
             # Find the centroid in the cutout (in oversampled pixel coords)
-            xcenter_new, ycenter_new = centroid_func(epsf_cutout, mask=mask)
+            xcenter_new, ycenter_new = self._centroid_cutout(
+                centroid_func, epsf_cutout, mask)
 
             # Convert cutout coordinates to full array coordinates
             xcenter_new += slices_large[1].start
@@ -2827,7 +2929,42 @@ class EPSFBuilder:
                                       x_0=x_origin - dx_total,
                                       y_0=y_origin - dy_total)
 
-        return epsf_data
+        return epsf_data, (dx_total, dy_total)
+
+    def _measure_center_asymmetry(self, epsf):
+        """
+        Measure the offset of the center of mass of an ePSF from its
+        symmetry center.
+
+        Both centers are measured in a 5x5 pixel box at the center of
+        the ePSF grid, independent of the recentering function and box
+        of the builder, by iterating until the center found in the box
+        is the center of the box.
+
+        Parameters
+        ----------
+        epsf : `ImagePSF` object
+            The ePSF model.
+
+        Returns
+        -------
+        offset : 1D `~numpy.ndarray` or `None`
+            The ``(x, y)`` offset in undersampled pixels, or `None` if
+            the ePSF is not larger than the box.
+        """
+        # The box in oversampled pixels, as in _find_epsf_center
+        box = 5 * self.oversampling
+        box += 1 - box % 2
+        if np.any(np.array(epsf.data.shape) <= box):
+            return None
+
+        centers = []
+        for centroid_func in (centroid_com, centroid_symmetry):
+            _, shift = self._find_epsf_center(
+                epsf, centroid_func=centroid_func, box_size=(5, 5),
+                maxiters=20)
+            centers.append(shift)
+        return np.subtract(*centers)
 
     def _build_epsf_step(self, stars, *, epsf=None, refine=False):
         """
@@ -2912,7 +3049,7 @@ class EPSFBuilder:
                              fill_value=None)
 
         # Apply recentering to the smoothed data
-        recentered_data = self._recenter_epsf(temp_epsf)
+        recentered_data, _ = self._find_epsf_center(temp_epsf)
 
         # Normalize the ePSF data
         normalized_data = self._normalize_epsf(recentered_data)
@@ -2929,6 +3066,12 @@ class EPSFBuilder:
         between iterations. The build has converged when at least
         ``converged_fraction`` of the successfully fitted stars moved by
         less than the configured center accuracy.
+
+        The movement is measured relative to the median movement of the
+        stars. A shift of the center of the ePSF moves all of the star
+        centers by the same amount, which changes neither the shape of
+        the ePSF nor the relative positions of the stars. The median
+        movement must itself be less than the center accuracy.
 
         Parameters
         ----------
@@ -2952,7 +3095,11 @@ class EPSFBuilder:
 
         max_center_dist_sq : float
             The maximum squared center movement of the successfully
-            fitted stars.
+            fitted stars, relative to their median movement.
+
+        common_center_dist_sq : float
+            The squared median movement of the successfully fitted
+            stars.
 
         new_centers : `~numpy.ndarray`
             Updated star center positions.
@@ -2969,18 +3116,26 @@ class EPSFBuilder:
             # is unreachable from build_epsf (all-failed fits raise
             # earlier), but guards direct calls. NaN indicates that no
             # center movement could be measured.
-            return False, 0.0, np.nan, new_centers
+            return False, 0.0, np.nan, np.nan, new_centers
 
+        # Remove the movement that is common to the stars. The median
+        # of fewer than 3 stars is not a common movement.
         dx_dy_good = dx_dy[good_stars]
+        common_dist_sq = 0.0
+        if len(dx_dy_good) >= 3:
+            common = np.median(dx_dy_good, axis=0)
+            common_dist_sq = float(np.sum(common * common))
+            dx_dy_good = dx_dy_good - common
         center_dist_sq = np.sum(dx_dy_good * dx_dy_good, axis=1,
                                 dtype=np.float64)
 
         converged_fraction = float(
             np.mean(center_dist_sq < self.center_accuracy_sq))
-        converged = converged_fraction >= self.converged_fraction
+        converged = (converged_fraction >= self.converged_fraction
+                     and common_dist_sq < self.center_accuracy_sq)
 
         return (converged, converged_fraction, float(np.max(center_dist_sq)),
-                new_centers)
+                common_dist_sq, new_centers)
 
     def _fit_stars(self, epsf, stars):
         """
@@ -3368,6 +3523,8 @@ class EPSFBuilder:
             iteration_info = self._make_iteration_info(
                 history, initial_epsf=initial_epsf)
 
+        center_asymmetry = self._measure_center_asymmetry(epsf)
+
         return EPSFBuildResults(
             epsf=epsf,
             fitted_stars=stars,
@@ -3382,6 +3539,7 @@ class EPSFBuilder:
             iteration_epsfs=iteration_epsfs,
             iteration_info=iteration_info,
             initial_epsf=initial_epsf,
+            center_asymmetry=center_asymmetry,
         )
 
     def build_epsf(self, stars, *, epsf=None):
@@ -3486,10 +3644,12 @@ class EPSFBuilder:
 
             # Check convergence based on center movements
             (converged, converged_fraction, max_center_dist_sq,
+             common_center_dist_sq,
              centers) = self._check_convergence(stars, centers, fit_failed)
             history.append(_IterationRecord(
                 epsf.data.copy(), 'build', converged, converged_fraction,
-                max_center_dist_sq, int(np.sum(fit_failed))))
+                max_center_dist_sq, common_center_dist_sq,
+                int(np.sum(fit_failed))))
 
             # Update progress bar
             progress_reporter.update()
@@ -3516,12 +3676,13 @@ class EPSFBuilder:
                 epsf, stars, fit_failed = self._process_iteration(
                     stars, epsf, iter_num + refine_num, refine=True)
                 (converged, converged_fraction, max_center_dist_sq,
+                 common_center_dist_sq,
                  centers) = self._check_convergence(stars, centers,
                                                     fit_failed)
                 history.append(_IterationRecord(
                     epsf.data.copy(), 'refine', converged,
                     converged_fraction, max_center_dist_sq,
-                    int(np.sum(fit_failed))))
+                    common_center_dist_sq, int(np.sum(fit_failed))))
                 refine_reporter.update()
             refine_reporter.close()
             final_center_accuracy = float(max_center_dist_sq ** 0.5)
@@ -3578,10 +3739,13 @@ class EPSFBuilder:
                                        for record in history]
         table['max_center_shift'] = [float(record.max_center_dist_sq) ** 0.5
                                      for record in history]
+        table['common_center_shift'] = [
+            float(record.common_center_dist_sq) ** 0.5 for record in history]
         table['n_fit_failed'] = [record.n_fit_failed for record in history]
         table['max_epsf_change'] = changes
         table['converged_fraction'].info.format = '.3f'
         table['max_center_shift'].info.format = '.3g'
+        table['common_center_shift'].info.format = '.3g'
         table['max_epsf_change'].info.format = '.3g'
         return table
 

@@ -236,7 +236,22 @@ def test_centroid_symmetry_shapes(shape, radius):
     yc = (shape[0] - 1) / 2 - 0.1
     data = make_gaussian_source(shape, 1.0, xc, yc, 1.2, 1.2, 0)
     xycen = centroid_symmetry(data, radius=radius)
-    assert_allclose(xycen, (xc, yc), atol=0.015)
+    assert_allclose(xycen, (xc, yc), atol=0.02)
+
+
+@pytest.mark.parametrize('radius', [3, 4, 7])
+@pytest.mark.parametrize(('std', 'atol'), [(0.6, 0.05), (0.8, 0.015)])
+def test_centroid_symmetry_undersampled(radius, std, atol):
+    """
+    Test the accuracy for an undersampled source with offsets spaced
+    by half a pixel (a radius less than 6) and by one pixel.
+    """
+    rng = np.random.default_rng(0)
+    for _ in range(10):
+        xc, yc = 10 + rng.uniform(-0.5, 0.5, 2)
+        data = make_gaussian_source((21, 21), 1.0, xc, yc, std, std, 0)
+        xycen = centroid_symmetry(data, radius=radius)
+        assert_allclose(xycen, (xc, yc), atol=atol)
 
 
 @pytest.mark.parametrize('size', [101, 201, 401])

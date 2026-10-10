@@ -361,8 +361,13 @@ previous iteration as a fraction of its peak. If it is still large in
 the last building iteration, increase ``maxiters``. The ``converged``
 column tells whether the star centers had converged in each iteration,
 so the last ``'build'`` row tells whether the building iterations
-converged. The ``plot_iterations`` method plots the ePSF after each
-iteration and its change from the previous iteration::
+converged. The center changes are measured relative to their median
+change, and ``max_center_shift`` is the largest of them. The build
+has converged when the ``converged_fraction`` of the builder (95%
+by default) of these relative changes and the median change itself
+(``common_center_shift``) are less than ``center_accuracy``. The
+``plot_iterations`` method plots the ePSF after each iteration and its
+change from the previous iteration::
 
     >>> result.iteration_info['iteration', 'stage', 'max_epsf_change'].pprint(max_lines=6)  # doctest: +SKIP
     >>> fig = result.plot_iterations()  # doctest: +SKIP
@@ -984,10 +989,11 @@ from the two publications.
         the center. ISR 2016-12 shifts the ePSF to the position where
         it is most symmetric about its center within a radius of 1.5
         pixels.
-      - The center of mass in a 5x5 pixel box is shifted to the
-        center of the grid (``recentering_func`` and
-        ``recentering_boxsize``). The ISR 2016-12 definition is
-        available as `~photutils.centroids.centroid_symmetry`.
+      - The ISR 2016-12 definition
+        (`~photutils.centroids.centroid_symmetry`), measured in a 5x5
+        pixel box. The offsets are spaced by half a grid point for
+        oversampling factors less than 4 (``recentering_func`` and
+        ``recentering_boxsize``).
     * - Normalization
       - The pixel values of a star of unit flux sum to 1 over its
         central 5x5 pixels (AK2000) or within a radius of 5.5 pixels
@@ -1068,11 +1074,17 @@ they differ by a small constant offset. The offset has no effect
 on photometry or on relative astrometry made with the same ePSF,
 because the fitted star positions shift with it. Positions measured
 with ePSFs that were centered differently differ by that offset.
-The center of mass is more sensitive to asymmetric structure around
-the core than the symmetry definition of ISR 2016-12, which is
-available as `~photutils.centroids.centroid_symmetry`. The recentering
-function and box can be changed with ``recentering_func`` and
-``recentering_boxsize``.
+:class:`~photutils.psf.EPSFBuilder` uses the symmetry definition of
+ISR 2016-12 (`~photutils.centroids.centroid_symmetry`) by default.
+The center of mass (`~photutils.centroids.centroid_com`), which was
+the default before version 3.1, is more sensitive to asymmetric
+structure around the core. In tests with simulated JWST and Roman
+PSFs it was offset from the position of the source in the optical
+model by up to 0.1 pixel, compared with 0.05 pixel or less for the
+symmetry center. The ``center_asymmetry`` attribute of the results
+gives the difference between the two centers for any built ePSF. The
+recentering function and box can be changed with ``recentering_func``
+and ``recentering_boxsize``.
 
 **Normalization and background.** These two conventions set the flux
 scale and must be kept in mind when ePSFs from the two sources are
