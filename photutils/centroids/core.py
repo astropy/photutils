@@ -207,18 +207,23 @@ def centroid_symmetry(data, *, mask=None, radius=None):
             - I(x_c - u_x, y_c - u_y) \\right|
 
     where the sum is over the :math:`N` pairs of opposite offsets
-    :math:`\\pm u` on a grid with a spacing of one pixel within the
-    radius :math:`r`, and :math:`I` is the data interpolated with a
-    bicubic spline. If there are masked values, the mean is a weighted
+    :math:`\\pm u` on a grid within the radius :math:`r`, and :math:`I`
+    is the data interpolated with a bicubic spline. The spacing of the
+    grid is one pixel for a radius of 6 pixels or more and half a pixel
+    for a smaller radius, so that a small region is still sampled by
+    enough pairs. If there are masked values, the mean is a weighted
     mean. The weight of a position decreases linearly from 1 to 0 as
     it moves from an unmasked pixel halfway to a masked pixel, and the
     weight of a pair is the product of the weights of its two positions.
 
     The interpolation is less accurate for an undersampled source. For
-    a noiseless Gaussian source, the error of the result is up to about
-    0.01 pixels for a standard deviation of 1 pixel or less (a FWHM of
-    2.4 pixels or less), 0.005 pixels for 1.2 pixels, and less than
-    0.001 pixels for 1.5 pixels or more.
+    a noiseless Gaussian source integrated over the pixels, the error
+    of the result is up to about 0.02 pixels for a standard deviation
+    of 0.6 to 0.8 pixels (a FWHM of 1.4 to 1.9 pixels), 0.01 pixels for
+    1 pixel, 0.005 pixels for 1.2 pixels, and less than 0.002 pixels
+    for 1.5 pixels or more. The error increases quickly for a narrower
+    source (0.05 pixels for a standard deviation of 0.5 pixels), and it
+    is larger for an array with fewer than 7 pixels along an axis.
 
     The region must stay within the array, so the center is searched
     only within ``(n - 1) / 2 - radius`` pixels of the center of the
@@ -314,13 +319,17 @@ def centroid_symmetry(data, *, mask=None, radius=None):
         good = None
     spline = RectBivariateSpline(np.arange(ny), np.arange(nx), data)
 
-    # One offset of each opposite pair within the radius
-    n_max = int(radius)
-    y_off, x_off = np.mgrid[-n_max:n_max + 1, -n_max:n_max + 1]
+    # One offset of each opposite pair within the radius. A small
+    # radius has few pairs at a spacing of one pixel, so the spacing is
+    # then half a pixel. Other fractions of a pixel are much less
+    # accurate for an undersampled source.
+    spacing = 0.5 if radius < 6 else 1.0
+    n_max = int(radius / spacing)
+    y_off, x_off = np.mgrid[-n_max:n_max + 1, -n_max:n_max + 1] * spacing
     keep = ((np.hypot(x_off, y_off) <= radius)
             & ((y_off > 0) | ((y_off == 0) & (x_off > 0))))
-    x_off = x_off[keep].astype(float)
-    y_off = y_off[keep].astype(float)
+    x_off = x_off[keep]
+    y_off = y_off[keep]
     args = (spline, x_off, y_off, good)
 
     # The region must stay within the array
