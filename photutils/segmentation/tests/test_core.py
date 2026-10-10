@@ -2492,7 +2492,8 @@ def test_huge_labels(dtype):
 
     for segm in (SegmentationImage(huge),
                  SegmentationImage._from_data(huge)):
-        assert_equal(segm.labels, 2**40 + 1000 * expected.labels)
+        assert_equal(segm.labels,
+                     2**40 + 1000 * expected.labels.astype(np.int64))
         assert segm.labels.dtype == dtype
         assert_equal(segm.areas, expected.areas)
         assert segm.slices == expected.slices
@@ -2552,7 +2553,8 @@ def test_huge_labels_relabel(dtype):
 
     ref, segm = _make_huge_label_pair(dtype)
     segm.relabel_consecutive(start_label=2**41)
-    assert_equal(segm.labels, 2**41 + np.arange(len(labels)))
+    assert_equal(segm.labels,
+                 2**41 + np.arange(len(labels), dtype=np.int64))
     assert_equal(segm.areas, ref.areas)
 
     for relabel in (False, True):
@@ -2600,7 +2602,8 @@ def test_relabel_preserves_dtype(dtype, offset):
     dtype = np.dtype(dtype)
     data = _make_label_array()
     ref_labels = SegmentationImage(data).labels
-    data = np.where(data > 0, data + offset, 0).astype(dtype)
+    data = np.where(data > 0, data.astype(np.int64) + offset,
+                    0).astype(dtype)
     labels = SegmentationImage(data).labels
     assert labels.dtype == dtype
 

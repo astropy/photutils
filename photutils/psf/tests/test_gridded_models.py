@@ -364,7 +364,7 @@ class TestGriddedPSFModel:
 
         lookup = psfmodel._bounding_lookup
         assert lookup.shape == (nx - 1, ny - 1, 4)
-        assert lookup.dtype == np.int64
+        assert lookup.dtype == np.intp
 
     def test_bounding_lookup_table(self, psfmodel):
         """
