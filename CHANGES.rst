@@ -1269,7 +1269,8 @@ API Changes
     of mass. For an asymmetric PSF the star positions fit with the
     built ePSF change by a constant offset, up to about 0.1 pixel
     for undersampled space-telescope PSFs. The center of mass is
-    still used if the symmetry center cannot be calculated. Use
+    still used if the symmetry center cannot be calculated, and a
+    warning is emitted if the recentering box is too small for it. Use
     ``recentering_func=centroid_com`` for the previous behavior. [#2488]
 
   - The convergence of an ``EPSFBuilder`` build is now measured from

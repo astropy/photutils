@@ -1534,6 +1534,31 @@ class TestEPSFBuilder:
         assert np.all(np.isfinite(epsf.data))
         assert_allclose(epsf.data, epsf_com.data)
 
+    @pytest.mark.parametrize('oversampling', [1, 2])
+    def test_recentering_symmetry_offset_stars(self, oversampling):
+        """
+        Test that the ePSF is centered if the input star positions
+        share an offset that places it outside of the search area of
+        centroid_symmetry.
+        """
+        model = CircularGaussianPRF(fwhm=1.5)
+        data, params = make_psf_model_image((200, 200), model, 36,
+                                            model_shape=(11, 11),
+                                            flux=(5000, 20000),
+                                            min_separation=20,
+                                            border_size=15, seed=0)
+        init_stars = Table()
+        init_stars['x'] = params['x_0'] + 1.5
+        init_stars['y'] = params['y_0'] - 1.5
+        stars = extract_stars(NDData(data), init_stars, size=15)
+        builder = EPSFBuilder(oversampling=oversampling, progress_bar=False)
+        result = builder(stars)
+
+        assert result.n_excluded_stars == 0
+        centers = result.fitted_stars.center_flat
+        assert_allclose(centers[:, 0], params['x_0'], atol=0.02)
+        assert_allclose(centers[:, 1], params['y_0'], atol=0.02)
+
     def test_center_asymmetry_small_epsf(self, epsf_test_data):
         """
         Test that center_asymmetry is None for an ePSF that is not
@@ -2096,7 +2121,7 @@ class TestEPSFBuilder:
 
     def test_recenter_shift_increase(self, epsf_test_data):
         """
-        Test early exit in _recenter_epsf when shift increases.
+        Test early exit in _find_epsf_center when shift increases.
 
         Uses mock to force the centroid function to return values
         that cause shift to increase on second iteration.
@@ -2124,7 +2149,7 @@ class TestEPSFBuilder:
             return (center[1] - 0.5, center[0] - 0.5)
 
         with patch.object(builder, 'recentering_func', mock_centroid):
-            recentered = builder._recenter_epsf(epsf)
+            recentered, _ = builder._find_epsf_center(epsf)
 
         assert recentered is not None
         assert recentered.shape == epsf.data.shape
@@ -2171,7 +2196,7 @@ class TestEPSFBuilder:
             cy, cx = np.array(data.shape) / 2.0
             return (cx, cy)
 
-        recentered = builder._recenter_epsf(
+        recentered, _ = builder._find_epsf_center(
             epsf, centroid_func=recording_centroid,
             box_size=box_size, maxiters=1)
 
@@ -2207,7 +2232,7 @@ class TestEPSFBuilder:
             cy, cx = np.array(data.shape) / 2.0
             return (cx, cy)
 
-        builder._recenter_epsf(
+        builder._find_epsf_center(
             epsf, centroid_func=recording_centroid, maxiters=1)
 
         assert len(cutout_shapes) >= 1
@@ -3391,19 +3416,23 @@ def test_refinement_steps(monkeypatch):
     def run(**kwargs):
         builder = EPSFBuilder(maxiters=1, smoothing_kernel=None,
                               progress_bar=False, **kwargs)
-        recenter = builder._recenter_epsf
+        find_center = builder._find_epsf_center
         fit_stars = builder._fit_stars
         counts.update(recenter=0, fit=0)
 
-        def counting_recenter(epsf, **kw):
-            counts['recenter'] += 1
-            return recenter(epsf, **kw)
+        def counting_find_center(epsf, **kw):
+            # The center asymmetry is measured with the same method
+            # and an explicit centroid function
+            if 'centroid_func' not in kw:
+                counts['recenter'] += 1
+            return find_center(epsf, **kw)
 
         def counting_fit(epsf, stars_):
             counts['fit'] += 1
             return fit_stars(epsf, stars_)
 
-        monkeypatch.setattr(builder, '_recenter_epsf', counting_recenter)
+        monkeypatch.setattr(builder, '_find_epsf_center',
+                            counting_find_center)
         monkeypatch.setattr(builder, '_fit_stars', counting_fit)
         refine_flags.clear()
         with warnings.catch_warnings():

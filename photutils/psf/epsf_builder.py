@@ -1172,7 +1172,8 @@ class EPSFBuildResults:
         accuracy in that iteration (``converged_fraction``), the largest
         center movement in pixels relative to the median movement
         (``max_center_shift``), the size of the median movement in
-        pixels (``common_center_shift``), the number of stars whose
+        pixels (``common_center_shift``, which is zero if fewer than 3
+        stars were successfully fitted), the number of stars whose
         fit failed (``n_fit_failed``), and the largest absolute change
         of the ePSF image from the previous iteration as a fraction
         of the ePSF peak (``max_epsf_change``). The change of the
@@ -1788,21 +1789,25 @@ class EPSFBuilder:
         have a ``mask`` keyword and optionally an ``error`` keyword.
         The callable object must return a tuple of (x, y) centroids.
         The default is `~photutils.centroids.centroid_symmetry`, the
-        point about which the core of the ePSF is most symmetric, which
-        is the center definition of Anderson 2016. With the default
-        ``recentering_boxsize`` it measures the symmetry within about
-        1.5 detector pixels of the center. It needs a box of at least
-        5 oversampled pixels and an ePSF that is not constant. If it
-        cannot be calculated (e.g., with a ``recentering_boxsize``
-        of 3 and an ``oversampling`` of 1), the center of mass
-        (`~photutils.centroids.centroid_com`) is used instead, and
-        a warning is emitted if the box is too small. This fallback
-        applies only to `~photutils.centroids.centroid_symmetry` itself
-        and not to a function that wraps it. The center of mass of
-        an asymmetric ePSF is pulled toward the asymmetric structure
-        around its core, so the two definitions give centers that differ
-        by a constant offset (up to about 0.1 pixel for undersampled
-        space-telescope PSFs).
+        point about which the core of the ePSF is most symmetric,
+        which is the center definition of Anderson 2016. With the
+        default ``recentering_boxsize`` it measures the symmetry
+        within about 1.5 detector pixels of the center. It needs
+        a box of at least 5 oversampled pixels and an ePSF that
+        is not constant. If it cannot be calculated (e.g., with a
+        ``recentering_boxsize`` of 3 and an ``oversampling`` of 1),
+        the center of mass (`~photutils.centroids.centroid_com`) is
+        used instead, and a warning is emitted if the box is too
+        small. The center of mass is also used for a recentering step
+        in which the ePSF is far from the center of the box (e.g.,
+        if the input star positions share a large offset), where the
+        symmetry center cannot be found. This fallback applies only
+        to `~photutils.centroids.centroid_symmetry` itself and not to
+        a function that wraps it. The center of mass of an asymmetric
+        ePSF is pulled toward the asymmetric structure around its core,
+        so the two definitions give centers that differ by a constant
+        offset (up to about 0.1 pixel for undersampled space-telescope
+        PSFs).
 
     recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid
@@ -2755,7 +2760,11 @@ class EPSFBuilder:
 
         The symmetry center cannot be calculated for a cutout that is
         too small for it or that has no source (e.g., constant data).
-        The center of mass is used in those cases.
+        It is also searched only near the center of the cutout. If the
+        source lies outside of that area, the result is on the edge of
+        the area, and it can be the edge that is farthest from the
+        source. The center of mass, which always moves toward the
+        source, is used in those cases.
 
         Parameters
         ----------
@@ -2779,29 +2788,16 @@ class EPSFBuilder:
             centroid = np.full(2, np.nan)
             if min(cutout.shape) >= 4:
                 centroid = centroid_symmetry(cutout, mask=mask)
+
+                # The search area of centroid_symmetry
+                center = (np.array(cutout.shape[::-1]) - 1) / 2
+                margin = center - 0.3 * min(cutout.shape)
+                if np.any(np.abs(centroid - center) > margin - 1.0e-3):
+                    centroid = np.full(2, np.nan)
             if not np.all(np.isfinite(centroid)):
                 centroid = centroid_com(cutout, mask=mask)
             return centroid
         return centroid_func(cutout, mask=mask)
-
-    def _recenter_epsf(self, epsf, **kwargs):
-        """
-        Recenter the ePSF data by shifting to the array center.
-
-        Parameters
-        ----------
-        epsf : `ImagePSF` object
-            The ePSF model containing the data to be recentered.
-
-        **kwargs : dict, optional
-            The keywords of `_find_epsf_center`.
-
-        Returns
-        -------
-        result : 2D `~numpy.ndarray`
-            The recentered ePSF data array with the same shape as input.
-        """
-        return self._find_epsf_center(epsf, **kwargs)[0]
 
     def _find_epsf_center(self, epsf, *, centroid_func=None, box_size=None,
                           maxiters=None, center_accuracy=None):
@@ -3053,7 +3049,7 @@ class EPSFBuilder:
                              fill_value=None)
 
         # Apply recentering to the smoothed data
-        recentered_data = self._recenter_epsf(temp_epsf)
+        recentered_data, _ = self._find_epsf_center(temp_epsf)
 
         # Normalize the ePSF data
         normalized_data = self._normalize_epsf(recentered_data)
