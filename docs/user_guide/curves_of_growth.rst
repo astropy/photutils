@@ -314,46 +314,57 @@ the first time between radii of 17 and 18 pixels::
     >>> print(cog.radius[:-1][np.diff(cog.profile) <= 0])
     [17 19 22 24]
 
-The encircled energy methods therefore do not interpolate the profile
-itself. They interpolate its running maximum, which is the profile
-with each decrease replaced by the largest value at a smaller radius.
-The resulting curve never decreases, so
-:meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius` and
-:meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee` are
-consistent with each other. At a radius where the profile has
-decreased, the encircled energy is larger than the profile value::
-
-    >>> print(cog.profile[16:20])  # doctest: +FLOAT_CMP
-    [0.99576812 0.99393191 0.99440133 0.99363752]
-    >>> print(cog.calc_ee_at_radius(cog.radius[16:20]))  # doctest: +FLOAT_CMP
-    [0.99576812 0.99576812 0.99576812 0.99576812]
-
+:meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius`
+interpolates the measured profile, so the encircled energy it returns
+can also decrease with radius. The same encircled energy can then
+occur at more than one radius.
 :meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee` returns
-the smallest radius at which the curve reaches the given encircled
-energy. Every encircled energy between the first and the largest
-profile value has a radius, and converting that radius back gives the
-same encircled energy::
+the smallest radius at which the interpolated curve reaches the given
+encircled energy. Every encircled energy between the smallest and the
+largest profile value has a radius, and converting that radius back
+gives the same encircled energy::
 
     >>> ee_vals = np.array([0.5, 0.9, 0.99, 0.999, 1.0])
     >>> ee_rads = cog.calc_radius_at_ee(ee_vals)
     >>> print(ee_rads)  # doctest: +FLOAT_CMP
-    [ 5.58334451 10.20639775 14.38357656 21.89946318 24.        ]
+    [ 5.58334451 10.20639775 14.38357656 21.89837891 24.        ]
     >>> print(cog.calc_ee_at_radius(ee_rads))  # doctest: +FLOAT_CMP
     [0.5   0.9   0.99  0.999 1.   ]
 
-Because the curve is flat wherever the profile has decreased, the
-reverse is not true there. Every radius on a flat part of the curve
-has the same encircled energy, and the smallest of them is returned::
+The reverse is not true after the profile has decreased. The encircled
+energy at a radius of 19 pixels was already reached at a smaller
+radius, which is the one returned::
 
-    >>> print(cog.calc_radius_at_ee(cog.calc_ee_at_radius(19.0)))  # doctest: +FLOAT_CMP
-    17.0
+    >>> ee_val = cog.calc_ee_at_radius(19.0)
+    >>> print(cog.calc_radius_at_ee(ee_val))  # doctest: +FLOAT_CMP
+    15.57818537
 
-Keep in mind that where a noisy profile is nearly flat, the radius of
-a given encircled energy is poorly constrained by the data. The radii
-returned for encircled energies close to 1 should be used with care.
+.. note::
 
-Here we plot the outer part of the normalized profile and the monotonic
-curve used by the encircled energy methods.
+    Where a noisy profile has leveled off, the radius of a given
+    encircled energy is poorly constrained by the data. In addition,
+    the maximum of a noisy profile is larger than the true total flux,
+    so a profile normalized with
+    :meth:`~photutils.profiles.CurveOfGrowth.normalize` reaches each
+    encircled energy at too large a radius. For the example above, the
+    radius at an encircled energy of 0.99 is typically overestimated
+    by about 1 pixel, with a scatter of about 2 pixels between noise
+    realizations.
+
+    If you need the radius at a large encircled energy (e.g., 0.95 or
+    more), use a profile with a high signal-to-noise ratio. If the
+    total flux of the source is known (e.g., from a model or a
+    catalog), divide the input ``data`` by that total flux instead
+    of calling :meth:`~photutils.profiles.CurveOfGrowth.normalize`.
+    The radii are then much less biased and less scattered, but
+    :meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee`
+    returns NaN for an encircled energy that the measured profile
+    never reaches.
+
+Here we plot the outer part of the normalized profile, the curve
+interpolated by
+:meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius`, and the
+radius returned for an encircled energy of 0.995.
 
 .. plot::
 
@@ -380,20 +391,20 @@ curve used by the encircled energy methods.
     cog = CurveOfGrowth(data, xycen, radii)
     cog.normalize(method='max')
 
-    # Evaluate the monotonic curve on a fine grid
+    # Evaluate the interpolated curve on a fine grid
     fine_radii = np.linspace(12, 25, 500)
     ee_vals = cog.calc_ee_at_radius(fine_radii)
 
-    # The radius at an encircled energy of 0.999
-    ee_val = 0.999
+    # The radius at an encircled energy of 0.995
+    ee_val = 0.995
     ee_rad = cog.calc_radius_at_ee(ee_val)
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(cog.radius, cog.profile, 'o-', label='Measured profile')
-    ax.plot(fine_radii, ee_vals, lw=2, label='Monotonic curve')
-    ax.vlines(ee_rad, 0.97, ee_val, colors='C2', linestyles='dashed')
-    ax.hlines(ee_val, 12, ee_rad, colors='C2', linestyles='dashed',
-              label=f'EE = {ee_val}')
+    ax.plot(cog.radius, cog.profile, 'o', label='Measured profile')
+    ax.plot(fine_radii, ee_vals, label='Interpolated curve')
+    ax.axhline(ee_val, color='C2', ls='dashed', label=f'EE = {ee_val}')
+    ax.plot(ee_rad, ee_val, 'o', color='C3', ms=10,
+            label=f'Returned radius = {ee_rad:.2f}')
     ax.set_xlim(12, 25.5)
     ax.set_ylim(0.97, 1.002)
     ax.set_xlabel('Radius (pixels)')

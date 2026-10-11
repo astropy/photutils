@@ -1332,16 +1332,15 @@ API Changes
 
 - ``photutils.profiles``
 
-  - The encircled energy methods of the curve-of-growth classes
-    (``calc_ee_at_radius`` and ``calc_radius_at_ee`` of
-    ``CurveOfGrowth`` and ``EllipticalCurveOfGrowth``, and
-    ``calc_ee_at_half_size`` and ``calc_half_size_at_ee`` of
-    ``EnsquaredCurveOfGrowth``) now interpolate the running maximum of
-    the profile, so the interpolated curve never decreases with radius
-    for a noisy profile. The radius methods return the smallest radius
-    at which that curve reaches the given energy and are now the exact
-    inverse of the energy methods. Previously, they used only the part
-    of the profile before its first decrease, returned NaN for larger
+  - The radius methods of the curve-of-growth classes
+    (``calc_radius_at_ee`` of ``CurveOfGrowth`` and
+    ``EllipticalCurveOfGrowth``, and ``calc_half_size_at_ee`` of
+    ``EnsquaredCurveOfGrowth``) now return the smallest radius at
+    which the interpolated profile reaches the given energy, for
+    every energy in the profile range. They are now consistent with
+    the energy methods (``calc_ee_at_radius`` and
+    ``calc_ee_at_half_size``). Previously, they used only the part of
+    a noisy profile before its first decrease, returned NaN for larger
     energies, and raised a ``ValueError`` if the profile did not
     increase at its smallest radii. [#2496]
 

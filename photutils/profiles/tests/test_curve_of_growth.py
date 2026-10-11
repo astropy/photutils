@@ -827,7 +827,7 @@ INTERP_CASES = [
 
 @pytest.mark.parametrize(('cls', 'kwargs', 'ee_name', 'size_name'),
                          INTERP_CASES)
-class TestMonotonicInterpolation:
+class TestNonMonotonicInterpolation:
     """
     Tests of the encircled energy interpolation methods for profiles
     that are not monotonically increasing.
@@ -849,8 +849,7 @@ class TestMonotonicInterpolation:
 
     def test_noisy_profile(self, cls, kwargs, ee_name, size_name):
         """
-        Test that the interpolated curve is monotonic for a noisy
-        profile and that the two methods are consistent.
+        Test that the two methods are consistent for a noisy profile.
         """
         # A compact source, so that the noise dominates the outer
         # part of the profile
@@ -866,13 +865,11 @@ class TestMonotonicInterpolation:
         calc_ee = getattr(cog, ee_name)
         calc_size = getattr(cog, size_name)
 
-        # The encircled energy never decreases with size
+        # The interpolated curve passes through the measured profile,
+        # so it also decreases where the profile does
+        assert_allclose(calc_ee(sizes), cog.profile)
         fine_sizes = np.linspace(1, 35, 1000)
-        fine_ee = calc_ee(fine_sizes)
-        assert np.all(np.diff(fine_ee) >= 0)
-
-        # At the input sizes it is the running maximum of the profile
-        assert_allclose(calc_ee(sizes), np.maximum.accumulate(cog.profile))
+        assert np.any(np.diff(calc_ee(fine_sizes)) < 0)
 
         # Every value in the profile range has a size, the size never
         # decreases with the encircled energy, and the roundtrip is
@@ -899,13 +896,15 @@ class TestMonotonicInterpolation:
         calc_ee = getattr(cog, ee_name)
         calc_size = getattr(cog, size_name)
 
-        # The curve is flat across the dip
-        assert_allclose(calc_ee([3.0, 3.5, 4.0, 4.7, 5.0]), 3.0)
-        expected = [1.0, 2.0, 3.0, 3.0, 3.0, 4.0, 5.0]
-        assert_allclose(calc_ee(np.arange(1, 8)), expected)
+        # The curve follows the profile through the dip
+        assert_allclose(calc_ee(np.arange(1, 8)), values)
+        assert 2.5 < calc_ee(3.5) < 3.0
 
-        # The smallest size that reaches the value is returned
+        # The smallest size that reaches the value is returned. The
+        # values 2.6 and 2.8 are also reached again after the dip.
         assert_allclose(calc_size([1.0, 3.0, 4.0, 5.0]), [1, 3, 6, 7])
+        assert 2 < calc_size(2.6) < 3
+        assert 2 < calc_size(2.8) < 3
         result = calc_size(3.5)
         assert 5 < result < 6
         assert_allclose(calc_ee(result), 3.5)
@@ -918,9 +917,17 @@ class TestMonotonicInterpolation:
         cog = self.make_profile(cls, kwargs, values)
         calc_ee = getattr(cog, ee_name)
         calc_size = getattr(cog, size_name)
-        assert_allclose(calc_ee([1.0, 2.0, 3.0]), 2.0)
-        assert_allclose(calc_size([2.0, 4.0]), [1, 5])
-        assert_allclose(calc_ee(calc_size(2.5)), 2.5)
+        assert_allclose(calc_ee([1.0, 2.0, 3.0]), [2.0, 2.0, 1.0])
+        assert_allclose(calc_size([2.0, 1.0, 4.0]), [1, 3, 5])
+        # A value below the first profile value is first reached where
+        # the profile decreases
+        result = calc_size(1.5)
+        assert 2 < result < 3
+        assert_allclose(calc_ee(result), 1.5)
+        result = calc_size(2.5)
+        assert 3 < result < 4
+        assert_allclose(calc_ee(result), 2.5)
+        assert np.all(np.isnan(calc_size([0.5, 4.5])))
 
     def test_nonfinite(self, cls, kwargs, ee_name, size_name):
         """
@@ -974,7 +981,7 @@ class TestMonotonicInterpolation:
 
         ee = calc_ee([2.0, 4.0])
         assert ee.unit == unit
-        assert_allclose(ee.value, [2.0, 3.0])
+        assert_allclose(ee.value, [2.0, 2.5])
 
         # The sizes are in pixels and have no units
         result = calc_size([2.0, 4.0] * unit)

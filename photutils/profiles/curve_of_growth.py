@@ -69,13 +69,9 @@ class _CurveOfGrowthBase(ProfileBase):
         """
         return self._photometry[2]
 
-    def _monotonic_curve(self):
+    def _finite_profile(self):
         """
-        The monotonic curve used by the interpolation methods.
-
-        The curve is the running maximum of the profile, which removes
-        the decreases caused by noise. Non-finite profile values are
-        excluded.
+        The finite profile values used by the interpolation methods.
 
         Returns
         -------
@@ -83,7 +79,7 @@ class _CurveOfGrowthBase(ProfileBase):
             The profile radii with a finite profile value.
 
         profile : 1D `~numpy.ndarray`
-            The running maximum of the profile, without units.
+            The finite profile values, without units.
 
         unit : `~astropy.units.Unit` or `None`
             The profile unit.
@@ -99,15 +95,14 @@ class _CurveOfGrowthBase(ProfileBase):
                    'finite values to be interpolated.')
             raise ValueError(msg)
 
-        return (self.radius[finite], np.maximum.accumulate(profile[finite]),
-                unit)
+        return self.radius[finite], profile[finite], unit
 
     def _calc_ee(self, radius):
         """
         Calculate the enclosed energy at the given radii by
-        interpolating the monotonic curve.
+        interpolating the profile.
         """
-        xvals, profile, unit = self._monotonic_curve()
+        xvals, profile, unit = self._finite_profile()
         ee = PchipInterpolator(xvals, profile, extrapolate=False)(radius)
         if unit is not None:
             ee = ee << unit
@@ -115,32 +110,37 @@ class _CurveOfGrowthBase(ProfileBase):
 
     def _calc_size(self, ee):
         """
-        Calculate the smallest radius at which the interpolated
-        monotonic curve reaches the given enclosed energies.
+        Calculate the smallest radius at which the interpolated profile
+        reaches the given enclosed energies.
         """
-        xvals, profile, unit = self._monotonic_curve()
+        xvals, profile, unit = self._finite_profile()
         if isinstance(ee, u.Quantity):
             if unit is None:
                 unit = u.dimensionless_unscaled
             ee = ee.to_value(unit)
         ee = np.asarray(ee, dtype=float)
 
+        # The interpolant is monotonic between adjacent profile values,
+        # so it first reaches a value in the first interval whose end
+        # values bracket it
+        lower = np.minimum(profile[:-1], profile[1:])
+        upper = np.maximum(profile[:-1], profile[1:])
         interp = PchipInterpolator(xvals, profile, extrapolate=False)
         result = np.full(ee.shape, np.nan)
         for idx, value in np.ndenumerate(ee):
-            if not profile[0] <= value <= profile[-1]:
+            bracket = (lower <= value) & (value <= upper)
+            if not np.any(bracket):
                 continue  # outside the profile range, or NaN
 
-            # The curve never decreases, so it first reaches the value
-            # between the last knot below the value and the first knot
-            # at or above it
-            knot = np.searchsorted(profile, value, side='left')
-            if profile[knot] == value:
-                result[idx] = xvals[knot]
+            first = np.argmax(bracket)
+            if profile[first] == value:
+                result[idx] = xvals[first]
+            elif profile[first + 1] == value:
+                result[idx] = xvals[first + 1]
             else:
                 roots = interp.solve(value, extrapolate=False)
-                inside = ((roots >= xvals[knot - 1])
-                          & (roots <= xvals[knot]))
+                inside = ((roots >= xvals[first])
+                          & (roots <= xvals[first + 1]))
                 result[idx] = roots[inside].min()
 
         return result
@@ -406,12 +406,9 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
-        The interpolation uses the running maximum of the profile.
-        Wherever the profile decreases (e.g., because of noise), its
-        value is replaced by the largest value at a smaller radius. The
-        encircled energy therefore never decreases with radius. At an
-        input radius where the profile has decreased, the result is
-        larger than the corresponding `profile` value.
+        The interpolated curve passes through the measured profile
+        values. For a noisy profile, the curve can therefore decrease
+        with radius where the enclosed flux has leveled off.
 
         Parameters
         ----------
@@ -449,13 +446,19 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
-        This method is the inverse of `calc_ee_at_radius`. It uses the
-        same monotonic curve, which is the interpolated running maximum
-        of the profile, and returns the smallest radius at which that
-        curve reaches the encircled energy. Where the curve is flat,
-        larger values of the radius have the same encircled energy.
-        Where a noisy profile is nearly flat, the radius of a given
-        encircled energy is poorly constrained.
+        This method returns the smallest radius at which the curve
+        interpolated by `calc_ee_at_radius` reaches the encircled
+        energy. Converting the result back with `calc_ee_at_radius`
+        returns the input encircled energy. For a noisy profile, the
+        curve can reach the same encircled energy again at a larger
+        radius.
+
+        Where a noisy profile has leveled off, the radius of a given
+        encircled energy is poorly constrained, and the maximum used by
+        `normalize` is biased high by the noise. If you need the radius
+        at a large encircled energy (e.g., 0.95 or more), use a profile
+        with a high signal-to-noise ratio, or divide the input ``data``
+        by a known total flux instead of calling `normalize`.
 
         Parameters
         ----------
@@ -742,12 +745,9 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         that its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``half_sizes``.
 
-        The interpolation uses the running maximum of the profile.
-        Wherever the profile decreases (e.g., because of noise), its
-        value is replaced by the largest value at a smaller half-size.
-        The ensquared energy therefore never decreases with half-size.
-        At an input half-size where the profile has decreased, the
-        result is larger than the corresponding `profile` value.
+        The interpolated curve passes through the measured profile
+        values. For a noisy profile, the curve can therefore decrease
+        with half-size where the enclosed flux has leveled off.
 
         Parameters
         ----------
@@ -785,13 +785,19 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         that its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``half_sizes``.
 
-        This method is the inverse of `calc_ee_at_half_size`. It uses
-        the same monotonic curve, which is the interpolated running
-        maximum of the profile, and returns the smallest half-size at
-        which that curve reaches the ensquared energy. Where the curve
-        is flat, larger values of the half-size have the same ensquared
-        energy. Where a noisy profile is nearly flat, the half-size of a
-        given ensquared energy is poorly constrained.
+        This method returns the smallest half-size at which the curve
+        interpolated by `calc_ee_at_half_size` reaches the ensquared
+        energy. Converting the result back with `calc_ee_at_half_size`
+        returns the input ensquared energy. For a noisy profile, the
+        curve can reach the same ensquared energy again at a larger
+        half-size.
+
+        Where a noisy profile has leveled off, the half-size of a given
+        ensquared energy is poorly constrained, and the maximum used by
+        `normalize` is biased high by the noise. If you need the
+        half-size at a large ensquared energy (e.g., 0.95 or more), use
+        a profile with a high signal-to-noise ratio, or divide the input
+        ``data`` by a known total flux instead of calling `normalize`.
 
         Parameters
         ----------
@@ -1089,13 +1095,10 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
-        The interpolation uses the running maximum of the profile.
-        Wherever the profile decreases (e.g., because of noise), its
-        value is replaced by the largest value at a smaller
-        semimajor-axis length. The encircled energy therefore never
-        decreases with semimajor-axis length. At an input semimajor-axis
-        length where the profile has decreased, the result is larger
-        than the corresponding `profile` value.
+        The interpolated curve passes through the measured profile
+        values. For a noisy profile, the curve can therefore decrease
+        with semimajor-axis length where the enclosed flux has leveled
+        off.
 
         Parameters
         ----------
@@ -1133,14 +1136,20 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
-        This method is the inverse of `calc_ee_at_radius`. It uses the
-        same monotonic curve, which is the interpolated running maximum
-        of the profile, and returns the smallest semimajor-axis length
-        at which that curve reaches the encircled energy. Where the
-        curve is flat, larger values of the semimajor-axis length have
-        the same encircled energy. Where a noisy profile is nearly flat,
-        the semimajor-axis length of a given encircled energy is poorly
-        constrained.
+        This method returns the smallest semimajor-axis length at which
+        the curve interpolated by `calc_ee_at_radius` reaches the
+        encircled energy. Converting the result back with
+        `calc_ee_at_radius` returns the input encircled energy. For a
+        noisy profile, the curve can reach the same encircled energy
+        again at a larger semimajor-axis length.
+
+        Where a noisy profile has leveled off, the semimajor-axis length
+        of a given encircled energy is poorly constrained, and the
+        maximum used by `normalize` is biased high by the noise. If you
+        need the semimajor-axis length at a large encircled energy
+        (e.g., 0.95 or more), use a profile with a high signal-to-noise
+        ratio, or divide the input ``data`` by a known total flux
+        instead of calling `normalize`.
 
         Parameters
         ----------
