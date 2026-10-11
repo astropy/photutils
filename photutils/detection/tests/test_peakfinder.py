@@ -551,27 +551,33 @@ class TestFindPeaks:
                     dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2)
                     assert dist > 10
 
-    @pytest.mark.parametrize('radius', [2.5, 5, 7.3, 10, 12.5, 25, 50])
-    def test_min_separation_matches_circular_footprint(self, radius):
+    @pytest.mark.parametrize('offset', [0.0, -30.0])
+    @pytest.mark.parametrize('radius', [0.5, 1, 1.5, 2.05, 2.5, 4, 4.55, 5,
+                                        7.3, 10, 12.5, 25, 50])
+    def test_min_separation_matches_circular_footprint(self, radius,
+                                                       offset):
         """
         Test that min_separation produces the same peaks as an
         equivalent circular footprint passed to maximum_filter.
 
-        The fractional radii exercise the even-sized-footprint branch
-        of the fast algorithm, which is the default star finder path
-        (min_separation = 2.5 * fwhm).
+        The radii cover both the footprint filter used for small radii
+        and the box filters used for large radii. The fractional radii
+        are typical of the default star finder path (min_separation
+        = 2.5 * fwhm). The negative offset tests the zero padding at
+        the image borders.
         """
         rng = np.random.default_rng(42)
-        data = rng.standard_normal((200, 200))
+        data = rng.standard_normal((200, 200)) + offset
         data[50, 50] = 20.0
         data[120, 130] = 18.0
         data[30, 170] = 15.0
-        threshold = 3.0
+        threshold = 3.0 + offset
 
         # Reference uses the actual circular footprint (slow but correct)
-        idx = np.arange(-radius, radius + 1)
+        half = int(radius)
+        idx = np.arange(-half, half + 1)
         xx, yy = np.meshgrid(idx, idx)
-        fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+        fp = (xx**2 + yy**2) <= radius**2
         tbl_ref = find_peaks(data, threshold, footprint=fp)
 
         tbl_fast = find_peaks(data, threshold, min_separation=radius)
@@ -583,6 +589,21 @@ class TestFindPeaks:
                           tbl_fast['y_peak'].tolist(),
                           strict=True))
         assert ref_xy == fast_xy
+
+    def test_min_separation_diagonal_neighbors(self):
+        """
+        Test that diagonal neighbors, which are separated by more than
+        1 pixel, are both peaks for ``min_separation=1``.
+        """
+        data = np.zeros((9, 9))
+        data[3, 3] = 5.0
+        data[4, 4] = 6.0
+        tbl = find_peaks(data, 1.0, min_separation=1)
+        assert len(tbl) == 2
+
+        tbl = find_peaks(data, 1.0, min_separation=1.5)
+        assert len(tbl) == 1
+        assert tbl['peak_value'][0] == 6.0
 
     def test_min_separation_rejects_non_maxima(self):
         """
