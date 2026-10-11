@@ -1,10 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Photutils is an Astropy affiliated package to provide tools for
+Photutils is an Astropy coordinated package that provides tools for
 detecting and performing photometry of astronomical sources.
 
-It also has tools for background estimation, ePSF building, PSF
-matching, radial profiles, centroiding, and morphological measurements.
+It also has tools for background estimation, image segmentation, ePSF
+building, PSF matching, radial profiles, centroiding, elliptical
+isophote fitting, and morphological measurements.
 """
 
 try:
@@ -22,7 +23,7 @@ new column names instead of deprecated-column subclasses. Use this with
 caution, as it is a global flag that affects all photutils functions
 across all packages that return tables.
 
-A better approach is to use photutils.use_future_column_names as a
+A better approach is to use ``photutils.use_future_column_names`` as a
 context manager. This provides a scoped override without modifying the
 global flag::
 

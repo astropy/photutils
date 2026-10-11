@@ -24,10 +24,11 @@ def gini(data, mask=None):
     .. math::
 
         G = \frac{1}{\overline{|x|} \, n \, (n - 1)}
-            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
+            \sum_{i=1}^{n} (2i - n - 1) \left | x_i \right |
 
-    where :math:`\overline{|x|}` is the mean of the absolute value of
-    all pixel values :math:`x_i`. If all pixel values are zero, the Gini
+    where the :math:`n` pixel values :math:`x_i` are sorted in order
+    of increasing absolute value and :math:`\overline{|x|}` is the mean
+    of their absolute values. If all pixel values are zero, the Gini
     coefficient is zero.
 
     The Gini coefficient is a way of measuring the inequality in a given
@@ -38,10 +39,10 @@ def gini(data, mask=None):
     1 represents a galaxy image with all its light concentrated in just
     one pixel.
 
-    Usually Gini's measurement needs some sort of preprocessing for
-    defining the galaxy region in the image based on the quality of the
-    input data. As there is not a general standard for doing this, this
-    is left for the user.
+    Measuring the Gini coefficient usually requires some preprocessing
+    to define the galaxy region in the image, based on the quality of
+    the input data. There is no general standard for doing this, so it
+    is left to the user.
 
     Negative pixel values are used via their absolute value. Invalid
     values (NaN and inf) in the input are automatically excluded from
@@ -56,7 +57,7 @@ def gini(data, mask=None):
         array may have any dimensionality (e.g., a 1D array or a 2D
         image), with its values treated as a flattened set.
 
-    mask : array_like, optional
+    mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where `True`
         values indicate masked pixels. Masked pixels are excluded from
         the calculation.

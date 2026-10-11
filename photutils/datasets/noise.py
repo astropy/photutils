@@ -36,6 +36,11 @@ def apply_poisson_noise(data, seed=None):
         The data array after applying Poisson noise. The output array
         will have the same dtype as the input ``data``.
 
+    Raises
+    ------
+    ValueError
+        If ``data`` contains any non-finite or negative values.
+
     See Also
     --------
     make_noise_image
@@ -99,10 +104,9 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         and Poisson noise.
 
     stddev : float, optional
-        The standard deviation of the Gaussian noise to add to the
-        output image. Required for Gaussian noise and ignored for
-        Poisson noise (the variance of the Poisson distribution is equal
-        to its mean).
+        The standard deviation of the Gaussian distribution. Required
+        for Gaussian noise and ignored for Poisson noise (the variance
+        of the Poisson distribution is equal to its mean).
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -111,7 +115,14 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     Returns
     -------
     image : 2D `~numpy.ndarray`
-        Image containing random noise.
+        Image containing random noise. The dtype is float for Gaussian
+        noise and int for Poisson noise.
+
+    Raises
+    ------
+    ValueError
+        If ``mean`` is `None`, if ``stddev`` is `None` for Gaussian
+        noise, or if ``distribution`` is invalid.
 
     See Also
     --------

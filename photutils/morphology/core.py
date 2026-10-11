@@ -19,7 +19,8 @@ def data_properties(data, mask=None, background=None, wcs=None):
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The 2D array of the image.
+        The 2D array of the image. Non-finite values (NaN and inf) are
+        automatically masked.
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -33,7 +34,8 @@ def data_properties(data, mask=None, background=None, wcs=None):
         then ``background`` must have the same units. The input
         ``background`` is not subtracted from ``data``, which should
         already be background-subtracted. Providing it only enables
-        background-related properties to be measured.
+        background-related properties to be measured. If `None`, then
+        all background properties will be NaN.
 
     wcs : WCS object or `None`, optional
         A world coordinate system (WCS) transformation that

@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for making simulated images for documentation examples and tests.
+Tools for making simulated images from astropy models.
 """
 
 import astropy.units as u
@@ -40,11 +40,11 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     model : 2D `astropy.modeling.Model`
         The 2D model to be used to render the sources. The model must
-        be two-dimensional where it accepts 2 inputs (i.e., (x, y)) and
-        has 1 output. The model must have parameters for the x and y
-        positions of the sources. Typically, these parameters are named
-        'x_0' and 'y_0', but the parameter names can be specified using
-        the ``x_name`` and ``y_name`` keywords.
+        be two-dimensional, meaning that it accepts 2 inputs (i.e.,
+        (x, y)) and has 1 output. The model must have parameters for
+        the x and y positions of the sources. Typically, these
+        parameters are named 'x_0' and 'y_0', but the parameter names
+        can be specified using the ``x_name`` and ``y_name`` keywords.
 
     params_table : `~astropy.table.Table`
         A table containing the model parameters for each source. Each
@@ -54,31 +54,32 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         and y positions of the sources. The column names for the x
         and y positions can be specified using the ``x_name`` and
         ``y_name`` keywords. Model parameters not defined in the table
-        or ``params_map`` will be set to the ``model`` default value. To
+        or ``params_map`` keep the values of the input ``model``. To
         attach units to model parameters, ``params_table`` must be input
         as a `~astropy.table.QTable`. Rows that contain any non-finite
         model parameters or a non-finite ``'local_bkg'`` value will be
         skipped.
 
-        If the table contains a column named 'model_shape', then
+        If the table contains a column named ``'model_shape'``, then
         the values in that column will be used to override the
         ``model_shape`` keyword and model ``bounding_box`` for each
         source. This can be used to render each source with a different
         shape.
 
-        If the table contains a column named 'local_bkg', then the
+        If the table contains a column named ``'local_bkg'``, then the
         per-pixel local background values in that column will be
         added to each model source over the region defined by its
-        ``model_shape``. The 'local_bkg' column must have the same
+        ``model_shape``. The ``'local_bkg'`` column must have the same
         flux units as the output image (e.g., if the input ``model``
         has 'amplitude' or 'flux' parameters with units). Including
-        'local_bkg' should be used with care, especially in crowded
+        ``'local_bkg'`` should be used with care, especially in crowded
         fields where the ``model_shape`` of sources overlap (see Notes
         below).
 
-        Except for ``model_shape`` and ``local_bkg`` column names,
-        column names that do not match model parameters will be ignored
-        unless ``params_map`` is input.
+        Except for the ``'model_shape'`` and ``'local_bkg'`` columns,
+        columns whose names do not match a model parameter name are
+        ignored unless they are mapped to a model parameter by
+        ``params_map``.
 
     model_shape : 2-tuple of int, int, or `None`, optional
         The shape around the (x, y) center of each source that will be
@@ -86,9 +87,10 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         integer, then a square shape of size ``model_shape`` will be
         used. If `None`, then the bounding box of the model will be
         used (which can optionally be scaled using the ``bbox_factor``
-        keyword if the model supports it). This keyword must be
-        specified if the model does not have a ``bounding_box``
-        attribute. If specified, this keyword overrides the model
+        keyword if the model supports it). If the model does not have
+        a ``bounding_box`` attribute, then either this keyword or a
+        ``'model_shape'`` column in ``params_table`` must be
+        specified. If specified, this keyword overrides the model
         ``bounding_box`` attribute. To use a different shape for
         each source, include a column named ``'model_shape'`` in the
         ``params_table``. For that case, this keyword is ignored.
@@ -106,13 +108,15 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     x_name : str, optional
         The name of the ``model`` parameter that corresponds to the x
-        position of the sources. If ``params_map`` is not input, then
-        this value must also be a column name in ``params_table``.
+        position of the sources. This value must also be a column name
+        in ``params_table`` unless ``params_map`` maps this parameter
+        to a different column.
 
     y_name : str, optional
         The name of the ``model`` parameter that corresponds to the y
-        position of the sources. If ``params_map`` is not input, then
-        this value must also be a column name in ``params_table``.
+        position of the sources. This value must also be a column name
+        in ``params_table`` unless ``params_map`` maps this parameter
+        to a different column.
 
     params_map : dict or None, optional
         A dictionary mapping the model parameter names to the column
@@ -123,9 +127,11 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         if the input column name is 'flux_f200w' and the model parameter
         name is 'flux', then use ``params_map={'flux': 'flux_f200w'}``.
         This dictionary may also be used to map the model x and y
-        parameters to different columns than ``x_name`` and ``y_name``,
-        but the ``x_name`` and ``y_name`` keys must be included in the
-        dictionary.
+        parameters to columns with names other than ``x_name`` and
+        ``y_name``. In that case, the dictionary keys for the positions
+        must be the ``x_name`` and ``y_name`` parameter names. If
+        those keys are not in the dictionary, the ``x_name`` and
+        ``y_name`` columns are used.
 
     discretize_method : {'center', 'interp', 'oversample', 'integrate'}, \
             optional
@@ -149,7 +155,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
         * ``'integrate'``
           Discretize model by integrating the model over the pixel bins
-          using `scipy.integrate.quad`. This mode conserves the model
+          using `scipy.integrate.dblquad`. This mode conserves the model
           integral on a subpixel scale, but it is *extremely* slow.
 
         The ``'oversample'`` or ``'integrate'`` method should be used
@@ -170,13 +176,31 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     Returns
     -------
-    array : 2D `~numpy.ndarray`
-        The rendered image containing the model sources.
+    array : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        The rendered image containing the model sources. The image is
+        a `~astropy.units.Quantity` if the model output has units
+        (e.g., if ``params_table`` is a `~astropy.table.QTable` with a
+        flux column that has units).
+
+    Raises
+    ------
+    TypeError
+        If ``model`` is not an `astropy.modeling.Model` instance or if
+        ``params_table`` is not an `~astropy.table.Table`.
+
+    ValueError
+        If ``model`` does not have 2 inputs and 1 output, if
+        ``discretize_method`` is invalid, if a ``params_map`` key is
+        not a model parameter name, if a required column is not in
+        ``params_table``, if the model has no ``bounding_box``
+        attribute and no model shape is specified, or if the
+        ``'local_bkg'`` column does not have the same flux units as
+        the output image.
 
     Notes
     -----
     The local background value around each source is optionally included
-    using the ``local_bkg`` column in the input ``params_table``. This
+    using the ``'local_bkg'`` column in the input ``params_table``. This
     local background is added to each source over its ``model_shape``
     region. In regions where the ``model_shape`` of sources overlap,
     the local background will be added multiple times. This is not an

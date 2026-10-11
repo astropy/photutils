@@ -29,12 +29,14 @@ def _get_path(filename, *, location='local', cache=True, show_progress=False):
     filename : str
         File name in the local or remote data folder.
 
-    location : {'local', 'remote', 'photutils-datasets'}
+    location : {'local', 'remote', 'photutils-datasets'}, optional
         File location. ``'local'`` means bundled with ``photutils``.
+        If the file is not bundled, the astropy data server is tried.
         ``'remote'`` means the astropy data server (or the
         photutils-datasets repo as a backup) or the Astropy cache
         on your machine. ``'photutils-datasets'`` means the
         photutils-datasets repo or the Astropy cache on your machine.
+        The default is ``'local'``.
 
     cache : bool, optional
         Whether to cache the contents of remote URLs. Default is `True`.
@@ -86,12 +88,14 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     filename : str
         File name in the local or remote data folder.
 
-    location : {'local', 'remote', 'photutils-datasets'}
+    location : {'local', 'remote', 'photutils-datasets'}, optional
         File location. ``'local'`` means bundled with ``photutils``.
+        If the file is not bundled, the astropy data server is tried.
         ``'remote'`` means the astropy data server (or the
         photutils-datasets repo as a backup) or the Astropy cache
         on your machine. ``'photutils-datasets'`` means the
         photutils-datasets repo or the Astropy cache on your machine.
+        The default is ``'local'``.
 
     cache : bool, optional
         Whether to cache the contents of remote URLs. Default is `True`.
@@ -171,7 +175,8 @@ def load_spitzer_catalog(show_progress=False):
     Returns
     -------
     catalog : `~astropy.table.Table`
-        The catalog of sources.
+        The catalog of sources, with Galactic coordinates, 4.5 micron
+        fluxes, and magnitudes in the four IRAC channels.
     """
     path = _get_path('spitzer_example_catalog.xml', location='remote',
                      show_progress=show_progress)
@@ -185,7 +190,7 @@ def load_irac_psf(channel, show_progress=False):
 
     Parameters
     ----------
-    channel : int (1-4)
+    channel : {1, 2, 3, 4}
         The IRAC channel number:
 
         * Channel 1:  3.6 microns
@@ -200,7 +205,14 @@ def load_irac_psf(channel, show_progress=False):
     Returns
     -------
     hdu : `~astropy.io.fits.ImageHDU`
-        The IRAC PSF in a FITS image HDU.
+        The IRAC PSF in a FITS image HDU. The PSF is oversampled by a
+        factor of 4 relative to the detector pixels and is normalized
+        to a sum of 1.
+
+    Raises
+    ------
+    ValueError
+        If ``channel`` is not 1, 2, 3, or 4.
     """
     channel = int(channel)
     if channel < 1 or channel > 4:

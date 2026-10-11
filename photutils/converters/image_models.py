@@ -103,19 +103,19 @@ class STDPSFGridConverter(Converter):
     tags = ('tag:astropy.org:photutils/psf/stdpsf_grid-*',)
     types = ('photutils.psf.STDPSFGrid',)
 
-    def to_yaml_tree(self, model, tag, ctx):  # noqa: ARG002
+    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
         # The grid structure is stored as separate properties, as it is
         # for GriddedPSFModel, leaving 'meta' for the remaining metadata
         # (e.g., 'STDPSF', 'detector', 'filter'). STDPSFGrid consumes
         # these three items when it is initialized, so they never appear
         # in its meta attribute.
         return {
-            'data': model.data,
-            'grid_xypos': np.asarray(model.grid_xypos),
-            'grid_shape': model.grid_shape,
+            'data': obj.data,
+            'grid_xypos': np.asarray(obj.grid_xypos),
+            'grid_shape': obj.grid_shape,
             'oversampling': tuple(int(value)
-                                  for value in model.oversampling),
-            'meta': dict(model.meta),
+                                  for value in obj.oversampling),
+            'meta': dict(obj.meta),
         }
 
     def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
