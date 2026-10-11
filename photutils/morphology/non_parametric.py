@@ -55,7 +55,9 @@ def gini(data, mask=None):
     data : array_like
         The data array or object that can be converted to an array. The
         array may have any dimensionality (e.g., a 1D array or a 2D
-        image), with its values treated as a flattened set.
+        image), with its values treated as a flattened set. If ``data``
+        is a `~numpy.ma.MaskedArray`, its mask is combined with the
+        input ``mask``.
 
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where `True`
@@ -74,15 +76,22 @@ def gini(data, mask=None):
         If ``mask`` is provided and does not have the same shape as
         ``data``.
     """
+    data_mask = None
+    if isinstance(data, np.ma.MaskedArray):
+        data_mask = np.ma.getmaskarray(data)
+        data = data.data
     data = np.asarray(data)
     if mask is not None:
         mask = np.asarray(mask, dtype=bool)
         if mask.shape != data.shape:
             msg = 'mask must have the same shape as data'
             raise ValueError(msg)
-        values = np.ravel(data[~mask])
+        if data_mask is not None:
+            mask = mask | data_mask
     else:
-        values = np.ravel(data)
+        mask = data_mask
+
+    values = np.ravel(data) if mask is None else np.ravel(data[~mask])
 
     # Exclude invalid values (NaN, inf)
     values = np.abs(values[np.isfinite(values)])

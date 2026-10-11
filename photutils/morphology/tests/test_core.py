@@ -128,6 +128,36 @@ def test_data_properties_all_masked():
         data_properties(data, mask=mask)
 
 
+def test_data_properties_masked_array():
+    """
+    Test that the mask of a masked array is used and is combined with
+    the ``mask`` keyword.
+    """
+    rng = np.random.default_rng(0)
+    data = rng.random((11, 15)) + 1.0
+    mask1 = np.zeros(data.shape, dtype=bool)
+    mask1[2:5, 3:7] = True
+    mask2 = np.zeros(data.shape, dtype=bool)
+    mask2[8:, :4] = True
+    data_ma = np.ma.MaskedArray(data, mask=mask1)
+
+    props1 = data_properties(data_ma)
+    props2 = data_properties(data, mask=mask1)
+    assert props1.area == props2.area
+    assert_allclose(props1.centroid, props2.centroid)
+    assert_allclose(props1.segment_flux, props2.segment_flux)
+
+    props1 = data_properties(data_ma, mask=mask2)
+    props2 = data_properties(data, mask=mask1 | mask2)
+    assert props1.area == props2.area
+    assert_allclose(props1.centroid, props2.centroid)
+
+    data_ma = np.ma.MaskedArray(data, mask=True)
+    match = 'All pixels in data are masked'
+    with pytest.raises(ValueError, match=match):
+        data_properties(data_ma)
+
+
 def test_data_properties_quantity():
     """
     Test that ``~astropy.units.Quantity`` input is accepted.

@@ -20,7 +20,9 @@ def data_properties(data, mask=None, background=None, wcs=None):
     ----------
     data : array_like or `~astropy.units.Quantity`
         The 2D array of the image. Non-finite values (NaN and inf) are
-        automatically masked.
+        automatically masked. If ``data`` is a
+        `~numpy.ma.MaskedArray`, its mask is combined with the input
+        ``mask``.
 
     mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -72,6 +74,10 @@ def data_properties(data, mask=None, background=None, wcs=None):
     # Prevent circular import
     from photutils.segmentation import SegmentationImage, SourceCatalog
 
+    data_mask = None
+    if isinstance(data, np.ma.MaskedArray):
+        data_mask = np.ma.getmaskarray(data)
+        data = data.data
     data = np.asanyarray(data)
     if data.ndim != 2:
         msg = 'data must be a 2D array'
@@ -86,6 +92,12 @@ def data_properties(data, mask=None, background=None, wcs=None):
         if mask.shape != data.shape:
             msg = 'mask must have the same shape as data'
             raise ValueError(msg)
+        if data_mask is not None:
+            mask = mask | data_mask
+    else:
+        mask = data_mask
+
+    if mask is not None:
         if np.all(mask):
             msg = 'All pixels in data are masked'
             raise ValueError(msg)

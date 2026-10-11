@@ -62,6 +62,29 @@ def test_gini_mask():
     assert gini(data2, mask=mask2) == 1.0
 
 
+def test_gini_masked_array():
+    """
+    Test that the mask of a masked array is used and is combined with
+    the ``mask`` keyword.
+    """
+    rng = np.random.default_rng(0)
+    data = rng.random((20, 20))
+    data[0, 0] = 1000.0
+    data[5, 5] = 500.0
+    mask1 = np.zeros(data.shape, dtype=bool)
+    mask1[0, 0] = True
+    mask2 = np.zeros(data.shape, dtype=bool)
+    mask2[5, 5] = True
+    data_ma = np.ma.MaskedArray(data, mask=mask1)
+
+    assert gini(data_ma) == gini(data, mask=mask1)
+    assert gini(data_ma) != gini(data)
+    assert gini(data_ma, mask=mask2) == gini(data, mask=mask1 | mask2)
+
+    data_ma = np.ma.MaskedArray(data, mask=True)
+    assert np.isnan(gini(data_ma))
+
+
 def test_gini_mask_invalid_shape():
     """
     Test that mask must have the same shape as data.

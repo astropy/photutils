@@ -755,6 +755,10 @@ Bug Fixes
     confusing units-mismatch error was raised when ``data`` was a
     ``Quantity``. [#2370]
 
+  - Fixed ``data_properties`` and ``gini`` to use the mask of a
+    ``numpy.ma.MaskedArray`` input. Previously, the mask was ignored
+    and the masked values were included in the calculations. [#2499]
+
 - ``photutils.profiles``
 
   - Fixed ``RadialProfile.data_profile`` so that its values are always
