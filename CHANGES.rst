@@ -1330,6 +1330,25 @@ API Changes
     ``use_exact`` and ``subpixels`` inputs, raising a ``ValueError``
     for values outside the documented ranges. [#2369]
 
+- ``photutils.profiles``
+
+  - The encircled energy methods of the curve-of-growth classes
+    (``calc_ee_at_radius`` and ``calc_radius_at_ee`` of
+    ``CurveOfGrowth`` and ``EllipticalCurveOfGrowth``, and
+    ``calc_ee_at_half_size`` and ``calc_half_size_at_ee`` of
+    ``EnsquaredCurveOfGrowth``) now interpolate the running maximum of
+    the profile, so the interpolated curve never decreases with radius
+    for a noisy profile. The radius methods return the smallest radius
+    at which that curve reaches the given energy and are now the exact
+    inverse of the energy methods. Previously, they used only the part
+    of the profile before its first decrease, returned NaN for larger
+    energies, and raised a ``ValueError`` if the profile did not
+    increase at its smallest radii. [#2496]
+
+  - The encircled energy methods of the curve-of-growth classes now
+    return a ``Quantity`` when the input data has units, and the radius
+    methods accept a ``Quantity`` energy. [#2496]
+
 - ``photutils.psf``
 
   - The default ``recentering_func`` of ``EPSFBuilder`` is now

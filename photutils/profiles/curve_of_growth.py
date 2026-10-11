@@ -6,6 +6,7 @@ Tools for generating curves of growth.
 import abc
 from functools import cached_property
 
+import astropy.units as u
 import numpy as np
 from scipy.interpolate import PchipInterpolator
 
@@ -67,6 +68,82 @@ class _CurveOfGrowthBase(ProfileBase):
         `~numpy.ndarray`.
         """
         return self._photometry[2]
+
+    def _monotonic_curve(self):
+        """
+        The monotonic curve used by the interpolation methods.
+
+        The curve is the running maximum of the profile, which removes
+        the decreases caused by noise. Non-finite profile values are
+        excluded.
+
+        Returns
+        -------
+        radius : 1D `~numpy.ndarray`
+            The profile radii with a finite profile value.
+
+        profile : 1D `~numpy.ndarray`
+            The running maximum of the profile, without units.
+
+        unit : `~astropy.units.Unit` or `None`
+            The profile unit.
+        """
+        profile = self.profile
+        unit = getattr(profile, 'unit', None)
+        if unit is not None:
+            profile = profile.value
+
+        finite = np.isfinite(profile)
+        if np.count_nonzero(finite) < 2:
+            msg = ('The curve-of-growth profile must have at least two '
+                   'finite values to be interpolated.')
+            raise ValueError(msg)
+
+        return (self.radius[finite], np.maximum.accumulate(profile[finite]),
+                unit)
+
+    def _calc_ee(self, radius):
+        """
+        Calculate the enclosed energy at the given radii by
+        interpolating the monotonic curve.
+        """
+        xvals, profile, unit = self._monotonic_curve()
+        ee = PchipInterpolator(xvals, profile, extrapolate=False)(radius)
+        if unit is not None:
+            ee = ee << unit
+        return ee
+
+    def _calc_size(self, ee):
+        """
+        Calculate the smallest radius at which the interpolated
+        monotonic curve reaches the given enclosed energies.
+        """
+        xvals, profile, unit = self._monotonic_curve()
+        if isinstance(ee, u.Quantity):
+            if unit is None:
+                unit = u.dimensionless_unscaled
+            ee = ee.to_value(unit)
+        ee = np.asarray(ee, dtype=float)
+
+        interp = PchipInterpolator(xvals, profile, extrapolate=False)
+        result = np.full(ee.shape, np.nan)
+        for idx, value in np.ndenumerate(ee):
+            if not profile[0] <= value <= profile[-1]:
+                continue  # outside the profile range, or NaN
+
+            # The curve never decreases, so it first reaches the value
+            # between the last knot below the value and the first knot
+            # at or above it
+            knot = np.searchsorted(profile, value, side='left')
+            if profile[knot] == value:
+                result[idx] = xvals[knot]
+            else:
+                roots = interp.solve(value, extrapolate=False)
+                inside = ((roots >= xvals[knot - 1])
+                          & (roots <= xvals[knot]))
+                result[idx] = roots[inside].min()
+
+        return result
 
 
 @_update_method_subpixels_docstring
@@ -329,19 +406,36 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
+        The interpolation uses the running maximum of the profile.
+        Wherever the profile decreases (e.g., because of noise), its
+        value is replaced by the largest value at a smaller radius. The
+        encircled energy therefore never decreases with radius. At an
+        input radius where the profile has decreased, the result is
+        larger than the corresponding `profile` value.
+
         Parameters
         ----------
-        radius : float or 1D `~numpy.ndarray`
+        radius : float or `~numpy.ndarray`
             The circular radius/radii.
 
         Returns
         -------
-        ee : `~numpy.ndarray`
-            The encircled energy at each radius/radii. Returns NaN for
-            radii outside the range of the profile data.
+        ee : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The encircled energy at each radius. It is a
+            `~astropy.units.Quantity` with the units of `profile` if the
+            input ``data`` has units. Returns NaN for radii outside the
+            range of the profile data.
+
+        Raises
+        ------
+        ValueError
+            If the profile has fewer than two finite values.
+
+        See Also
+        --------
+        calc_radius_at_ee
         """
-        return PchipInterpolator(self.radius, self.profile,
-                                 extrapolate=False)(radius)
+        return self._calc_ee(radius)
 
     def calc_radius_at_ee(self, ee):
         """
@@ -355,33 +449,37 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
-        The interpolator uses only the leading part of the profile, up
-        to the first radius where the curve-of-growth profile stops
-        strictly increasing (or becomes non-finite). Profile values
-        beyond that point are ignored.
+        This method is the inverse of `calc_ee_at_radius`. It uses the
+        same monotonic curve, which is the interpolated running maximum
+        of the profile, and returns the smallest radius at which that
+        curve reaches the encircled energy. Where the curve is flat,
+        larger values of the radius have the same encircled energy.
+        Where a noisy profile is nearly flat, the radius of a given
+        encircled energy is poorly constrained.
 
         Parameters
         ----------
-        ee : float or 1D `~numpy.ndarray`
-            The encircled energy.
+        ee : float, `~numpy.ndarray`, or `~astropy.units.Quantity`
+            The encircled energy. A value without units is assumed to be
+            in the units of `profile`.
 
         Returns
         -------
         radius : `~numpy.ndarray`
-            The radius at each encircled energy. Returns NaN for
-            encircled energies outside the range of the leading strictly
-            increasing part of the profile.
+            The radius in pixels at each encircled energy. Returns NaN
+            for encircled energies outside the range of the profile
+            data.
 
         Raises
         ------
         ValueError
-            If the profile is not strictly increasing over at least its
-            first two values.
-        """
-        radius, profile = self._trim_to_monotonic(
-            self.radius, self.profile, 'curve-of-growth')
+            If the profile has fewer than two finite values.
 
-        return PchipInterpolator(profile, radius, extrapolate=False)(ee)
+        See Also
+        --------
+        calc_ee_at_radius
+        """
+        return self._calc_size(ee)
 
 
 @_update_method_subpixels_docstring
@@ -644,19 +742,36 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         that its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``half_sizes``.
 
+        The interpolation uses the running maximum of the profile.
+        Wherever the profile decreases (e.g., because of noise), its
+        value is replaced by the largest value at a smaller half-size.
+        The ensquared energy therefore never decreases with half-size.
+        At an input half-size where the profile has decreased, the
+        result is larger than the corresponding `profile` value.
+
         Parameters
         ----------
-        half_size : float or 1D `~numpy.ndarray`
+        half_size : float or `~numpy.ndarray`
             The square half side length(s).
 
         Returns
         -------
-        ee : `~numpy.ndarray`
-            The ensquared energy at each half-size. Returns NaN for
-            half-sizes outside the range of the profile data.
+        ee : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The ensquared energy at each half-size. It is a
+            `~astropy.units.Quantity` with the units of `profile` if the
+            input ``data`` has units. Returns NaN for half-sizes outside
+            the range of the profile data.
+
+        Raises
+        ------
+        ValueError
+            If the profile has fewer than two finite values.
+
+        See Also
+        --------
+        calc_half_size_at_ee
         """
-        return PchipInterpolator(self.half_size, self.profile,
-                                 extrapolate=False)(half_size)
+        return self._calc_ee(half_size)
 
     def calc_half_size_at_ee(self, ee):
         """
@@ -670,35 +785,37 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         that its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``half_sizes``.
 
-        The interpolator uses only the leading part of the profile,
-        up to the first half-size where the ensquared curve-of-growth
-        profile stops strictly increasing (or becomes non-finite).
-        Profile values beyond that point are ignored.
+        This method is the inverse of `calc_ee_at_half_size`. It uses
+        the same monotonic curve, which is the interpolated running
+        maximum of the profile, and returns the smallest half-size at
+        which that curve reaches the ensquared energy. Where the curve
+        is flat, larger values of the half-size have the same ensquared
+        energy. Where a noisy profile is nearly flat, the half-size of a
+        given ensquared energy is poorly constrained.
 
         Parameters
         ----------
-        ee : float or 1D `~numpy.ndarray`
-            The ensquared energy.
+        ee : float, `~numpy.ndarray`, or `~astropy.units.Quantity`
+            The ensquared energy. A value without units is assumed to be
+            in the units of `profile`.
 
         Returns
         -------
         half_size : `~numpy.ndarray`
-            The half-size at each ensquared energy. Returns NaN for
-            ensquared energies outside the range of the leading strictly
-            increasing part of the profile.
+            The half-size in pixels at each ensquared energy. Returns
+            NaN for ensquared energies outside the range of the profile
+            data.
 
         Raises
         ------
         ValueError
-            If the profile is not strictly increasing over at least its
-            first two values.
-        """
-        half_size, profile = self._trim_to_monotonic(
-            self.half_size, self.profile,
-            'ensquared curve-of-growth')
+            If the profile has fewer than two finite values.
 
-        return PchipInterpolator(profile, half_size,
-                                 extrapolate=False)(ee)
+        See Also
+        --------
+        calc_ee_at_half_size
+        """
+        return self._calc_size(ee)
 
 
 @_update_method_subpixels_docstring
@@ -972,19 +1089,37 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
+        The interpolation uses the running maximum of the profile.
+        Wherever the profile decreases (e.g., because of noise), its
+        value is replaced by the largest value at a smaller
+        semimajor-axis length. The encircled energy therefore never
+        decreases with semimajor-axis length. At an input semimajor-axis
+        length where the profile has decreased, the result is larger
+        than the corresponding `profile` value.
+
         Parameters
         ----------
-        radius : float or 1D `~numpy.ndarray`
+        radius : float or `~numpy.ndarray`
             The semimajor-axis length(s).
 
         Returns
         -------
-        ee : `~numpy.ndarray`
-            The encircled energy at each radius. Returns NaN for radii
-            outside the range of the profile data.
+        ee : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The encircled energy at each semimajor-axis length. It is a
+            `~astropy.units.Quantity` with the units of `profile` if the
+            input ``data`` has units. Returns NaN for semimajor-axis
+            lengths outside the range of the profile data.
+
+        Raises
+        ------
+        ValueError
+            If the profile has fewer than two finite values.
+
+        See Also
+        --------
+        calc_radius_at_ee
         """
-        return PchipInterpolator(self.radius, self.profile,
-                                 extrapolate=False)(radius)
+        return self._calc_ee(radius)
 
     def calc_radius_at_ee(self, ee):
         """
@@ -998,31 +1133,35 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         its maximum value is 1. For noisy data, the maximum may not
         occur at the largest input ``radii``.
 
-        The interpolator uses only the leading part of the profile,
-        up to the first semimajor-axis length where the elliptical
-        curve-of-growth profile stops strictly increasing (or becomes
-        non-finite). Profile values beyond that point are ignored.
+        This method is the inverse of `calc_ee_at_radius`. It uses the
+        same monotonic curve, which is the interpolated running maximum
+        of the profile, and returns the smallest semimajor-axis length
+        at which that curve reaches the encircled energy. Where the
+        curve is flat, larger values of the semimajor-axis length have
+        the same encircled energy. Where a noisy profile is nearly flat,
+        the semimajor-axis length of a given encircled energy is poorly
+        constrained.
 
         Parameters
         ----------
-        ee : float or 1D `~numpy.ndarray`
-            The encircled energy.
+        ee : float, `~numpy.ndarray`, or `~astropy.units.Quantity`
+            The encircled energy. A value without units is assumed to be
+            in the units of `profile`.
 
         Returns
         -------
         radius : `~numpy.ndarray`
-            The semimajor-axis length at each encircled energy. Returns
-            NaN for encircled energies outside the range of the leading
-            strictly increasing part of the profile.
+            The semimajor-axis length in pixels at each encircled
+            energy. Returns NaN for encircled energies outside the range
+            of the profile data.
 
         Raises
         ------
         ValueError
-            If the profile is not strictly increasing over at least its
-            first two values.
-        """
-        radius, profile = self._trim_to_monotonic(
-            self.radius, self.profile,
-            'elliptical curve-of-growth')
+            If the profile has fewer than two finite values.
 
-        return PchipInterpolator(profile, radius, extrapolate=False)(ee)
+        See Also
+        --------
+        calc_ee_at_radius
+        """
+        return self._calc_size(ee)
