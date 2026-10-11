@@ -25,6 +25,10 @@ class _CurveOfGrowthBase(ProfileBase):
     within the apertures defined by the ``apertures`` property.
     """
 
+    # The name of the size argument of the interpolation methods, used
+    # in validation error messages. Subclasses may override this.
+    _size_name = 'radius'
+
     @property
     @abc.abstractmethod
     def apertures(self):
@@ -102,6 +106,11 @@ class _CurveOfGrowthBase(ProfileBase):
         Calculate the enclosed energy at the given radii by
         interpolating the profile.
         """
+        if isinstance(radius, u.Quantity):
+            msg = (f'{self._size_name} must be in pixels and cannot be a '
+                   'Quantity')
+            raise TypeError(msg)
+
         xvals, profile, unit = self._finite_profile()
         ee = PchipInterpolator(xvals, profile, extrapolate=False)(radius)
         if unit is not None:
@@ -412,8 +421,9 @@ class CurveOfGrowth(_CurveOfGrowthBase):
 
         Parameters
         ----------
-        radius : float or `~numpy.ndarray`
-            The circular radius/radii.
+        radius : float or array_like
+            The circular radius/radii in pixels. It cannot be a
+            `~astropy.units.Quantity`.
 
         Returns
         -------
@@ -425,8 +435,8 @@ class CurveOfGrowth(_CurveOfGrowthBase):
 
         Raises
         ------
-        ValueError
-            If the profile has fewer than two finite values.
+        TypeError
+            If ``radius`` is a `~astropy.units.Quantity`.
 
         See Also
         --------
@@ -462,9 +472,11 @@ class CurveOfGrowth(_CurveOfGrowthBase):
 
         Parameters
         ----------
-        ee : float, `~numpy.ndarray`, or `~astropy.units.Quantity`
+        ee : float, array_like, or `~astropy.units.Quantity`
             The encircled energy. A value without units is assumed to be
-            in the units of `profile`.
+            in the units of `profile`. A `~astropy.units.Quantity` is
+            converted to the units of `profile`, and must be
+            dimensionless if `profile` has no units.
 
         Returns
         -------
@@ -475,8 +487,9 @@ class CurveOfGrowth(_CurveOfGrowthBase):
 
         Raises
         ------
-        ValueError
-            If the profile has fewer than two finite values.
+        `~astropy.units.UnitConversionError`
+            If ``ee`` is a `~astropy.units.Quantity` with units that
+            cannot be converted to the units of `profile`.
 
         See Also
         --------
@@ -674,6 +687,7 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
     # The user-facing name of the sizes parameter, used in validation
     # error messages
     _radii_name = 'half_sizes'
+    _size_name = 'half_size'
 
     def __init__(self, data, xycen, half_sizes, *, error=None, mask=None,
                  method='exact', subpixels=5):
@@ -751,8 +765,9 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
 
         Parameters
         ----------
-        half_size : float or `~numpy.ndarray`
-            The square half side length(s).
+        half_size : float or array_like
+            The square half side length(s) in pixels. It cannot be a
+            `~astropy.units.Quantity`.
 
         Returns
         -------
@@ -764,8 +779,8 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
 
         Raises
         ------
-        ValueError
-            If the profile has fewer than two finite values.
+        TypeError
+            If ``half_size`` is a `~astropy.units.Quantity`.
 
         See Also
         --------
@@ -801,9 +816,11 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
 
         Parameters
         ----------
-        ee : float, `~numpy.ndarray`, or `~astropy.units.Quantity`
+        ee : float, array_like, or `~astropy.units.Quantity`
             The ensquared energy. A value without units is assumed to be
-            in the units of `profile`.
+            in the units of `profile`. A `~astropy.units.Quantity` is
+            converted to the units of `profile`, and must be
+            dimensionless if `profile` has no units.
 
         Returns
         -------
@@ -814,8 +831,9 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
 
         Raises
         ------
-        ValueError
-            If the profile has fewer than two finite values.
+        `~astropy.units.UnitConversionError`
+            If ``ee`` is a `~astropy.units.Quantity` with units that
+            cannot be converted to the units of `profile`.
 
         See Also
         --------
@@ -1102,8 +1120,9 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
 
         Parameters
         ----------
-        radius : float or `~numpy.ndarray`
-            The semimajor-axis length(s).
+        radius : float or array_like
+            The semimajor-axis length(s) in pixels. It cannot be a
+            `~astropy.units.Quantity`.
 
         Returns
         -------
@@ -1115,8 +1134,8 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
 
         Raises
         ------
-        ValueError
-            If the profile has fewer than two finite values.
+        TypeError
+            If ``radius`` is a `~astropy.units.Quantity`.
 
         See Also
         --------
@@ -1153,9 +1172,11 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
 
         Parameters
         ----------
-        ee : float, `~numpy.ndarray`, or `~astropy.units.Quantity`
+        ee : float, array_like, or `~astropy.units.Quantity`
             The encircled energy. A value without units is assumed to be
-            in the units of `profile`.
+            in the units of `profile`. A `~astropy.units.Quantity` is
+            converted to the units of `profile`, and must be
+            dimensionless if `profile` has no units.
 
         Returns
         -------
@@ -1166,8 +1187,9 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
 
         Raises
         ------
-        ValueError
-            If the profile has fewer than two finite values.
+        `~astropy.units.UnitConversionError`
+            If ``ee`` is a `~astropy.units.Quantity` with units that
+            cannot be converted to the units of `profile`.
 
         See Also
         --------

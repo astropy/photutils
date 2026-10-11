@@ -996,6 +996,11 @@ class TestNonMonotonicInterpolation:
         with pytest.raises(u.UnitConversionError, match=match):
             calc_size(2.0 * u.m)
 
+        # The sizes are in pixels and cannot have units
+        match = 'must be in pixels and cannot be a Quantity'
+        with pytest.raises(TypeError, match=match):
+            calc_ee(2.0 * u.pix)
+
         # A normalized profile is dimensionless
         cog.normalize()
         ee = calc_ee([2.0, 7.0])
@@ -1004,3 +1009,4 @@ class TestNonMonotonicInterpolation:
         assert_allclose(calc_size([0.4, 1.0]), [2, 7])
         assert_allclose(calc_size([0.4, 1.0] * u.dimensionless_unscaled),
                         [2, 7])
+        assert_allclose(calc_size([40.0, 100.0] * u.percent), [2, 7])

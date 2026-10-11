@@ -1346,7 +1346,9 @@ API Changes
 
   - The encircled energy methods of the curve-of-growth classes now
     return a ``Quantity`` when the input data has units, and the radius
-    methods accept a ``Quantity`` energy. [#2496]
+    methods accept a ``Quantity`` energy. The encircled energy methods
+    now raise a ``TypeError`` for a ``Quantity`` radius. Previously,
+    its units were silently dropped. [#2496]
 
 - ``photutils.psf``
 
