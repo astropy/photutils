@@ -541,6 +541,14 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                                 self.cutout_center[1]]
 
     @cached_property
+    def flux(self):
+        """
+        The instrumental fluxes, calculated as the sum of the
+        unconvolved data values within the kernel footprint.
+        """
+        return np.sum(self.cutout_data * self.kernel.mask, axis=(1, 2))
+
+    @cached_property
     def convdata_peak(self):
         """
         The value of the convolved data at the central pixel of each
