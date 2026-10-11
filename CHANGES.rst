@@ -619,6 +619,11 @@ Bug Fixes
     (or could silently select the wrong pixels) when the background
     map was computed. [#2363]
 
+  - Fixed ``BiweightLocationBackground`` and
+    ``BiweightScaleBackgroundRMS`` raising an error for a scalar ``M``
+    input, either for a Python scalar with ``axis=None`` or for any
+    scalar with a positive integer ``axis``. [#2492]
+
   - Fixed ``LocalBackground`` so that non-finite data values in the
     annulus are always excluded. Previously, they were kept (giving
     a non-finite or NaN result) for a custom ``bkg_estimator`` or one

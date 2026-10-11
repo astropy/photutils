@@ -422,6 +422,30 @@ class TestSpecificEstimators:
         assert result2.shape == ()
         assert result1 == result2
 
+    @pytest.mark.parametrize('cls', [BiweightLocationBackground,
+                                     BiweightScaleBackgroundRMS])
+    @pytest.mark.parametrize('m_value', [40.0, 40, np.float64(40.0),
+                                         np.array(40.0)])
+    @pytest.mark.parametrize('axis', [None, 0, 1, -1, (0, 2), (0, 1, 2)])
+    def test_biweight_scalar_location(self, cls, m_value, axis):
+        """
+        Test that a scalar ``M`` works for any ``axis`` and gives the
+        same result as an ``M`` array with the shape of the result.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(40.0, 3.0, (4, 5, 25))
+        shape = () if axis is None else tuple(np.delete(data.shape, axis))
+
+        result = cls(M=m_value, sigma_clip=None)(data, axis=axis)
+        expected = cls(M=np.full(shape, 40.0), sigma_clip=None)(data,
+                                                                axis=axis)
+        assert np.shape(result) == shape
+        assert_allclose(result, expected)
+
+        # M changes the result
+        default = cls(sigma_clip=None)(data, axis=axis)
+        assert np.any(result != default)
+
 
 class TestBackgroundRMSEstimators:
     """

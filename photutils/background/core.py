@@ -155,6 +155,40 @@ def _prepare_data(sigma_clip, data, axis):
     return data
 
 
+def _prepare_biweight_location(location, data, axis):
+    """
+    Prepare the ``M`` location input for the astropy biweight functions.
+
+    The astropy biweight functions require ``M`` to be an array with the
+    shape of the result (the shape of ``data`` with ``axis`` removed). A
+    scalar ``M`` is therefore expanded to that shape.
+
+    Parameters
+    ----------
+    location : float, `~numpy.ndarray`, or `None`
+        The input ``M`` value.
+
+    data : `~numpy.ndarray`
+        The data array.
+
+    axis : int, tuple of int, or `None`
+        The axis along which the biweight is calculated.
+
+    Returns
+    -------
+    location : `~numpy.ndarray` or `None`
+        The ``M`` array, or `None` if the input is `None`.
+    """
+    if location is None:
+        return None
+
+    location = np.asanyarray(location)
+    if location.ndim == 0 and axis is not None:
+        shape = tuple(np.delete(np.shape(data), axis))
+        location = np.full(shape, location)
+    return location
+
+
 def _apply_masked(result, masked):
     """
     Optionally return the result as a masked array with NaN values
@@ -619,10 +653,11 @@ class BiweightLocationBackground(BackgroundBase):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
+        m_value = _prepare_biweight_location(self.M, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = biweight_location(data, c=self.c, M=self.M, axis=axis,
+            result = biweight_location(data, c=self.c, M=m_value, axis=axis,
                                        ignore_nan=True)
         return _apply_masked(result, masked)
 
@@ -781,9 +816,10 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background_rms(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
+        m_value = _prepare_biweight_location(self.M, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            result = biweight_scale(data, c=self.c, M=self.M, axis=axis,
+            result = biweight_scale(data, c=self.c, M=m_value, axis=axis,
                                     ignore_nan=True)
         return _apply_masked(result, masked)
