@@ -36,8 +36,8 @@ class LocalBackground:
         A callable object (a function or e.g., an instance of any
         `~photutils.background.BackgroundBase` subclass) used to
         estimate the background in each aperture. The callable object
-        must take in a 1D `~numpy.ndarray` or `~numpy.ma.MaskedArray`.
-        The default is an instance of
+        must take in a 1D `~numpy.ndarray`. Non-finite data values are
+        excluded before it is called. The default is an instance of
         `~photutils.background.MedianBackground` with sigma clipping
         (i.e., sigma-clipped median).
 
@@ -48,8 +48,10 @@ class LocalBackground:
         computation, which divides the annulus positions into chunks
         that are processed concurrently, producing results identical
         to the single-threaded computation. Multithreading is used
-        only for the standard photutils estimator classes (see
-        ``bkg_estimator``). A custom estimator callable uses the serial
+        only when ``bkg_estimator`` is an instance of one of the
+        photutils background or background RMS estimator classes (not
+        a subclass), and for the biweight estimators only with their
+        default ``c`` and ``M``. Any other callable uses the serial
         per-aperture loop.
 
     Examples
@@ -148,10 +150,10 @@ class LocalBackground:
         Measure the local backgrounds for all positions using the
         batched `~photutils.aperture.ApertureStats` machinery.
 
-        This computes the same sigma-clipped statistic as calling the
-        estimator on each annulus, but gathers, clips, and reduces the
-        pixels of all apertures in compiled batch kernels instead of
-        looping over the apertures in Python.
+        This computes the same statistic as calling the estimator on
+        the finite values of each annulus, but gathers, clips, and
+        reduces the pixels of all apertures in compiled batch kernels
+        instead of looping over the apertures in Python.
 
         Parameters
         ----------
@@ -222,7 +224,7 @@ class LocalBackground:
 
         Parameters
         ----------
-        x, y : float or 1D float `~numpy.ndarray`
+        x, y : float or 1D array_like of float
             The aperture center (x, y) position(s) at which to create
             the annulus aperture.
 
@@ -267,7 +269,7 @@ class LocalBackground:
         data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The 2D array on which to measure the local background.
 
-        x, y : float or 1D float `~numpy.ndarray`
+        x, y : float or 1D array_like of float
             The aperture center (x, y) position(s) at which to measure
             the local background.
 
@@ -279,8 +281,9 @@ class LocalBackground:
         Returns
         -------
         value : float or 1D float `~numpy.ndarray`
-            The local background values. If ``data`` is
-            a `~astropy.units.Quantity`, the result is a
+            The local background values. A scalar is returned if
+            there is a single position. If ``data`` is a
+            `~astropy.units.Quantity`, the result is a
             `~astropy.units.Quantity` with the same unit. If all pixels
             in an annulus are masked or outside the data bounds, the
             corresponding value will be NaN.

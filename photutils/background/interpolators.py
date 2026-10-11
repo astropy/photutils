@@ -26,7 +26,7 @@ SCIPY_GE_1_16 = minversion('scipy', '1.16')
 
 class _BkgZoomInterpolator:
     """
-    Class to generate a full-sized background and background RMS images
+    Class to generate full-sized background and background RMS images
     from lower-resolution mesh images using the `~scipy.ndimage.zoom`
     (spline) interpolator.
 
@@ -40,9 +40,10 @@ class _BkgZoomInterpolator:
         value must be an integer in the range 0-5. The default is 3
         (bicubic interpolation).
 
-    mode : {'reflect', 'constant', 'nearest', 'wrap'}, optional
+    mode : {'reflect', 'mirror', 'constant', 'nearest', 'wrap'}, optional
         Points outside the boundaries of the input are filled according
-        to the given mode. Default is 'reflect'.
+        to the given mode. Default is 'reflect'. See
+        `scipy.ndimage.zoom` for all of the allowed values.
 
     cval : float, optional
         The value used for points outside the boundaries of the input if
@@ -57,15 +58,16 @@ class _BkgZoomInterpolator:
     -----
     When resizing the mesh to the full image size, the samples are
     considered as the centers of regularly-spaced grid elements (i.e.,
-    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes zoom's
-    behavior consistent with `scipy.ndimage.map_coordinates`.
+    `~scipy.ndimage.zoom` ``grid_mode`` is True). The outer pixel edges
+    of the mesh and of the output image are therefore aligned, instead
+    of the centers of their corner pixels.
 
-    When called with an ``n_threads`` keyword larger than 1 (e.g., by
-    `~photutils.background.Background2D`), the ``mode`` is 'reflect'
-    or 'mirror', and scipy 1.16 or later is installed, the output
-    is computed concurrently over bands of rows. The multithreaded
-    result is identical to the single `~scipy.ndimage.zoom` call up to
-    floating-point rounding.
+    The output is computed concurrently over bands of rows when all
+    of the following hold: the call includes an ``n_threads`` keyword
+    larger than 1 (e.g., from `~photutils.background.Background2D`),
+    ``mode`` is 'reflect' or 'mirror', and scipy 1.16 or later is
+    installed. The multithreaded result is identical to the single
+    `~scipy.ndimage.zoom` call up to floating-point rounding.
     """
 
     def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True):
@@ -92,10 +94,11 @@ class _BkgZoomInterpolator:
         using the same coordinate mapping as `~scipy.ndimage.zoom`
         with ``grid_mode=True``. For the 'reflect' and 'mirror'
         boundary modes, the result is identical to the single
-        `~scipy.ndimage.zoom` call up to floating-point rounding. Other
-        boundary modes have ``grid_mode``-specific edge handling that
-        `~scipy.ndimage.affine_transform` does not reproduce, so the
-        caller must not use this method for them.
+        `~scipy.ndimage.zoom` call up to floating-point rounding. Some
+        of the other boundary modes (e.g., 'constant' and 'wrap') are
+        handled differently at the edges by `~scipy.ndimage.zoom` with
+        ``grid_mode=True``, so the caller must use this method only for
+        'reflect' and 'mirror'.
 
         scipy < 1.16 emits a UserWarning on the 1-D matrix code path of
         `~scipy.ndimage.affine_transform` used here, and suppressing it
@@ -156,18 +159,23 @@ class _BkgZoomInterpolator:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The low-resolution 2D mesh array.
 
         **kwargs : dict
-            Additional keyword arguments passed to the interpolator,
-            including an optional ``n_threads`` value (see the class
-            Notes).
+            Keyword arguments supplied by `Background2D`. The ``shape``
+            (output image shape), ``dtype`` (output dtype for a
+            constant mesh), and ``box_size`` (integer zoom factor along
+            each axis) keys are required. ``n_threads`` is optional (see
+            the class Notes).
 
         Returns
         -------
         result : 2D `~numpy.ndarray`
-            The resized background or background RMS image.
+            The resized background or background RMS image. A constant
+            mesh is returned as a constant array of dtype ``dtype``
+            without interpolation. Otherwise, the result has the dtype
+            of ``data``.
 
         Notes
         -----
@@ -208,7 +216,7 @@ class _BkgZoomInterpolator:
             warning_type=PhotutilsDeprecationWarning)
 class BkgZoomInterpolator(_BkgZoomInterpolator):
     """
-    Class to generate a full-sized background and background RMS images
+    Class to generate full-sized background and background RMS images
     from lower-resolution mesh images using the `~scipy.ndimage.zoom`
     (spline) interpolator.
 
@@ -222,9 +230,10 @@ class BkgZoomInterpolator(_BkgZoomInterpolator):
         value must be an integer in the range 0-5. The default is 3
         (bicubic interpolation).
 
-    mode : {'reflect', 'constant', 'nearest', 'wrap'}, optional
+    mode : {'reflect', 'mirror', 'constant', 'nearest', 'wrap'}, optional
         Points outside the boundaries of the input are filled according
-        to the given mode. Default is 'reflect'.
+        to the given mode. Default is 'reflect'. See
+        `scipy.ndimage.zoom` for all of the allowed values.
 
     cval : float, optional
         The value used for points outside the boundaries of the input if
@@ -239,8 +248,9 @@ class BkgZoomInterpolator(_BkgZoomInterpolator):
     -----
     When resizing the mesh to the full image size, the samples are
     considered as the centers of regularly-spaced grid elements (i.e.,
-    `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes zoom's
-    behavior consistent with `scipy.ndimage.map_coordinates`.
+    `~scipy.ndimage.zoom` ``grid_mode`` is True). The outer pixel edges
+    of the mesh and of the output image are therefore aligned, instead
+    of the centers of their corner pixels.
     """
 
     def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True):
@@ -252,7 +262,7 @@ class BkgZoomInterpolator(_BkgZoomInterpolator):
             warning_type=PhotutilsDeprecationWarning)
 class BkgIDWInterpolator:
     """
-    Class to generate a full-sized background and background RMS images
+    Class to generate full-sized background and background RMS images
     from lower-resolution mesh images using inverse-distance weighting
     (IDW) interpolation (`~photutils.utils.ShepardIDWInterpolator`).
 
@@ -260,22 +270,23 @@ class BkgIDWInterpolator:
 
     Parameters
     ----------
-    leafsize : float, optional
+    leafsize : int, optional
         The number of points at which the k-d tree algorithm switches
         over to brute-force. ``leafsize`` must be positive. See
-        `scipy.spatial.cKDTree` for further information.
+        `scipy.spatial.cKDTree` for further information. The default
+        is 10.
 
     n_neighbors : int, optional
         The maximum number of nearest neighbors to use during the
-        interpolation.
+        interpolation. The default is 10.
 
     power : float, optional
         The power of the inverse distance used for the interpolation
-        weights.
+        weights. The default is 1.0.
 
     regularization : float, optional
         The regularization parameter. It may be used to control the
-        smoothness of the interpolator.
+        smoothness of the interpolator. The default is 0.0.
     """
 
     def __init__(self, *, leafsize=10, n_neighbors=10, power=1.0,
@@ -295,11 +306,16 @@ class BkgIDWInterpolator:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The low-resolution 2D mesh array.
 
         **kwargs : dict
-            Additional keyword arguments passed to the interpolator.
+            Keyword arguments supplied by `Background2D`. The
+            ``shape`` (output image shape), ``dtype`` (output dtype),
+            ``mesh_yxcen`` (the (y, x) centers of the included mesh
+            boxes), and ``mesh_nan_mask`` (mask of the excluded mesh
+            boxes) keys are required. Only the included mesh boxes are
+            used for the interpolation.
 
         Returns
         -------

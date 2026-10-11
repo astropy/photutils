@@ -82,9 +82,11 @@ class Background2D:
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray` or `~astropy.nddata.NDData`
+    data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+            `~astropy.units.Quantity`, or `~astropy.nddata.NDData`
         The 2D array from which to estimate the background and/or
-        background RMS map.
+        background RMS map. If ``data`` is a `~numpy.ma.MaskedArray`,
+        its mask is combined with the input ``mask``.
 
     box_size : int or array_like (int)
         The box size along each axis. If ``box_size`` is a scalar then
@@ -146,28 +148,31 @@ class Background2D:
         order. ``filter_size`` must be odd along both axes. A filter
         size of ``1`` (or ``(1, 1)``) means no filtering.
 
-    filter_threshold : float, optional
-        The threshold value used for selective median filtering of
-        the low-resolution 2D background map. The median filter will
-        be applied to only the background boxes with values larger
-        than ``filter_threshold``. Set to `None` to filter all boxes
-        (default).
+    filter_threshold : float or `None`, optional
+        The threshold value used for selective median filtering of the
+        low-resolution 2D background and background RMS maps. The
+        median filter will be applied to only the boxes with background
+        values larger than ``filter_threshold``. Set to `None` to filter
+        all boxes (default).
 
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
+    sigma_clip : `~astropy.stats.SigmaClip` or `None`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters. If `None` then no sigma clipping will
-        be performed.
+        be performed. The default is a `~astropy.stats.SigmaClip`
+        instance with ``sigma=3.0`` and ``maxiters=10``.
 
     bkg_estimator : callable, optional
         A callable object (a function or e.g., an instance of
         any `~photutils.background.BackgroundBase` subclass)
         used to estimate the background in each of the boxes.
-        The callable object must take in a 2D `~numpy.ndarray`
-        or `~numpy.ma.MaskedArray` and have an ``axis`` keyword.
-        Internally, the background will be calculated along ``axis=1``
-        and in this case the callable object must return a 1D
-        `~numpy.ndarray`, where np.nan values are used for masked
-        pixels. If ``bkg_estimator`` includes sigma clipping, it
+        The callable object must take in a `~numpy.ndarray`, in which
+        masked and sigma-clipped pixels are set to NaN, and have an
+        ``axis`` keyword. Internally, the background is calculated
+        along the last axis (``axis=-1``) of a 3D array, and the
+        callable object must return an array with that axis removed,
+        ignoring the NaN values. The callable object must also accept
+        ``axis=None`` and return a scalar in that case. If
+        ``bkg_estimator`` includes sigma clipping, it
         will be ignored (use the ``sigma_clip`` keyword here to
         define sigma clipping). The default is an instance of
         `~photutils.background.SExtractorBackground`.
@@ -176,12 +181,14 @@ class Background2D:
         A callable object (a function or e.g., an instance of
         any `~photutils.background.BackgroundRMSBase` subclass)
         used to estimate the background RMS in each of the boxes.
-        The callable object must take in a 2D `~numpy.ndarray`
-        or `~numpy.ma.MaskedArray` and have an ``axis`` keyword.
-        Internally, the background RMS will be calculated along
-        ``axis=1`` and in this case the callable object must return a
-        1D `~numpy.ndarray`, where np.nan values are used for masked
-        pixels. If ``bkg_rms_estimator`` includes sigma clipping,
+        The callable object must take in a `~numpy.ndarray`, in which
+        masked and sigma-clipped pixels are set to NaN, and have an
+        ``axis`` keyword. Internally, the background RMS is calculated
+        along the last axis (``axis=-1``) of a 3D array, and the
+        callable object must return an array with that axis removed,
+        ignoring the NaN values. The callable object must also accept
+        ``axis=None`` and return a scalar in that case. If
+        ``bkg_rms_estimator`` includes sigma clipping,
         it will be ignored (use the ``sigma_clip`` keyword here
         to define sigma clipping). The default is an instance of
         `~photutils.background.StdBackgroundRMS`.
@@ -211,7 +218,7 @@ class Background2D:
 
         .. deprecated:: 3.0
            This keyword argument is deprecated and will be removed in
-           a future version. When removed, the `scipy.ndimage.zoom`
+           version 4.0. When removed, the `scipy.ndimage.zoom`
            cubic spline interpolator will always be used to resize the
            low-resolution background and background RMS arrays to the
            full image size.
@@ -220,8 +227,10 @@ class Background2D:
     -----
     Integer input data produce background and background RMS outputs
     with ``np.float32`` dtype to preserve precision from interpolation
-    while minimizing memory usage. Float input data produce background
-    and background RMS outputs with the same dtype as the input data.
+    while minimizing memory usage. ``np.float32`` and ``np.float64``
+    input data produce background and background RMS outputs with the
+    same dtype as the input data. Other floating-point dtypes (e.g.,
+    ``np.float16``) are not supported.
 
     When the ``sigma_clip`` input is `None` or uses the string
     ``cenfunc`` and ``stdfunc`` options, and the ``bkg_estimator``
@@ -229,7 +238,7 @@ class Background2D:
     classes, the sigma clipping and box statistics are computed
     together in compiled code. Otherwise, a generic path that calls
     ``sigma_clip`` and the estimators is used. Both paths produce the
-    same results.
+    same results to within floating-point rounding.
 
     If there is only one background box element (i.e., ``box_size`` is
     the same size as (or larger than) the ``data``), then the background
@@ -439,7 +448,7 @@ class Background2D:
 
         Returns
         -------
-        data : `~numpy.ndarray`
+        data : `~numpy.ndarray` or `~astropy.units.Quantity`
             The data array with units applied.
         """
         if self._unit is not None:
@@ -490,8 +499,8 @@ class Background2D:
     @cached_property
     def _good_n_pixels_threshold(self):
         """
-        The minimum number of required unmasked pixels in a box used for
-        it to be included in the low-resolution map.
+        The minimum number of unmasked pixels required for a box to be
+        included in the low-resolution map.
 
         A box is excluded if it contains fewer unmasked pixels than this
         threshold. For exclude_percentile=0, only boxes with zero masked
@@ -607,9 +616,10 @@ class Background2D:
 
         The kernel operates on the finite values of each box in a
         single pass, without generating a sigma-clipped copy of the box
-        data, and produces the same results as sequentially applying
-        `astropy.stats.SigmaClip` and the estimator classes. The kernel
-        releases the GIL, so this method can run in parallel threads.
+        data, and produces the same results, to within floating-point
+        rounding, as sequentially applying `astropy.stats.SigmaClip`
+        and the estimator classes. The kernel releases the GIL, so this
+        method can run in parallel threads.
 
         Parameters
         ----------
@@ -704,9 +714,9 @@ class Background2D:
 
         This method sigma clips the boxes along the specified axis and
         returns the sigma-clipped data. The input ``data`` is typically
-        a 4D array where the first two dimensions represent the y and x
-        positions of the boxes and the last two dimensions represent the
-        y and x positions within each box.
+        a 3D array where the first two dimensions represent the y and
+        x positions of the boxes and the last dimension contains the
+        flattened pixels of each box.
 
         We perform sigma clipping as a separate step to avoid performing
         sigma clipping for both the background and background RMS
@@ -715,12 +725,13 @@ class Background2D:
         Parameters
         ----------
         data : `~numpy.ndarray`
-            The 4D array of box data.
+            The array of box data.
 
-        axis : int or tuple of int
-            The axis or axes along which to sigma clip the data.
+        axis : int, tuple of int, or `None`
+            The axis or axes along which to sigma clip the data. If
+            `None`, the entire array is clipped as a single box.
 
-        sigma_clip : `~astropy.stats.SigmaClip` or `None`
+        sigma_clip : `~astropy.stats.SigmaClip` or `None`, optional
             The sigma-clipping instance to apply. If `None`, no sigma
             clipping is performed. `~astropy.stats.SigmaClip` stores
             internal state on the instance during calls, so each thread
@@ -743,14 +754,16 @@ class Background2D:
         Parameters
         ----------
         data : `~numpy.ndarray`
-            The 4D array of box data.
+            The array of box data, where NaN values mark masked pixels.
 
-        sigma_clip : `~astropy.stats.SigmaClip` or `None`
+        sigma_clip : `~astropy.stats.SigmaClip` or `None`, optional
             The sigma-clipping instance to apply to the box data. If
             `None`, no sigma clipping is performed.
 
-        axis : int or tuple of int, optional
-            The axis or axes along which to compute the statistics.
+        axis : int, tuple of int, or `None`, optional
+            The axis or axes along which to compute the statistics. If
+            `None`, the entire array is treated as a single box and
+            scalar values are returned.
 
         Returns
         -------
@@ -759,6 +772,10 @@ class Background2D:
 
         bkgrms : 2D `~numpy.ndarray` or float
             The background RMS statistics in each box.
+
+        n_good : 2D `~numpy.ndarray` or int
+            The number of surviving (unmasked and unclipped) pixels in
+            each box.
         """
         if self._box_stats_spec is not None:
             bkg, bkgrms, n_good = self._fast_box_statistics(data,
@@ -818,7 +835,7 @@ class Background2D:
             The background RMS statistics in each box.
 
         n_good : 2D `~numpy.ndarray`
-            The number of unmasked pixels in each box.
+            The number of unmasked and unclipped pixels in each box.
         """
         n_chunks = min(self.n_threads, data.shape[0])
         if n_chunks == 1:
@@ -862,7 +879,7 @@ class Background2D:
             The background RMS statistics in each box.
 
         n_good : 2D `~numpy.ndarray`
-            The number of unmasked pixels in each box.
+            The number of unmasked and unclipped pixels in each box.
         """
         # If needed, copy the data to a float32 array to insert NaNs
         if self._data.dtype.kind != 'f':
@@ -990,9 +1007,9 @@ class Background2D:
 
         This method ensures that the low-resolution mesh contains no
         NaNs before applying a regular-grid interpolator to expand it to
-        the full image size. If there are no NaNs, the input is returned
-        (cast to the original dtype). Otherwise, NaN pixels are replaced
-        by IDW interpolation using valid mesh values.
+        the full image size. If there are no NaNs, the input array is
+        returned unchanged. Otherwise, NaN pixels are replaced by IDW
+        interpolation using valid mesh values.
 
         Parameters
         ----------
@@ -1139,7 +1156,7 @@ class Background2D:
         The low-resolution background RMS image.
 
         This image is equivalent to the low-resolution "MINIBACK_RMS"
-        background rms map check image in SourceExtractor.
+        background RMS map check image in SourceExtractor.
         """
         return self._background_rms_mesh
 
@@ -1147,19 +1164,16 @@ class Background2D:
     @deprecated(since='3.0', alternative='n_pixels_mesh', until='4.0')
     def npixels_mesh(self):
         """
-        A 2D array of the number pixels used to compute the statistics
-        in each mesh.
-
-        .. deprecated:: 3.0
-            Use ``n_pixels_mesh`` instead.
+        A 2D array of the number of pixels used to compute the
+        statistics in each mesh.
         """
         return self._n_good
 
     @property
     def n_pixels_mesh(self):
         """
-        A 2D array of the number pixels used to compute the statistics
-        in each mesh.
+        A 2D array of the number of pixels used to compute the
+        statistics in each mesh.
         """
         return self._n_good
 
@@ -1169,9 +1183,6 @@ class Background2D:
         """
         A 2D map of the number of pixels used to compute the statistics
         in each mesh, resized to the shape of the input image.
-
-        .. deprecated:: 3.0
-            Use ``n_pixels_map`` instead.
 
         .. note::
 
@@ -1240,7 +1251,7 @@ class Background2D:
 
     def _calculate_image(self, data):
         """
-        Calculate the full-sized background or background rms image from
+        Calculate the full-sized background or background RMS image from
         the low-resolution mesh.
         """
         data = self.interpolator(data, **self._interp_kwargs)
@@ -1253,7 +1264,8 @@ class Background2D:
     @property
     def background(self):
         """
-        A 2D `~numpy.ndarray` containing the background image.
+        A 2D `~numpy.ndarray` (or `~astropy.units.Quantity` if the
+        input ``data`` has units) containing the background image.
 
         .. note::
 
@@ -1266,7 +1278,8 @@ class Background2D:
     @property
     def background_rms(self):
         """
-        A 2D `~numpy.ndarray` containing the background RMS image.
+        A 2D `~numpy.ndarray` (or `~astropy.units.Quantity` if the
+        input ``data`` has units) containing the background RMS image.
 
         .. note::
 
@@ -1281,6 +1294,10 @@ class Background2D:
         """
         Plot the low-resolution mesh boxes on a matplotlib Axes
         instance.
+
+        Only the boxes that were included in the low-resolution map are
+        plotted. Boxes excluded by ``exclude_percentile`` or because
+        they are completely masked are not shown.
 
         Parameters
         ----------
