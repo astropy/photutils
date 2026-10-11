@@ -99,6 +99,28 @@ def test_make_model_params_border_size():
         make_model_params(shape, n_sources, flux=flux, border_size=20)
 
 
+def test_make_model_params_reserved_names():
+    """
+    Test that a keyword argument cannot replace the ID or position
+    columns.
+    """
+    shape = (100, 100)
+    for name in ('id', 'x_0', 'y_0'):
+        match = f'{name} cannot be used as a keyword argument'
+        with pytest.raises(ValueError, match=match):
+            make_model_params(shape, 5, **{name: (1, 2)})
+
+    match = 'x_mean cannot be used as a keyword argument'
+    with pytest.raises(ValueError, match=match):
+        make_model_params(shape, 5, x_name='x_mean', y_name='y_mean',
+                          x_mean=(1, 2))
+
+    # x_0 is an ordinary parameter name when x_name is different
+    params = make_model_params(shape, 5, x_name='x_mean', y_name='y_mean',
+                               x_0=(1, 2))
+    assert params.colnames == ['id', 'x_mean', 'y_mean', 'x_0']
+
+
 def test_make_random_models_table():
     """
     Test the basic functionality of ``make_random_models_table``.
@@ -129,6 +151,10 @@ def test_make_random_models_table_inputs():
     match = 'n_sources must be >= 0'
     with pytest.raises(ValueError, match=match):
         make_random_models_table(-1, {'amplitude': (1, 2)})
+
+    match = "param_ranges cannot contain an 'id' key"
+    with pytest.raises(ValueError, match=match):
+        make_random_models_table(3, {'id': (1, 2)})
 
 
 def test_params_table_to_models():

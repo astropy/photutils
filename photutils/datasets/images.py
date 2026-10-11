@@ -193,9 +193,10 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         ``discretize_method`` is invalid, if a ``params_map`` key is
         not a model parameter name, if a required column is not in
         ``params_table``, if the model has no ``bounding_box``
-        attribute and no model shape is specified, or if the
+        attribute and no model shape is specified, if the
         ``'local_bkg'`` column does not have the same flux units as
-        the output image.
+        the output image, or if a ``params_table`` column has units
+        and ``params_table`` is not a `~astropy.table.QTable`.
 
     Notes
     -----
@@ -352,8 +353,13 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
                 or not np.isfinite(local_bkg[i])):
             continue
 
-        for key, value in params.items():
-            setattr(model, key, value)
+        try:
+            for key, value in params.items():
+                setattr(model, key, value)
+        except u.UnitsError as exc:
+            msg = ('params_table must be a QTable when its columns have '
+                   'units')
+            raise ValueError(msg) from exc
 
         # This assumes that if the user also uses params_table to
         # override the (x/y)_name mapping that the x_name and y_name

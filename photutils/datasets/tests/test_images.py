@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Moffat2D, Polynomial2D
-from astropy.table import QTable
+from astropy.table import QTable, Table
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_model_image
@@ -337,6 +337,24 @@ def test_make_model_image_inputs():
     with pytest.raises(ValueError, match=match):
         make_model_image(shape, model, params, model_shape=(11, 11),
                          discretize_method='invalid')
+
+
+def test_make_model_image_table_units():
+    """
+    Test that a column with units in a plain Table raises a clear
+    error.
+    """
+    params = Table()
+    params['x_0'] = [10.0]
+    params['y_0'] = [10.0]
+    params['amplitude'] = [100.0] * u.Jy
+    match = 'params_table must be a QTable'
+    with pytest.raises(ValueError, match=match):
+        make_model_image((21, 21), Moffat2D(), params, model_shape=(11, 11))
+
+    image = make_model_image((21, 21), Moffat2D(), QTable(params),
+                             model_shape=(11, 11))
+    assert image.unit == u.Jy
 
 
 def test_make_model_image_bbox():

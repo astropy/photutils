@@ -77,7 +77,9 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
         The values should be 2-tuples of the lower and upper bounds for
         the parameter range. The bounds must be numbers without units.
         The parameter values will be uniformly sampled from the
-        half-open interval ``[lower, upper)``.
+        half-open interval ``[lower, upper)``. The names ``id``,
+        ``x_name``, and ``y_name`` cannot be used because they are the
+        names of the ID and position columns.
 
     Returns
     -------
@@ -90,8 +92,9 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     ------
     ValueError
         If ``n_sources`` is negative, if ``border_size`` leaves no
-        room for sources within the given ``shape``, or if a keyword
-        argument value is not a 2-tuple.
+        room for sources within the given ``shape``, if a keyword
+        argument value is not a 2-tuple, or if a keyword argument is
+        named ``id`` or has the same name as ``x_name`` or ``y_name``.
 
     Warns
     -----
@@ -170,6 +173,10 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     model_params[y_name] = y
 
     for param, prange in kwargs.items():
+        if param in ('id', x_name, y_name):
+            msg = (f'{param} cannot be used as a keyword argument because '
+                   'it is the name of the ID or a position column')
+            raise ValueError(msg)
         if np.shape(prange) != (2,):
             msg = f'{param} must be a 2-tuple'
             raise ValueError(msg)
@@ -203,7 +210,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
         as a dictionary mapping the parameter name to its ``(lower,
         upper)`` bounds. The bounds must be numbers without units. The
         parameter values will be uniformly sampled from the half-open
-        interval ``[lower, upper)``.
+        interval ``[lower, upper)``. The key ``'id'`` cannot be used
+        because it is the name of the source ID column.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -221,8 +229,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     Raises
     ------
     ValueError
-        If ``n_sources`` is negative or if a ``param_ranges`` value is
-        not a 2-tuple.
+        If ``n_sources`` is negative, if a ``param_ranges`` value is
+        not a 2-tuple, or if ``param_ranges`` contains an ``'id'`` key.
 
     Notes
     -----
@@ -256,6 +264,11 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     """
     if n_sources < 0:
         msg = 'n_sources must be >= 0'
+        raise ValueError(msg)
+
+    if 'id' in param_ranges:
+        msg = ("param_ranges cannot contain an 'id' key because it is the "
+               'name of the source ID column')
         raise ValueError(msg)
 
     rng = np.random.default_rng(seed)
