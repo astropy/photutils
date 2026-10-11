@@ -40,10 +40,11 @@ cdef inline void ellipse_quadratic_coeffs(double rx, double ry,
     A point (x, y) lies inside the ellipse when ``cxx*x**2 + cyy*y**2
     + cxy*x*y < 1``. A pixel is wholly inside when its center value
     is ``<= f_in`` and wholly outside when it is ``>= f_out`` (see
-    ``elliptical_overlap_grid``). When the pixel diagonal exceeds the
-    smallest semiaxis no pixel can be wholly inside, and ``f_in`` is set
-    to -1 so the interior fast path never triggers (the center value is
-    always >= 0). The results are returned through the output pointers
+    ``ellipse_frac_from_rpix2``). When half the pixel diagonal is at
+    least the smaller semi-axis, the center test cannot establish that
+    a pixel is wholly inside, and ``f_in`` is set to -1 so the interior
+    fast path never triggers (the center value is always >= 0). The
+    results are returned through the output pointers
     so the same setup can be computed once and reused wherever it is
     needed.
 
@@ -74,7 +75,8 @@ cdef inline void ellipse_quadratic_coeffs(double rx, double ry,
 
     margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
     fin = 1.0 - margin
-    # Use a negative sentinel when no pixel can be wholly inside.
+    # Use a negative sentinel when the center test cannot establish
+    # that a pixel is wholly inside.
     # Clamping to 0 would misclassify a pixel whose center lies exactly
     # on the ellipse center (value 0) as wholly inside.
     f_in[0] = fin * fin if fin > 0.0 else -1.0

@@ -93,10 +93,11 @@ cdef inline void polygon_work_partition(double *base, int n_poly,
     Parameters
     ----------
     base : double *
-        The workspace buffer, of at least ``polygon_work_size(n_poly)``
-        doubles. The layout is the polygon vertex arrays (``n_poly``
-        each), the four clip buffers (``buf_size`` each), and the three
-        edge-normal arrays (``n_poly`` each).
+        The workspace buffer, of at least the number of doubles
+        returned by ``polygon_work_size``. The layout is the polygon
+        vertex arrays (``n_poly`` each), the four clip buffers
+        (``buf_size`` each), and the three edge-normal arrays
+        (``n_poly`` each).
 
     n_poly : int
         The number of polygon vertices.

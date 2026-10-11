@@ -8,7 +8,8 @@ pixel grid.
 The cdef functions are not intended to be called from Python code. They
 are pure C math functions declared ``noexcept nogil`` so they can be
 called without the GIL, including from multiple threads on free-threaded
-Python builds. Their signatures are exported via core.pxd.
+Python builds. The signatures of the functions used by other modules
+are exported via core.pxd.
 """
 
 # The math functions used here are declared in core.pxd.
@@ -37,12 +38,12 @@ cdef double area_arc_unit(double x1, double y1, double x2,
 
     Parameters
     ----------
-    x1, y1, x2, y2 : float
+    x1, y1, x2, y2 : double
         The coordinates of the two points defining the chord.
 
     Returns
     -------
-    area : float
+    area : double
         The area of the circular segment.
 
     References
@@ -68,10 +69,10 @@ cdef int in_triangle(double x, double y, double x1, double y1, double x2,
 
     Parameters
     ----------
-    x, y : float
+    x, y : double
         The coordinates of the point to test.
 
-    x1, y1, x2, y2, x3, y3 : float
+    x1, y1, x2, y2, x3, y3 : double
         The coordinates of the triangle's three vertices.
 
     Returns
@@ -96,7 +97,7 @@ cdef intersections circle_line(double x1, double y1, double x2,
 
     Parameters
     ----------
-    x1, y1, x2, y2 : float
+    x1, y1, x2, y2 : double
         The coordinates of two distinct points defining the line.
 
     Returns
@@ -126,7 +127,7 @@ cdef intersections circle_line(double x1, double y1, double x2,
         a = dy / dx
         b = y1 - a * x1
 
-        # Find the determinant of the quadratic equation
+        # Find the (reduced) discriminant of the quadratic equation
         delta = 1. + a * a - b * b
         if delta > 0.:  # solutions exist
             delta = sqrt(delta)
@@ -140,7 +141,7 @@ cdef intersections circle_line(double x1, double y1, double x2,
         a = dx / dy
         b = x1 - a * y1
 
-        # Find the determinant of the quadratic equation
+        # Find the (reduced) discriminant of the quadratic equation
         delta = 1. + a * a - b * b
         if delta > 0.:  # solutions exist
             delta = sqrt(delta)
@@ -161,7 +162,7 @@ cdef point circle_segment_single2(double x1, double y1, double x2,
 
     Parameters
     ----------
-    x1, y1, x2, y2 : float
+    x1, y1, x2, y2 : double
         The coordinates of two distinct points defining the line.
 
     Returns
@@ -205,7 +206,7 @@ cdef intersections circle_segment(double x1, double y1, double x2,
 
     Parameters
     ----------
-    x1, y1, x2, y2 : float
+    x1, y1, x2, y2 : double
         The coordinates of the segment's two endpoints.
 
     Returns
@@ -233,10 +234,11 @@ cdef intersections circle_segment(double x1, double y1, double x2,
         pt2.x, pt2.y = 2., 2.
 
     # Order the output so that p1 is invalid (coordinates > 1) whenever
-    # fewer than two intersections lie on the segment. Callers test
-    # p1 alone to decide whether a full chord exists, so a single
-    # on-segment intersection (a degenerate grazing case) is treated as
-    # no intersection.
+    # fewer than two intersections lie on the segment. Callers pass
+    # segments whose endpoints are both outside the circle and test p1
+    # alone to decide whether a full chord exists. For such segments a
+    # single on-segment intersection is a degenerate grazing case and
+    # is treated as no intersection.
     if pt1.x > 1. and pt2.x < 2.:
         inter_new.p1 = pt1
         inter_new.p2 = pt2
@@ -261,10 +263,10 @@ cdef point chord_end(double x1, double y1, double x2,
 
     Parameters
     ----------
-    x1, y1 : float
+    x1, y1 : double
         The coordinates of the point on the unit circle.
 
-    x2, y2 : float
+    x2, y2 : double
         The coordinates of the point that defines the direction.
 
     Returns
@@ -310,15 +312,15 @@ cdef double overlap_area_vertex_on_unit_circle(double x1, double y1,
 
     Parameters
     ----------
-    x1, y1 : float
+    x1, y1 : double
         The coordinates of the vertex on the unit circle.
 
-    x2, y2, x3, y3 : float
+    x2, y2, x3, y3 : double
         The coordinates of the two vertices outside the unit circle.
 
     Returns
     -------
-    area : float
+    area : double
         The area of overlap between the triangle and the unit circle.
     """
     cdef double dx2, dy2, dx3, dy3
@@ -388,12 +390,12 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2,
 
     Parameters
     ----------
-    x1, y1, x2, y2, x3, y3 : float
+    x1, y1, x2, y2, x3, y3 : double
         The coordinates of the triangle's three vertices.
 
     Returns
     -------
-    area : float
+    area : double
         The area of overlap between the triangle and the unit circle.
     """
     cdef double d1, d2, d3
@@ -404,7 +406,7 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2,
     cdef intersections inter
     cdef point pt1, pt2, pt3, pt4, pt5, pt6
 
-    # Find distance of all vertices to circle center
+    # Find the squared distance of each vertex from the circle center
     d1 = x1 * x1 + y1 * y1
     d2 = x2 * x2 + y2 * y2
     d3 = x3 * x3 + y3 * y3
@@ -434,7 +436,7 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2,
         # logic error without requiring the GIL to raise an exception.
         return NAN
 
-    # Determine number of vertices inside circle
+    # Determine which vertices are inside the circle
     in1 = d1 < 1
     in2 = d2 < 1
     in3 = d3 < 1
