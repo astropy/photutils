@@ -730,7 +730,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
     cdef int _i, _j, e, prev, m, a, b, ptr, h, hh
     cdef double x, y, dx, dy, hits
     cdef double xi, yi, xj, yj, tmp
-    cdef bint inside
+    cdef bint inside, has_vertex
 
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
@@ -744,6 +744,15 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
                             poly_x, poly_y, n_poly) == 1:
             hits = 1.0
         return hits
+
+    # A sample can land exactly on a vertex only if the vertex is
+    # inside the pixel. This is rare, so it is checked once per pixel
+    # to keep the per-row vertex pass out of the common path.
+    has_vertex = False
+    for e in range(n_poly):
+        if y0 < poly_y[e] < y1 and x0 < poly_x[e] < x1:
+            has_vertex = True
+            break
 
     # Subpixel sampling (subpixels > 1): scanline parity fill.
     y = y0 + 0.5 * dy
@@ -776,6 +785,22 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
                 xint_buf[m] = (xj - xi) * (y - yi) / (yj - yi) + xi
                 m += 1
             prev = e
+
+        # Record each vertex lying exactly on the line as a zero-width
+        # interval so that a sample on it is excluded. The edges at
+        # such a vertex may not straddle the line (a local maximum in
+        # y) or may give a crossing that differs from the vertex x by
+        # rounding. A vertex that ends a horizontal edge is already
+        # covered, so each edge adds at most one interval and
+        # ``n_poly`` entries suffice.
+        if has_vertex:
+            prev = n_poly - 1
+            for e in range(n_poly):
+                if poly_y[e] == y and poly_y[prev] != y:
+                    hxmin_buf[h] = poly_x[e]
+                    hxmax_buf[h] = poly_x[e]
+                    h += 1
+                prev = e
 
         # Insertion sort the (typically few) crossings in ascending x.
         for a in range(1, m):
