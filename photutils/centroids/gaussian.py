@@ -32,7 +32,7 @@ def centroid_1dg(data, error=None, mask=None):
 
     Masked pixels are excluded by substituting zero into the
     marginal sums, and the fit weights are zeroed only for
-    fully-masked rows or columns. A partially-masked row or column
+    fully masked rows or columns. A partially masked row or column
     near the source peak therefore distorts the corresponding
     marginal distribution and can bias the centroid. Consider using
     `~photutils.centroids.centroid_2dg`, which excludes individual
@@ -150,7 +150,7 @@ def centroid_2dg(data, error=None, mask=None):
     calculated using only the unmasked data values.
 
     A `ValueError` is raised if there are fewer than 6 unmasked values
-    or if the data are constant. The fitter emits an
+    or if the unmasked data are constant. The fitter emits an
     `~astropy.utils.exceptions.AstropyUserWarning` if the fit did not
     converge.
 
@@ -214,14 +214,20 @@ def centroid_2dg(data, error=None, mask=None):
                '2D Gaussian.')
         raise ValueError(msg)
 
-    # Subtract the minimum of the data to make the data values positive.
-    # Moments from negative data values can yield undefined Gaussian
-    # parameters, e.g., x_stddev and y_stddev.
-    shifted = data - np.min(data)
-    if np.sum(shifted) == 0:
+    # The masked pixels are zero in data, so only the unmasked values
+    # are tested
+    if np.ptp(data[~mask]) == 0:
         msg = ('Input data must have non-constant values to fit a '
                '2D Gaussian.')
         raise ValueError(msg)
+
+    # Subtract the minimum of the unmasked data to make the data values
+    # non-negative. Moments from negative data values can yield
+    # undefined Gaussian parameters, e.g., x_stddev and y_stddev. The
+    # masked pixels are kept at zero so that they do not contribute to
+    # the moments.
+    shifted = data - np.min(data[~mask])
+    shifted[mask] = 0.0
 
     if error is not None:
         weights = 1.0 / error.clip(min=1.0e-30)

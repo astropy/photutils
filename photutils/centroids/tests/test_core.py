@@ -180,6 +180,26 @@ def test_centroid_com_masked_array():
     assert yc3 == yc4
 
 
+@pytest.mark.parametrize('centroid_func', [centroid_com, centroid_symmetry,
+                                           centroid_quadratic, centroid_1dg,
+                                           centroid_2dg])
+def test_centroid_hard_masked_array(centroid_func):
+    """
+    Test that a MaskedArray with a hard mask gives the same result as
+    one with a soft mask.
+    """
+    data = make_gaussian_source((21, 21), 10.0, 10.3, 9.8, 2.0, 2.0, 0)
+    data[4, 5] = 1000.0
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[4, 5] = True
+
+    expected = centroid_func(data, mask=mask)
+    soft = centroid_func(np.ma.MaskedArray(data, mask=mask))
+    hard = centroid_func(np.ma.MaskedArray(data, mask=mask, hard_mask=True))
+    assert_allclose(soft, expected)
+    assert_allclose(hard, expected)
+
+
 def test_centroid_com_mutation():
     """
     Test that centroid_com does not mutate the input data or mask.
@@ -815,7 +835,7 @@ def test_centroid_quadratic_npts():
     mask[2, :] = True
     match = 'at least 6 unmasked data points'
     with pytest.warns(AstropyUserWarning, match=match):
-        centroid_quadratic(data, mask=mask)
+        centroid_quadratic(data, mask=mask, fit_boxsize=3)
 
 
 def test_centroid_quadratic_invalid_inputs():
@@ -857,12 +877,19 @@ def test_centroid_quadratic_boxsize_clamp():
     Test centroid_quadratic with a fit_boxsize larger than the data.
 
     The fit box is clamped to the data shape and reduced to odd values
-    with a warning.
+    with a warning. The warning is emitted whether the data size is
+    even or odd.
     """
     data = make_gaussian_source((4, 4), 10.0, 2.0, 2.0, 1.0, 1.0, 0)
     match = "'fit_boxsize' was clamped to the upper bound and reduced to"
     with pytest.warns(AstropyUserWarning, match=match):
         xc, yc = centroid_quadratic(data, fit_boxsize=5)
+    assert_allclose((xc, yc), (2.0, 2.0), atol=0.1)
+
+    data = make_gaussian_source((5, 5), 10.0, 2.0, 2.0, 1.0, 1.0, 0)
+    match = "'fit_boxsize' was clamped to the upper bound"
+    with pytest.warns(AstropyUserWarning, match=match):
+        xc, yc = centroid_quadratic(data, fit_boxsize=7)
     assert_allclose((xc, yc), (2.0, 2.0), atol=0.1)
 
 

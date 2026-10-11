@@ -153,6 +153,26 @@ class TestProcessDataMask:
         assert result[0, 0] == 0.0
         assert result[0, 1] == 0.0
 
+    @pytest.mark.parametrize('hard_mask', [False, True])
+    def test_masked_array_hard_mask(self, hard_mask):
+        """
+        Masked values are filled whether the mask is soft or hard.
+
+        Assignment to a masked element of a hard-masked array is
+        silently ignored, so the values must be filled in the plain
+        data array.
+        """
+        masked_data = np.ma.array([[1.0, 2.0], [3.0, 4.0]],
+                                  mask=[[False, True], [False, False]],
+                                  hard_mask=hard_mask)
+        extra_mask = np.array([[True, False], [False, False]])
+        result = _process_data_mask(masked_data, extra_mask, fill_value=0.0)
+        assert_array_equal(result, [[0.0, 0.0], [3.0, 4.0]])
+
+        # The input is not mutated
+        assert_array_equal(masked_data.data, [[1.0, 2.0], [3.0, 4.0]])
+        assert_array_equal(masked_data.mask, [[False, True], [False, False]])
+
 
 class TestValidateGaussianInputs:
     """

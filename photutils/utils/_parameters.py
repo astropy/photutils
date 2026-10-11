@@ -74,9 +74,9 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
         A tuple defining the allowed upper bounds of the value along
         each axis. For each axis, if ``value`` is larger than the bound,
         it is reset to the bound. ``upper_bound`` is typically set to an
-        image shape. If ``check_odd`` is `True` and clamping to an even
-        bound produces an even value, the value is reduced to the next
-        lower odd value and a warning is issued.
+        image shape. If ``check_odd`` is `True`, a warning is issued
+        when the value is reset. If the bound is even, the value is
+        also reduced to the next lower odd value.
 
     check_odd : bool, optional
         Whether to raise a `ValueError` if the values are not odd along
@@ -144,21 +144,24 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
             raise ValueError(msg)
         # If value is larger than upper_bound, set to upper_bound.
         # The upper_bound is typically set to an image shape
+        is_clamped = np.any(value > np.asarray(upper_bound))
         value = np.array((min(value[0], upper_bound[0]),
                           min(value[1], upper_bound[1])))
 
         # Clamping to an even bound can produce an even value. Reduce
         # it to the next lower odd value to preserve the odd-values
         # requirement.
-        if check_odd:
+        if check_odd and is_clamped:
             even = (value % 2 == 0) & (value > 0)
+            value = value - even.astype(int)
+            new_value = tuple(int(val) for val in value)
             if np.any(even):
-                value = value - even.astype(int)
-                new_value = tuple(int(val) for val in value)
                 msg = (f'{name!r} was clamped to the upper bound and '
                        f'reduced to {new_value} to keep odd values '
                        'for both axes')
-                warnings.warn(msg, AstropyUserWarning)
+            else:
+                msg = f'{name!r} was clamped to the upper bound {new_value}'
+            warnings.warn(msg, AstropyUserWarning)
 
     return value
 

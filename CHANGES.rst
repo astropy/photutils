@@ -626,6 +626,19 @@ Bug Fixes
     coordinates that could cause failures and spurious NaN results.
     [#2368]
 
+  - Fixed the centroid functions using the masked values of an input
+    ``MaskedArray`` that has a hard mask. [#2491]
+
+  - Fixed ``centroid_2dg`` to raise a ``ValueError`` if the unmasked
+    data are constant. Previously, constant data with a masked or
+    non-finite pixel was fit and a meaningless position was returned.
+    [#2491]
+
+  - ``centroid_quadratic`` and ``CentroidQuadratic`` now emit a warning
+    whenever ``fit_boxsize`` is larger than the data and is reduced.
+    Previously, no warning was emitted if the data size along the axis
+    was odd. [#2491]
+
 - ``photutils.datasets``
 
   - Fixed ``make_wcs`` so that the WCS ``pixel_shape`` attribute is

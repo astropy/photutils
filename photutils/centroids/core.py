@@ -165,10 +165,10 @@ def centroid_symmetry(data, *, mask=None, radius=None):
         pixels for a radius of 1.5 pixels at any of these standard
         deviations.
 
-        The search starts at the maximum value of the data. A bright
-        outlier such as a hot pixel or a cosmic ray near the source
-        should be masked, because a single bright pixel is symmetric
-        about itself.
+        The search starts at the maximum value near the center of the
+        array. A bright outlier such as a hot pixel or a cosmic ray
+        near the source should be masked, because a single bright pixel
+        is symmetric about itself.
 
     Parameters
     ----------
@@ -200,8 +200,9 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     -------
     centroid : `~numpy.ndarray`
         The ``(x, y)`` coordinates of the center. An array of NaN values
-        is returned if no pair of opposite offsets is unmasked or if the
-        unmasked data values are all equal.
+        is returned if no pair of opposite offsets is unmasked, if the
+        unmasked data values are all equal, or if all of the values in
+        the area that is searched for the center are masked.
 
     See Also
     --------
@@ -232,8 +233,9 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     of 0.6 to 0.8 pixels (a FWHM of 1.4 to 1.9 pixels), 0.01 pixels for
     1 pixel, 0.005 pixels for 1.2 pixels, and less than 0.002 pixels
     for 1.5 pixels or more. The error increases quickly for a narrower
-    source (0.05 pixels for a standard deviation of 0.5 pixels), and it
-    is larger for an array with fewer than 7 pixels along an axis.
+    source (0.05 pixels for a standard deviation of 0.5 pixels), and
+    it is larger for a radius of less than 2 pixels, which is the
+    default for an array with fewer than 7 pixels along an axis.
 
     The region must stay within the array, so the center is searched
     only within ``(n - 1) / 2 - radius`` pixels of the center of the
@@ -956,6 +958,10 @@ class CentroidQuadratic:
         Unlike `~photutils.centroids.centroid_1dg` and
         `~photutils.centroids.centroid_2dg`, this method does not
         support an error array.
+
+        See `~photutils.centroids.centroid_quadratic` for the cases
+        in which a warning is emitted and NaN values or the position of
+        the maximum pixel are returned.
         """
         kwargs = {'mask': mask,
                   'fit_boxsize': self.fit_boxsize,
@@ -988,14 +994,14 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
 
     Parameters
     ----------
-    data : 2D array_like
+    data : 2D `~numpy.ndarray`
         The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
         The image should be background-subtracted.
 
     xpos, ypos : float or array_like of float
         The initial ``x`` and ``y`` pixel position(s) of the sources. A
         cutout image centered on each position will be used to calculate
-        the centroid.
+        the centroid. The positions must be finite and within ``data``.
 
     box_size : int or array_like of int, optional
         The size of the cutout image along each axis. If ``box_size`` is

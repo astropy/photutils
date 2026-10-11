@@ -80,19 +80,23 @@ def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
     -------
     data : `~numpy.ndarray`
         Processed data with masked and non-finite values replaced by
-        ``fill_value``. Always returned as a plain `~numpy.ndarray`
-        (never a `~numpy.ma.MaskedArray`).
+        ``fill_value``. A `~numpy.ma.MaskedArray` input is returned as
+        a plain `~numpy.ndarray`.
     """
     data = _validate_data(data, ndim=ndim)
     is_copied = False
-    is_masked_array = isinstance(data, np.ma.MaskedArray)
     _validate_mask_shape(data, mask)
 
-    badmask = ~np.isfinite(data)
+    # Work on the plain array of a MaskedArray. An assignment to a
+    # masked element of an array with a hard mask is silently ignored,
+    # so its masked values could not be filled.
+    if isinstance(data, np.ma.MaskedArray):
+        mask2 = np.ma.getmaskarray(data)
+        if np.any(mask2):
+            mask = mask2 if mask is None else mask | mask2
+        data = data.data
 
-    if np.ma.is_masked(data):
-        mask2 = data.mask
-        mask = mask2 if mask is None else mask | mask2
+    badmask = ~np.isfinite(data)
 
     if mask is not None:
         if np.any(mask):
@@ -109,11 +113,6 @@ def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
             data = data.copy()
         data[badmask] = fill_value
 
-    # If the input was a MaskedArray, return a plain ndarray. The mask
-    # has already been applied to the data above.
-    if is_masked_array:
-        data = np.asarray(data)
-
     return data
 
 
@@ -127,7 +126,7 @@ def _validate_gaussian_inputs(data, mask, error):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    data : 2D array_like
         The input data array.
 
     mask : 2D bool `~numpy.ndarray` or `None`

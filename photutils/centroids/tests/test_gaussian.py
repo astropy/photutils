@@ -4,6 +4,7 @@ Tests for the gaussian module.
 """
 
 from contextlib import nullcontext
+from unittest.mock import patch
 
 import astropy.units as u
 import numpy as np
@@ -12,7 +13,7 @@ from astropy.modeling.models import Gaussian1D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.centroids._utils import _gaussian1d_moments
+from photutils.centroids._utils import _gaussian1d_moments, _gaussian2d_moments
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.centroids.tests.helpers import make_gaussian_source
 
@@ -158,6 +159,54 @@ def test_centroid_2dg_constant_data(value):
     match = 'Input data must have non-constant values'
     with pytest.raises(ValueError, match=match):
         centroid_2dg(data)
+
+
+@pytest.mark.parametrize('value', [0.0, 1.0, -3.7])
+def test_centroid_2dg_constant_data_masked(value):
+    """
+    Test that centroid_2dg raises a ValueError if the unmasked data are
+    constant.
+
+    The masked pixels are set to zero internally, so they must not make
+    constant data appear to vary.
+    """
+    data = np.full((10, 10), value)
+    data[2, 3] = 100.0
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[2, 3] = True
+    match = 'Input data must have non-constant values'
+    with pytest.raises(ValueError, match=match):
+        centroid_2dg(data, mask=mask)
+
+    data[2, 3] = np.nan
+    with (pytest.warns(AstropyUserWarning, match='non-finite values'),
+          pytest.raises(ValueError, match=match)):
+        centroid_2dg(data)
+
+
+def test_centroid_2dg_initial_guess_masked():
+    """
+    Test that masked pixels do not contribute to the initial parameter
+    estimates of centroid_2dg when the data minimum is negative.
+
+    The minimum of the unmasked data is subtracted before the moments
+    are calculated, and the masked pixels must remain zero.
+    """
+    data = make_gaussian_source((31, 31), 100.0, 12.3, 17.6, 2.0, 2.0, 0)
+    data -= 5.0
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[26:28, :10] = True
+    data[mask] = 1000.0
+
+    target = 'photutils.centroids.gaussian._gaussian2d_moments'
+    with patch(target, wraps=_gaussian2d_moments) as mock_moments:
+        xycen = centroid_2dg(data, mask=mask)
+    shifted = mock_moments.call_args.args[0]
+    assert_array_equal(shifted[mask], 0.0)
+    assert np.min(shifted[~mask]) == 0.0
+    assert_allclose(_gaussian2d_moments(shifted)[1:3], (12.3, 17.6),
+                    atol=0.01)
+    assert_allclose(xycen, (12.3, 17.6), atol=1.0e-4)
 
 
 @pytest.mark.parametrize('value', [0.0, 1.0, -3.7])

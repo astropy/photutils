@@ -134,10 +134,24 @@ class TestAsPairUpperBound:
                              check_odd=True)
         assert_equal(result, (3, 3))
 
-    def test_upper_bound_check_odd_no_warning(self):
-        # Clamping to an odd bound does not warn
-        result = as_pair('pair', 7, upper_bound=(5, 5), check_odd=True)
+    def test_upper_bound_check_odd_odd_bound(self):
+        # Clamping to an odd bound also warns
+        match = r"'pair' was clamped to the upper bound \(5, 5\)$"
+        with pytest.warns(AstropyUserWarning, match=match):
+            result = as_pair('pair', 7, upper_bound=(5, 5), check_odd=True)
         assert_equal(result, (5, 5))
+
+        # Only one axis is clamped
+        match = r"'pair' was clamped to the upper bound \(5, 3\)$"
+        with pytest.warns(AstropyUserWarning, match=match):
+            result = as_pair('pair', (7, 3), upper_bound=(5, 9),
+                             check_odd=True)
+        assert_equal(result, (5, 3))
+
+    def test_upper_bound_check_odd_no_warning(self):
+        # A value within the upper bound does not warn
+        result = as_pair('pair', (5, 3), upper_bound=(5, 4), check_odd=True)
+        assert_equal(result, (5, 3))
 
 
 class TestSigmaClipSentinelDefault:
