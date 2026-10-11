@@ -6,7 +6,7 @@ Tests for the irafstarfinder module.
 import astropy.units as u
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.detection import IRAFStarFinder
 from photutils.psf import CircularGaussianPRF
@@ -119,6 +119,20 @@ class TestIRAFStarFinder:
         xycoords = np.round(xycoords).astype(int)
 
         finder1 = IRAFStarFinder(threshold=8.0, fwhm=2, xycoords=xycoords)
+        tbl1 = finder1(data)
+        assert_array_equal(tbl0, tbl1)
+
+    def test_xycoords_non_integer(self, data):
+        """
+        Test that non-integer xycoords are rounded to the nearest pixel.
+        """
+        finder0 = IRAFStarFinder(threshold=8.0, fwhm=2)
+        tbl0 = finder0(data)
+        xycoords = np.transpose((tbl0['x_centroid'], tbl0['y_centroid']))
+        xycoords = np.round(xycoords)
+
+        finder1 = IRAFStarFinder(threshold=8.0, fwhm=2,
+                                 xycoords=xycoords + 0.3)
         tbl1 = finder1(data)
         assert_array_equal(tbl0, tbl1)
 
@@ -496,6 +510,31 @@ class TestIRAFStarFinder:
         sharpness = cat.sharpness
         assert sharpness.shape == (n_sources,)
         assert np.all(np.isfinite(sharpness))
+
+    def test_sky_no_sky_pixels(self, data):
+        """
+        Test the sky estimate when the kernel footprint covers the
+        entire kernel array.
+
+        The sky is then the central data value minus the central
+        convolved data value, as in IRAF starfind.
+        """
+        finder = IRAFStarFinder(threshold=1.0, fwhm=4.6)
+        assert np.all(finder.kernel.mask == 1)
+
+        cat = finder._get_raw_catalog(data)
+        xpos, ypos = cat.xypos.T
+        expected = data[ypos, xpos] - cat.convolved_data[ypos, xpos]
+        assert_allclose(cat.sky, expected)
+
+        tbl = finder(data)
+        assert len(tbl) > 0
+        assert np.all(np.isfinite(tbl['flux']))
+
+        tbl_units = IRAFStarFinder(threshold=1.0 * u.Jy, fwhm=4.6)(
+            data << u.Jy)
+        assert tbl_units['flux'].unit == u.Jy
+        assert_allclose(tbl_units['flux'].value, tbl['flux'])
 
     def test_deprecated_sharplo_sharphi(self):
         """

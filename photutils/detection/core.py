@@ -26,6 +26,7 @@ from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
+from photutils.utils._round import round_half_away
 from photutils.utils.cutouts import _make_cutouts
 from photutils.utils.exceptions import (NoDetectionsWarning,
                                         PhotutilsDeprecationWarning)
@@ -252,7 +253,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.kernel = kernel
         self.cutout_shape = kernel.shape
 
-        self.xypos = np.atleast_2d(xypos)
+        # The cutouts are centered on the nearest pixel, so the positions
+        # are rounded the same way to keep the cutout origins consistent
+        self.xypos = round_half_away(np.atleast_2d(xypos))
         self.n_brightest = n_brightest
         self.peak_max = peak_max
         self.default_columns = ()

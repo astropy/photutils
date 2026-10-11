@@ -156,6 +156,20 @@ class TestDAOStarFinder:
         tbl1 = finder1(data)
         assert_array_equal(tbl0, tbl1)
 
+    def test_xycoords_non_integer(self, data):
+        """
+        Test that non-integer xycoords are rounded to the nearest pixel.
+        """
+        finder0 = DAOStarFinder(threshold=8.0, fwhm=2)
+        tbl0 = finder0(data)
+        xycoords = np.transpose((tbl0['x_centroid'], tbl0['y_centroid']))
+        xycoords = np.round(xycoords)
+
+        finder1 = DAOStarFinder(threshold=8.0, fwhm=2,
+                                xycoords=xycoords + 0.3)
+        tbl1 = finder1(data)
+        assert_array_equal(tbl0, tbl1)
+
     @pytest.mark.parametrize('xycoords', [[[500, 50]], [[50, 500]],
                                           [[-50, 50]], [[50, -50]]])
     def test_xycoords_out_of_bounds(self, data, xycoords):

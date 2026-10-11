@@ -657,6 +657,18 @@ Bug Fixes
     if any input ``xycoords`` position is outside the bounds of the
     input data. [#2377]
 
+  - Fixed ``IRAFStarFinder`` returning no sources when the kernel
+    footprint covers the entire kernel array (e.g., ``fwhm`` values
+    between about 4.45 and 4.7 with the default ``sigma_radius``).
+    There are then no pixels to estimate the local sky, which was
+    NaN for every source. As in IRAF ``starfind``, the sky is now the
+    central data value minus the central convolved data value in that
+    case. [#2492]
+
+  - Fixed the ``DAOStarFinder`` and ``IRAFStarFinder`` centroids being
+    offset when the input ``xycoords`` are not integers. The input
+    positions are now rounded to the nearest pixel. [#2492]
+
   - Fixed ``find_peaks`` (and the star finder classes, which use it)
     so that masked pixels can no longer suppress nearby peaks within
     the local region. Masked pixels are now replaced by the minimum

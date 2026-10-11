@@ -469,10 +469,17 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         within the kernel footprint.
         """
         skymask = ~self.kernel.mask.astype(bool)  # True=sky, False=obj
-        # n_sky is always > 0 because the kernel mask never covers the
-        # entire footprint (the Gaussian kernel is always truncated
-        # within the array, leaving unmasked border pixels).
         n_sky = np.count_nonzero(skymask)
+        if n_sky == 0:
+            # The kernel footprint covers the entire kernel array, so
+            # there are no sky pixels. As in IRAF starfind, the sky is
+            # then the central data value minus the central convolved
+            # data value (the best-fitting Gaussian amplitude).
+            ycen, xcen = (size // 2 for size in self.cutout_shape)
+            cutout_conv = self.make_cutouts(self.convolved_data)
+            return (self.cutout_data_nosub[:, ycen, xcen]
+                    - cutout_conv[:, ycen, xcen])
+
         axis = (1, 2)
         sky = np.sum(self.cutout_data_nosub * skymask, axis=axis) / n_sky
 
