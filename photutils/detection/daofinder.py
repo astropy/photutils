@@ -26,17 +26,15 @@ __all__ = ['DAOStarFinder']
 
 class DAOStarFinder(StarFinderBase):
     """
-    Detect stars in an image using the DAOFIND (`Stetson 1987
-    <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_)
-    algorithm.
+    Detect stars in an image using the DAOFIND algorithm (Stetson 1987
+    [1]_).
 
     DAOFIND searches images for local density maxima that have a peak
     amplitude greater than ``threshold`` (approximately, since
     ``threshold`` is applied to a convolved image) and have a size and
     shape similar to the defined 2D Gaussian kernel. The Gaussian
-    kernel is defined
-    by the ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
-    parameters.
+    kernel is defined by the ``fwhm``, ``ratio``, ``theta``, and
+    ``sigma_radius`` input parameters.
 
     ``DAOStarFinder`` finds the object centroid by fitting the marginal
     x and y 1D distributions of the Gaussian kernel to the marginal x
@@ -48,17 +46,17 @@ class DAOStarFinder(StarFinderBase):
     in DAOFIND) is based on the source symmetry and is the ratio of a
     measure of the object's bilateral (2-fold) to four-fold symmetry.
     The second roundness statistic (``roundness2``, called ``GROUND``
-    in DAOFIND) measures the ratio of the difference in the height of
-    the best fitting Gaussian function in x minus the best fitting
-    Gaussian function in y, divided by the average of the best fitting
-    Gaussian functions in x and y. A circular source will have a zero
-    roundness. A source extended in x or y will have a negative or
-    positive roundness, respectively.
+    in DAOFIND) is the difference between the heights of the
+    best-fitting Gaussian functions in x and y, divided by the average
+    of the two heights. A circular source will have a zero roundness. A
+    source extended in x or y will have a negative or positive
+    roundness, respectively.
 
-    The sharpness statistic measures the ratio of the difference between
+    The sharpness statistic is the ratio of the difference between
     the height of the central pixel and the mean of the surrounding
-    non-bad pixels in the convolved image, to the height of the best
-    fitting Gaussian function at that point.
+    pixels within the kernel footprint in the input (unconvolved)
+    image, to the height of the best-fitting Gaussian function at that
+    point (the central pixel value of the convolved image).
 
     Parameters
     ----------
@@ -88,36 +86,40 @@ class DAOStarFinder(StarFinderBase):
     theta : float, optional
         The position angle (in degrees) of the major axis of the
         Gaussian kernel measured counter-clockwise from the positive x
-        axis.
+        axis. The default is 0.0.
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
         (standard deviation) (:math:`\\sigma = \\mbox{FWHM} / (2
-        \\sqrt{2 \\log(2)})`).
+        \\sqrt{2 \\log(2)})`). The default is 1.5.
 
     sharplo : float, optional
         The lower bound on sharpness for object detection.
 
         .. deprecated:: 3.0
-            Use ``sharpness_range=(lower, upper)`` instead.
+            This keyword is deprecated and will be removed in version
+            4.0. Use ``sharpness_range=(lower, upper)`` instead.
 
     sharphi : float, optional
         The upper bound on sharpness for object detection.
 
         .. deprecated:: 3.0
-            Use ``sharpness_range=(lower, upper)`` instead.
+            This keyword is deprecated and will be removed in version
+            4.0. Use ``sharpness_range=(lower, upper)`` instead.
 
     roundlo : float, optional
         The lower bound on roundness for object detection.
 
         .. deprecated:: 3.0
-            Use ``roundness_range=(lower, upper)`` instead.
+            This keyword is deprecated and will be removed in version
+            4.0. Use ``roundness_range=(lower, upper)`` instead.
 
     roundhi : float, optional
         The upper bound on roundness for object detection.
 
         .. deprecated:: 3.0
-            Use ``roundness_range=(lower, upper)`` instead.
+            This keyword is deprecated and will be removed in version
+            4.0. Use ``roundness_range=(lower, upper)`` instead.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
@@ -138,11 +140,14 @@ class DAOStarFinder(StarFinderBase):
         same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
 
-    xycoords : `None` or Nx2 `~numpy.ndarray`, optional
+    xycoords : `None` or Nx2 array_like, optional
         The (x, y) pixel coordinates of the approximate centroid
-        positions of identified sources. If ``xycoords`` are input, the
-        algorithm will skip the source-finding step. The positions must
-        be within the bounds of the input ``data``.
+        positions of identified sources. If ``xycoords`` are input,
+        the algorithm will skip the source-finding step, and
+        ``threshold``, ``min_separation``, ``exclude_border``, and the
+        ``mask`` input to ``find_stars`` are not used to select the
+        sources. The positions are rounded to the nearest pixel and
+        must be within the bounds of the input ``data``.
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
@@ -363,7 +368,7 @@ class DAOStarFinder(StarFinderBase):
 
         Parameters
         ----------
-        data : 2D array_like
+        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The 2D image array. The image should be
             background-subtracted.
 
@@ -387,7 +392,8 @@ class DAOStarFinder(StarFinderBase):
               fits.
             * ``n_pixels``: the total number of pixels in the Gaussian
               kernel array.
-            * ``peak``: the peak pixel value of the object.
+            * ``peak``: the value of the input data at the central
+              pixel of the object.
             * ``flux``: the object instrumental flux calculated as the
               sum of data values within the kernel footprint.
             * ``mag``: the object instrumental magnitude calculated as
@@ -447,16 +453,18 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         The convolution kernel. This kernel must match the kernel used
         to create the ``convolved_data``.
 
-    sharpness_range : tuple of 2 floats, optional
+    sharpness_range : tuple of 2 floats or `None`, optional
         The ``(lower, upper)`` inclusive bounds on sharpness for object
         detection. Objects with sharpness outside this range will be
-        rejected. The default is ``(0.2, 1.0)``.
+        rejected. If `None`, no sharpness filtering is performed. The
+        default is ``(0.2, 1.0)``.
 
-    roundness_range : tuple of 2 floats, optional
+    roundness_range : tuple of 2 floats or `None`, optional
         The ``(lower, upper)`` inclusive bounds on roundness for object
         detection. Objects with roundness outside this range will be
         rejected. Both ``roundness1`` and ``roundness2`` are tested
-        against this range. The default is ``(-1.0, 1.0)``.
+        against this range. If `None`, no roundness filtering is
+        performed. The default is ``(-1.0, 1.0)``.
 
     n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -526,8 +534,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
     @cached_property
     def peak(self):
         """
-        The peak pixel value of the source in the original (unconvolved)
-        data.
+        The value of the original (unconvolved) data at the central
+        pixel of each source cutout.
         """
         return self.cutout_data[:, self.cutout_center[0],
                                 self.cutout_center[1]]
@@ -535,7 +543,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
     @cached_property
     def convdata_peak(self):
         """
-        The peak pixel value of the source in the convolved data.
+        The value of the convolved data at the central pixel of each
+        source cutout.
         """
         return self.cutout_convdata[:, self.cutout_center[0],
                                     self.cutout_center[1]]
@@ -591,8 +600,9 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         The sharpness of the source, defined as the ratio of the
         difference between the height of the central pixel and the mean
-        of the surrounding non-bad pixels in the convolved image, to the
-        height of the best fitting Gaussian function at that point.
+        of the surrounding pixels within the kernel mask in the
+        unconvolved data, to the central pixel value of the convolved
+        data.
         """
         # Mean value of the unconvolved data (excluding the peak)
         cutout_data_masked = self.cutout_data * self.kernel.mask
@@ -611,8 +621,9 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         ----------
         axis : {0, 1}
             The axis for which the marginal weights are computed:
-                * 0: for the y axis (rows)
-                * 1: for the x axis (columns)
+
+            * 0: for the y axis (rows)
+            * 1: for the x axis (columns)
 
         Returns
         -------
@@ -629,12 +640,16 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             The center pixel position of the cutout along the given axis.
 
         sigma : float
-            The standard deviation of the Gaussian kernel along the given
-            axis.
+            The standard deviation of the Gaussian kernel used for the
+            given axis. As in DAOFIND, this is the major-axis value for
+            the x axis and the minor-axis value for the y axis, whatever
+            the kernel ``theta``.
 
         dxx : 1D `~numpy.ndarray`
             The array of pixel offsets from the center pixel along the
-            given axis.
+            given axis. As in DAOFIND, the offsets are the pixel index
+            minus the center for the y axis and the center minus the
+            pixel index for the x axis.
         """
         ycen, xcen = self.cutout_center
         xx = xcen - np.abs(np.arange(self.cutout_shape[1]) - xcen) + 1
@@ -672,8 +687,9 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
         axis : {0, 1}
             The axis for which the marginal sums are computed:
-                * 0: for the y axis (rows)
-                * 1: for the x axis (columns)
+
+            * 0: for the y axis (rows)
+            * 1: for the x axis (columns)
 
         center : int
             The center pixel position of the cutout along the given axis.
@@ -686,24 +702,27 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         result : dict
             A dict containing the following precomputed kernel-side
             quantities:
-                * ``wt_sum``: the sum of the 1D weighting function.
-                * ``kern_sum``: the sum of the 1D kernel distribution
-                  weighted by the 1D weighting function.
-                * ``kern2_sum``: the sum of the square of the 1D kernel
-                  distribution weighted by the 1D weighting function.
-                * ``kern_sum_1d``: the 1D kernel distribution weighted
-                  by the 2D weighting function.
-                * ``dkern_dx``: the derivative of the 1D kernel
-                  distribution weighted by the 2D weighting function.
-                * ``dkern_dx_sum``: the sum of the derivative of the
-                  1D kernel distribution weighted by the 2D weighting
-                  function.
-                * ``dkern_dx2_sum``: the sum of the square of the
-                  derivative of the 1D kernel distribution weighted by the
-                  2D weighting function.
-                * ``kern_dkern_dx_sum``: the sum of the product of the
-                  1D kernel distribution and its derivative, weighted by
-                  the 2D weighting function.
+
+            * ``wt_sum``: the sum of the 1D weighting function.
+            * ``kern_sum``: the sum of the 1D kernel distribution
+              weighted by the 1D weighting function.
+            * ``kern2_sum``: the sum of the square of the 1D kernel
+              distribution weighted by the 1D weighting function.
+            * ``kern_sum_1d``: the 1D kernel distribution (the kernel
+              weighted by the 2D weighting function and summed over
+              the perpendicular axis).
+            * ``dkern_dx``: the derivative of the 1D kernel
+              distribution (the 1D kernel distribution multiplied by
+              the pixel offsets from the center).
+            * ``dkern_dx_sum``: the sum of the derivative of the 1D
+              kernel distribution weighted by the 1D weighting
+              function.
+            * ``dkern_dx2_sum``: the sum of the square of the
+              derivative of the 1D kernel distribution weighted by the
+              1D weighting function.
+            * ``kern_dkern_dx_sum``: the sum of the product of the 1D
+              kernel distribution and its derivative, weighted by the
+              1D weighting function.
         """
         dx = center - np.arange(size)
 
@@ -743,8 +762,9 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
         axis : {0, 1}
             The axis for which the marginal sums are computed:
-                * 0: for the y axis (rows)
-                * 1: for the x axis (columns)
+
+            * 0: for the y axis (rows)
+            * 1: for the x axis (columns)
 
         dxx : 1D `~numpy.ndarray`
             The array of pixel offsets from the center pixel along the
@@ -759,17 +779,18 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         result : dict
             A dict containing the following precomputed data-side
             quantities:
-                * ``data_sum``: the sum of the 1D data distribution
-                  weighted by the 1D weighting function.
-                * ``data_kern_sum``: the sum of the 1D data distribution
-                  weighted by the 1D kernel distribution and the 1D
-                  weighting function.
-                * ``data_dkern_dx_sum``: the sum of the 1D data
-                  distribution weighted by the derivative of the 1D kernel
-                  distribution and the 2D weighting function.
-                * ``data_dx_sum``: the sum of the 1D data distribution
-                  weighted by the pixel offsets and the 2D weighting
-                  function.
+
+            * ``data_sum``: the sum of the 1D data distribution
+              weighted by the 1D weighting function.
+            * ``data_kern_sum``: the sum of the 1D data distribution
+              weighted by the 1D kernel distribution and the 1D
+              weighting function.
+            * ``data_dkern_dx_sum``: the sum of the 1D data
+              distribution weighted by the derivative of the 1D kernel
+              distribution and the 1D weighting function.
+            * ``data_dx_sum``: the sum of the 1D data distribution
+              weighted by the pixel offsets and the 1D weighting
+              function.
         """
         cutout_data = self.cutout_data
         if isinstance(cutout_data, u.Quantity):
@@ -807,8 +828,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             ``_marginal_data_sums``.
 
         sigma : float
-            The standard deviation of the Gaussian kernel along the given
-            axis.
+            The standard deviation of the Gaussian kernel used for the
+            given axis (see ``_marginal_weights``).
 
         size : int
             The size of the cutout along the given axis.
@@ -875,7 +896,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         distributions, to the marginal x/y distributions of the original
         (unconvolved) image.
 
-        These fits are used calculate the star centroid and roundness2
+        These fits are used to calculate the star centroid and roundness2
         ("GROUND") properties.
 
         Parameters
@@ -888,14 +909,12 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
         Returns
         -------
-        dx : float
-            The fractional shift in x or y (depending on ``axis`` value)
-            of the image centroid relative to the maximum pixel.
-
-        hx : float
-            The height of the best-fitting Gaussian to the marginal
-            x or y (depending on ``axis`` value) distribution of the
-            unconvolved source data.
+        result : Nx2 `~numpy.ndarray`
+            An array where each row contains the fractional shift (dx)
+            of the image centroid relative to the central pixel and the
+            height (hx) of the best-fitting Gaussian to the marginal
+            distribution of the unconvolved source data, along x or y
+            depending on ``axis``. Rejected fits are NaN.
         """
         wt, wts, size, center, sigma, dxx = (
             self._marginal_weights(axis))
@@ -976,12 +995,11 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         The star roundness.
 
-        This roundness parameter represents the ratio of the difference
-        in the height of the best fitting Gaussian function in x minus
-        the best fitting Gaussian function in y, divided by the average
-        of the best fitting Gaussian functions in x and y. A circular
-        source will have a zero roundness. A source extended in x or y
-        will have a negative or positive roundness, respectively.
+        This roundness parameter is the difference between the heights
+        of the best-fitting Gaussian functions in x and y, divided by
+        the average of the two heights. A circular source will have a
+        zero roundness. A source extended in x or y will have a negative
+        or positive roundness, respectively.
         """
         return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 

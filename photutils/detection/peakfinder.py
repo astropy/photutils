@@ -216,9 +216,12 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     box_size : scalar or tuple, optional
         The size of the local region to search for peaks at every point
         in ``data``. If ``box_size`` is a scalar, then the region
-        shape will be ``(box_size, box_size)``. Either ``box_size`` or
-        ``footprint`` must be defined. If they are both defined, then
-        ``footprint`` overrides ``box_size``.
+        shape will be ``(box_size, box_size)``. If ``box_size`` has
+        two elements, they must be in ``(ny, nx)`` order. ``box_size``
+        must have odd values for both axes if ``centroid_func`` is
+        input. Either ``box_size`` or ``footprint`` must be defined. If
+        they are both defined, then ``footprint`` overrides
+        ``box_size``.
 
     footprint : `~numpy.ndarray` of bools, optional
         A boolean array where `True` values describe the local
@@ -249,7 +252,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         border is excluded. The border width values must be non-negative
         integers.
 
-    n_peaks : int, optional
+    n_peaks : int or `numpy.inf`, optional
         The maximum number of peaks to return. It must be a positive
         integer or `numpy.inf` (the default, meaning all peaks
         are returned). When the number of detected peaks exceeds
@@ -272,8 +275,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         calculate the centroid of a 2D array. The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword, and
         optionally an ``error`` keyword. The callable object must return
-        a tuple of two 1D `~numpy.ndarray` objects, representing the x
-        and y centroids, respectively.
+        two scalar values representing the (x, y) centroid.
 
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -290,15 +292,18 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
         (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then
         the sky coordinates will not be returned in the output
-        `~astropy.table.Table`.
+        `~astropy.table.QTable`.
 
     Returns
     -------
     output : `~astropy.table.QTable` or `None`
-        A table containing the x and y pixel location of the peaks and
-        their values. If ``centroid_func`` is input, then the table will
-        also contain the centroid position. If no peaks are found then
-        `None` is returned.
+        A table containing the x and y pixel location of the peaks
+        and their values, in the ``id``, ``x_peak``, ``y_peak``, and
+        ``peak_value`` columns. The table also contains a
+        ``skycoord_peak`` column if ``wcs`` is input, ``x_centroid``
+        and ``y_centroid`` columns if ``centroid_func`` is input, and a
+        ``skycoord_centroid`` column if both are input. If no peaks are
+        found then `None` is returned.
 
     Notes
     -----
@@ -317,8 +322,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     A centroiding function can be input via the ``centroid_func``
     keyword to compute centroid coordinates with subpixel precision
     within the input ``box_size`` or ``footprint``. Note that when
-    ``min_separation`` is used, the centroid region size is determined
-    by ``box_size`` (default 3), not by ``min_separation``.
+    ``min_separation`` is used, the centroid region is determined by
+    ``footprint`` if it is input and otherwise by ``box_size`` (default
+    3), not by ``min_separation``.
 
     The peak detection uses ``mode='constant'`` with ``cval=0.0`` for
     `~scipy.ndimage.maximum_filter`, which means pixels outside the
@@ -326,7 +332,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     values, this may suppress legitimate peaks near the borders.
 
     Masked pixels and any NaN values in the input ``data`` are replaced
-    with the minimum finite data value before peak detection, so they
+    with the minimum non-NaN data value before peak detection, so they
     can neither be detected as peaks nor suppress nearby peaks. NaN
     pixels are automatically excluded from the results.
 
