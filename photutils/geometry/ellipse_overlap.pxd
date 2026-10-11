@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# cython: language_level=3
+# cython: language_level=3, cdivision=True
 """
 Declarations needed to cimport the ellipse overlap functions into other
 Cython files. These single-pixel functions are pure C math functions

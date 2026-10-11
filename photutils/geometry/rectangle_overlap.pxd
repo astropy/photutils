@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# cython: language_level=3
+# cython: language_level=3, cdivision=True
 """
 Declarations needed to cimport the rectangle overlap function into other
 Cython files. This single-pixel function is a pure C math function that
