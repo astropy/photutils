@@ -7,7 +7,6 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
-from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAnnulus
@@ -243,22 +242,20 @@ class TestFastLocalBackground:
         fast, slow = self._run_both_paths(local_bkg, monkeypatch)
         assert_allclose(fast, slow, rtol=1e-12)
 
-    def test_nonfinite_data_matches_slow_path(self, monkeypatch):
+    @pytest.mark.parametrize('sigma_clip', [None, SigmaClip(sigma=3.0)])
+    @pytest.mark.parametrize('value', [np.nan, np.inf, -np.inf])
+    def test_nonfinite_data_matches_slow_path(self, value, sigma_clip,
+                                              monkeypatch):
         """
-        Test that non-finite data values are excluded, matching the
-        per-aperture loop (where sigma clipping removes them with a
-        warning, while the fast path masks them silently).
+        Test that non-finite data values are excluded in both the fast
+        path and the per-aperture loop, with or without sigma clipping.
         """
         data = self.data.copy()
-        data[30:34, 36:40] = np.nan  # inside the annulus at (30, 30)
-        local_bkg = LocalBackground(5, 10)
-
-        fast = local_bkg(data, self.x, self.y, mask=self.mask)
-        monkeypatch.setattr(LocalBackground, '_fast_estimator_spec',
-                            lambda _self: None)
-        match = 'Input data contains invalid values'
-        with pytest.warns(AstropyUserWarning, match=match):
-            slow = local_bkg(data, self.x, self.y, mask=self.mask)
+        data[30:34, 36:40] = value  # inside the annulus at (30, 30)
+        estimator = MeanBackground(sigma_clip=sigma_clip)
+        local_bkg = LocalBackground(5, 10, bkg_estimator=estimator)
+        fast, slow = self._run_both_paths(local_bkg, monkeypatch, data=data)
+        assert np.isfinite(fast[0])
         assert_allclose(fast, slow, rtol=1e-12)
 
     def test_unsupported_estimators_fall_back(self):

@@ -321,6 +321,8 @@ class LocalBackground:
             bkg = np.empty(n_apertures)
             for i, apermask in enumerate(apermasks):
                 values = apermask.get_values(data, mask=mask)
+                # Exclude non-finite values, as the batched path does
+                values = values[np.isfinite(values)]
                 bkg[i] = self.bkg_estimator(values)
 
         if bkg.size == 1:

@@ -619,6 +619,11 @@ Bug Fixes
     (or could silently select the wrong pixels) when the background
     map was computed. [#2363]
 
+  - Fixed ``LocalBackground`` so that non-finite data values in the
+    annulus are always excluded. Previously, they were kept (giving
+    a non-finite or NaN result) for a custom ``bkg_estimator`` or one
+    with ``sigma_clip=None``, depending on the estimator type. [#2492]
+
 - ``photutils.centroids``
 
   - Fixed ``centroid_quadratic`` to fit the quadratic in coordinates
