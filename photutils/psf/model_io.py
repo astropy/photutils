@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for reading and writing PSF models.
+Tools for reading PSF models.
 """
 
 import io
@@ -62,10 +62,10 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
     Get help on the available readers for
     `~photutils.psf.GriddedPSFModel` using the ``help()`` method::
 
-      >>> # Get help reading Table and list supported formats
+      >>> # Get help reading a GriddedPSFModel and list supported formats
       >>> GriddedPSFModel.read.help()
 
-      >>> # Get detailed help on the STSPSF FITS reader
+      >>> # Get detailed help on the STDPSF FITS reader
       >>> GriddedPSFModel.read.help('stdpsf')
 
       >>> # Get detailed help on the WebbPSF FITS reader
@@ -116,9 +116,9 @@ def _read_stdpsf(filename):
 
     Parameters
     ----------
-    filename : str, path-like, or `~astropy.io.fits.HDUList`
-        The name of the STDPSF FITS file, or an already-open
-        `~astropy.io.fits.HDUList`.
+    filename : str, path-like, file-like, or `~astropy.io.fits.HDUList`
+        The name of the STDPSF FITS file, an open file object, or an
+        already-open `~astropy.io.fits.HDUList`.
 
     Returns
     -------
@@ -150,9 +150,9 @@ def _read_fits_stdpsf(filename):
 
     Parameters
     ----------
-    filename : str, path-like, or `~astropy.io.fits.HDUList`
-        The name of the STDPSF FITS file, or an already-open
-        `~astropy.io.fits.HDUList`.
+    filename : str, path-like, file-like, or `~astropy.io.fits.HDUList`
+        The name of the STDPSF FITS file, an open file object, or an
+        already-open `~astropy.io.fits.HDUList`.
 
     Returns
     -------
@@ -441,14 +441,17 @@ def _get_metadata(filename, detector_id):
         The name of the STDPSF FITS file, an open file object, or an
         already-open `~astropy.io.fits.HDUList`.
 
-    detector_id : int
-        The detector ID.
+    detector_id : int or `None`
+        The detector ID. If `None`, the ``instrument`` metadata is not
+        set and the ``detector`` metadata is the detector field of the
+        filename.
 
     Returns
     -------
     meta : dict or `None`
         A dictionary containing the metadata. `None` is returned if a
-        filename string cannot be determined from the input.
+        filename string cannot be determined from the input or if the
+        filename does not have the STDPSF form.
     """
     if isinstance(filename, fits.HDUList):
         filename = filename.filename()
@@ -522,13 +525,17 @@ def stdpsf_reader(filename, detector_id=None):
     filename : str, path-like, file-like, or `~astropy.io.fits.HDUList`
         The name of the STDPSF FITS file, an open file object, or an
         already-open `~astropy.io.fits.HDUList`. A URL can also be
-        used.
+        used. A filename, or the ``name`` of a file object, must end
+        with a FITS extension (e.g., ``.fits`` or ``.fits.gz``).
+        Otherwise a `TypeError` is raised.
 
     detector_id : `None` or int, optional
         For STDPSF files that contain ePSF grids for multiple detectors,
         one will need to identify the detector for which to extract the
-        ePSF grid. This keyword is ignored for STDPSF files that do not
-        contain ePSF grids for multiple detectors.
+        ePSF grid. For STDPSF files that do not contain ePSF grids for
+        multiple detectors, this keyword does not affect the ePSF data.
+        If it is not `None`, the ``instrument`` and ``detector``
+        metadata are set from the detector name in the filename.
 
         For WFPC2, the detector value (int) should be:
 
@@ -539,11 +546,10 @@ def stdpsf_reader(filename, detector_id=None):
         * 1: WFC2, UVIS2 (sci, 1)
         * 2: WFC1, UVIS1 (sci, 2)
 
-        Note that for these two instruments, detector 1 is above
-        detector 2 in the y direction. However, in the FLT FITS files,
-        the (sci, 1) extension corresponds to detector 2 (WFC2, UVIS2)
-        and the (sci, 2) extension corresponds to detector 1 (WFC1,
-        UVIS1).
+        Note that for these two instruments, chip 1 (WFC1, UVIS1) is
+        above chip 2 (WFC2, UVIS2) in the y direction. In the FLT FITS
+        files, the (sci, 1) extension corresponds to chip 2 and the
+        (sci, 2) extension corresponds to chip 1.
 
         For NIRCam NRCSW files that contain ePSF grids for all 8 SW
         detectors, the detector value should be:
@@ -603,14 +609,15 @@ def webbpsf_reader(filename):
         method, e.g., ``model = GriddedPSFModel.read(filename,
         format='webbpsf')``.
 
-    The WebbPSF FITS file contain a 3D array of ePSFs with the header
+    The WebbPSF FITS file contains a 3D array of ePSFs with the header
     detailing where the fiducial ePSFs are located in the detector
     coordinate frame.
 
     Parameters
     ----------
-    filename : str or path-like
-        The name of the WebbPSF FITS file. A URL can also be used.
+    filename : str, path-like, or file-like
+        The name of the WebbPSF FITS file or an open file object. A URL
+        can also be used.
 
     Returns
     -------

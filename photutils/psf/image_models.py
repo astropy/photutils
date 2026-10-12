@@ -548,6 +548,7 @@ class ImagePSF(Fittable2DModel):
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.psf import ImagePSF
         >>> psf_data = np.arange(30, dtype=float).reshape(5, 6)
         >>> psf_data /= np.sum(psf_data)
