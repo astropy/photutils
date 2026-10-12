@@ -16,11 +16,12 @@ The main source loop runs without the GIL and uses no global mutable
 state, so this module is safe to use from multiple threads, including on
 free-threaded Python builds.
 
-The image arrays are declared with fused types, so the drivers read
+The image arrays are declared with fused types, so the driver reads
 C-contiguous float32 or float64 images and int32 or intp segmentation
-images directly, without the caller making full-image copies. All of
-the images passed in one call must have the same dtype. Each pixel
-value is converted to double as it is read, which is exact, and all
+images directly, without the caller making full-image copies. The
+``data`` and ``error`` images passed in one call must have the same
+dtype. The segmentation dtype is independent of it. Each pixel value
+is converted to double as it is read, which is exact, and all
 arithmetic is performed in double precision, so the results agree to
 within rounding for either input dtype.
 """
@@ -201,7 +202,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         * elliptical annulus: ``(a_in, b_in, a_out, b_out, theta)``
         * rectangle: ``(w, h, theta)``
         * rectangular annulus: ``(w_in, h_in, w_out, h_out, theta)``
-        * polygon: the flattened counter-clockwise vertex offsets
+        * polygon: the flattened counterclockwise vertex offsets
           ``(x0, y0, x1, y1, ...)`` relative to each position (at least
           3 vertices, i.e., 6 values)
 
@@ -226,35 +227,36 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         The number of subpixels in each dimension when ``use_exact`` is
         0.
 
-    segmentation : 2D ndarray of int32 or intp (C-contiguous) or `None`
+    segmentation : 2D ndarray of int32 or intp (C-contiguous) or `None`, \
+            optional
         A segmentation array where background pixels are zero and
         sources have positive integer labels. Must have the same shape
         as ``data``. If `None`, no segmentation masking is applied.
 
-    labels : 1D ndarray of intp (C-contiguous) or `None`
+    labels : 1D ndarray of intp (C-contiguous) or `None`, optional
         The target source label for each position with shape
         ``(n_sources,)``. A label of 0 disables segmentation masking for
         that source, except for method 3, which does not use the label.
         Required (not `None`) if ``segmentation`` is input.
 
-    seg_method : int
-        The segmentation masking method:
+    seg_method : int, optional
+        The segmentation masking method. The default is 0.
 
-        * 0: disables masking
+        * 0: disables masking.
         * 1: excludes neighbor-source pixels
-             (``(seg > 0) & (seg != label)``)
+          (``(seg > 0) & (seg != label)``).
         * 2: excludes all pixels not assigned to the target source
-             (``seg != label``).
+          (``seg != label``).
         * 3: excludes all labeled pixels (``seg > 0``), the
-             ``'background_only'`` method. The labels are ignored.
+          ``'background_only'`` method. The labels are ignored.
         * 4: replaces neighbor-source pixels with the values mirrored
-             across the (rounded) aperture center (the symmetric
-             ``'correct'`` method). For method 4, a neighbor pixel whose
-             mirror falls outside the aperture bounding box, is itself a
-             neighbor, is masked, or is non-finite (with
-             ``mask_nonfinite``) is excluded instead of replaced.
+          across the (rounded) aperture center (the symmetric
+          ``'correct'`` method). A neighbor pixel whose mirror falls
+          outside the aperture bounding box clipped to the data, is
+          itself a neighbor, is masked, or is non-finite (with
+          ``mask_nonfinite``) is excluded instead of replaced.
 
-    local_bkg : 1D ndarray of float64 (C-contiguous) or `None`
+    local_bkg : 1D ndarray of float64 (C-contiguous) or `None`, optional
         The per-source local background to subtract from each pixel
         value of that source. If `None`, no background is subtracted.
 
@@ -265,7 +267,8 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         per-source sigma clipping. When zero (default), those four
         outputs are empty arrays.
 
-    params_per_source : 2D ndarray of float64 (C-contiguous) or `None`
+    params_per_source : 2D ndarray of float64 (C-contiguous) or `None`, \
+            optional
         The per-source aperture shape parameters with shape
         ``(n_sources, k)``, used instead of the shared ``params``
         vector (which must then be `None`). Only the circle (``k`` =
@@ -336,16 +339,23 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
           inside the data
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked
-        * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels that
-          are non-finite in the data (masked or unmasked)
-        * ``FLAG_COL_NONFINITE_ERROR``: the number of those pixels that
-          are non-finite in the error (masked or unmasked)
+        * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels
+          excluded as non-finite data (by ``mask_nonfinite`` or by mask
+          bit 2) that are not input-masked, plus 1 if the accumulated
+          sum is non-finite (see below)
+        * ``FLAG_COL_NONFINITE_ERROR``: a 0/1 indicator of whether a
+          contributing pixel has a non-finite error (detected from the
+          accumulated variance, always 0 if ``error`` is `None`)
         * ``FLAG_COL_SEG``: the number of those unmasked pixels that
-          were excluded or corrected by the segmentation masking
+          lie on a neighboring source (for method 3, on any labeled
+          source) and were excluded or corrected by the segmentation
+          masking. Background pixels excluded by method 2 are not
+          counted
         * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
           that could not be corrected by the segmentation masking
         * ``FLAG_COL_VALID``: the number of contributing pixels
-          (unmasked, finite, and not excluded by segmentation)
+          (unmasked, not excluded by the segmentation masking, and
+          finite when ``mask_nonfinite`` is nonzero)
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
         * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
@@ -362,11 +372,11 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
 
         The ``FLAG_COL_NONFINITE_DATA`` and ``FLAG_COL_NONFINITE_ERROR``
         columns are nonzero when non-finite data or error values
-        contribute to the aperture. Non-finite data pixels excluded
-        by ``mask_nonfinite`` are counted exactly, while unmasked
-        non-finite contributions are detected from the accumulated
-        sums as a 0/1 indicator. Rows are all zero where the aperture
-        bounding box does not overlap the data.
+        contribute to the aperture. Non-finite data pixels excluded by
+        ``mask_nonfinite`` or by mask bit 2 are counted exactly, while
+        unmasked non-finite contributions are detected from the
+        accumulated sums as a 0/1 indicator. Rows are all zero where the
+        aperture bounding box does not overlap the data.
 
     weights_out : 1D ndarray of uint8
         A per-source 0/1 indicator of whether the aperture has one
@@ -505,7 +515,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
                 bbox_dy_in = (half_width_in * fabs(sin_theta)
                               + half_height_in * fabs(cos_theta))
         elif shape_code == _POLYGON:
-            # ``params`` holds the flattened counter-clockwise vertex
+            # ``params`` holds the flattened counterclockwise vertex
             # offsets (x0, y0, x1, y1, ...).
             n_poly = params.shape[0] // 2
             if n_poly < 3 or 2 * n_poly != params.shape[0]:
