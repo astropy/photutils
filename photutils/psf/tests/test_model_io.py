@@ -207,7 +207,8 @@ class TestSTDPSFReader:
         with fits.open(filename) as hdulist:
             model = stdpsf_reader(hdulist)
         assert isinstance(model, GriddedPSFModel)
-        assert model.meta['detector'] == 'NRCA1'
+        assert model.meta['instrument'] == 'JWST/NIRCam'
+        assert model.meta['detector'] == 'A1'
 
         with fits.open(filename) as hdulist:
             grid = STDPSFGrid(hdulist)
@@ -373,25 +374,40 @@ class TestGetMetadata:
     Tests for parsing metadata from the STDPSF filename.
     """
 
-    @pytest.mark.parametrize(('filename', 'detector', 'filter_name'),
-                             [('STDPSF_ACSWFC_F814W.fits', 'ACSWFC', 'F814W'),
-                              ('STDPSF_MIRI_F560W.fits.gz', 'MIRI', 'F560W'),
-                              ('STDPSF_NRCA1_F150W_mock.fits', 'NRCA1',
-                               'F150W'),
-                              ('/a/b/STDPSF_WFC3IR_F160W.fits', 'WFC3IR',
-                               'F160W')])
-    def test_filename_fields(self, filename, detector, filter_name):
-        meta = _get_metadata(filename, None)
+    @pytest.mark.parametrize(
+        ('filename', 'instrument', 'detector', 'filter_name'),
+        [('STDPSF_ACSHRC_F814W.fits', 'HST/ACS', 'HRC', 'F814W'),
+         ('STDPSF_MIRI_F560W.fits.gz', 'JWST/MIRI', 'MIRIM', 'F560W'),
+         ('STDPSF_NRCA1_F150W_mock.fits', 'JWST/NIRCam', 'A1', 'F150W'),
+         ('/a/b/STDPSF_WFC3IR_F160W.fits', 'HST/WFC3', 'IR', 'F160W')])
+    @pytest.mark.parametrize('detector_id', [None, 1])
+    def test_filename_fields(self, filename, instrument, detector,
+                             filter_name, detector_id):
+        """
+        Test that the metadata of a single-detector file does not
+        depend on ``detector_id``.
+        """
+        meta = _get_metadata(filename, detector_id)
         assert meta['STDPSF'] == filename
+        assert meta['instrument'] == instrument
         assert meta['detector'] == detector
         assert meta['filter'] == filter_name
+
+    def test_unknown_detector_no_detector_id(self):
+        """
+        Test that an unrecognized detector field is kept as is when no
+        ``detector_id`` is input.
+        """
+        meta = _get_metadata('STDPSF_BADDET_F814W.fits', None)
+        assert meta['detector'] == 'BADDET'
+        assert 'instrument' not in meta
 
     def test_fileobj(self, tmp_path):
         path = tmp_path / 'STDPSF_ACSHRC_F606W.fits'
         path.write_bytes(b'')
         with io.FileIO(str(path)) as fileobj:
             meta = _get_metadata(fileobj, None)
-        assert meta['detector'] == 'ACSHRC'
+        assert meta['detector'] == 'HRC'
         assert meta['filter'] == 'F606W'
 
     @pytest.mark.parametrize('filename', ['abcdef123456', 'a_b', 'a_b_c_d_e'])

@@ -200,6 +200,15 @@ def test_invalid_inputs():
         _ = psfphot(data, init_params=tbl)
 
 
+def test_validate_type_tuple():
+    """
+    Test the type validation error message for a tuple of types.
+    """
+    match = 'value must be a int or float instance'
+    with pytest.raises(TypeError, match=match):
+        PSFPhotometry._validate_type('a', 'value', (int, float))
+
+
 def test_psf_photometry(test_data):
     data, error, sources = test_data
 
@@ -945,6 +954,32 @@ def test_parameter_near_bound_flag_grouped():
     assert np.all(phot['flags'] & 32)
 
 
+@pytest.mark.parametrize('flux_init', [[500.0, 700.0, 600.0],
+                                       [1000.0, 1000.0, 1000.0]])
+def test_grouped_fit_fixed_positions(flux_init):
+    """
+    Regression test that fixed parameters keep their values for grouped
+    sources, and that the fluxes are fit when the initial fluxes do or
+    do not match the true values.
+    """
+    model = CircularGaussianPRF(fwhm=3)
+    model.x_0.fixed = True
+    model.y_0.fixed = True
+    sources = Table({'x_0': [20.0, 26.0, 60.0], 'y_0': [20.0, 22.0, 60.0],
+                     'flux': [500.0, 700.0, 600.0]})
+    data = make_model_image((80, 80), model, sources, model_shape=(21, 21))
+    init = Table({'x': sources['x_0'], 'y': sources['y_0'],
+                  'flux': flux_init})
+    psfphot = PSFPhotometry(model, (7, 7), grouper=SourceGrouper(10))
+    phot = psfphot(data, init_params=init)
+    assert_equal(phot['group_size'], [2, 2, 1])
+    assert_allclose(phot['x_fit'], sources['x_0'])
+    assert_allclose(phot['y_fit'], sources['y_0'])
+    assert_allclose(phot['flux_init'], flux_init)
+    assert_allclose(phot['flux_fit'], sources['flux'], rtol=1e-4)
+    assert_equal(phot['flags'], 0)
+
+
 def test_int_data_with_local_bkg():
     """
     Regression test that integer-dtype data works with a float
@@ -1071,6 +1106,27 @@ def test_local_bkg(test_data):
     assert np.count_nonzero(phot['local_bkg']) == len(sources)
 
 
+def test_local_bkg_init_flux():
+    """
+    Test that the aperture-based initial flux has the local background
+    subtracted over the whole aperture area.
+    """
+    model = CircularGaussianPRF(fwhm=3)
+    sources = Table({'x_0': [30.0, 2.0], 'y_0': [30.0, 30.0],
+                     'flux': [1000.0, 1000.0]})
+    data = make_model_image((61, 61), model, sources, model_shape=(31, 31))
+    data += 5.0
+    init = Table({'x': sources['x_0'], 'y': sources['y_0'],
+                  'local_bkg': [5.0, 5.0]})
+    psfphot = PSFPhotometry(model, (7, 7), aperture_radius=5)
+    phot = psfphot(data, init_params=init)
+
+    # The aperture of the second source is cut off by the image edge
+    assert_allclose(phot['flux_init'][0], 1000.0, rtol=1e-3)
+    assert 950 < phot['flux_init'][1] < 1000
+    assert_allclose(phot['flux_fit'], 1000.0)
+
+
 def test_local_bkg_nonfinite(test_data):
     """
     Test that non-finite local background values are handled correctly.
@@ -1152,7 +1208,11 @@ def test_local_bkg_nonfinite_measured(test_data):
     assert np.all(phot['flux_err'] > 0)
 
 
-def test_fixed_params(test_data):
+@pytest.mark.parametrize('grouper', [None, SourceGrouper(20)])
+def test_all_params_fixed(test_data, grouper):
+    """
+    Test that a PSF model with no free parameters raises a clear error.
+    """
     data, error, _ = test_data
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
@@ -1162,9 +1222,9 @@ def test_fixed_params(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                            aperture_radius=4)
+                            grouper=grouper, aperture_radius=4)
 
-    match = r'`bounds` must contain 2 elements'
+    match = 'psf_model has no free parameters to fit'
     with pytest.raises(ValueError, match=match):
         psfphot(data, error=error)
 

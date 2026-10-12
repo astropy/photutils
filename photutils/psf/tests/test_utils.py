@@ -12,6 +12,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.psf import CircularGaussianPRF, make_psf_model_image
+from photutils.psf.flags import decode_psf_flags
 from photutils.psf.utils import (_get_psf_model_main_params,
                                  _interpolate_missing_data,
                                  _validate_psf_model, fit_2dgaussian, fit_fwhm)
@@ -132,6 +133,29 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
         for column in fit_tbl.colnames:
             if 'flux' in column:
                 assert fit_tbl[column].unit == unit
+
+
+@pytest.mark.parametrize('with_units', [False, True])
+def test_fit_2dgaussian_no_overlap(test_data, with_units):
+    """
+    Test that a position whose fit region is off the image is flagged
+    instead of raising an error.
+    """
+    data, sources = test_data
+    if with_units:
+        data = data * u.nJy
+    xypos = [(sources['x_0'][0], sources['y_0'][0]), (200.0, 50.0)]
+    fit = fit_2dgaussian(data, xypos=xypos, fit_shape=(5, 5),
+                         fix_fwhm=False)
+    fit_tbl = fit.results
+    assert_allclose(fit_tbl['fwhm_fit'][0], sources['fwhm'][0])
+    assert np.isnan(fit_tbl['fwhm_fit'][1])
+    assert fit_tbl['flags'][0] == 0
+    assert 'no_overlap' in decode_psf_flags(fit_tbl['flags'][1])
+
+    fwhm = fit_fwhm(data, xypos=xypos, fit_shape=(5, 5))
+    assert_allclose(fwhm[0], sources['fwhm'][0])
+    assert np.isnan(fwhm[1])
 
 
 def test_fit_2dgaussian_generator_xypos(test_data):

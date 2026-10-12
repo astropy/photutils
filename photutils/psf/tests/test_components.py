@@ -556,12 +556,33 @@ class TestPSFResultsAssembler:
         assembler = PSFResultsAssembler(
             param_mapper=param_mapper,
             fit_shape=fit_shape,
-            xy_bounds=(1.0, 1.0),
         )
 
         assert assembler.param_mapper is param_mapper
         assert assembler.fit_shape == fit_shape
-        assert assembler.xy_bounds == (1.0, 1.0)
+
+    def test_define_flags_no_valid_mask(self, param_mapper):
+        """
+        Test that define_flags treats every source as valid when
+        valid_mask is None.
+        """
+        assembler = PSFResultsAssembler(param_mapper, (7, 7))
+        results_tbl = QTable({'x_fit': [11.0, 30.0], 'y_fit': [10.0, 30.0],
+                              'flux_fit': [100.0, 100.0],
+                              'n_pixels_fit': [49, 49]})
+        init_params = QTable({'x_init': [10.0, 30.0], 'y_init': [10.0, 30.0],
+                              'local_bkg': [0.0, 0.0]})
+        fitted_models_table = Table({'id': [1, 2],
+                                     'x_0': [11.0, 30.0],
+                                     'x_0_fixed': [False, False],
+                                     'x_0_bounds': [(9.0, 11.0),
+                                                    (29.0, 31.0)]})
+        fit_info = [{'param_cov': np.eye(3)}, {'param_cov': np.eye(3)}]
+
+        flags = assembler.define_flags(results_tbl, (50, 50), None, fit_info,
+                                       fitted_models_table, None, None,
+                                       init_params)
+        assert_equal(flags, [32, 0])
 
     def test_get_fit_error_indices_all_converged(self, param_mapper):
         """

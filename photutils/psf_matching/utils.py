@@ -333,17 +333,12 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     ValueError
         If ``psf`` is not a 2D array, has even dimensions, contains NaN
         or Inf values, or has a zero sum, if the pixel scales are not
-        positive, or if the resized PSF has a zero sum.
+        positive, if ``order`` is not an integer from 0 to 5, or if the
+        resized PSF has a zero sum.
 
     TypeError
         If the pixel scales have units that are not convertible to each
-        other, if only one of them is a `~astropy.units.Quantity`, or if
-        ``order`` is not an integer.
-
-    RuntimeError
-        If ``order`` is not in the range 0 to 5. A non-integer
-        ``order``, such as 1.5, can also raise this exception instead of
-        a `TypeError`.
+        other, or if only one of them is a `~astropy.units.Quantity`.
 
     Notes
     -----
@@ -373,6 +368,10 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
         raise ValueError(msg)
 
     _validate_psf(psf, 'psf')
+
+    if not isinstance(order, (int, np.integer)) or not 0 <= order <= 5:
+        msg = 'order must be an integer from 0 to 5'
+        raise ValueError(msg)
 
     # The conversion to a float handles pixel scales that are quantities
     # with different units.

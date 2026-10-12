@@ -445,7 +445,9 @@ class IterativePSFPhotometry:
         The fluxes are added in place to the input ``sources`` table.
 
         The fluxes are measured using aperture photometry with a
-        circular aperture of radius ``aperture_radius``.
+        circular aperture of radius ``aperture_radius``. If ``sources``
+        has a ``local_bkg`` column, each finite value times the aperture
+        area is subtracted from the flux.
 
         Parameters
         ----------
@@ -466,8 +468,11 @@ class IterativePSFPhotometry:
         sources : `~astropy.table.Table`
             The input ``sources`` table with the new flux column added.
         """
-        flux = self._psfphot._data_processor.get_aper_fluxes(data, mask,
-                                                             sources)
+        local_bkg = None
+        if 'local_bkg' in sources.colnames:
+            local_bkg = np.asarray(sources['local_bkg'].value)
+        flux = self._psfphot._data_processor.get_aper_fluxes(
+            data, mask, sources, local_bkg=local_bkg)
         flux_col = self._psfphot._param_mapper.init_colnames['flux']
         sources[flux_col] = flux
         return sources
@@ -528,19 +533,6 @@ class IterativePSFPhotometry:
         max_id = np.max(orig_sources['id']) if len(orig_sources) > 0 else 0
         new_sources['id'] = np.arange(len(new_sources)) + max_id + 1
 
-        # Measure initial fluxes and add default values for other model
-        # parameters
-        new_sources = self._measure_init_fluxes(residual_data, mask,
-                                                new_sources)
-
-        model_param_mapper = param_mapper.alias_to_model_param
-        for alias, model_param_name in model_param_mapper.items():
-            init_col = param_mapper.init_colnames.get(alias)
-            if init_col and init_col not in new_sources.colnames:
-                default_value = getattr(self._psfphot.psf_model,
-                                        model_param_name)
-                new_sources[init_col] = default_value
-
         # Estimate the local background for the new sources from the
         # residual data. If no estimator was input, use zero, matching
         # the values assigned by PSFPhotometry.
@@ -558,6 +550,19 @@ class IterativePSFPhotometry:
                                       new_sources[x_col],
                                       new_sources[y_col], mask=mask)
             new_sources['local_bkg'] = local_bkg
+
+        # Measure initial fluxes and add default values for other model
+        # parameters
+        new_sources = self._measure_init_fluxes(residual_data, mask,
+                                                new_sources)
+
+        model_param_mapper = param_mapper.alias_to_model_param
+        for alias, model_param_name in model_param_mapper.items():
+            init_col = param_mapper.init_colnames.get(alias)
+            if init_col and init_col not in new_sources.colnames:
+                default_value = getattr(self._psfphot.psf_model,
+                                        model_param_name)
+                new_sources[init_col] = default_value
 
         # Combine tables
         new_sources.meta.pop('date', None)  # prevent merge conflicts

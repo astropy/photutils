@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import (InverseVariance, NDData, StdDevUncertainty,
-                            VarianceUncertainty)
+                            UnknownUncertainty, VarianceUncertainty)
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
@@ -1081,6 +1081,30 @@ class TestLinkedEPSFStar:
         # Test constrain_centers (should execute without error)
         linked.constrain_centers()
 
+    @pytest.mark.parametrize('ctype', [('RA---TAN', 'DEC--TAN'),
+                                       ('DEC--TAN', 'RA---TAN')])
+    def test_constrain_centers_wcs_axis_order(self, ctype):
+        """
+        Test that constrain_centers handles a WCS whose latitude axis
+        comes first.
+        """
+        wcs = WCS(naxis=2)
+        wcs.wcs.crpix = [25, 25]
+        wcs.wcs.crval = [200, 30] if ctype[0].startswith('RA') else [30, 200]
+        wcs.wcs.cdelt = [0.01, 0.01]
+        wcs.wcs.ctype = ctype
+
+        centers = np.array([(3.1, 3.1), (2.9, 2.9), (3.0, 3.2)])
+        stars = [EPSFStar(np.ones((7, 7)), wcs_large=wcs,
+                          cutout_center=center, origin=(20, 20))
+                 for center in centers]
+        linked = LinkedEPSFStar(stars)
+        linked.constrain_centers()
+
+        expected = np.mean(centers, axis=0)
+        for star in stars:
+            assert_allclose(star.cutout_center, expected, atol=1e-4)
+
     def test_constrain_centers_with_some_excluded_stars(self, simple_wcs):
         """
         Test constrain_centers with some excluded stars.
@@ -1978,6 +2002,22 @@ class TestExtractStars:
 
         assert_allclose(outputs[0].weights, outputs[1].weights)
         assert_allclose(outputs[0].weights, outputs[2].weights)
+
+    def test_extract_stars_unknown_uncertainty(self, epsf_test_data):
+        """
+        Test that an uncertainty of unknown type is treated as a
+        standard deviation.
+        """
+        rng = np.random.default_rng(seed=0)
+        data = epsf_test_data['nddata'].data
+        error = rng.uniform(0.5, 2.0, size=data.shape)
+        ndd1 = NDData(data, uncertainty=StdDevUncertainty(error))
+        ndd2 = NDData(data, uncertainty=UnknownUncertainty(error))
+
+        init = epsf_test_data['init_stars']
+        stars1 = extract_stars(ndd1, init, size=25)
+        stars2 = extract_stars(ndd2, init, size=25)
+        assert_allclose(stars2.weights, stars1.weights)
 
     def test_extract_stars_nonfinite_weights(self, epsf_test_data):
         """

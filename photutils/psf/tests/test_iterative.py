@@ -298,6 +298,39 @@ def test_iterative_psf_photometry_mode_all():
     assert resid_nddata.unit == unit
 
 
+def test_iterative_mode_all_local_bkg_init_flux():
+    """
+    Test that the initial flux of a source found in a later iteration
+    of mode='all' has the local background subtracted over the aperture
+    area.
+    """
+    model = CircularGaussianPRF(fwhm=3)
+    sources = Table({'x_0': [30.0, 34.5], 'y_0': [30.0, 30.0],
+                     'flux': [5000.0, 800.0]})
+    data = make_model_image((61, 61), model, sources, model_shape=(31, 31))
+    data += make_noise_image(data.shape, mean=0, stddev=0.05, seed=0)
+    bkg_level = 5.0
+    local_bkg_estimator = LocalBackground(12, 18,
+                                          bkg_estimator=MMMBackground())
+
+    init_fluxes = []
+    for level, estimator in ((0.0, None), (bkg_level, local_bkg_estimator)):
+        psfphot = IterativePSFPhotometry(model, (7, 7),
+                                         finder=DAOStarFinder(20.0, 3.0),
+                                         grouper=SourceGrouper(10),
+                                         aperture_radius=5,
+                                         local_bkg_estimator=estimator,
+                                         mode='all', maxiters=2)
+        phot = psfphot(data + level)
+        assert_equal(phot['iter_detected'], [1, 2])
+        assert_allclose(phot['flux_fit'], sources['flux'], rtol=2e-3)
+        init_params = psfphot.fit_results[1].init_params
+        init_fluxes.append(init_params['flux_init'][1])
+
+    # The initial flux does not depend on a constant background level
+    assert_allclose(init_fluxes[1], init_fluxes[0], rtol=0.01)
+
+
 def test_iterative_psf_photometry_mode_all_local_bkg():
     """
     Test mode='all' with a local_bkg_estimator, which is used to

@@ -825,9 +825,8 @@ class PSFPhotometry:
             fitter_maxiters=self.fitter_maxiters, xy_bounds=self.xy_bounds,
         )
 
-        self._results_assembler = PSFResultsAssembler(
-            self._param_mapper, self.fit_shape, xy_bounds=self.xy_bounds,
-        )
+        self._results_assembler = PSFResultsAssembler(self._param_mapper,
+                                                      self.fit_shape)
 
         # Callers that report non-convergence themselves set this to
         # False
@@ -978,7 +977,9 @@ class PSFPhotometry:
             If obj is not None and not an instance of expected_type.
         """
         if obj is not None and not isinstance(obj, expected_type):
-            type_name = expected_type.__name__
+            if not isinstance(expected_type, tuple):
+                expected_type = (expected_type,)
+            type_name = ' or '.join(t.__name__ for t in expected_type)
             msg = f'{name} must be a {type_name} instance'
             raise TypeError(msg)
         return obj
@@ -1748,6 +1749,11 @@ class PSFPhotometry:
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         # Reset state from previous runs
         self._reset_results()
+
+        if not self._param_mapper.fitted_param_names:
+            msg = ('psf_model has no free parameters to fit. At least one '
+                   'model parameter must not be fixed.')
+            raise ValueError(msg)
 
         try:
             # Handle NDData input

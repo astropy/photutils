@@ -1144,6 +1144,45 @@ Bug Fixes
     sources do not overlap the image and are now flagged or skipped.
     [#2484]
 
+  - Fixed ``PSFPhotometry`` and ``IterativePSFPhotometry`` returning
+    zero for the fixed model parameters of grouped sources. [#2508]
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise a
+    ``ValueError`` with a clear message if all the parameters of the
+    PSF model are fixed. [#2508]
+
+  - Fixed ``LinkedEPSFStar.constrain_centers`` computing wrong star
+    centers for a WCS whose latitude axis comes first (e.g., ``CTYPE1 =
+    'DEC--TAN'``). [#2508]
+
+  - Fixed ``extract_stars`` raising a ``TypeError`` for an ``NDData``
+    uncertainty that cannot be converted to a standard deviation (e.g.,
+    ``UnknownUncertainty``, which ``NDData`` creates for a plain array).
+    Such an uncertainty is now assumed to be a standard deviation.
+    [#2508]
+
+  - Fixed ``stdpsf_reader`` setting the ``instrument`` and instrument
+    detector name in the ``meta`` of the returned ``GriddedPSFModel``
+    only when a ``detector_id`` was input. For a file with a single
+    detector, the metadata no longer depends on ``detector_id``, and
+    ``meta['detector']`` is now the detector name (e.g., ``'A1'``)
+    instead of the filename field (e.g., ``'NRCA1'``). ``STDPSFGrid``
+    sets the same metadata. [#2508]
+
+  - Fixed ``fit_2dgaussian`` and ``fit_fwhm`` raising a
+    ``NoOverlapError`` for a position whose fit region lies completely
+    outside the image. Such a source is now flagged in the
+    ``fit_2dgaussian`` results and has a NaN ``fit_fwhm`` value.
+    [#2508]
+
+  - Fixed the aperture-based initial flux of ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` when a local background is used. The
+    per-pixel ``local_bkg`` value was subtracted once from the aperture
+    sum. It is now multiplied by the aperture area first. For sources
+    found in a later iteration of ``IterativePSFPhotometry`` with
+    ``mode='all'``, the local background was not subtracted at all.
+    Only the initial guess (the ``flux_init`` column) changes. [#2508]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.
@@ -1174,6 +1213,10 @@ Bug Fixes
     several percent. The output size is now the largest odd size for
     which the output grid lies within the outermost pixel centers of
     the input PSF, which can be smaller than before. [#2474]
+
+  - ``resize_psf`` now raises a ``ValueError`` if ``order`` is not an
+    integer from 0 to 5. The exception was a ``RuntimeError`` or a
+    ``TypeError``, depending on the value. [#2508]
 
 - ``photutils.segmentation``
 
