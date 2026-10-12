@@ -200,6 +200,15 @@ def test_invalid_inputs():
         _ = psfphot(data, init_params=tbl)
 
 
+def test_validate_type_tuple():
+    """
+    Test the type validation error message for a tuple of types.
+    """
+    match = 'value must be a int or float instance'
+    with pytest.raises(TypeError, match=match):
+        PSFPhotometry._validate_type('a', 'value', (int, float))
+
+
 def test_psf_photometry(test_data):
     data, error, sources = test_data
 

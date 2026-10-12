@@ -977,7 +977,9 @@ class PSFPhotometry:
             If obj is not None and not an instance of expected_type.
         """
         if obj is not None and not isinstance(obj, expected_type):
-            type_name = expected_type.__name__
+            if not isinstance(expected_type, tuple):
+                expected_type = (expected_type,)
+            type_name = ' or '.join(t.__name__ for t in expected_type)
             msg = f'{name} must be a {type_name} instance'
             raise TypeError(msg)
         return obj
