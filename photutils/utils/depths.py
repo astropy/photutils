@@ -79,11 +79,11 @@ class ImageDepth:
         ``n_apertures_used`` attribute).
 
     overlap_maxiters : int, optional
-        The maximum number of iterations that will be used when
-        attempting to find additional non-overlapping apertures. This
-        keyword has no effect unless ``overlap=False``. While increasing
-        this number may generate more non-overlapping apertures in
-        crowded cases, it will also run slower.
+        This keyword is unused and has no effect.
+
+        .. deprecated:: 3.1
+            The ``overlap_maxiters`` keyword is deprecated and will be
+            removed in version 4.0.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -156,8 +156,8 @@ class ImageDepth:
     randomly-generated set of circular apertures. The returned flux
     limit is the average of these flux limits.
 
-    The magnitude limit is calculated from the flux limit using the input
-    ``zeropoint`` keyword as:
+    The magnitude limit is calculated from the flux limit using the
+    input ``zeropoint`` keyword as:
 
     .. math::
 
@@ -245,6 +245,8 @@ class ImageDepth:
     @deprecated_renamed_argument('nsigma', 'n_sigma', '3.0', until='4.0')
     @deprecated_renamed_argument('napers', 'n_apertures', '3.0', until='4.0')
     @deprecated_renamed_argument('niters', 'n_iters', '3.0', until='4.0')
+    @deprecated_renamed_argument('overlap_maxiters', None, '3.1',
+                                 until='4.0')
     def __init__(self, aper_radius, *, n_sigma=5.0, mask_pad=0,
                  n_apertures=1000, n_iters=10, overlap=True,
                  overlap_maxiters=100, seed=None, zeropoint=0.0,
@@ -269,7 +271,7 @@ class ImageDepth:
         self.n_apertures = n_apertures
         self.n_iters = n_iters
         self.overlap = overlap
-        self.overlap_maxiters = overlap_maxiters
+        self.overlap_maxiters = overlap_maxiters  # remove in 4.0
         self.seed = seed
         self.zeropoint = zeropoint
         if sigma_clip is SIGMA_CLIP:
@@ -292,8 +294,8 @@ class ImageDepth:
 
     def __repr__(self):
         params = ('aper_radius', 'n_sigma', 'mask_pad', 'n_apertures',
-                  'n_iters', 'overlap', 'overlap_maxiters', 'seed',
-                  'zeropoint', 'sigma_clip', 'progress_bar')
+                  'n_iters', 'overlap', 'seed', 'zeropoint', 'sigma_clip',
+                  'progress_bar')
         return make_repr(self, params)
 
     # Remove in 4.0
@@ -397,8 +399,7 @@ class ImageDepth:
                    f'{self.n_apertures} (see the '
                    '"n_apertures_used" ImageDepth object attribute). '
                    'To fix this, decrease the number of apertures '
-                   'and/or aperture size, or increase '
-                   '`overlap_maxiters`. Alternatively, you may set '
+                   'and/or aperture size. Alternatively, you may set '
                    'overlap=True')
             warnings.warn(msg, AstropyUserWarning)
 

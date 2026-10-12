@@ -1615,6 +1615,10 @@ API Changes
 
 - ``photutils.utils``
 
+  - The ``ImageDepth`` ``overlap_maxiters`` keyword is deprecated and
+    will be removed in version 4.0. The keyword was unused and had no
+    effect. [#2500]
+
   - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been
     renamed to ``n_coords``, consistent with the ``n_*`` naming used
     elsewhere in photutils. The old ``ncoords`` name is deprecated and
