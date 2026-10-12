@@ -53,7 +53,8 @@ class ImageDepth:
 
     mask_pad : float, optional
         An additional padding (in pixels) to apply when dilating the
-        input mask.
+        input mask. The dilation radius is ``aper_radius`` plus
+        ``mask_pad``, rounded up to the nearest integer.
 
     n_apertures : int, optional
         The number of circular apertures used to compute the image
@@ -72,7 +73,10 @@ class ImageDepth:
             instead.
 
     overlap : bool, optional
-        Whether to allow the apertures to overlap.
+        Whether to allow the apertures to overlap. If `False`, fewer
+        than ``n_apertures`` apertures may be used when the unmasked
+        area is too small, in which case a warning is issued (see the
+        ``n_apertures_used`` attribute).
 
     overlap_maxiters : int, optional
         The maximum number of iterations that will be used when
@@ -99,8 +103,10 @@ class ImageDepth:
 
     sigma_clip : `astropy.stats.SigmaClip`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters to use when computing the limiting flux. If
-        `None` then no sigma clipping will be performed.
+        clipping parameters to use when computing the limiting flux.
+        The default is a `~astropy.stats.SigmaClip` instance with
+        ``sigma=3.0`` and ``maxiters=10``. If `None` then no sigma
+        clipping will be performed.
 
     progress_bar : bool, optional
         Whether to display a progress bar. The progress bar requires
@@ -137,8 +143,9 @@ class ImageDepth:
     regions are calculated from an input mask, which should mask both
     sources in the image and areas without image coverage. The input
     mask will be dilated with a circular footprint with a radius equal
-    to the input ``aper_radius`` plus ``mask_pad``. The image border
-    is also masked with the same radius.
+    to the input ``aper_radius`` plus ``mask_pad``, rounded up to the
+    nearest integer. The image border is also masked with the same
+    radius.
 
     The flux limit is calculated as the standard deviation of the
     aperture fluxes times the input ``n_sigma`` significance level. The
@@ -149,7 +156,7 @@ class ImageDepth:
     randomly-generated set of circular apertures. The returned flux
     limit is the average of these flux limits.
 
-    The magnitude limit is calculated from flux limit using the input
+    The magnitude limit is calculated from the flux limit using the input
     ``zeropoint`` keyword as:
 
     .. math::
@@ -163,10 +170,16 @@ class ImageDepth:
     (``apertures``, ``n_apertures_used``, ``fluxes``, ``flux_limits``,
     and ``mag_limits``) reflect the most recently completed call.
 
+    A `ValueError` is raised if no unmasked pixels remain after dilating
+    the mask and masking the border, or if ``n_apertures`` exceeds the
+    number of unmasked pixels. A warning is issued if fewer than
+    ``n_apertures`` non-overlapping apertures could be placed, or if any
+    flux limit is zero.
+
     Examples
     --------
+    >>> import numpy as np
     >>> from astropy.convolution import convolve
-    >>> from astropy.visualization import simple_norm
     >>> from photutils.datasets import make_100gaussians_image
     >>> from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
     >>> from photutils.utils import ImageDepth
@@ -211,7 +224,8 @@ class ImageDepth:
         mask = segment_map.make_source_mask()
         radius = 4
         depth = ImageDepth(radius, n_sigma=5.0, n_apertures=500,
-                           n_iters=2, overlap=False, seed=123,
+                           n_iters=2, mask_pad=5, overlap=False,
+                           seed=123, zeropoint=23.9,
                            progress_bar=False)
         limits = depth(data, mask)
 
@@ -294,7 +308,7 @@ class ImageDepth:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The 2D array, which should be in flux units (not surface
             brightness units).
 
@@ -303,14 +317,17 @@ class ImageDepth:
             a `True` value indicates the corresponding element of
             ``data`` is masked. The input array should mask both sources
             (e.g., from a segmentation image) and regions without image
-            coverage. If `None`, then the entire image will be used.
+            coverage. If `None`, then the entire image will be used,
+            apart from the masked image border.
 
         Returns
         -------
-        flux_limit, mag_limit : float
-            The flux and magnitude limits. The flux limit is returned in
-            the same units as the input ``data``. The magnitude limit is
-            calculated from the flux limit and the input ``zeropoint``.
+        flux_limit : float or `~astropy.units.Quantity`
+            The flux limit, in the same units as the input ``data``.
+
+        mag_limit : float
+            The magnitude limit, calculated from the flux limit and the
+            input ``zeropoint``.
         """
         # Prevent circular import
         from photutils.aperture import AperturePhotometry, CircularAperture
@@ -430,14 +447,15 @@ class ImageDepth:
         data : 2D bool `~numpy.ndarray`
             The boolean array.
         axis : int
-            The axis to use (0 or 1).
+            The axis (0 or 1) that is collapsed. The returned slice is
+            for the other axis.
 
         Returns
         -------
         slice : slice object
-            A slice object for the input axis. If the data values along
-            the input axis are all `False`, then the slice object will
-            include the entire axis range.
+            A slice object for the axis orthogonal to ``axis``. If the
+            array is all `False`, then the slice object will include the
+            entire range of that axis.
         """
         xx = np.any(data, axis=axis)
         if np.all(~xx):
@@ -497,7 +515,8 @@ class ImageDepth:
         the mask.
 
         The mask is dilated with a circular footprint with a radius
-        equal to the input ``aper_radius`` plus ``mask_pad``.
+        equal to the input ``aper_radius`` plus ``mask_pad``, rounded
+        up to the nearest integer.
 
         Border pixels are also masked with the same radius.
 
@@ -530,7 +549,7 @@ class ImageDepth:
 
         Returns
         -------
-        xycoords : 2xN `~numpy.ndarray`
+        xycoords : Nx2 `~numpy.ndarray`
             The (x, y) coordinates.
         """
         ny, nx = shape
@@ -564,7 +583,7 @@ class ImageDepth:
 
         Returns
         -------
-        xycoords : 2xN `~numpy.ndarray`
+        xycoords : Nx2 `~numpy.ndarray`
             The (x, y) coordinates.
         """
         mask_inv = ~self._dilate_mask(mask)
@@ -588,18 +607,18 @@ class ImageDepth:
 
         Parameters
         ----------
-        xycoords : 2xN `~numpy.ndarray`
+        xycoords : Nx2 `~numpy.ndarray`
             The (x, y) coordinates.
 
         n_apertures : int
-            The number of aperture to make.
+            The number of apertures to make.
 
         rng : `~numpy.random.Generator`
             The random number generator.
 
         Returns
         -------
-        xycoords : 2xN `~numpy.ndarray`
+        xycoords : Nx2 `~numpy.ndarray`
             The (x, y) coordinates.
         """
         if n_apertures > xycoords.shape[0]:

@@ -34,7 +34,7 @@ def calc_total_error(data, bkg_error, effective_gain):
         an array), then the source Poisson noise component will not
         be included. In other words, the returned total error value
         will simply be the ``bkg_error`` value for pixels where
-        ``effective_gain`` is zero. ``effective_gain`` cannot not be
+        ``effective_gain`` is zero. ``effective_gain`` cannot be
         negative or contain negative values.
 
     Returns
@@ -54,7 +54,10 @@ def calc_total_error(data, bkg_error, effective_gain):
     must *all* be `~astropy.units.Quantity` objects. ``data`` and
     ``bkg_error`` must have the same units. A `ValueError` will be
     raised if only some of the inputs are `~astropy.units.Quantity`
-    objects or if the ``data`` and ``bkg_error`` units differ.
+    objects or if the ``data`` and ``bkg_error`` units differ. The
+    units of ``data * effective_gain`` must be electrons or photons
+    (``astropy.units.electron`` or ``astropy.units.photon``). Otherwise,
+    a `~astropy.units.UnitsError` is raised.
 
     The source Poisson error in countable units (e.g., electrons or
     photons) is:
@@ -111,7 +114,7 @@ def calc_total_error(data, bkg_error, effective_gain):
     ``effective_gain`` should be an exposure-time map.
 
     The Poisson noise component is not included in the output total
-    error for pixels where ``data`` (:math:`I_i)` is negative. For such
+    error for pixels where ``data`` (:math:`I_i`) is negative. For such
     pixels, :math:`\sigma_{\mathrm{tot}, i} = \sigma_{\mathrm{bkg}, i}`.
 
     The Poisson noise component is also not included in the output total

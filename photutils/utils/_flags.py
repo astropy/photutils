@@ -149,6 +149,10 @@ class FlagRegistry:
         ------
         KeyError
             If the identifier is not found.
+
+        TypeError
+            If the identifier is not an integer or a string. A `bool`
+            is not accepted.
         """
         if isinstance(identifier, (int, np.integer)) and not isinstance(
                 identifier, bool):
@@ -260,8 +264,9 @@ def define_flag_docstring(registry, *, indent=0):
     Returns
     -------
     flag_descriptions : list of str
-        List of strings representing the bullet list of flag bit values,
-        names, and brief descriptions.
+        The lines of the bullet list. The first element is an empty
+        string, followed by a "No flags set" bullet for 0 and one bullet
+        per flag giving its bit value, name, and detailed description.
     """
     if not isinstance(registry, FlagRegistry):
         msg = 'registry must be an instance of FlagRegistry'
@@ -288,8 +293,8 @@ def update_flag_docstring(func, registry, *, indent=0,
     Update a function docstring with flag documentation.
 
     The ``placeholder`` text in the function docstring is replaced with
-    a bullet list of the flag bit values, names, and brief descriptions
-    generated from the ``registry``.
+    a bullet list of the flag bit values, names, and detailed
+    descriptions generated from the ``registry``.
 
     Parameters
     ----------

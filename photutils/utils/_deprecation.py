@@ -1,8 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-A module to create Astropy Tables with deprecated column names.
+Tools for deprecating functions, arguments, attributes, and table
+column names.
 
-It is designed to create new table objects from raw data, rather than
+The table tools create new table objects from raw data, rather than
 modifying existing tables.
 
 The primary function, ``create_deprecated_table_from_data``, handles
@@ -60,7 +61,7 @@ def use_future_column_names(enabled=True):
     Context manager to temporarily override ``future_column_names``.
 
     Within the ``with`` block, photutils functions will behave as
-    though ``photutils.future_column_names`` is set to enabled,
+    though ``photutils.future_column_names`` were set to ``enabled``,
     without modifying the global flag. This is safe to use in
     multi-threaded and async code because the override is stored in a
     `~contextvars.ContextVar`.
@@ -325,8 +326,10 @@ class DeprecatedColumnMixin:
     This mixin overrides common table methods to intercept calls
     using old column names. It translates them to new names, issues a
     deprecation warning, and then calls the original parent method via
-    ``super()``. This works correctly because instances are created from
-    this class directly, ensuring a valid method resolution order.
+    ``super()``. This works because instances are created directly
+    from a concrete subclass (``DeprecatedColumnTable`` or
+    ``DeprecatedColumnQTable``) in which this mixin precedes the Astropy
+    table class in the method resolution order.
     """
 
     deprecation_map = None
@@ -403,8 +406,10 @@ class DeprecatedColumnMixin:
 
         Returns
         -------
-        str or list or tuple
-            The translated new column name(s).
+        result : str or list
+            The translated new column name(s). A list is returned for
+            both list and tuple input. Any other non-string input is
+            returned unchanged.
         """
         if isinstance(names, (list, tuple)):
             return [self._translate_name(name, stacklevel=stacklevel)
@@ -461,8 +466,8 @@ class DeprecatedColumnMixin:
 
         Parameters
         ----------
-        names : list or tuple
-            A list or tuple of column names to keep.
+        names : str or list or tuple
+            The name(s) of the column(s) to keep.
         """
         names = self._translate_names(names)
         super().keep_columns(names)
@@ -485,8 +490,8 @@ class DeprecatedColumnMixin:
 
         Parameters
         ----------
-        names : list or tuple
-            A list or tuple of column names to be removed.
+        names : str or list or tuple
+            The name(s) of the column(s) to be removed.
         """
         names = self._translate_names(names)
         super().remove_columns(names)
@@ -557,9 +562,8 @@ class DeprecatedColumnMixin:
 
         Parameters
         ----------
-        names : str or list or tuple
-            The name(s) of the column(s) whose indices are to be
-            removed.
+        names : str
+            The name of the column whose indices are to be removed.
         """
         names = self._translate_names(names)
         super().remove_indices(names)
@@ -645,7 +649,9 @@ def create_empty_deprecated_qtable(deprecation_map, *, since=None,
     This is useful when building a table column by column rather than
     from a complete data dictionary.
 
-    If ``photutils.future_column_names`` is `True`, a standard
+    If future column names are enabled (via
+    ``photutils.future_column_names`` or the
+    `~photutils.use_future_column_names` context manager), a standard
     `~astropy.table.QTable` is returned instead, with no deprecation
     behavior.
 
@@ -671,9 +677,8 @@ def create_empty_deprecated_qtable(deprecation_map, *, since=None,
     Returns
     -------
     table : `DeprecatedColumnQTable` or `~astropy.table.QTable`
-        A new empty QTable instance. If
-        ``photutils.future_column_names`` is `True`, a standard
-        `~astropy.table.QTable` is returned.
+        A new empty QTable instance. If future column names are
+        enabled, a standard `~astropy.table.QTable` is returned.
 
     Examples
     --------
@@ -717,7 +722,9 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
     ``QTable`` subclass. All other keywords are passed directly to the
     underlying table constructor.
 
-    If ``photutils.future_column_names`` is `True`, a standard
+    If future column names are enabled (via
+    ``photutils.future_column_names`` or the
+    `~photutils.use_future_column_names` context manager), a standard
     `~astropy.table.QTable` or `~astropy.table.Table` is returned
     instead, with no deprecation behavior.
 
@@ -741,9 +748,9 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
         message.
 
     use_qtable : bool, optional
-        If ``True``, a ``DeprecatedColumnQTable`` (or
-        `~astropy.table.QTable` when ``photutils.future_column_names``
-        is `True`) will be created. Defaults to ``False``.
+        If `True`, a `DeprecatedColumnQTable` (or
+        `~astropy.table.QTable` when future column names are enabled)
+        is created. The default is `False`.
 
     **kwargs : dict, optional
         Any other keywords accepted by the ``astropy.table.Table``
@@ -751,10 +758,11 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
 
     Returns
     -------
-    table : `DeprecatedColumnTable` or `DeprecatedColumnQTable`
-        A new table instance with deprecation behavior. If
-        ``photutils.future_column_names`` is `True`, a standard
-        `~astropy.table.Table` or `~astropy.table.QTable` is returned.
+    table : `DeprecatedColumnTable`, `DeprecatedColumnQTable`, \
+            `~astropy.table.Table`, or `~astropy.table.QTable`
+        A new table instance with deprecation behavior. If future
+        column names are enabled, a standard `~astropy.table.Table` or
+        `~astropy.table.QTable` is returned.
 
     Examples
     --------

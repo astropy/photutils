@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for Quantity helpers.
+Helper functions for working with Quantity objects.
 """
 
 import astropy.units as u
@@ -13,8 +13,9 @@ def check_units(values, names):
 
     Parameters
     ----------
-    values : list of scalar, `~numpy.ndarray`, or `~astropy.units.Quantity`
-        A list of values.
+    values : list of scalar, `~numpy.ndarray`, `~astropy.units.Quantity`, \
+            or `None`
+        A list of values. `None` values are ignored.
 
     names : list of str
         A list of names corresponding to the input ``values``.
@@ -22,7 +23,9 @@ def check_units(values, names):
     Returns
     -------
     units : set
-        The set of distinct units across all non-`None` values.
+        The set of distinct units of the non-`None` values. A value
+        without a unit contributes `None`. The set is empty if all
+        values are `None`.
 
     Raises
     ------
@@ -58,15 +61,17 @@ def process_quantities(values, names):
     """
     Check and remove units of input values.
 
-    If any of the input values have units then they all must have
-    units and the units must be the same.
+    If any of the input values have units, then all of the non-`None`
+    values must have the same units. `None` values are passed through
+    unchanged.
 
-    The returned values are the input values with units removed and the
-    unit.
+    The input values are returned with their units removed, along with
+    the common unit.
 
     Parameters
     ----------
-    values : list of scalar, `~numpy.ndarray`, or `~astropy.units.Quantity`
+    values : list of scalar, `~numpy.ndarray`, `~astropy.units.Quantity`, \
+            or `None`
         A list of values.
 
     names : list of str
@@ -77,15 +82,16 @@ def process_quantities(values, names):
     values : list of scalar or `~numpy.ndarray`
         A list of values, where units have been removed.
 
-    unit : `~astropy.unit.Unit`
-        The common unit for the input values. `None` will be returned
-        if all the input values do not have units (including when all
-        values are `None`).
+    unit : `~astropy.units.UnitBase` or `None`
+        The common unit for the input values. `None` is returned if
+        none of the input values have units (including when all values
+        are `None`).
 
     Raises
     ------
     ValueError
-        If the input values do not all have the same units.
+        If the number of values does not match the number of names,
+        or if the input values do not all have the same units.
     """
     units = check_units(values, names)
 

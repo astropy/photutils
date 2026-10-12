@@ -22,14 +22,16 @@ class CutoutImage:
     The returned object will contain a 2D cutout array. If
     ``copy=False`` (default), the cutout array is a view into the
     original ``data`` array, otherwise the cutout array will contain a
-    copy of the original data.
+    copy of the original data. The exception is a ``mode='partial'``
+    cutout that extends beyond the ``data`` array, which is always a
+    new array.
 
     Parameters
     ----------
     data : `~numpy.ndarray`
         The 2D data array from which to extract the cutout array.
 
-    position : tuple of 2 ints
+    position : 2-tuple of int or float
         The ``(y, x)`` position of the center of the cutout array with
         respect to the ``data`` array.
 
@@ -61,7 +63,18 @@ class CutoutImage:
     copy : bool, optional
         If `False` (default), then the cutout data will be a view into
         the original ``data`` array. If `True`, then the cutout data
-        will hold a copy of the original ``data`` array.
+        will hold a copy of the original ``data`` array. A
+        ``mode='partial'`` cutout that extends beyond the ``data`` array
+        is always a new array.
+
+    Attributes
+    ----------
+    data : 2D `~numpy.ndarray`
+        The cutout array.
+
+    shape : tuple of 2 ints
+        The shape of the cutout array. In ``'trim'`` mode it can be
+        smaller than the requested ``shape``.
 
     Notes
     -----
@@ -176,8 +189,8 @@ class CutoutImage:
 
     def _calc_bbox(self, slices):
         """
-        Calculate the `~photutils.aperture.BoundingBox` of the
-        rectangular bounding box from the input slices.
+        Calculate the `~photutils.aperture.BoundingBox` for the input
+        slices.
 
         Parameters
         ----------
@@ -243,8 +256,9 @@ class CutoutImage:
         the origin pixel of the cutout with respect to the original
         array.
 
-        The origin index will be negative for cutouts with partial
-        overlaps.
+        For ``mode='partial'``, the origin index will be negative
+        along an axis where the cutout extends beyond the lower edge of
+        the original array.
         """
         return self._calc_xyorigin(self.slices_original)
 

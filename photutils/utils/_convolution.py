@@ -22,13 +22,14 @@ def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
 
     Parameters
     ----------
-    data : array_like
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D array of the image.
 
-    kernel : array_like (2D) or `~astropy.convolution.Kernel2D`
+    kernel : 2D array_like, `~astropy.convolution.Kernel2D`, or `None`
         The 2D kernel used to filter the input ``data``. Filtering the
         ``data`` will smooth the noise and maximize detectability of
-        objects with a shape similar to the kernel.
+        objects with a shape similar to the kernel. If `None`, ``data``
+        is returned unchanged.
 
     mode : {'constant', 'reflect', 'nearest', 'mirror', 'wrap'}, optional
         The ``mode`` determines how the array borders are handled. For
@@ -38,9 +39,8 @@ def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
     fill_value : scalar, optional
         Value to fill data values beyond the array borders if ``mode``
         is ``'constant'``. The default is ``0.0``. When ``data`` is a
-        `~astropy.units.Quantity`, the result has the same unit. The
-        numerical value of ``fill_value`` is used as-is (it is not
-        converted to the data unit).
+        `~astropy.units.Quantity`, the numerical value of ``fill_value``
+        is used as-is (it is not converted to the data unit).
 
     check_normalization : bool, optional
         If `True` then a warning will be issued if the kernel is not

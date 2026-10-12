@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for getting the installed astropy and photutils versions.
+Tools for getting the installed package versions and the current date
+and time for use in output metadata.
 """
 
 import sys
