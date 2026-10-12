@@ -42,7 +42,8 @@ def _elliptical_polygon_offsets(a, b, theta, n_vertices, *, swap_axes=False):
     """
     Compute the vertex offsets that approximate an ellipse with
     semimajor axis ``a``, semiminor axis ``b``, and position angle
-    ``theta`` (in radians) using ``n_vertices`` equally spaced vertices.
+    ``theta`` (in radians) using ``n_vertices`` vertices equally spaced
+    in the parametric angle.
 
     Parameters
     ----------
@@ -101,8 +102,6 @@ class EllipticalMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for elliptical and elliptical-annulus
     aperture objects.
-
-    .. deprecated:: 3.0
     """
 
     @_update_method_subpixels_docstring
@@ -249,8 +248,8 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     @cached_property
     def _xy_extents(self):
         """
-        The half of the bounding box extents of the ellipse in the x and
-        y directions.
+        Half of the bounding box extents of the ellipse in the x and y
+        directions.
         """
         return _calc_ellipse_extents(self.a, self.b, self._theta_rad)
 
@@ -470,8 +469,8 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     @cached_property
     def _xy_extents(self):
         """
-        The half of the bounding box extents of the outer ellipse in the
-        x and y directions.
+        Half of the bounding box extents of the outer ellipse in the x
+        and y directions.
         """
         return _calc_ellipse_extents(self.a_out, self.b_out, self._theta_rad)
 
@@ -628,8 +627,18 @@ class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
-        axis. For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).
+        axis, measured from North (PA=0) toward East. This is
+        counterclockwise on an image displayed with North up and East to
+        the left.
+
+    Raises
+    ------
+    TypeError : `TypeError`
+        If either axis (``a`` or ``b``) is not a
+        `~astropy.units.Quantity`.
+
+    ValueError : `ValueError`
+        If either axis (``a`` or ``b``) is not positive.
 
     Examples
     --------
@@ -743,7 +752,7 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
     b_out : scalar `~astropy.units.Quantity`
         The outer semiminor axis in angular units.
 
-    b_in : `None` or scalar `~astropy.units.Quantity`
+    b_in : scalar `~astropy.units.Quantity` or `None`, optional
         The inner semiminor axis in angular units. If `None`, then the
         inner semiminor axis is calculated as:
 
@@ -753,8 +762,25 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the ellipse semimajor
-        axis. For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).
+        axis, measured from North (PA=0) toward East. This is
+        counterclockwise on an image displayed with North up and East to
+        the left.
+
+    Raises
+    ------
+    TypeError : `TypeError`
+        If any of the axes (``a_in``, ``a_out``, ``b_in``, or ``b_out``)
+        is not a `~astropy.units.Quantity`.
+
+    ValueError : `ValueError`
+        If the inner semimajor axis (``a_in``) is not less than the
+        outer semimajor axis (``a_out``), or if the inner semiminor axis
+        (``b_in``), when given, is not less than the outer semiminor
+        axis (``b_out``).
+
+    ValueError : `ValueError`
+        If any of the axes (``a_in``, ``a_out``, ``b_in``, or ``b_out``)
+        is not positive.
 
     Examples
     --------

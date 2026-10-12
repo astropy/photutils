@@ -7,24 +7,25 @@ Tools to provide a batch driver for aperture statistics.
 For each source position, this module iterates over the aperture
 bounding box once and, using exactly the same per-pixel overlap
 arithmetic as the `photutils.geometry` grid functions (and the
-`~photutils.aperture._batch_photometry` driver), gathers the unmasked
-"center"-method pixel values into a single packed buffer and accumulates
-the cheap streaming scalars (the ``sum_method`` aperture sum, error
-variance, and area). The packed value buffer is then reduced lazily by
-the higher tiers (moments, median, and other order statistics) without
-creating per-source mask arrays or making per-source Python calls.
+`~photutils.aperture._batch_photometry` driver), packs the unmasked
+"center"-method pixel values into a single buffer. The ``sum_method``
+aperture sum, error variance, and area are computed separately by
+``batch_aperture_sums``. The packed value buffer is then reduced lazily
+by the higher tiers (moments, median, and other order statistics)
+without creating per-source mask arrays or making per-source Python
+calls.
 
 The main source loop runs without the GIL and uses no global mutable
 state, so this module is safe to use from multiple threads, including on
 free-threaded Python builds.
 
-The image arrays are declared with fused types, so the drivers read
-C-contiguous float32 or float64 images and int32 or intp segmentation
-images directly, without the caller making full-image copies. All of
-the images passed in one call must have the same dtype. Each pixel
-value is converted to double as it is read, which is exact, and all
-arithmetic is performed in double precision, so the results agree to
-within rounding for either input dtype.
+The image arrays of ``batch_aperture_gather`` are declared with fused
+types, so it reads a C-contiguous float32 or float64 data image and an
+int32 or intp segmentation image directly, without the caller making
+full-image copies. The data and segmentation dtypes are independent.
+Each pixel value is converted to double as it is read, which is exact,
+and all arithmetic is performed in double precision, so the results
+agree to within rounding for either input dtype.
 """
 
 import numpy as np
@@ -543,18 +544,20 @@ def batch_aperture_gather(const real_t[:, ::1] data,
         The (x, y) offset of the bounding-box center from each source
         position (see `_batch_photometry`).
 
-    local_bkg : 1D ndarray of float64 (C-contiguous) or `None`
+    local_bkg : 1D ndarray of float64 (C-contiguous) or `None`, optional
         The per-source local background to subtract. If `None`, no
         background is subtracted.
 
-    segmentation : 2D ndarray of int32 or intp (C-contiguous) or `None`
+    segmentation : 2D ndarray of int32 or intp (C-contiguous) or `None`, \
+            optional
         The segmentation image for segmentation-based masking.
 
-    labels : 1D ndarray of intp (C-contiguous) or `None`
+    labels : 1D ndarray of intp (C-contiguous) or `None`, optional
         The per-source segmentation labels.
 
-    seg_method : int
+    seg_method : int, optional
         The segmentation masking method code (see `_batch_photometry`).
+        The default is 0.
 
     mask_nonfinite : int, optional
         If nonzero, non-finite ``data`` pixels are skipped (in addition
@@ -596,22 +599,29 @@ def batch_aperture_gather(const real_t[:, ::1] data,
           inside the data
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked
-        * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels that
-          are non-finite in the data (masked or unmasked)
+        * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels
+          excluded as non-finite data (by ``mask_nonfinite`` or by mask
+          bit 2) that are not input-masked. Non-finite values gathered
+          when ``mask_nonfinite`` is zero are not counted
         * ``FLAG_COL_NONFINITE_ERROR``: always zero (this function does
           not read error values)
         * ``FLAG_COL_SEG``: the number of those unmasked pixels that
-          were excluded or corrected by the segmentation masking
+          lie on a neighboring source (for method 3, on any labeled
+          source) and were excluded or corrected by the segmentation
+          masking. Background pixels excluded by method 2 are not
+          counted
         * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
           that could not be corrected by the segmentation masking
-        * ``FLAG_COL_VALID``: the number of contributing pixels
-          (unmasked, finite, and not excluded by segmentation)
+        * ``FLAG_COL_VALID``: the number of gathered pixels, equal to
+          ``counts`` (unmasked, not excluded by the segmentation
+          masking, and finite when ``mask_nonfinite`` is nonzero)
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
         * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
           that lie on a neighboring source
         * ``FLAG_COL_UNCORRECTED_MASKED``: the number of those masked
           pixels whose mirror pixel was also unavailable
+
         Rows are all zero where the aperture bounding box does not
         overlap the data.
     """
@@ -1453,8 +1463,9 @@ def batch_sigma_clip_center(const double[::1] values,
         to iterate until convergence.
 
     cenfunc_code, stdfunc_code : int
-        The center and scale function codes (``0`` = median/std,
-        ``1`` = mean/mad_std).
+        The center function code (0 = median, 1 = mean, 2 = biweight
+        location) and the scale function code (0 = std, 1 = mad_std,
+        2 = biweight scale).
 
     Returns
     -------
@@ -1566,7 +1577,9 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
         to iterate until convergence.
 
     cenfunc_code, stdfunc_code : int
-        The center and scale function codes.
+        The center function code (0 = median, 1 = mean, 2 = biweight
+        location) and the scale function code (0 = std, 1 = mad_std,
+        2 = biweight scale).
 
     has_error : int
         Whether the squared errors are available.
@@ -1741,7 +1754,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     """
     Compute fused sigma-clipped statistics for each row of a 2D array.
 
-    For each row, the finite values are sigma-clipped (see
+    For each row, the non-NaN values are sigma-clipped (see
     ``_sigma_clip_bounds``), and the mean, median, and population
     standard deviation of the surviving values are computed directly,
     without generating a clipped copy of the input. Optionally, the
@@ -1757,6 +1770,8 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     The rows are typically the flattened pixels of the boxes of a
     regular grid (e.g., the `~photutils.background.Background2D`
     low-resolution mesh), with NaN values marking masked pixels.
+    Infinite values are not removed and give non-finite statistics, so
+    the caller must replace them with NaN.
 
     Parameters
     ----------
@@ -1772,12 +1787,13 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
         to iterate until convergence.
 
     cenfunc_code, stdfunc_code : int
-        The center and scale function codes (``0`` = median/std,
-        ``1`` = mean/mad_std).
+        The center function code (0 = median, 1 = mean, 2 = biweight
+        location) and the scale function code (0 = std, 1 = mad_std,
+        2 = biweight scale).
 
     do_clip : bool
         Whether to apply sigma clipping. If False, the statistics are
-        computed from all finite values and the clipping parameters
+        computed from all non-NaN values and the clipping parameters
         are ignored.
 
     compute_mad : bool

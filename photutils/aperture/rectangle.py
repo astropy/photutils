@@ -44,7 +44,7 @@ def _rectangular_polygon_offsets(half_x, half_y, theta):
     ``half_x`` and ``half_y`` along the unrotated first and second
     coordinate axes, rotated by ``theta`` (in radians).
 
-    The corners are ordered counter-clockwise in the unrotated frame.
+    The corners are ordered counterclockwise in the unrotated frame.
 
     Parameters
     ----------
@@ -78,8 +78,6 @@ class RectangularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for rectangular or rectangular-annulus
     aperture objects.
-
-    .. deprecated:: 3.0
     """
 
     @_update_method_subpixels_docstring
@@ -146,8 +144,8 @@ class RectangularMaskMixin:  # pragma: no cover
         """
         Calculate lower-left positions from the input center positions.
 
-        Used for creating `~matplotlib.patches.Rectangle` patch for the
-        aperture.
+        Used for creating a `~matplotlib.patches.Rectangle` patch for
+        the aperture.
         """
         return _calc_lower_left_positions(positions, width, height, theta_rad)
 
@@ -174,7 +172,7 @@ def _calc_lower_left_positions(positions, width, height, theta_rad):
     """
     Calculate lower-left positions from the input center positions.
 
-    Used for creating `~matplotlib.patches.Rectangle` patch for the
+    Used for creating a `~matplotlib.patches.Rectangle` patch for the
     aperture.
     """
     half_width = width / 2.0
@@ -407,7 +405,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     h_out : float
         The outer full height of the rectangular annulus in pixels.
 
-    h_in : `None` or float
+    h_in : float or `None`, optional
         The inner full height of the rectangular annulus in pixels. If
         `None`, then the inner full height is calculated as:
 
@@ -478,7 +476,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     @cached_property
     def _xy_extents(self):
         """
-        The half-width and half-height of the bounding box of the
+        The half-width and half-height of the bounding box of the outer
         rectangle.
         """
         return _calc_rectangle_extents(self.w_out, self.h_out, self._theta_rad)
@@ -647,8 +645,18 @@ class SkyRectangularAperture(_RotatableApertureMixin, SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
-        side. For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).
+        side, measured from North (PA=0) toward East. This is
+        counterclockwise on an image displayed with North up and East to
+        the left.
+
+    Raises
+    ------
+    TypeError : `TypeError`
+        If either width (``w``) or height (``h``) is not a
+        `~astropy.units.Quantity`.
+
+    ValueError : `ValueError`
+        If either width (``w``) or height (``h``) is not positive.
 
     Examples
     --------
@@ -762,7 +770,7 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
         The outer full height of the rectangular annulus in angular
         units.
 
-    h_in : `None` or scalar `~astropy.units.Quantity`
+    h_in : scalar `~astropy.units.Quantity` or `None`, optional
         The inner full height of the rectangular annulus in angular
         units. If `None`, then the inner full height is calculated as:
 
@@ -774,8 +782,24 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
 
     theta : scalar `~astropy.units.Quantity`, optional
         The position angle (in angular units) of the rectangle "width"
-        side. For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).
+        side, measured from North (PA=0) toward East. This is
+        counterclockwise on an image displayed with North up and East to
+        the left.
+
+    Raises
+    ------
+    TypeError : `TypeError`
+        If any of the widths or heights (``w_in``, ``w_out``, ``h_in``,
+        or ``h_out``) is not a `~astropy.units.Quantity`.
+
+    ValueError : `ValueError`
+        If the inner width (``w_in``) is not less than the outer width
+        (``w_out``), or if the inner height (``h_in``), when given, is
+        not less than the outer height (``h_out``).
+
+    ValueError : `ValueError`
+        If any of the widths or heights (``w_in``, ``w_out``, ``h_in``,
+        or ``h_out``) is not positive.
 
     Examples
     --------

@@ -1,7 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Tools for converting between `regions.Region` and Aperture objects and
-between `shapely.Polygon` and `regions.PolygonRegion` objects.
+for converting `shapely.Polygon` objects to `regions.PolygonPixelRegion`
+objects.
 """
 
 import astropy.units as u
@@ -46,25 +47,27 @@ def region_to_aperture(region):
     Raises
     ------
     `TypeError`
-        The given `regions.Region` object is not supported.
+        The input is not a `regions.Region` object, or the given
+        `regions.Region` object is not supported.
 
     Notes
     -----
     The ellipse ``width`` and ``height`` region parameters represent
     the full extent of the shapes and thus are divided by 2 when
     converting to elliptical aperture objects, which are defined using
-    the semi-major (``a``) and semi-minor (``b``) axes. The ``width``
-    and ``height`` parameters are mapped to the semi-major (``a``) and
-    semi-minor (``b``) axes parameters, respectively, of the elliptical
+    the semimajor (``a``) and semiminor (``b``) axes. The ``width``
+    and ``height`` parameters are mapped to the semimajor (``a``) and
+    semiminor (``b``) axes parameters, respectively, of the elliptical
     apertures.
 
     The region ``angle`` for sky-based regions is defined as the angle
-    of the ``width`` axis relative to WCS longitude axis (PA=90).
-    However, the sky-based apertures define the ``theta`` as the
-    position angle of the semimajor axis relative to the North celestial
-    pole (PA=0). Therefore, for sky-based regions the region ``angle``
-    is converted to the aperture ``theta`` parameter by subtracting 90
-    degrees.
+    of the ``width`` axis relative to the WCS longitude axis (PA=90).
+    However, the sky-based apertures define ``theta`` as the position
+    angle, relative to the North celestial pole (PA=0), of the semimajor
+    axis (elliptical apertures) or of the width side (rectangular
+    apertures). Therefore, for sky-based elliptical and rectangular
+    regions the region ``angle`` is converted to the aperture ``theta``
+    parameter by subtracting 90 degrees.
 
     .. |rarr| unicode:: U+0279E .. RIGHTWARDS ARROW
 
@@ -205,9 +208,10 @@ def aperture_to_region(aperture):
     `regions.Region` or `regions.Regions` object.
 
     Because a `regions.Region` object can only have one position, a
-    `regions.Regions` object will be returned if the input ``aperture``
-    has more than one position. Otherwise, a `regions.Region` object
-    will be returned.
+    `regions.Region` object is returned only if the input ``aperture``
+    is scalar (a single position that is not in a list or array).
+    Otherwise, a `regions.Regions` object is returned with one region
+    per position.
 
     Parameters
     ----------
@@ -218,23 +222,32 @@ def aperture_to_region(aperture):
     -------
     region : `regions.Region` or `regions.Regions`
         An equivalent `regions.Region` object. If the input ``aperture``
-        has more than one position then a `regions.Regions` will be
-        returned.
+        is not scalar, then a `regions.Regions` object is returned with
+        one region per position.
+
+    Raises
+    ------
+    `TypeError`
+        The input is not an `~photutils.aperture.Aperture` object, or
+        the given `~photutils.aperture.Aperture` object is not
+        supported.
 
     Notes
     -----
     The elliptical aperture ``a`` and ``b`` parameters represent the
-    semi-major and semi-minor axes, respectively. The ``a`` and ``b``
+    semimajor and semiminor axes, respectively. The ``a`` and ``b``
     parameters are mapped to the ellipse ``width`` and ``height`` region
     parameters, respectively, by multiplying by 2 because they represent
     the full extent of the ellipse.
 
     The region ``angle`` for sky-based regions is defined as the angle
-    of the ``width`` axis relative to WCS longitude axis (PA=90).
-    However, the sky-based apertures define the ``theta`` as the
-    position angle of the semimajor axis relative to the North celestial
-    pole (PA=0). Therefore, for sky-based apertures the ``theta``
-    parameter is converted to the region ``angle`` by adding 90 degrees.
+    of the ``width`` axis relative to the WCS longitude axis (PA=90).
+    However, the sky-based apertures define ``theta`` as the position
+    angle, relative to the North celestial pole (PA=0), of the semimajor
+    axis (elliptical apertures) or of the width side (rectangular
+    apertures). Therefore, for sky-based elliptical and rectangular
+    apertures the ``theta`` parameter is converted to the region
+    ``angle`` by adding 90 degrees.
 
     .. |rarr| unicode:: U+0279E .. RIGHTWARDS ARROW
 
@@ -313,7 +326,7 @@ def _scalar_aperture_to_region(aperture):
 
     Returns
     -------
-    region : `regions.Region` or `regions.Regions`
+    region : `regions.Region`
         An equivalent `regions.Region` object.
     """
     from regions import (CircleAnnulusPixelRegion, CircleAnnulusSkyRegion,
