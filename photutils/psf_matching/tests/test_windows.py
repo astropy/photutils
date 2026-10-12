@@ -140,6 +140,33 @@ def test_asymmetric_shape():
     assert_allclose(data[25, 12], 1.0)
 
 
+def test_nonsquare_shape():
+    """
+    Test that the window radii scale with the size of each axis for a
+    non-square shape.
+    """
+    alpha = 0.4
+    ny, nx = 51, 101
+    data = TukeyWindow(alpha=alpha)((ny, nx))
+    assert_allclose(data[ny // 2, :], tukey(nx, alpha=alpha), atol=1e-14)
+    assert_allclose(data[:, nx // 2], tukey(ny, alpha=alpha), atol=1e-14)
+
+    # The window is zero outside of the ellipse inscribed in the array
+    yy, xx = np.mgrid[:ny, :nx]
+    dist = np.hypot((xx - nx // 2) / (nx // 2), (yy - ny // 2) / (ny // 2))
+    assert np.all(data[dist > 1] == 0)
+    assert np.all(data[dist < 1 - alpha] == 1)
+
+
+def test_single_pixel_axis():
+    """
+    Test that an axis of size 1 gives the 1D window along the other
+    axis.
+    """
+    data = TukeyWindow(alpha=0.5)((1, 11))
+    assert_allclose(data[0], tukey(11, alpha=0.5), atol=1e-14)
+
+
 def test_repr_and_str():
     """
     Test __repr__ and __str__ for all window classes.
