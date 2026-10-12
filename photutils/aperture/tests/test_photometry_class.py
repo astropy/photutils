@@ -723,7 +723,25 @@ class TestInputValidation:
         with pytest.raises(ValueError, match=match):
             ApertureStats(data, aper, sum_method=method)
 
-    @pytest.mark.parametrize('subpixels', [0, -1, 2.5, True])
+    @pytest.mark.parametrize('int_type', [np.int64, np.int32, np.uint8])
+    def test_numpy_integer_subpixels(self, int_type):
+        """
+        Test that a NumPy integer subpixels value is accepted.
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture((5, 5), r=3)
+        kwargs = {'method': 'subpixel'}
+        expected = AperturePhotometry(data, aper, subpixels=5, **kwargs)
+        result = AperturePhotometry(data, aper, subpixels=int_type(5),
+                                    **kwargs)
+        assert_allclose(result.flux, expected.flux)
+        stats = ApertureStats(data, aper, sum_method='subpixel',
+                              subpixels=int_type(5))
+        assert_allclose(stats.sum, expected.flux)
+        mask = aper.to_mask(method='subpixel', subpixels=int_type(5))
+        assert_allclose(mask.data.sum(), expected.flux)
+
+    @pytest.mark.parametrize('subpixels', [0, -1, 2.5, True, np.True_])
     def test_invalid_subpixels_at_init(self, subpixels):
         """
         Test that an invalid subpixels value is reported at

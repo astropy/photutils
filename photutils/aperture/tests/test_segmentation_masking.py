@@ -73,6 +73,25 @@ class TestProcessSegmentationInputs:
                                         [1, 2], 'mask', [(21, 21)],
                                         data.shape)
 
+    @pytest.mark.parametrize(('labels', 'match'), [
+        ([1, 2], 'labels must have the same length'),
+        ([[1]], 'labels must be a 1D array'),
+    ])
+    def test_labels_shape_without_masking(self, labels, match):
+        """
+        Test that the shape of the labels is validated when they are
+        not used.
+        """
+        data, _ = make_scene()
+        with pytest.raises(ValueError, match=match):
+            process_segmentation_inputs(None, labels, 'none', [(21, 21)],
+                                        data.shape)
+        aper = CircularAperture((21, 21), r=3)
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, aper, labels=labels)
+        assert process_segmentation_inputs(
+            None, [1], 'none', [(21, 21)], data.shape) == (None, None)
+
     def test_labels_not_1d(self):
         data, segm = make_scene()
         match = 'labels must be a 1D array'

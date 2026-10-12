@@ -130,9 +130,10 @@ class TestOverlapFlags:
         result = AperturePhotometry(data, aper, method='center')
         assert result.flags == (APERTURE_FLAGS.NO_OVERLAP
                                 | APERTURE_FLAGS.NO_PIXELS)
-        # The sum is 0.0 (not NaN) here. The bounding box overlaps the
-        # data, but no weighted pixel falls inside
-        assert result.flux == 0.0
+        # The results are undefined, the same as for an aperture whose
+        # bounding box does not overlap the data
+        assert np.isnan(result.flux)
+        assert np.isnan(result.area)
 
         # With the exact method, the aperture area extends into the data
         result = AperturePhotometry(data, aper, method='exact')

@@ -425,9 +425,8 @@ class AperturePhotometry:
         The values are always float64, regardless of the input ``data``
         dtype (a `~astropy.units.Quantity` if ``data`` has units).
 
-        The value is NaN where the aperture bounding box does not
-        overlap the data, and 0 where the bounding box overlaps the data
-        but the aperture itself does not.
+        The value is NaN where the aperture does not overlap the data
+        (the ``'no_overlap'`` flag).
         """
         values = self._stack('flux')
         if self._data_unit is not None:
@@ -457,9 +456,8 @@ class AperturePhotometry:
         This takes into account the aperture mask method, masked
         data pixels (``mask`` keyword), segmentation masking, and
         partial/no overlap of the aperture with the data. The value is
-        NaN where the aperture bounding box does not overlap the data,
-        and 0 where the bounding box overlaps the data but the aperture
-        itself does not.
+        NaN where the aperture does not overlap the data (the
+        ``'no_overlap'`` flag).
         """
         values = [result.area for result in self._photometry_results]
         if self._single_aperture:

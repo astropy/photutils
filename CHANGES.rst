@@ -617,6 +617,15 @@ Bug Fixes
     input inner-to-outer size ratios, which is always a valid annulus
     and is recovered exactly by the inverse conversion. [#2505]
 
+  - Fixed ``aperture_photometry`` and ``PixelAperture.do_photometry``
+    returning a sum of zero for an aperture whose bounding box overlaps
+    the data but that has no weighted pixel inside the data. The sum is
+    now NaN, the same as for an aperture whose bounding box does not
+    overlap the data. [#2505]
+
+  - Fixed the aperture ``subpixels`` keyword rejecting NumPy integers
+    (e.g., ``np.int64(5)``) with the ``'subpixel'`` method. [#2505]
+
   - Fixed ``BoundingBox.intersection`` returning a ``BoundingBox`` with
     zero width or height for two bounding boxes that share only an edge
     or a corner. `None` is now returned. [#2505]
