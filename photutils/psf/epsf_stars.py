@@ -1106,10 +1106,15 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
         If an `~astropy.nddata.NDData` object has an ``uncertainty``,
         it is converted to a standard deviation and the weights of
-        each star are the inverse of the standard deviation. Non-finite
-        weights (e.g., from a zero uncertainty) are set to zero, and a
-        warning is issued. Pixels that are masked in the ``mask``
-        attribute are given zero weight.
+        each star are the inverse of the standard deviation. An
+        uncertainty that cannot be converted (e.g., an
+        `~astropy.nddata.UnknownUncertainty`, which
+        `~astropy.nddata.NDData` creates for a plain array) is assumed
+        to be a standard deviation. An uncertainty object whose
+        ``uncertainty_type`` is ``'weights'`` is used directly as the
+        weights. Non-finite weights (e.g., from a zero uncertainty)
+        are set to zero, and a warning is issued. Pixels that are
+        masked in the ``mask`` attribute are given zero weight.
 
         If the input ``catalogs`` contain only the sky coordinates
         (i.e., not the pixel coordinates) of the stars then each image
@@ -1510,12 +1515,15 @@ def _prepare_uncertainty_info(data):
         }
 
     # For other uncertainties, convert the full array to standard
-    # deviation once so that cutouts only need to be sliced
+    # deviation once so that cutouts only need to be sliced. An
+    # uncertainty that cannot be converted (e.g., UnknownUncertainty,
+    # which NDData creates for a plain array) is taken to be a standard
+    # deviation.
     uncertainty = data.uncertainty
     with np.errstate(divide='ignore', invalid='ignore'):
-        if hasattr(uncertainty, 'represent_as'):
+        try:
             stddev_array = uncertainty.represent_as(StdDevUncertainty).array
-        else:
+        except (AttributeError, TypeError):
             stddev_array = uncertainty.array
 
     return {

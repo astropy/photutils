@@ -1151,6 +1151,12 @@ Bug Fixes
     centers for a WCS whose latitude axis comes first (e.g., ``CTYPE1 =
     'DEC--TAN'``). [#2508]
 
+  - Fixed ``extract_stars`` raising a ``TypeError`` for an ``NDData``
+    uncertainty that cannot be converted to a standard deviation (e.g.,
+    ``UnknownUncertainty``, which ``NDData`` creates for a plain array).
+    Such an uncertainty is now assumed to be a standard deviation.
+    [#2508]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import (InverseVariance, NDData, StdDevUncertainty,
-                            VarianceUncertainty)
+                            UnknownUncertainty, VarianceUncertainty)
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
@@ -2002,6 +2002,22 @@ class TestExtractStars:
 
         assert_allclose(outputs[0].weights, outputs[1].weights)
         assert_allclose(outputs[0].weights, outputs[2].weights)
+
+    def test_extract_stars_unknown_uncertainty(self, epsf_test_data):
+        """
+        Test that an uncertainty of unknown type is treated as a
+        standard deviation.
+        """
+        rng = np.random.default_rng(seed=0)
+        data = epsf_test_data['nddata'].data
+        error = rng.uniform(0.5, 2.0, size=data.shape)
+        ndd1 = NDData(data, uncertainty=StdDevUncertainty(error))
+        ndd2 = NDData(data, uncertainty=UnknownUncertainty(error))
+
+        init = epsf_test_data['init_stars']
+        stars1 = extract_stars(ndd1, init, size=25)
+        stars2 = extract_stars(ndd2, init, size=25)
+        assert_allclose(stars2.weights, stars1.weights)
 
     def test_extract_stars_nonfinite_weights(self, epsf_test_data):
         """
