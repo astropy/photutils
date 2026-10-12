@@ -100,7 +100,8 @@ class PixelPositions(ApertureAttribute):
     """
     Validate and set positions for pixel-based apertures.
 
-    Pixel positions are converted to a 2D `~numpy.ndarray`.
+    Pixel positions are converted to a float `~numpy.ndarray` of shape
+    ``(2,)`` for a single position or ``(N, 2)`` for multiple positions.
     """
 
     def __set__(self, instance, value):

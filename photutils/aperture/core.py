@@ -57,21 +57,25 @@ _METHOD_BULLETS = """\
   Binary weighting based on the pixel center. Weights are
   either 0 or 1. A pixel is included only if its center lies
   strictly inside the aperture. Pixel centers lying exactly
-  on the aperture boundary are excluded (weight 0).
+  on the outer aperture boundary are excluded (weight 0). For
+  an annulus, pixel centers lying exactly on the inner boundary
+  are included (weight 1).
 * ``'subpixel'``:
   Approximates the overlap by averaging binary samples on a
   subgrid. The number of samples is set by the ``subpixels``
   parameter. Weights are discrete in the range [0, 1]. A
   subpixel is included only if its center lies strictly
   inside the aperture. Subpixel centers lying exactly on the
-  aperture boundary are excluded (weight 0)."""
+  outer aperture boundary are excluded (weight 0). For an
+  annulus, subpixel centers lying exactly on the inner boundary
+  are included."""
 
 _SUBPIXELS_DOC = """\
 subpixels : int, optional
-    The subsampling factor per axis used when
-    ``method='subpixel'``. Each pixel is divided into a grid of
-    ``subpixels**2`` subpixels to approximate the overlap. This
-    parameter is ignored for other methods."""
+    The subsampling factor per axis used with the ``'subpixel'``
+    method. Each pixel is divided into a grid of ``subpixels**2``
+    subpixels to approximate the overlap. This parameter is
+    ignored for other methods."""
 
 _METHOD_SUBPIXELS_DOC = (
     _METHOD_INTRO + '\n\n'
@@ -83,14 +87,13 @@ segmentation_image : `~photutils.segmentation.SegmentationImage` or \
 `None`, optional
     A segmentation image with the same shape as ``data``, where
     background pixels have a value of 0 and sources are labeled with
-    positive integers. If input, neighboring sources can be masked or
-    corrected within each aperture according to the ``mask_method``
+    positive integers. It is used to mask or correct neighboring
+    sources within each aperture according to the ``mask_method``
     keyword. This keyword is required if ``mask_method`` is not
-    ``'none'``. When ``segmentation_image`` is input, the ``labels``
-    keyword must also be provided to ensure the correct target source is
-    used for each aperture. If ``segmentation_image`` is `None`, then
-    the ``mask_method`` keyword is ignored and no neighboring source
-    masking or correction is performed.
+    ``'none'`` and is ignored if ``mask_method`` is ``'none'`` (the
+    default). The ``labels`` keyword must also be input for the
+    ``'mask'``, ``'source_only'``, and ``'correct'`` methods so that the
+    correct target source is used for each aperture.
 
 labels : int, 1D array_like, or `None`, optional
     The source label(s) in ``segmentation_image`` associated
@@ -133,7 +136,7 @@ Parameters
 ----------
 edges : tuple of float
     The ``(xmin, xmax, ymin, ymax)`` pixel edges of the aperture
-    bounding box, recentered at the origin.
+    bounding box, after recentering the aperture at the origin.
 
 nx, ny : int
     The number of pixels in the x and y directions.
@@ -531,10 +534,11 @@ class PixelAperture(Aperture):
         Returns
         -------
         use_exact : int
-            Whether to use exact method (1) or not (0).
+            Whether to use the exact method (1) or not (0).
 
         subpixels : int
-            The number of subpixels for subpixel method.
+            The number of subpixels per axis. It is 1 for the
+            ``'exact'`` and ``'center'`` methods.
         """
         validate_mask_method(method, subpixels)
 
@@ -678,15 +682,18 @@ class PixelAperture(Aperture):
 
         This method takes into account the aperture mask method, masked
         data pixels (``mask`` keyword), and partial/no overlap of the
-        aperture with the data. In other words, it returns the area that
-        used to compute the aperture sum (assuming identical inputs).
+        aperture with the data. In other words, it returns the area
+        that is used to compute the aperture sum for the same inputs,
+        provided that no non-finite data values are masked and no
+        segmentation masking is applied. This method takes neither into
+        account.
 
-        Use the `area` method to calculate the exact analytical area of
-        the aperture shape.
+        Use the `area` attribute for the exact analytical area of the
+        aperture shape.
 
         Parameters
         ----------
-        data : array_like or `~astropy.units.Quantity`
+        data : `~numpy.ndarray` or `~astropy.units.Quantity`
             A 2D array.
 
         mask : array_like (bool), optional
@@ -698,9 +705,11 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        areas : float or array_like
+        areas : float or `~numpy.ndarray`
             The area (in pixels**2) of overlap between the data and the
-            aperture.
+            aperture. A scalar aperture returns a float, otherwise a 1D
+            array with one value per position. The value is NaN where
+            the aperture does not overlap the data.
 
         See Also
         --------
@@ -800,10 +809,10 @@ class PixelAperture(Aperture):
             already stripped.
 
         error, mask, method, subpixels
-            See `photometry`. Any units must already be stripped from
+            See `_photometry`. Any units must already be stripped from
             ``error``.
 
-        segmentation, labels, mask_method
+        segmentation, labels, mask_method : optional
             The validated segmentation array, per-aperture source
             labels, and masking method (see
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
@@ -969,9 +978,10 @@ class PixelAperture(Aperture):
         """
         Perform aperture photometry using the batch Cython driver.
 
-        The batch driver computes results identical to the mask-based
-        code path, but without creating per-source mask arrays or making
-        per-source Python calls.
+        The batch driver computes results that agree with the mask-based
+        code path to within rounding, with identical flag counts, but
+        without creating per-source mask arrays or making per-source
+        Python calls.
 
         Parameters
         ----------
@@ -980,10 +990,10 @@ class PixelAperture(Aperture):
             already stripped.
 
         error, mask, method, subpixels
-            See `photometry`. Any units must already be stripped from
+            See `_photometry`. Any units must already be stripped from
             ``error``.
 
-        segmentation, labels, mask_method
+        segmentation, labels, mask_method : optional
             The validated segmentation array, per-aperture source
             labels, and masking method (see
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
@@ -1227,9 +1237,6 @@ class PixelAperture(Aperture):
         """
         Perform aperture photometry on the input data.
 
-        .. deprecated:: 3.1
-            Use `~photutils.aperture.AperturePhotometry` instead.
-
         Parameters
         ----------
         data : array_like or `~astropy.units.Quantity` instance
@@ -1256,7 +1263,8 @@ class PixelAperture(Aperture):
             The sum within each aperture.
 
         aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The errors on the sum within each aperture.
+            The errors on the sum within each aperture. The values are
+            NaN if ``error`` is not input.
         """
         result = self._photometry(data, error=error, mask=mask,
                                   method=method, subpixels=subpixels)
@@ -1267,11 +1275,14 @@ class PixelAperture(Aperture):
         """
         Whether each aperture has nonzero mask weights outside the data.
 
-        The precise per-source test is evaluated (via per-source
-        aperture masks) only for the candidate sources, i.e., those
-        whose bounding box is clipped by a data edge. The result is
-        `False` for all other sources. Interior sources are never
-        candidates, so no aperture masks are built for them.
+        For the ``'exact'`` method the candidates are returned
+        unchanged, because a clipped minimal bounding box always leaves
+        part of the aperture outside the data. For the other methods the
+        precise per-source test is evaluated (via per-source aperture
+        masks) only for the candidate sources, i.e., those whose
+        bounding box is clipped by a data edge. The result is `False`
+        for all other sources. Interior sources are never candidates, so
+        no aperture masks are built for them.
 
         Parameters
         ----------
@@ -1279,7 +1290,7 @@ class PixelAperture(Aperture):
             The shape of the data array.
 
         method, subpixels
-            See `photometry`.
+            See `_photometry`.
 
         candidates : `~numpy.ndarray` (bool)
             Whether each aperture bounding box is clipped by a data
@@ -1368,8 +1379,8 @@ class PixelAperture(Aperture):
             The aperture patch positions.
 
         patch_params : dict
-            Any keyword arguments accepted by
-            `matplotlib.patches.Patch`.
+            The matplotlib patch keywords, consisting of the default
+            patch properties updated with ``kwargs``.
         """
         xy_positions = deepcopy(self._positions)
         xy_positions[:, 0] -= origin[0]
@@ -1501,13 +1512,15 @@ def _aperture_metadata(aperture, *, index=''):
     aperture : `Aperture`
         An aperture object.
 
-    index : str, optional
-        A string that will be prepended to each metadata key.
+    index : int or str, optional
+        An index appended to the ``aperture`` prefix of each metadata
+        key (e.g., ``aperture1_r`` for ``index=1``).
 
     Returns
     -------
     meta : dict
-        A dictionary of aperture metadata
+        A dictionary of aperture metadata. It holds the aperture class
+        name and each aperture parameter except ``positions``.
     """
     params = aperture._params
     meta = {}

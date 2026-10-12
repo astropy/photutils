@@ -26,7 +26,7 @@ __all__ = [
 def _signed_polygon_area(verts):
     """
     Calculate the signed area of a polygon (positive for
-    counter-clockwise vertices) via the shoelace formula.
+    counterclockwise vertices) via the shoelace formula.
 
     Parameters
     ----------
@@ -48,7 +48,7 @@ def _orientation(a, b, c):
     Return twice the signed area of the triangle ``a``, ``b``, ``c``.
 
     The result is positive if ``a -> b -> c`` traverses
-    counter-clockwise, negative if clockwise, and zero if the three
+    counterclockwise, negative if clockwise, and zero if the three
     points are collinear.
     """
     return ((b[0] - a[0]) * (c[1] - a[1])
@@ -98,10 +98,12 @@ def _polygon_is_simple(verts):
     Every pair of non-adjacent polygon edges is tested for intersection
     using orientation predicates, including the case where an endpoint
     of one edge lies on another edge. Adjacent edges (which share a
-    vertex by construction) are not compared with each other, so a
-    polygon that folds straight back onto an adjacent edge is not
-    detected here. Such degenerate cases are instead excluded by the
-    zero-area check in `_validate_simple_polygon`.
+    vertex by construction) are not compared with each other. A polygon
+    that folds straight back onto an adjacent edge is still rejected,
+    because a later non-adjacent edge then touches the folded edge.
+    For a triangle, which has no non-adjacent edges, such a fold has
+    zero area and is excluded by the zero-area check in
+    `_validate_simple_polygon`.
 
     The cost is ``O(n^2)`` in the number of vertices ``n``. This is
     negligible for the polygon sizes used in aperture photometry, and
@@ -151,7 +153,7 @@ def _validate_simple_polygon(verts, *, name='vertex_offsets',
     verts : `~numpy.ndarray`
         ``(n_vertices, 2)`` array of polygon vertices.
 
-    name : str
+    name : str, optional
         Name to use in error messages.
 
     check_simple : bool, optional
@@ -164,7 +166,7 @@ def _validate_simple_polygon(verts, *, name='vertex_offsets',
     Returns
     -------
     verts_ccw : `~numpy.ndarray`
-        The vertices reordered to be counter-clockwise.
+        The vertices reordered to be counterclockwise.
     """
     if verts.ndim != 2 or verts.shape[1] != 2:
         msg = (f'{name!r} must have shape (n_vertices, 2), '
@@ -203,7 +205,7 @@ class PixelVertexOffsets(ApertureAttribute):
     Validate and set ``vertex_offsets`` for `PolygonAperture`.
 
     The value is converted to an ``(n_vertices, 2)`` `~numpy.ndarray` of
-    pixel offsets and reordered into counter-clockwise vertex order.
+    pixel offsets and reordered into counterclockwise vertex order.
     """
 
     def __set__(self, instance, value):
@@ -293,7 +295,7 @@ def _regular_polygon_offsets(n_vertices, radius, angle_rad):
 
     The first vertex sits at angle ``pi/2 + angle_rad`` (i.e., directly
     above the center for ``angle_rad == 0``), and subsequent vertices
-    are placed counter-clockwise at uniform angular spacing.
+    are placed counterclockwise at uniform angular spacing.
     """
     base = np.pi / 2.0 + float(angle_rad)
     step = 2.0 * np.pi / n_vertices
@@ -408,14 +410,19 @@ class PolygonAperture(PixelAperture):
         of each polygon vertex relative to ``positions``. The polygon
         must be simple (non-self-intersecting) with at least 3 vertices.
         The polygon may be convex or non-convex. Either clockwise or
-        counter-clockwise vertex orderings are accepted. The input is
-        normalized to counter-clockwise internally.
+        counterclockwise vertex orderings are accepted. The input is
+        normalized to counterclockwise internally.
 
     Raises
     ------
+    TypeError : `TypeError`
+        If ``vertex_offsets`` is a `~astropy.units.Quantity` or cannot
+        be converted to a numeric array.
+
     ValueError : `ValueError`
-        If ``vertex_offsets`` is not a valid simple polygon with at
-        least 3 vertices.
+        If ``vertex_offsets`` does not have shape ``(n_vertices, 2)``,
+        contains non-finite values, or does not define a simple polygon
+        of non-zero area with at least 3 vertices.
 
     Examples
     --------
@@ -428,7 +435,7 @@ class PolygonAperture(PixelAperture):
     >>> aper = PolygonAperture((10.0, 20.0), offsets)
 
     Construct a single polygon directly from absolute vertex
-    coordinates::
+    coordinates:
 
     >>> verts = [(0.0, 0.0), (4.0, 0.0), (4.0, 3.0)]
     >>> aper = PolygonAperture.from_vertices(verts)
@@ -455,7 +462,7 @@ class PolygonAperture(PixelAperture):
         ``to_polygon`` methods of the built-in apertures, where the
         generated polygon (a discretized circle, ellipse, or rectangle)
         is guaranteed to be simple by construction. The cheap shape,
-        vertex-count, finiteness, zero-area, and counter-clockwise
+        vertex-count, finiteness, zero-area, and counterclockwise
         normalization checks are still applied.
         """
         offsets = np.asarray(offsets, dtype=float)
@@ -486,7 +493,15 @@ class PolygonAperture(PixelAperture):
         -------
         aperture : `PolygonAperture`
             A scalar polygon aperture whose ``vertices`` property
-            reproduces the input.
+            reproduces the input vertices. Clockwise input is returned
+            in reversed (counterclockwise) order.
+
+        Raises
+        ------
+        ValueError : `ValueError`
+            If ``vertices`` does not have shape ``(n_vertices, 2)`` or
+            does not define a simple polygon of non-zero area with at
+            least 3 finite vertices.
         """
         verts = np.asarray(vertices, dtype=float)
         if verts.ndim != 2 or verts.shape[1] != 2:
@@ -514,7 +529,7 @@ class PolygonAperture(PixelAperture):
 
         The first vertex is placed directly above the center (in
         the ``+y`` direction) for ``theta == 0`` and is rotated
-        counter-clockwise by ``theta``. This convention matches
+        counterclockwise by ``theta``. This convention matches
         `regions.RegularPolygonPixelRegion`.
 
         Parameters
@@ -531,9 +546,9 @@ class PolygonAperture(PixelAperture):
             (must be positive).
 
         theta : float or `~astropy.units.Quantity`, optional
-            The rotation angle of the polygon, measured counter-
-            clockwise from the ``+y`` axis. A scalar float is
-            interpreted in radians.
+            The rotation angle of the polygon, measured
+            counterclockwise from the ``+y`` axis. A scalar float is
+            interpreted in radians. The default is 0.
 
         Returns
         -------
@@ -572,7 +587,7 @@ class PolygonAperture(PixelAperture):
         The star has ``n_spikes`` spikes, with vertices alternating
         between ``outer_radius`` and ``inner_radius``. The first (outer)
         vertex is placed directly above the center (in the ``+y``
-        direction) for ``theta == 0`` and is rotated counter-clockwise
+        direction) for ``theta == 0`` and is rotated counterclockwise
         by ``theta``.
 
         Parameters
@@ -596,7 +611,7 @@ class PolygonAperture(PixelAperture):
             automatically.
 
         theta : float or `~astropy.units.Quantity`, optional
-            The rotation angle of the star, measured counter-clockwise
+            The rotation angle of the star, measured counterclockwise
             from the ``+y`` axis to the first (outer) vertex. A scalar
             float is interpreted in radians.
 
@@ -604,8 +619,8 @@ class PolygonAperture(PixelAperture):
             If `True`, compute ``inner_radius`` automatically to
             produce a star with naturally-proportioned geometry. The
             spike angle (the angular width at each point) is set to
-            180°/``n_spikes``, which is the exterior angle of a regular
-            ``n_spikes``-gon. This creates a balanced star where the
+            180°/``n_spikes``, which is half the exterior angle of a
+            regular ``n_spikes``-gon. This creates a balanced star where the
             indentations between spikes are symmetric and proportional
             to the spikes themselves.
 
@@ -627,9 +642,10 @@ class PolygonAperture(PixelAperture):
             profile. When rotated (``theta > 0``), the edges remain
             collinear but at a different angle.
 
-            This proportionality constraint makes the indentation
-            between spikes flat-bottomed, resulting in a sharp,
-            classical star appearance. The formula is:
+            This constraint puts each inner vertex on the straight
+            line joining the two outer vertices on either side of a
+            neighboring spike, giving a sharp, classical star
+            appearance. The formula is:
 
                 inner_radius = (outer_radius · cos(2π/``n_spikes``)
                                 / cos(π/``n_spikes``))
@@ -771,7 +787,7 @@ class PolygonAperture(PixelAperture):
         return 0.5 * (xmin + xmax), 0.5 * (ymin + ymax)
 
     def _batch_shape_params(self):
-        # The vertex offsets are counter-clockwise (normalized when the
+        # The vertex offsets are counterclockwise (normalized when the
         # attribute is set) and flattened as (x0, y0, x1, y1, ...) for
         # the batch Cython photometry driver.
         return SHAPE_POLYGON, tuple(self.vertex_offsets.ravel())
@@ -848,7 +864,7 @@ class PolygonAperture(PixelAperture):
         each side.
 
         This is also called the `inradius
-        <https://mathworld.wolfram.com/Inradius.html>`_
+        <https://mathworld.wolfram.com/Inradius.html>`_.
 
         This attribute is only defined for regular polygons. Accessing
         it for a non-regular polygon raises `ValueError`.
@@ -897,7 +913,7 @@ class PolygonAperture(PixelAperture):
         The rotation angle of the regular polygon as an angular
         `~astropy.units.Quantity` in degrees.
 
-        The angle is measured counter-clockwise from the ``+y``
+        The angle is measured counterclockwise from the ``+y``
         axis to the first stored vertex, in the range ``[0, 360)
         deg``. This convention matches the ``theta`` parameter of
         `~PolygonAperture.from_regular_polygon`.
@@ -908,9 +924,9 @@ class PolygonAperture(PixelAperture):
         The reported value therefore depends on which vertex is stored
         first, which is not necessarily the first vertex the user
         input. Clockwise ``vertex_offsets`` are reversed when they are
-        normalized to counter-clockwise order. For example, a square
+        normalized to counterclockwise order. For example, a square
         specified clockwise reports ``90 deg`` where the identical
-        square specified counter-clockwise reports ``0 deg``.
+        square specified counterclockwise reports ``0 deg``.
 
         This attribute is only defined for regular polygons. Accessing
         it for a non-regular polygon raises `ValueError`.
@@ -1012,8 +1028,9 @@ class SkyPolygonAperture(SkyAperture):
 
     The aperture has a single fixed shape, defined by angular
     ``vertex_offsets`` relative to each ``positions`` entry, but it can
-    have multiple positions. The angular offsets are interpreted on the
-    local tangent plane at each position.
+    have multiple positions. The angular offsets are applied as
+    spherical offsets from each position (see
+    `~astropy.coordinates.SkyCoord.spherical_offsets_by`).
 
     Parameters
     ----------
@@ -1023,10 +1040,25 @@ class SkyPolygonAperture(SkyAperture):
 
     vertex_offsets : `~astropy.units.Quantity`
         Shape ``(n_vertices, 2)`` angular Quantity of polygon vertex
-        offsets ``(d_lon, d_lat)`` relative to ``positions``, applied as
-        spherical offsets on the local tangent plane. The polygon must
-        be simple (non-self-intersecting) with at least 3 vertices. The
-        polygon may be convex or non-convex.
+        offsets ``(d_lon, d_lat)`` relative to ``positions``, applied
+        as spherical offsets from each position. The polygon must be
+        simple (non-self-intersecting) with at least 3 vertices. The
+        polygon may be convex or non-convex. Either vertex ordering
+        is accepted. The input is normalized internally to
+        counterclockwise order in the ``(d_lon, d_lat)`` plane.
+
+    Raises
+    ------
+    TypeError : `TypeError`
+        If ``vertex_offsets`` is not a `~astropy.units.Quantity`.
+
+    UnitsError : `~astropy.units.UnitsError`
+        If ``vertex_offsets`` does not have angular units.
+
+    ValueError : `ValueError`
+        If ``vertex_offsets`` does not have shape ``(n_vertices, 2)``,
+        contains non-finite values, or does not define a simple polygon
+        of non-zero area with at least 3 vertices.
 
     Examples
     --------
@@ -1063,7 +1095,7 @@ class SkyPolygonAperture(SkyAperture):
         ``to_polygon`` methods of the built-in sky apertures, where the
         generated polygon (a discretized circle, ellipse, or rectangle)
         is guaranteed to be simple by construction. The cheap shape,
-        vertex-count, finiteness, zero-area, and counter-clockwise
+        vertex-count, finiteness, zero-area, and counterclockwise
         normalization checks are still applied.
 
         Parameters
@@ -1096,11 +1128,10 @@ class SkyPolygonAperture(SkyAperture):
         sky vertices.
 
         The aperture's ``positions`` is set to an approximate centroid
-        of the input vertices, computed as a single tangent-plane
-        mean of the spherical offsets from the first vertex (i.e.,
-        the vertices' spherical offsets from this centroid average
-        to approximately zero), and ``vertex_offsets`` is set to the
-        spherical offsets of the vertices from this centroid.
+        of the input vertices, computed as the mean of the spherical
+        offsets of the vertices from the first vertex. The spherical
+        offsets of the vertices from this centroid average to
+        approximately zero. ``vertex_offsets`` is set to those offsets.
 
         Parameters
         ----------
@@ -1112,7 +1143,20 @@ class SkyPolygonAperture(SkyAperture):
         -------
         aperture : `SkyPolygonAperture`
             A scalar sky polygon aperture whose ``vertices`` property
-            reproduces the input.
+            reproduces the input vertices. Input that is clockwise in
+            the ``(d_lon, d_lat)`` offset plane is returned in reversed
+            (counterclockwise) order.
+
+        Raises
+        ------
+        TypeError : `TypeError`
+            If ``vertices`` is not a one-dimensional
+            `~astropy.coordinates.SkyCoord`.
+
+        ValueError : `ValueError`
+            If ``vertices`` contains non-finite values or does not
+            define a simple polygon of non-zero area with at least 3
+            vertices.
         """
         if not isinstance(vertices, SkyCoord) or vertices.ndim != 1:
             msg = ('vertices must be a 1-D SkyCoord with at least 3 '
@@ -1140,7 +1184,7 @@ class SkyPolygonAperture(SkyAperture):
         The first vertex is placed at the ``+lat`` edge of the local
         tangent plane (typically northward for standard right-handed
         celestial coordinates) for ``theta == 0`` and is rotated
-        counter-clockwise by ``theta``.
+        counterclockwise by ``theta``.
 
         Parameters
         ----------
@@ -1155,8 +1199,8 @@ class SkyPolygonAperture(SkyAperture):
             be a positive angular Quantity).
 
         theta : `~astropy.units.Quantity`, optional
-            The rotation angle of the polygon, measured counter-
-            clockwise from the ``+lat`` axis on the local tangent
+            The rotation angle of the polygon, measured
+            counterclockwise from the ``+lat`` axis on the local tangent
             plane. This assumes a right-handed coordinate system (e.g.,
             standard celestial coordinates).
 
@@ -1203,10 +1247,11 @@ class SkyPolygonAperture(SkyAperture):
     def perimeter(self):
         """
         The angular perimeter of the polygon as a
-        `~astropy.units.Quantity`.
+        `~astropy.units.Quantity` in arcseconds.
 
-        The perimeter is computed as the sum of the angular distances
-        between consecutive vertices on the local tangent plane.
+        The perimeter is computed as the sum of the Euclidean distances
+        between consecutive vertices in the ``(d_lon, d_lat)`` offset
+        plane.
         """
         offsets = self.vertex_offsets.to_value(u.arcsec)
         diff = np.roll(offsets, -1, axis=0) - offsets
@@ -1241,8 +1286,8 @@ class SkyPolygonAperture(SkyAperture):
     def outer_radius(self):
         """
         The angular outer (circumscribed-circle) radius of the regular
-        polygon as a `~astropy.units.Quantity`, i.e., the distance from
-        ``positions`` to each vertex.
+        polygon as a `~astropy.units.Quantity` in arcseconds, i.e., the
+        distance from ``positions`` to each vertex.
 
         This is also called the `circumradius
         <https://mathworld.wolfram.com/Circumradius.html>`_.
@@ -1257,11 +1302,11 @@ class SkyPolygonAperture(SkyAperture):
     def inner_radius(self):
         """
         The angular inner (inscribed-circle) radius of the regular
-        polygon as a `~astropy.units.Quantity`, i.e., the distance from
-        ``positions`` to the midpoint of each side.
+        polygon as a `~astropy.units.Quantity` in arcseconds, i.e., the
+        distance from ``positions`` to the midpoint of each side.
 
         This is also called the `inradius
-        <https://mathworld.wolfram.com/Inradius.html>`_
+        <https://mathworld.wolfram.com/Inradius.html>`_.
 
         This attribute is only defined for regular polygons. Accessing
         it for a non-regular polygon raises `ValueError`.
@@ -1273,7 +1318,7 @@ class SkyPolygonAperture(SkyAperture):
     def side_length(self):
         """
         The angular side length of the regular polygon as a
-        `~astropy.units.Quantity`.
+        `~astropy.units.Quantity` in arcseconds.
 
         This attribute is only defined for regular polygons. Accessing
         it for a non-regular polygon raises `ValueError`.
@@ -1311,7 +1356,7 @@ class SkyPolygonAperture(SkyAperture):
         The rotation angle of the regular polygon as an angular
         `~astropy.units.Quantity` in degrees.
 
-        The angle is measured counter-clockwise from the ``+lat`` axis
+        The angle is measured counterclockwise from the ``+lat`` axis
         on the local tangent plane to the first stored vertex, in
         the range ``[0, 360) deg``. This assumes a right-handed
         coordinate system (e.g., standard celestial coordinates).
@@ -1324,7 +1369,7 @@ class SkyPolygonAperture(SkyAperture):
         The reported value therefore depends on which vertex is stored
         first, which is not necessarily the first vertex the user
         input. Clockwise ``vertex_offsets`` are reversed when they are
-        normalized to counter-clockwise order.
+        normalized to counterclockwise order.
 
         This attribute is only defined for regular polygons. Accessing
         it for a non-regular polygon raises `ValueError`.
@@ -1362,7 +1407,7 @@ class SkyPolygonAperture(SkyAperture):
         pixel coordinates.
 
         The conversion uses ``wcs.world_to_pixel`` directly on the
-        absolute sky vertex coordinate, evaluated at the first aperture
+        absolute sky vertex coordinates, evaluated at the first aperture
         position.
 
         Parameters

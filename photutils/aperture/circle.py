@@ -79,8 +79,6 @@ class CircularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for circular and circular-annulus
     aperture objects.
-
-    .. deprecated:: 3.0
     """
 
     @_update_method_subpixels_docstring
@@ -453,11 +451,12 @@ class CircularAnnulus(PixelAperture):
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         as_ellipse : bool, optional
-            If `True`, return the image of the circle under the local
-            linear WCS at the reference position, which is an ellipse
-            whenever the pixels are not square or the WCS is sheared.
-            If `False` (the default), return a circle whose radius is
-            scaled by the isotropic mean pixel scale.
+            If `True`, return the image of the circular annulus under
+            the local linear WCS at the reference position, which is
+            an elliptical annulus whenever the pixels are not square
+            or the WCS is sheared. If `False` (the default), return a
+            circular annulus whose inner and outer radii are scaled by
+            the isotropic mean pixel scale.
 
         Returns
         -------
@@ -513,6 +512,14 @@ class SkyCircularAperture(SkyAperture):
 
     r : scalar `~astropy.units.Quantity`
         The radius of the circle in angular units.
+
+    Raises
+    ------
+    TypeError : `TypeError`
+        If the input radius, ``r``, is not a `~astropy.units.Quantity`.
+
+    ValueError : `ValueError`
+        If the input radius, ``r``, is not positive.
 
     Examples
     --------
@@ -625,6 +632,19 @@ class SkyCircularAnnulus(SkyAperture):
     r_out : scalar `~astropy.units.Quantity`
         The outer radius of the circular annulus in angular units.
 
+    Raises
+    ------
+    TypeError : `TypeError`
+        If either radius (``r_in`` or ``r_out``) is not a
+        `~astropy.units.Quantity`.
+
+    ValueError : `ValueError`
+        If the inner radius (``r_in``) is not less than the outer radius
+        (``r_out``).
+
+    ValueError : `ValueError`
+        If either radius (``r_in`` or ``r_out``) is not positive.
+
     Examples
     --------
     >>> from astropy.coordinates import SkyCoord
@@ -659,11 +679,12 @@ class SkyCircularAnnulus(SkyAperture):
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
         as_ellipse : bool, optional
-            If `True`, return the image of the circle under the local
-            linear WCS at the reference position, which is an ellipse
-            whenever the pixels are not square or the WCS is sheared.
-            If `False` (the default), return a circle whose radius is
-            scaled by the isotropic mean pixel scale.
+            If `True`, return the image of the circular annulus under
+            the local linear WCS at the reference position, which is
+            an elliptical annulus whenever the pixels are not square
+            or the WCS is sheared. If `False` (the default), return a
+            circular annulus whose inner and outer radii are scaled by
+            the isotropic mean pixel scale.
 
         Returns
         -------
