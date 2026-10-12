@@ -980,6 +980,26 @@ def test_grouped_fit_fixed_positions(flux_init):
     assert_equal(phot['flags'], 0)
 
 
+@pytest.mark.parametrize('sign', [1, -1])
+def test_exact_fit_metrics_not_negative_zero(sign):
+    """
+    Test that an exact fit gives ``qfit`` and ``cfit`` values of zero
+    without a negative sign, for both positive and negative fit fluxes.
+    """
+    model = CircularGaussianPRF(fwhm=3)
+    model.x_0.fixed = True
+    model.y_0.fixed = True
+    sources = Table({'x_0': [20.0, 60.0], 'y_0': [20.0, 60.0],
+                     'flux': [sign * 300.0, sign * 1600.0]})
+    data = make_model_image((80, 80), model, sources, model_shape=(21, 21))
+    init = Table({'x': sources['x_0'], 'y': sources['y_0'],
+                  'flux': sources['flux']})
+    phot = PSFPhotometry(model, (7, 7))(data, init_params=init)
+    for colname in ('qfit', 'cfit'):
+        assert_equal(phot[colname], 0.0)
+        assert not np.any(np.signbit(phot[colname]))
+
+
 def test_int_data_with_local_bkg():
     """
     Regression test that integer-dtype data works with a float
