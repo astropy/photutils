@@ -29,24 +29,29 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
+        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    radii : 1D float `~numpy.ndarray`
+    radii : 1D array_like of float
         An array of radii defining the profile apertures. ``radii`` must
         be strictly increasing with a minimum value greater than or
         equal to zero, and contain at least 2 values. The radial spacing
-        does not need to be constant. See the subclass documentation for
-        details on how ``radii`` is interpreted.
+        does not need to be constant. ``radii`` must be in pixels and
+        cannot be a `~astropy.units.Quantity`. See the subclass
+        documentation for details on how ``radii`` is interpreted.
 
-    error : 2D `~numpy.ndarray`, optional
+    error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
         to include all sources of error, including the Poisson error of
         the sources (see `~photutils.utils.calc_total_error`). ``error``
-        must have the same shape as the input ``data``.
+        must have the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity`, then ``error`` must have the same
+        units.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -54,6 +59,24 @@ class ProfileBase(metaclass=abc.ABCMeta):
         Masked data are excluded from all calculations.
 
     <method_subpixels_descriptions>
+
+    Raises
+    ------
+    TypeError
+        If ``radii`` is a `~astropy.units.Quantity`.
+
+    ValueError
+        If ``data`` is not a 2D array, if ``radii`` is not a 1D array
+        with at least two values, has a negative value, or is not
+        strictly increasing, if ``error`` or ``mask`` does not have the
+        same shape as ``data``, if ``data`` and ``error`` do not have
+        the same units, or if ``method`` or ``subpixels`` is invalid.
+
+    Warns
+    -----
+    `~astropy.utils.exceptions.AstropyUserWarning`
+        If the ``data`` or ``error`` array contains non-finite values
+        that are not already masked by ``mask``.
     """
 
     # Define axis labels used by `~photutils.profiles.ProfileBase.plot`.
@@ -160,14 +183,16 @@ class ProfileBase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _raw_profile(self):
         """
-        The raw (unnormalized) profile as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) profile as a 1D `~numpy.ndarray`, or a
+        `~astropy.units.Quantity` if the input ``data`` has units.
         """
 
     @property
     @abc.abstractmethod
     def _raw_profile_error(self):
         """
-        The raw (unnormalized) profile errors as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) profile errors as a 1D `~numpy.ndarray`,
+        or a `~astropy.units.Quantity` if the input ``data`` has units.
 
         If no ``error`` array was provided, an empty array with shape
         ``(0,)`` is returned.
@@ -176,17 +201,20 @@ class ProfileBase(metaclass=abc.ABCMeta):
     @property
     def profile(self):
         """
-        The profile as a 1D `~numpy.ndarray`.
+        The profile as a 1D `~numpy.ndarray`, or a
+        `~astropy.units.Quantity` if the input ``data`` has units.
 
         The returned values reflect the current profile normalization
-        (see `normalize`).
+        (see `normalize`). A normalized profile of data with units is a
+        dimensionless `~astropy.units.Quantity`.
         """
         return self._raw_profile / self.normalization_value
 
     @property
     def profile_error(self):
         """
-        The profile errors as a 1D `~numpy.ndarray`.
+        The profile errors as a 1D `~numpy.ndarray`, or a
+        `~astropy.units.Quantity` if the input ``data`` has units.
 
         The returned values reflect the current profile normalization
         (see `normalize`). If no ``error`` array was provided, an empty
@@ -226,14 +254,16 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         Returns
         -------
-        flux : `~numpy.ndarray`
-            The aperture fluxes.
+        flux : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The aperture fluxes. A `~astropy.units.Quantity` if the
+            input ``data`` has units.
 
-        flux_err : `~numpy.ndarray`
-            The aperture flux errors.
+        flux_err : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The aperture flux errors, or an empty array if no ``error``
+            array was provided.
 
         areas : `~numpy.ndarray`
-            The aperture areas.
+            The aperture areas in pixels squared, without units.
         """
         n_none = sum(aperture is None for aperture in apertures)
         result = AperturePhotometry(
@@ -271,11 +301,16 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         Normalize the profile.
 
+        The profile errors (`profile_error`) are divided by the same
+        normalization value as the profile.
+
         The normalization is computed from the raw (unnormalized)
         profile values, so repeated calls do not accumulate. The
         most recent call determines the normalization. Because both
         normalization methods scale linearly with the profile values,
         this is equivalent to normalizing an already-normalized profile.
+        NaN values in the profile are ignored when computing the maximum
+        or sum.
 
         Parameters
         ----------
@@ -289,6 +324,18 @@ class ProfileBase(metaclass=abc.ABCMeta):
             * ``'sum'``:
               The profile is normalized such that the sum of its values
               is 1.
+
+        Raises
+        ------
+        ValueError
+            If ``method`` is not ``'max'`` or ``'sum'``.
+
+        Warns
+        -----
+        `~astropy.utils.exceptions.AstropyUserWarning`
+            If the maximum or sum of the profile is not positive or is
+            non-finite. In that case, the current normalization is left
+            unchanged.
         """
         if method == 'max':
             func = nanmax
@@ -322,7 +369,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
     @staticmethod
     def _trim_to_monotonic(xarr, profile, name):
         """
-        Trim arrays to the first monotonically increasing region.
+        Trim arrays to the leading finite, strictly increasing segment.
 
         This is used by interpolation methods that require a
         monotonically increasing profile.
@@ -436,13 +483,20 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         **kwargs : dict, optional
             Any keyword arguments accepted by
-            `matplotlib.pyplot.fill_between`.
+            `matplotlib.pyplot.fill_between`. If ``facecolor`` is not
+            given, a semi-transparent gray is used.
 
         Returns
         -------
         poly : `matplotlib.collections.PolyCollection` or `None`
             A `~matplotlib.collections.PolyCollection` containing the
             plotted polygons, or `None` if no errors were input.
+
+        Warns
+        -----
+        `~astropy.utils.exceptions.AstropyUserWarning`
+            If no errors were input. In that case, nothing is plotted
+            and `None` is returned.
         """
         if len(self.profile_error) == 0:
             msg = 'Errors were not input'
