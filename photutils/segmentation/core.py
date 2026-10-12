@@ -89,7 +89,7 @@ def _get_label_stats(array):
     Return the labels of a segmentation array with their areas and
     bounding boxes.
 
-    A 2D array is measured in a single pass by compiled code. A 2D
+    A 2D array is measured by compiled code without sorting. A 2D
     array with very large labels is first mapped to consecutive labels,
     which costs a sort of the labeled pixels, so that the memory used
     is set by the number of labels and not by their size. An array of
@@ -327,7 +327,9 @@ class SegmentationImage:
     sliced `SegmentationImage` data array will be a view into the
     original `SegmentationImage` array (this is the same behavior as
     `~numpy.ndarray`). Explicitly use the :meth:`SegmentationImage.copy`
-    method to create a copy of the sliced `SegmentationImage`.
+    method to create a copy of the sliced `SegmentationImage`. The key
+    must be a tuple of two slices, and the sliced array must not be
+    empty.
     """
 
     def __init__(self, data):
@@ -440,7 +442,7 @@ class SegmentationImage:
         """
         A list of `Segment` objects.
 
-        The list starts with the *non-zero* label. The returned list has
+        The background (label 0) is not included. The returned list has
         a length equal to the number of labels and matches the order of
         the ``labels`` attribute.
         """
@@ -468,7 +470,7 @@ class SegmentationImage:
         """
         A sorted 1D array of deblended label numbers.
 
-        The list will be empty if deblending has not been performed or
+        The array will be empty if deblending has not been performed or
         if no sources were deblended.
         """
         if len(self._deblend_label_map) == 0:
@@ -501,8 +503,8 @@ class SegmentationImage:
         deblended label numbers.
 
         The keys are the original parent label numbers and the values
-        are the deblended label numbers. Only deblended sources are
-        included in the dictionary.
+        are 1D arrays of the deblended label numbers. Only deblended
+        sources are included in the dictionary.
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
@@ -637,8 +639,8 @@ class SegmentationImage:
             msg = 'data must have integer type'
             raise TypeError(msg)
 
-        # A single pass over the array yields the sorted labels, their
-        # pixel areas, and their bounding boxes
+        # The label measurement yields the sorted labels, their pixel
+        # areas, and their bounding boxes
         stats = _get_label_stats(value)
         labels, areas, _ = stats
 
@@ -695,6 +697,8 @@ class SegmentationImage:
     def max_label(self):
         """
         The maximum label in the segmentation array.
+
+        It is zero if the segmentation array has no labels.
         """
         if self.n_labels == 0:
             return 0
@@ -735,7 +739,7 @@ class SegmentationImage:
         Parameters
         ----------
         labels : int, array_like (1D, int)
-            The label numbers(s) to find.
+            The label number(s) to find.
 
         Returns
         -------
@@ -757,7 +761,7 @@ class SegmentationImage:
         A list of tuples, where each tuple contains two slices
         representing the minimal box that contains the labeled region.
 
-        The list starts with the *non-zero* label. The returned list has
+        The background (label 0) is not included. The returned list has
         a length equal to the number of labels and matches the order of
         the ``labels`` attribute.
         """
@@ -795,8 +799,11 @@ class SegmentationImage:
     @cached_property
     def bbox(self):
         """
-        A list of `~photutils.aperture.BoundingBox` of the minimal
-        bounding boxes containing the labeled regions.
+        A list of `~photutils.aperture.BoundingBox` objects, each the
+        minimal bounding box that contains a labeled region.
+
+        The list has a length equal to the number of labels and matches
+        the order of the ``labels`` attribute.
         """
         if self._data.ndim != 2:
             msg = "The 'bbox' attribute requires a 2D segmentation image."
@@ -819,11 +826,11 @@ class SegmentationImage:
         A 1D array of areas (in pixel**2) of the non-zero labeled
         regions.
 
-        The `~numpy.ndarray` starts with the *non-zero* label. The
-        returned array has a length equal to the number of labels and
-        matches the order of the ``labels`` attribute.
+        The background (label 0) is not included. The returned array
+        has a length equal to the number of labels and matches the order
+        of the ``labels`` attribute.
         """
-        # Normally seeded by _set_data from the same single pass that
+        # Normally seeded by _set_data from the same measurement that
         # produces the labels. This runs only when the array was set
         # without known areas.
         return self._label_stats[1]
@@ -839,8 +846,13 @@ class SegmentationImage:
 
         Returns
         -------
-        area : float
+        area : int
             The area of the labeled region.
+
+        Raises
+        ------
+        ValueError
+            If ``label`` is invalid.
         """
         return self.get_areas(label)[0]
 
@@ -851,13 +863,19 @@ class SegmentationImage:
         Parameters
         ----------
         labels : int, 1D array_like (int)
-            The label(s) for which to return areas. Label must be
-            non-zero.
+            The label(s) for which to return areas. Each must be a
+            label in the segmentation array.
 
         Returns
         -------
         areas : `~numpy.ndarray`
-            The areas of the labeled regions.
+            The areas of the labeled regions, in the same order as the
+            input ``labels``.
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
         """
         idx = self.get_indices(np.atleast_1d(labels))
         return self.areas[idx]
@@ -878,8 +896,9 @@ class SegmentationImage:
         Returns
         -------
         polygon : `shapely.Polygon` or `shapely.MultiPolygon` or `None`
-            A Shapely Polygon or MultiPolygon, or `None` if rasterio and
-            shapely are not available.
+            A Shapely Polygon or MultiPolygon, or `None` if rasterio or
+            shapely is not available, ``slc`` is `None`, or no polygon
+            was found.
         """
         if not (HAS_RASTERIO and HAS_SHAPELY):
             return None
@@ -1117,8 +1136,9 @@ class SegmentationImage:
 
         Returns
         -------
-        cmap : `matplotlib.colors.ListedColormap`
-            The matplotlib colormap with colors in RGBA format.
+        cmap : `matplotlib.colors.ListedColormap` or `None`
+            The matplotlib colormap with colors in RGBA format. `None`
+            is returned if the segmentation image has no labels.
         """
         if self.n_labels == 0:
             return None
@@ -1149,7 +1169,8 @@ class SegmentationImage:
             <https://matplotlib.org/stable/tutorials/colors/colors.html>`_.
             This color will be used as the background color (label = 0)
             when plotting the segmentation image. The default color is
-            black with alpha=1.0 ('#000000ff').
+            black with alpha=1.0 ('#000000ff'). If `None`, the first
+            color of the random colormap is kept.
 
         seed : int, optional
             A seed to initialize the `numpy.random.BitGenerator`. If
@@ -1159,8 +1180,9 @@ class SegmentationImage:
 
         Returns
         -------
-        cmap : `matplotlib.colors.ListedColormap`
-            The matplotlib colormap with colors in RGBA format.
+        cmap : `matplotlib.colors.ListedColormap` or `None`
+            The matplotlib colormap with colors in RGBA format. `None`
+            is returned if the segmentation image has no labels.
         """
         return self._make_cmap(self.max_label + 1,
                                background_color=background_color,
@@ -1186,7 +1208,8 @@ class SegmentationImage:
         """
         A matplotlib colormap consisting of (random) muted colors.
 
-        This is useful for plotting the segmentation array.
+        This is useful for plotting the segmentation array. It is `None`
+        if the segmentation image has no labels.
         """
         return self.make_cmap(background_color='#000000ff', seed=0)
 
@@ -1213,8 +1236,14 @@ class SegmentationImage:
             such that the labels are in consecutive order starting from
             1.
 
+        Raises
+        ------
+        ValueError
+            If ``label`` is invalid.
+
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1280,7 +1309,7 @@ class SegmentationImage:
         Parameters
         ----------
         labels : int, array_like (1D, int)
-            The label numbers(s) to reassign.
+            The label number(s) to reassign.
 
         new_label : int
             The reassigned label number.
@@ -1292,6 +1321,7 @@ class SegmentationImage:
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1378,6 +1408,9 @@ class SegmentationImage:
         Reassign the label numbers consecutively starting from a given
         label number.
 
+        If the segmentation image has no labels, a warning is issued and
+        the image is left unchanged.
+
         Parameters
         ----------
         start_label : int, optional
@@ -1386,6 +1419,7 @@ class SegmentationImage:
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1457,6 +1491,7 @@ class SegmentationImage:
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1509,6 +1544,7 @@ class SegmentationImage:
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1566,8 +1602,14 @@ class SegmentationImage:
             such that the labels are in consecutive order starting from
             1.
 
+        Raises
+        ------
+        ValueError
+            If ``label`` is invalid.
+
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1622,6 +1664,7 @@ class SegmentationImage:
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1686,6 +1729,7 @@ class SegmentationImage:
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1747,7 +1791,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        mask : array_like (bool)
+        mask : 2D bool `~numpy.ndarray`
             A boolean mask, with the same shape as the segmentation
             array, where `True` values indicate masked pixels.
 
@@ -1764,6 +1808,7 @@ class SegmentationImage:
 
         Examples
         --------
+        >>> import numpy as np
         >>> from photutils.segmentation import SegmentationImage
         >>> data = np.array([[1, 1, 0, 0, 4, 4],
         ...                  [0, 0, 0, 0, 0, 4],
@@ -1843,10 +1888,10 @@ class SegmentationImage:
 
         Notes
         -----
-        When performing source dilation, using a square footprint
-        will be much faster than using other shapes (e.g., a circular
-        footprint). Source dilation also is slower for larger images and
-        larger footprints.
+        When performing source dilation, using a rectangular footprint
+        (all elements `True`) will be much faster than using other
+        shapes (e.g., a circular footprint). Source dilation also is
+        slower for larger images and larger footprints.
 
         Examples
         --------
@@ -1931,14 +1976,12 @@ class SegmentationImage:
         The keys are the unique label numbers in the segmentation image,
         and the values are lists of polygons for each label.
 
-        Each item in the dictionary is list containing tuples of
-        (polygon, value) where the polygon is a GeoJSON-like dict and
-        the value is the label from the segmentation image. Non-
-        contiguous segments for a single label will have multiple tuples
-        in the list (e.g., from slicing the segmentation image where a
-        segment label is split into non-contiguous segments). Segments
-        with holes will have a single tuple with a polygon containing
-        the outer ring and the inner rings (holes) as a list of lists.
+        Each value is a list of GeoJSON-like dicts. A label with
+        non-contiguous segments has multiple dicts in its list (e.g.,
+        from slicing the segmentation image where a segment label is
+        split into non-contiguous segments). A segment with holes has
+        a single dict whose coordinates contain the outer ring followed
+        by the inner rings (holes).
 
         Note that the coordinates of these polygon vertices are
         transformed to a reference frame with the (0, 0) origin at the
@@ -2009,9 +2052,11 @@ class SegmentationImage:
         A list of `Shapely <https://shapely.readthedocs.io/en/stable/>`_
         polygons representing each source segment.
 
-        Polygon or MultiPolygon objects are returned, depending on
-        whether the source segment is a single polygon or multiple
-        polygons (e.g., holes or non-contiguous) for the same label.
+        A `shapely.Polygon` is returned for a contiguous segment, with
+        any holes as interior rings, and a `shapely.MultiPolygon` for
+        a label with non-contiguous pieces. The list matches the order
+        of the ``labels`` attribute. A `ValueError` is raised if the
+        label values cannot be represented as 32-bit integers.
         """
         from shapely import MultiPolygon
         from shapely.geometry import shape
@@ -2125,6 +2170,13 @@ class SegmentationImage:
         geometry : `shapely.geometry.base.BaseGeometry`
             The Shapely geometry to convert to a PathPatch.
 
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image. It is subtracted from the scaled polygon vertices.
+
+        scale : float, optional
+            The scale factor applied to the polygon vertices.
+
         **kwargs : dict, optional
             Any keyword arguments accepted by
             `matplotlib.patches.PathPatch`.
@@ -2175,6 +2227,8 @@ class SegmentationImage:
 
         By default, the patch will have a white edge color and no face
         color.
+
+        This method requires the optional rasterio and shapely packages.
 
         Parameters
         ----------
@@ -2254,6 +2308,8 @@ class SegmentationImage:
         By default, the patches will have a white edge color and no face
         color.
 
+        This method requires the optional rasterio and shapely packages.
+
         Parameters
         ----------
         labels : int, array_like (1D, int)
@@ -2299,6 +2355,9 @@ class SegmentationImage:
         Plot the `~matplotlib.patches.PathPatch` objects for the source
         segments on a matplotlib `~matplotlib.axes.Axes` instance.
 
+        By default, the patches will have a white edge color and no face
+        color.
+
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
@@ -2312,8 +2371,8 @@ class SegmentationImage:
         scale : float, optional
             The scale factor applied to the polygon vertices.
 
-        labels : int or array of int, optional
-            The label numbers whose polygons are to be plotted. If
+        labels : int, array_like (1D, int), optional
+            The label number(s) whose polygons are to be plotted. If
             `None`, the polygons for all labels will be plotted.
 
         **kwargs : dict, optional
@@ -2405,9 +2464,10 @@ class SegmentationImage:
 
         Returns
         -------
-        regions : `~regions.Regions`
-            A list of `~regions.Region` objects or a `~regions.Regions`
-            object, depending on the value of ``group`` (see above).
+        regions : `~regions.Regions` or list
+            A `~regions.Regions` object if ``group`` is `False`, or a
+            list of `~regions.PolygonPixelRegion` and `~regions.Regions`
+            objects if ``group`` is `True`.
 
         Notes
         -----
@@ -2455,6 +2515,9 @@ class SegmentationImage:
         source segment. Interior holes within the source segment are not
         included.
 
+        This method requires the optional regions, rasterio, and shapely
+        packages.
+
         Parameters
         ----------
         label : int
@@ -2495,6 +2558,9 @@ class SegmentationImage:
         The returned polygon regions are defined as the exteriors of the
         source segments. Interior holes within the source segments are
         not included.
+
+        This method requires the optional regions, rasterio, and shapely
+        packages.
 
         Parameters
         ----------
@@ -2643,11 +2709,11 @@ class SegmentationImage:
 
         figsize : 2-tuple of floats or `None`, optional
             The figure dimension (width, height) in inches when creating
-            a new Axes. This keyword is ignored if ``axes`` is input.
+            a new Axes. This keyword is ignored if ``ax`` is input.
 
         dpi : float or `None`, optional
             The figure dots per inch when creating a new Axes. This
-            keyword is ignored if ``axes`` is input.
+            keyword is ignored if ``ax`` is input.
 
         cmap : `matplotlib.colors.Colormap`, str, or `None`, optional
             The `~matplotlib.colors.Colormap` instance or a registered
@@ -2664,7 +2730,7 @@ class SegmentationImage:
         Returns
         -------
         result : `matplotlib.image.AxesImage`
-            An image attached to an `matplotlib.axes.Axes`.
+            An image attached to a `matplotlib.axes.Axes`.
 
         Examples
         --------
@@ -2707,10 +2773,11 @@ class SegmentationImage:
 
         This method is useful for displaying segmentation images
         that have a few labels (e.g., from a cutout) that are not
-        consecutive. It maps the labels to be consecutive integers
-        starting from 1 before plotting. The plotted image values are
-        not the label values, but the colorbar tick labels are used to
-        show the original labels.
+        consecutive. It maps the unique values in the segmentation
+        array, including the background value if present, to consecutive
+        integers starting from 0 before plotting. The plotted image
+        values are not the label values, but the colorbar tick labels
+        are used to show the original labels.
 
         The segmentation image will be displayed with "nearest"
         interpolation and with the origin set to "lower".
@@ -2723,11 +2790,11 @@ class SegmentationImage:
 
         figsize : 2-tuple of floats or `None`, optional
             The figure dimension (width, height) in inches when creating
-            a new Axes. This keyword is ignored if ``axes`` is input.
+            a new Axes. This keyword is ignored if ``ax`` is input.
 
         dpi : float or `None`, optional
             The figure dots per inch when creating a new Axes. This
-            keyword is ignored if ``axes`` is input.
+            keyword is ignored if ``ax`` is input.
 
         cmap : `matplotlib.colors.Colormap`, str, or `None`, optional
             The `~matplotlib.colors.Colormap` instance or a registered
@@ -2744,7 +2811,10 @@ class SegmentationImage:
         max_labels : int, optional
             The maximum number of labels to display in the colorbar. If
             the number of labels is greater than ``max_labels``, then
-            the colorbar will not be displayed.
+            the colorbar will not be displayed and a warning is issued.
+            The number of labels counted is the number of unique values
+            in the segmentation array, which includes the background
+            value if present.
 
         cbar_labelsize : `None` or float, optional
             The font size of the colorbar tick labels.
@@ -2752,7 +2822,8 @@ class SegmentationImage:
         Returns
         -------
         result : `matplotlib.image.AxesImage`
-            An image attached to an `matplotlib.axes.Axes`.
+            An image attached to a `matplotlib.axes.Axes`.
+
         cbar_info : tuple or `None`
             The colorbar information as a tuple containing the
             `~matplotlib.colorbar.Colorbar` instance, a `~numpy.ndarray`
@@ -2778,7 +2849,7 @@ class SegmentationImage:
             segm = SegmentationImage(data)
 
             fig, ax = plt.subplots()
-            im, cbar = segm.imshow_map(ax=ax)
+            im, cbar_info = segm.imshow_map(ax=ax)
         """
         import matplotlib.pyplot as plt
         from matplotlib.colors import ListedColormap
@@ -2839,8 +2910,8 @@ class Segment:
     bbox : `~photutils.aperture.BoundingBox`
         The minimal bounding box that contains the labeled region.
 
-    area : float
-        The area of the segment in pixels**2.
+    area : int
+        The area of the segment in pixel**2.
 
     polygon : Shapely polygon, optional
         The outline of the segment as a `Shapely
