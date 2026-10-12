@@ -57,10 +57,7 @@ def make_repr(instance, params, *, brackets=False, overrides=None, long=False):
         if overrides is not None and param in overrides:
             # Note that overrides may contain input parameters that are
             # not stored long-term in the instance (e.g., Background2D)
-            if param in instance.__dict__ and instance.__dict__[param] is None:
-                value = None
-            else:
-                value = overrides[param]
+            value = overrides[param]
         elif param in instance.__dict__:
             value = instance.__dict__[param]
         else:
