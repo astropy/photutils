@@ -507,7 +507,7 @@ def test_psf_classes_docstrings():
             'may not have converged to a stable solution',
             'covariance matrix is not available',
             'very close to their imposed bounds',
-            'no overlap with valid data pixels',
+            'no overlap with the input image',
             'All pixels in the source fitting region are masked',
             'Insufficient unmasked pixels available for reliable PSF fitting',
             'outside the region of fitted data',
@@ -553,7 +553,7 @@ def test_decode_psf_flags_docstring():
         'may not have converged to a stable solution',
         'covariance matrix is not available',
         'very close to their imposed bounds',
-        'no overlap with valid data pixels',
+        'no overlap with the input image',
         'All pixels in the source fitting region are masked',
         'Insufficient unmasked pixels available for reliable PSF fitting',
     ]

@@ -1,6 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Deprecated subpackage. Use ``photutils.psf_matching`` instead.
+
+.. deprecated:: 3.0
+    The ``photutils.psf.matching`` subpackage is deprecated and will be
+    removed in version 4.0. Use ``photutils.psf_matching`` instead.
 """
 
 import warnings

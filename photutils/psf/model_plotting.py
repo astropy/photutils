@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for plotting Gridded PSF models.
+Tools for plotting gridded PSF models.
 """
 
 import numpy as np
@@ -16,21 +16,23 @@ def _plot_grid_docstring(func):
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
-            The matplotlib axes on which to plot. If `None`, then the
-            current `~matplotlib.axes.Axes` instance is used.
+            The matplotlib axes on which to plot. If `None`, a new
+            figure and axes are created.
 
-        vmax_scale : float, optional
+        vmax_scale : float or `None`, optional
             Scale factor to apply to the image stretch limits. This
-            value is multiplied by the peak ePSF value to determine the
-            plotting ``vmax``. The defaults are 1.0 for plotting the
-            ePSF data and 0.03 for plotting the ePSF difference data
-            (``deltas=True``). If ``deltas=True``, the ``vmin`` is set
-            to ``-vmax``. If ``deltas=False`` the ``vmin`` is set to
-            ``vmax`` / 1e4.
+            value is multiplied by the maximum of the plotted data (the
+            ePSF data, or the ePSF differences if ``deltas=True``) to
+            determine the plotting ``vmax``. If `None`, the value is 1.0
+            for the ePSF data and 0.03 for the ePSF differences. If
+            ``deltas=True``, ``vmin`` is set to ``-vmax``. Otherwise
+            ``vmin`` is set to ``vmax / 1e4``.
 
         peak_norm : bool, optional
             Whether to normalize the ePSF data by the peak value. The
-            default shows the ePSF flux per pixel.
+            default shows the ePSF flux per pixel. If ``deltas=True``,
+            the differences are divided by the peak of the average
+            ePSF.
 
         deltas : bool, optional
             Set to `True` to show the differences between each ePSF
@@ -48,14 +50,21 @@ def _plot_grid_docstring(func):
             ``dividers=True``.
 
         figsize : (float, float), optional
-            The figure (width, height) in inches.
+            The figure (width, height) in inches. It is used only if
+            ``ax`` is `None`.
 
         Returns
         -------
         fig : `matplotlib.figure.Figure`
-            The matplotlib figure object. This will be the current
-            figure if ``ax=None``. Use ``fig.savefig()`` to save the
-            figure to a file.
+            The matplotlib figure object. This is a new figure if
+            ``ax=None``, otherwise the figure of ``ax``. Use
+            ``fig.savefig()`` to save the figure to a file.
+
+        Raises
+        ------
+        ValueError
+            If ``deltas=True`` and all ePSFs in the grid are blank (all
+            pixels are zero).
 
         Notes
         -----

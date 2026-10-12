@@ -83,19 +83,22 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
 
     flux_name : `str` or `None`, optional
         The name of the ``model`` parameter that corresponds to the
-        total flux of a source. If `None`, a new model parameter called
-        ``amplitude_3`` will be added for model flux.
+        total flux of a source. If `None`, a new flux parameter will
+        be added. It is called ``amplitude_3`` unless ``model`` is a
+        compound model, in which case the number is the number of
+        submodels in ``model`` plus 2. The name is stored in the
+        ``flux_name`` attribute of the output model.
 
     normalize : bool, optional
         If `True`, the input ``model`` will be integrated and rescaled
-        so that its sum integrates to 1. This normalization occurs only
+        so that it integrates to 1. This normalization occurs only
         once for the input ``model``. If the total flux of ``model``
         somehow depends on (x, y) position, then one will need to
         correct the fitted model fluxes for this effect.
 
-    dx, dy : odd int, optional
+    dx, dy : int, optional
         The size of the integration grid in x and y for normalization.
-        Must be odd. These keywords are ignored if ``normalize`` is
+        Must be positive. These keywords are ignored if ``normalize`` is
         `False` or ``use_dblquad`` is `True`.
 
     subsample : int, optional
@@ -115,13 +118,16 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     result : `~astropy.modeling.CompoundModel`
         A PSF model that can be used with the PSF photometry classes.
         The returned model will always be an Astropy compound model.
+        All parameters of the output model other than the x, y, and
+        flux parameters are fixed, so that they are not fit by the PSF
+        photometry classes.
 
     Notes
     -----
-    To normalize the model, by default it is discretized on a grid of
-    size ``dx`` x ``dy`` from the model center with a subsampling factor
-    of ``subsample``. The model is then integrated over the grid using
-    trapezoidal integration.
+    To normalize the model, by default it is evaluated on a grid of
+    ``dx * subsample`` by ``dy * subsample`` points that spans ``dx -
+    1`` by ``dy - 1`` pixels centered on the model. The model is then
+    integrated over that grid using trapezoidal integration.
 
     If the ``use_dblquad`` keyword is set to `True`, then the model is
     integrated using `scipy.integrate.dblquad`. This is *much* slower
@@ -129,7 +135,8 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     accurate. Also, note that the ``dblquad`` integration can sometimes
     fail, e.g., return zero for a non-zero model. This can happen when
     the model function is sharply localized relative to the size of the
-    integration interval.
+    integration interval. A `ValueError` is raised if the integral is
+    zero.
 
     That integration is used only to normalize the model. The values
     of the output model on a grid of detector pixels are the values of
@@ -252,10 +259,10 @@ def _integrate_model(model, *, x_name=None, y_name=None, dx=50, dy=50,
     """
     Integrate a model over a 2D grid.
 
-    By default, the model is discretized on a grid of size ``dx``
-    x ``dy`` from the model center with a subsampling factor of
-    ``subsample``. The model is then integrated over the grid using
-    trapezoidal integration.
+    By default, the model is evaluated on a grid of ``dx * subsample``
+    by ``dy * subsample`` points that spans ``dx - 1`` by ``dy - 1``
+    pixels centered on the model. The model is then integrated over
+    that grid using trapezoidal integration.
 
     If the ``use_dblquad`` keyword is set to `True`, then the model is
     integrated using `scipy.integrate.dblquad`. This is *much* slower
@@ -282,8 +289,8 @@ def _integrate_model(model, *, x_name=None, y_name=None, dx=50, dy=50,
         ``use_dblquad`` is `False` and ignored if ``use_dblquad`` is
         `True`.
 
-    dx, dy : odd int, optional
-        The size of the integration grid in x and y. Must be odd.
+    dx, dy : int, optional
+        The size of the integration grid in x and y. Must be positive.
         These keywords are ignored if ``use_dblquad`` is `True`.
 
     subsample : int, optional
@@ -361,7 +368,7 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     each input ImagePSF can either be set on each individual model by
     setting the 'x_0' and 'y_0' attributes, or provided as a list of
     tuples (``grid_xypos``). If a ``grid_xypos`` list is provided, it
-    must match the length of input EPSFs. In either case, the fiducial
+    must match the length of input ePSFs. In either case, the fiducial
     points must be on a grid.
 
     Optionally, a ``meta`` dictionary may be provided for the output
@@ -369,9 +376,12 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     'oversampling', or 'fill_value', they will be overridden.
 
     Note: If set on the input ImagePSF (x_0, y_0), then ``origin``
-    must be the same for each input EPSF. Additionally, data units and
-    dimensions must be the same for each input EPSF, and values for
+    must be the same for each input ePSF. Additionally, data units and
+    dimensions must be the same for each input ePSF, and values for
     ``flux``, ``oversampling``, and ``fill_value`` must match as well.
+    The ``flux`` and ``origin`` of the input models are not passed on.
+    The output model has a ``flux`` of 1 and takes the center of each
+    image as the reference pixel.
 
     Parameters
     ----------
@@ -379,18 +389,19 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
         A list of ImagePSF models representing the individual PSFs.
     grid_xypos : list, optional
         A list of fiducial points (x_0, y_0) for each PSF. If not
-        provided, the x_0 and y_0 of each input EPSF will be considered
+        provided, the x_0 and y_0 of each input ePSF will be considered
         the fiducial point for that PSF. Default is None.
     meta : dict, optional
         Additional metadata for the GriddedPSFModel. Note that, if
         they exist in the supplied ``meta``, any values under the keys
-        ``grid_xypos`` , ``oversampling``, or ``fill_value`` will be
-        overridden. Default is None.
+        ``grid_xypos``, ``oversampling``, or ``fill_value`` will be
+        overridden. The input dictionary is modified in place. Default
+        is None.
 
     Returns
     -------
-    GriddedPSFModel: `photutils.psf.GriddedPSFModel`
-        The gridded PSF model created from the input EPSFs.
+    model : `photutils.psf.GriddedPSFModel`
+        The gridded PSF model created from the input ePSFs.
     """
     # Prevent circular imports
     from photutils.psf import GriddedPSFModel, ImagePSF

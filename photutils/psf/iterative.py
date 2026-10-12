@@ -175,8 +175,8 @@ class IterativePSFPhotometry:
         that will be used when subtracting the fitted PSF models.
         If ``sub_shape`` is a scalar then a square shape of size
         ``sub_shape`` will be used. If ``sub_shape`` has two
-        elements, they must be in ``(ny, nx)`` order. Each element
-        of ``sub_shape`` must be an odd number. If `None`, then
+        elements, they must be in ``(ny, nx)`` order. Each element of
+        ``sub_shape`` must be a positive odd number. If `None`, then
         ``sub_shape`` will be defined by the model bounding box.
         This keyword must be specified if the model does not have a
         ``bounding_box`` attribute.
@@ -199,6 +199,17 @@ class IterativePSFPhotometry:
         Whether to display a progress bar when fitting the sources
         (or groups). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
+
+    Attributes
+    ----------
+    results : `~astropy.table.QTable` or `None`
+        The table of fit results from the most recent call, or `None`
+        if the instance has not yet been run or no sources were found.
+
+    fit_results : list of `PSFPhotometry`
+        A list with one `PSFPhotometry` instance per fitting iteration
+        of the most recent call, each holding the results of that
+        iteration.
 
     Notes
     -----
@@ -254,7 +265,7 @@ class IterativePSFPhotometry:
     is reached.
 
     In the 'all' mode, a new source list combining the sources from
-    first `PSFPhotometry` run and the new sources detected in the
+    the first `PSFPhotometry` run and the new sources detected in the
     residual image is created. `PSFPhotometry` is then run on the
     original, unsubtracted, data with this combined source list. This
     allows the source ``grouper`` (which is required for the 'all'
@@ -275,7 +286,7 @@ class IterativePSFPhotometry:
     group exceeds the ``group_warning_threshold`` value.
 
     This class stores per-call state on the instance (e.g., ``results``
-    and ``fit_info``), so a single instance must not be called
+    and ``fit_results``), so a single instance must not be called
     concurrently from multiple threads. Create one instance per thread
     for concurrent use. Sharing a single Astropy fitter instance across
     concurrently-used objects is also unsafe because Astropy fitters
@@ -409,8 +420,9 @@ class IterativePSFPhotometry:
         Returns
         -------
         table : `~astropy.table.Table`
-            A new table with the column moved. The input table is not
-            modified.
+            A new table with the column moved. If either column is
+            not in the table, or the two names are the same, the input
+            table is returned unchanged.
         """
         colnames = table.colnames
         if colname not in colnames or colname_after not in colnames:
@@ -484,8 +496,9 @@ class IterativePSFPhotometry:
             newly detected sources.
 
         orig_sources : `~astropy.table.Table`
-            The results table (from the previous iteration's fit) for
-            the original sources.
+            The initial-parameters table made from the previous
+            iteration's fit results (the fitted values in ``_init``
+            columns), for the sources fit so far.
 
         Returns
         -------
@@ -740,7 +753,7 @@ class IterativePSFPhotometry:
         ----------
         return_bit_values : bool, optional
             If `True`, return the decoded bit flags (integers) instead
-            of the flag descriptions (strings). Default is `False`.
+            of the flag names (strings). Default is `False`.
 
         Returns
         -------

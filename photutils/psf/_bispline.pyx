@@ -253,7 +253,7 @@ def bispline_sum_deriv(const double[::1] tx, const double[::1] ty,
     with respect to a shift of the spline coordinates and to the
     weights, at scattered points.
 
-    This is the `fit_deriv` kernel of the gridded PSF models. With
+    This is the ``fit_deriv`` kernel of the PSF image models. With
     ``S_g`` the spline of row ``grid_idx[g]``, the outputs are
 
     * ``out = sum_g weights[g] * S_g``
@@ -272,7 +272,7 @@ def bispline_sum_deriv(const double[::1] tx, const double[::1] ty,
 
     Parameters
     ----------
-    tx, ty, coeffs, grid_idx, weights, x, y
+    tx, ty, coeffs, grid_idx, weights
         See `bispline_sum`.
 
     dw_dx, dw_dy : 1D ndarray of float64 (C-contiguous)
@@ -282,6 +282,9 @@ def bispline_sum_deriv(const double[::1] tx, const double[::1] ty,
 
     scale_x, scale_y : float
         The spline coordinate shift per unit model position shift.
+
+    x, y
+        See `bispline_sum`.
 
     out, out_dx, out_dy : 1D ndarray of float64 (C-contiguous)
         Output. The weighted sum and its two derivatives.

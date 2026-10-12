@@ -99,9 +99,12 @@ class GriddedPSFModel(Fittable2DModel):
     Methods
     -------
     read(*args, **kwargs)
-        Class method to create a `GriddedPSFModel`
-        instance from a STDPSF FITS file. This method uses
-        :func:`~photutils.psf.stdpsf_reader` with the provided
+        Class method to create a `GriddedPSFModel` instance from a
+        STDPSF FITS file or a WebbPSF (STPSF) FITS file. The file
+        format is identified automatically, or it can be set with the
+        ``format`` keyword (``'stdpsf'`` or ``'webbpsf'``). This method
+        uses :func:`~photutils.psf.stdpsf_reader` or
+        :func:`~photutils.psf.webbpsf_reader` with the provided
         parameters.
 
     See Also
@@ -158,14 +161,15 @@ class GriddedPSFModel(Fittable2DModel):
     can be used to estimate the missing flux and obtain the proper
     normalization.
 
-    The model is zero outside of the extent of the input ePSF images.
-    The model values on a grid of detector pixels therefore sum to
-    less than ``flux`` by the fraction of the source flux that is
-    outside of the images. That sum also changes with the subpixel
-    position of the source, because the number of detector pixels
-    inside the images changes (see :ref:`psf-image-models` for example
-    values). The input images should therefore be large enough that
-    the ePSF is small at their edges.
+    With the default ``fill_value`` of 0, the model is zero outside of
+    the extent of the input ePSF images. The model values on a grid of
+    detector pixels therefore sum to less than ``flux`` by the fraction
+    of the source flux that is outside of the images. That sum also
+    changes with the subpixel position of the source, because the
+    number of detector pixels inside the images changes (see
+    :ref:`psf-image-models` for example values). The input images
+    should therefore be large enough that the ePSF is small at their
+    edges.
 
     Internally, the ePSF grid is reordered so that the reference ePSFs
     are sorted first by their y detector coordinate and then by their x
@@ -174,8 +178,9 @@ class GriddedPSFModel(Fittable2DModel):
     Each grid plane is interpolated with a bicubic spline
     (`~scipy.interpolate.RectBivariateSpline` with ``kx=ky=3`` and
     ``s=0``). The spline coefficients of each evaluated grid plane are
-    cached on the model, in a float64 array of the same shape as the
-    grid data, and shared across copies made with the `copy` method.
+    cached on the model, in a float64 array with the same number of
+    elements as the grid data, and shared across copies made with the
+    `copy` method.
     When every grid plane has been evaluated, the cache roughly doubles
     the model's memory footprint for float64 grid data and triples it
     for float32 grid data. The cache is not included when the model is
@@ -349,8 +354,9 @@ class GriddedPSFModel(Fittable2DModel):
         TypeError
             If the input data is not an NDData instance.
         ValueError
-            If the input data is not a 3D numpy ndarray or if the input
-            data contains NaNs or infs.
+            If the input data is not a 3D numpy ndarray, contains NaNs
+            or infs, has 2 or 3 ePSFs, has an x or y axis shorter than
+            4 pixels, or has no ``'oversampling'`` key in its ``meta``.
         """
         if not isinstance(data, NDData):
             msg = 'data must be an NDData instance'
@@ -384,8 +390,8 @@ class GriddedPSFModel(Fittable2DModel):
     @staticmethod
     def _is_rectangular_grid(grid_xypos):
         """
-        Determine if the given (x, y) pixel positions form an axis-
-        aligned rectangular grid.
+        Determine if the given (x, y) pixel positions form an
+        axis-aligned rectangular grid.
 
         Spacing does not need to be uniform along x or y, but there must
         be at least two unique x and y values, and all combinations of x
@@ -427,7 +433,10 @@ class GriddedPSFModel(Fittable2DModel):
         Raises
         ------
         ValueError
-            If the input grid_xypos does not form a rectangular grid.
+            If ``'grid_xypos'`` is missing from ``meta``, its length
+            does not match the number of ePSFs, it contains duplicate
+            positions, or it has more than one position and does not
+            form a rectangular grid.
         """
         try:
             grid_xypos = np.asarray(data.meta['grid_xypos'])
@@ -514,13 +523,12 @@ class GriddedPSFModel(Fittable2DModel):
     @property
     def grid_xypos(self):
         """
-        The (x, y) positions of the ePSFs.
+        The (x, y) positions of the ePSFs, as an ``(N_psf, 2)`` array.
 
-        The order of positions should match the first axis of the 3D
-        `~numpy.ndarray` of ePSFs. In other words, ``grid_xypos[i]``
-        should be the (x, y) position of the reference ePSF defined in
-        ``nddata.data[i]``. The grid positions must form a rectangular
-        grid.
+        The positions are sorted first by y and then by x, which can
+        differ from the order of the input ``grid_xypos``.
+        ``grid_xypos[i]`` is the (x, y) position of the reference ePSF
+        in ``data[i]``.
         """
         return self._grid_xypos
 
@@ -536,9 +544,10 @@ class GriddedPSFModel(Fittable2DModel):
         Return a copy of this model where only the model parameters are
         copied.
 
-        All other copied model attributes are references to the
-        original model. This prevents copying the ePSF grid data, which
-        may contain a large array.
+        All other model attributes are references to the original
+        model, except the ``meta`` dictionary, which is copied
+        shallowly. This prevents copying the ePSF grid data, which may
+        contain a large array.
 
         This method is useful if one is interested in only changing
         the model parameters in a model copy. It is used in the PSF
@@ -578,11 +587,11 @@ class GriddedPSFModel(Fittable2DModel):
     @property
     def oversampling(self):
         """
-        The integer oversampling factor(s) of the input ePSF images.
+        The integer oversampling factors of the input ePSF images, as a
+        1D `~numpy.ndarray` in ``(y, x)`` order.
 
-        If ``oversampling`` is a scalar then it will be used for both
-        axes. If ``oversampling`` has two elements, they must be in
-        ``(y, x)`` order.
+        The value can be set with a positive integer, which is used for
+        both axes, or with two positive integers in ``(y, x)`` order.
         """
         return self._oversampling
 
@@ -677,8 +686,7 @@ class GriddedPSFModel(Fittable2DModel):
     def _calc_interpolator(self, grid_idx):
         """
         Calculate the `~scipy.interpolate.RectBivariateSpline`
-        interpolator for an input ePSF image at the given reference (x,
-        y) position.
+        interpolator for the ePSF image at the given grid index.
 
         Parameters
         ----------
@@ -843,7 +851,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         This method is a scalar-only fast path. ``x`` and ``y`` must be
         scalar values (the model ``x_0`` and ``y_0`` positions), which
-        is always the case when called from ``_calc_model_values``.
+        is always the case when called from ``_bounding_weights``.
 
         Parameters
         ----------
@@ -1006,8 +1014,9 @@ class GriddedPSFModel(Fittable2DModel):
             The (x, y) position of the model.
 
         xi, yi : `~numpy.ndarray`
-            The input (x, y) coordinates at which the model is
-            evaluated. The two arrays must have the same shape.
+            The (x, y) pixel coordinates in the oversampled ePSF image
+            at which the interpolated ePSF is evaluated. The two arrays
+            must have the same shape.
 
         Returns
         -------
@@ -1194,8 +1203,9 @@ class STDPSFGrid:
 
     Parameters
     ----------
-    filename : str or path-like
-        The name or URL of a STDPSF FITS file.
+    filename : str, path-like, file-like, or `~astropy.io.fits.HDUList`
+        The name or URL of a STDPSF FITS file, an open file object, or
+        an already-open `~astropy.io.fits.HDUList`.
 
     Examples
     --------

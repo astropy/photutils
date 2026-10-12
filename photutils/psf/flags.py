@@ -85,8 +85,8 @@ class _PSFFlags(FlagRegistry):
             bit_value=64,
             name='no_overlap',
             description='no overlap with data',
-            detailed_description=('The source PSF fitting region has no '
-                                  'overlap with valid data pixels.'),
+            detailed_description=('The source fitting region has no overlap '
+                                  'with the input image.'),
         ),
         FlagDefinition(
             bit_value=128,
@@ -196,10 +196,9 @@ def decode_psf_flags(flags, return_bit_values=False):
     Decode PSF photometry bit flags into individual components.
 
     This function takes integer flag values from PSF photometry results
-    and returns a list of human-readable descriptions of the issues
-    that occurred during fitting. This is useful for understanding
-    what problems were encountered without needing to manually perform
-    bitwise operations.
+    and returns a list of the names of the flags that are set. This
+    is useful for understanding what problems were encountered without
+    needing to manually perform bitwise operations.
 
     Parameters
     ----------
@@ -210,7 +209,7 @@ def decode_psf_flags(flags, return_bit_values=False):
 
     return_bit_values : bool, optional
         If `True`, return the decoded bit flags (integers) instead of
-        the flag descriptions (strings). Default is `False`.
+        the flag names (strings). Default is `False`.
 
     Returns
     -------
@@ -263,7 +262,6 @@ def decode_psf_flags(flags, return_bit_values=False):
     Working with PSF photometry results:
 
     >>> import numpy as np
-    >>> from astropy.modeling import models
     >>> from astropy.table import Table
     >>> from photutils.psf import (CircularGaussianPRF, PSFPhotometry,
     ...                            decode_psf_flags)

@@ -35,7 +35,9 @@ class EPSFStar:
     weights : `~numpy.ndarray` or `None`, optional
         A 2D array of the weights associated with the input ``data``.
         Pixels where ``weights`` is not positive are treated as
-        masked.
+        masked. Non-finite weights are set to zero, and a warning is
+        issued. Pixels where ``data`` is not finite are also masked, and
+        a warning is issued.
 
     cutout_center : tuple of two floats or `None`, optional
         The ``(x, y)`` position of the star's center with respect to the
@@ -43,8 +45,10 @@ class EPSFStar:
         input cutout ``data`` array will be used.
 
     flux : float or `None`, optional
-        The flux of the star. If `None`, then the flux will be estimated
-        from the input ``data``.
+        The flux of the star. It must be finite. If `None`, then the
+        flux will be estimated from the input ``data`` (see
+        `estimate_flux`). In that case, a `ValueError` is raised if all
+        pixels are masked.
 
     origin : tuple of two int, optional
         The ``(x, y)`` index of the origin (bottom-left corner) pixel
@@ -230,9 +234,10 @@ class EPSFStar:
         A `~numpy.ndarray` of the ``(x, y)`` position of the star's
         center with respect to the input cutout ``data`` array.
 
-        Initially set to the geometric center of the cutout, this value
-        is updated during ePSF building iterations to reflect the fitted
-        center position as the star is aligned with the ePSF model.
+        This is initially the input ``cutout_center`` value, or the
+        geometric center of the cutout if that was `None`. It is updated
+        during the ePSF building iterations to the fitted center
+        position as the star is aligned with the ePSF model.
         """
         return self._cutout_center
 
@@ -372,9 +377,10 @@ class EPSFStar:
         1D array of unmasked cutout data values, normalized by the
         star's total flux.
 
-        For a star with zero flux (allowed for all-zero cutout data),
-        the values are all NaN and the star contributes nothing to an
-        ePSF build.
+        For a star with all-zero cutout data (and therefore zero
+        estimated flux), the values are all NaN and the star contributes
+        nothing to an ePSF build. A zero flux with nonzero data gives
+        infinite values.
         """
         with np.errstate(divide='ignore', invalid='ignore'):
             return self.data[~self.mask].ravel() / self.flux
@@ -386,8 +392,9 @@ class EPSFStars:
 
     Parameters
     ----------
-    stars_list : list of `EPSFStar` or `LinkedEPSFStar` objects
-        A list of `EPSFStar` and/or `LinkedEPSFStar` objects.
+    stars_list : `EPSFStar`, `LinkedEPSFStar`, or list of these
+        A single `EPSFStar` or `LinkedEPSFStar` object, or a list of
+        `EPSFStar` and/or `LinkedEPSFStar` objects.
     """
 
     def __init__(self, stars_list):
@@ -495,8 +502,11 @@ class EPSFStars:
         centers (including linked stars) with respect to the input
         cutout ``data`` array, as a 2D array (``n_all_stars`` x 2).
 
-        Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
-        ``cutout_center`` attribute will be a nested 3D array.
+        Note that when `EPSFStars` contains more than one item and
+        any of them is a `LinkedEPSFStar` with more than one star, the
+        ``cutout_center`` attribute is not a 2D array. It is a 3D array
+        if every item is a `LinkedEPSFStar` with the same number of
+        stars, and an object array of per-item arrays otherwise.
         """
         return np.array([star.cutout_center for star in self.all_stars])
 
@@ -508,8 +518,11 @@ class EPSFStars:
         (large) image (not the cutout image) as a 2D array
         (``n_all_stars`` x 2).
 
-        Note that when `EPSFStars` contains any `LinkedEPSFStar`, the
-        ``center`` attribute will be a nested 3D array.
+        Note that when `EPSFStars` contains more than one item and
+        any of them is a `LinkedEPSFStar` with more than one star, the
+        ``center`` attribute is not a 2D array. It is a 3D array if
+        every item is a `LinkedEPSFStar` with the same number of stars,
+        and an object array of per-item arrays otherwise.
         """
         return np.array([star.center for star in self.all_stars])
 
@@ -738,6 +751,12 @@ class LinkedEPSFStar:
 
         The single sky coordinate is calculated as the mean of sky
         coordinates of the linked stars.
+
+        The ``cutout_center`` of each non-excluded star is updated in
+        place. Excluded stars are left unchanged. If all of the stars
+        have been excluded, a warning is issued and no centers are
+        changed. Nothing is done for a linked star with fewer than two
+        stars.
         """
         if len(self._data) < 2:  # no linked stars
             return
@@ -783,6 +802,11 @@ class LinkedEPSFStar:
         caused by intra-pixel sensitivity variations, which would
         otherwise be absorbed into the ePSF (Anderson and King 2000,
         Godden and Blundell 2026).
+
+        The ``flux`` of each non-excluded star is updated in place.
+        Excluded stars are left unchanged. If all of the stars have been
+        excluded, a warning is issued and no fluxes are changed. Nothing
+        is done for a linked star with fewer than two stars.
         """
         if len(self._data) < 2:  # no linked stars
             return
@@ -804,13 +828,13 @@ def _compute_mean_sky_coordinate(sky_coords):
     """
     Compute the mean sky coordinate using spherical trigonometry.
 
-    This method properly handles coordinate system singularities by
+    This function properly handles coordinate system singularities by
     converting to Cartesian coordinates for averaging, then converting
     back to spherical coordinates.
 
     Parameters
     ----------
-    sky_coords : array-like, shape (N, 2)
+    sky_coords : `~numpy.ndarray`, shape (N, 2)
         Array of sky coordinates in degrees, where each row contains
         (longitude, latitude).
 
@@ -915,7 +939,7 @@ def _validate_nddata_list(data):
     TypeError
         If any element is not an NDData object.
     ValueError
-        If any NDData object has no data array or non-2D data.
+        If any NDData object does not have 2D data.
     """
     for i, img in enumerate(data):
         if not isinstance(img, NDData):
@@ -1019,8 +1043,10 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     Extract cutout images centered on stars defined in the input
     catalog(s).
 
-    Stars where the cutout array bounds partially or completely lie
-    outside the input ``data`` image will not be extracted.
+    A star is not extracted, and a warning is issued, if its cutout
+    bounds lie partially or completely outside the input ``data`` image,
+    if its position or its catalog ``flux`` is not finite, or if its
+    cutout is completely masked and no catalog ``flux`` is given.
 
     Parameters
     ----------
@@ -1035,6 +1061,13 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         `~numpy.ma.MaskedArray`, its masked pixels are given zero
         weight. Use a `~astropy.nddata.NDData` object to input an
         uncertainty, mask, or WCS.
+
+        If an `~astropy.nddata.NDData` object has an ``uncertainty``,
+        it is converted to a standard deviation and the weights of
+        each star are the inverse of the standard deviation. Non-finite
+        weights (e.g., from a zero uncertainty) are set to zero, and a
+        warning is issued. Pixels that are masked in the ``mask``
+        attribute are given zero weight.
 
         If the input ``catalogs`` contain only the sky coordinates
         (i.e., not the pixel coordinates) of the stars then each image
@@ -1071,12 +1104,12 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
         Optionally, each catalog may also contain an ``id`` column
         representing the ID/name of stars. If this column is not
-        present then the extracted stars will be given an ``id`` number
-        corresponding to the table row number (starting at 1). The
-        catalogs may also contain an optional ``flux`` column giving the
-        flux of each star. If present, these values are used instead
-        of estimating the flux from the cutout data. Any other columns
-        present in the input ``catalogs`` will be ignored.
+        present then the ``id_label`` of each extracted star is set to
+        its table row number (starting at 1). The catalogs may also
+        contain an optional ``flux`` column giving the flux of each
+        star. If present, these values are used instead of estimating
+        the flux from the cutout data. Any other columns present in the
+        input ``catalogs`` will be ignored.
 
     size : int or array_like (int), optional
         The extraction box size along each axis. If ``size`` is a scalar
@@ -1088,6 +1121,13 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     -------
     stars : `EPSFStars` instance
         An `EPSFStars` instance containing the extracted stars.
+
+    Warns
+    -----
+    AstropyUserWarning
+        If any star is not extracted, if a cutout has non-finite weights
+        or non-finite data values, if all unmasked values in a cutout
+        are zero, or if an input catalog is empty.
     """
     data = _normalize_data_input(data)
     catalogs = _normalize_catalog_input(catalogs)
@@ -1120,15 +1160,16 @@ def _extract_linked_stars(data, catalog, size):
     ----------
     data : list of `~astropy.nddata.NDData`
         A list of `~astropy.nddata.NDData` objects containing
-        the 2D images from which to extract the stars. Each
-        `~astropy.nddata.NDData` object must have a valid ``wcs``
-        attribute.
+        the 2D images from which to extract the stars. If there is more
+        than one image, each must have a valid ``wcs`` attribute.
 
     catalog : `~astropy.table.Table`
         A single catalog of sources to be extracted from the input
-        ``data``. The center of each source must be defined in
-        sky coordinates (in a ``skycoord`` column containing a
-        `~astropy.coordinates.SkyCoord` object).
+        ``data``. If there is more than one image, the center of
+        each source must be defined in sky coordinates (in a
+        ``skycoord`` column containing a `~astropy.coordinates.SkyCoord`
+        object). For a single image, pixel coordinates (in ``x`` and
+        ``y`` columns) are used if present.
 
     size : int or array_like (int)
         The extraction box size along each axis. If ``size`` is a scalar
@@ -1146,8 +1187,9 @@ def _extract_linked_stars(data, catalog, size):
         are omitted.
 
     n_overlap_failed : int
-        The number of stars that failed extraction because their cutout
-        region extended beyond the input image.
+        The number of star cutouts, summed over the images, that failed
+        extraction because their cutout region extended beyond the input
+        image.
     """
     # Use pixel coords only for single image
     use_xy = len(data) == 1

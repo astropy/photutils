@@ -273,8 +273,9 @@ def _profile_fwhm(profile):
     -------
     width : float or `None`
         The width in samples, or `None` if the peak is not finite and
-        positive or the profile does not cross the half maximum on both
-        sides of the peak within the array.
+        positive, if the profile does not cross the half maximum on both
+        sides of the peak within the array, or if a non-finite sample
+        lies between the peak and a crossing.
     """
     if not np.any(np.isfinite(profile)):
         return None
@@ -447,8 +448,10 @@ class _SmoothingKernel:
 
         Parameters
         ----------
-        kernel_type : {'quartic', 'quadratic'} or array_like
-            The type of kernel to retrieve or a custom kernel array.
+        kernel_type : {'quartic', 'quadratic'} or 2D `numpy.ndarray`
+            The type of kernel to retrieve or a custom kernel array. A
+            custom kernel must be a `numpy.ndarray`. Other array-like
+            inputs (e.g., a nested list) are not accepted.
 
         Returns
         -------
@@ -495,8 +498,9 @@ class _SmoothingKernel:
         data : 2D `numpy.ndarray`
             The data to smooth.
 
-        kernel_type : {'quartic', 'quadratic'}, array_like, or `None`
-            The type of kernel to use for smoothing, or `None` for no
+        kernel_type : {'quartic', 'quadratic'}, 2D `numpy.ndarray`, or `None`
+            The type of kernel to use for smoothing, a custom kernel
+            array (which must be a `numpy.ndarray`), or `None` for no
             smoothing.
 
         Returns
@@ -516,8 +520,8 @@ class _EPSFValidator:
     """
     Class to validate ePSF building parameters and data.
 
-    This class centralizes all validation logic with context-aware error
-    messages.
+    This class collects the validation of the input stars and of several
+    `EPSFBuilder` parameters, with context-aware error messages.
     """
 
     @staticmethod
@@ -576,9 +580,12 @@ class _EPSFValidator:
         Raises
         ------
         ValueError
-            If shape is incompatible with stars and oversampling.
-            Error messages include suggested minimum shapes and
-            detailed diagnostic information.
+            If the star list is empty, if any star cutout is smaller
+            than 3 pixels along an axis, if ``shape`` is not a 2-element
+            sequence, or if ``shape`` is smaller than the minimum ePSF
+            shape required by the star cutouts and the oversampling
+            factors. The last message includes the minimum required
+            shape.
         """
         if not stars:
             msg = ('Cannot validate shape compatibility with empty star list. '
@@ -811,10 +818,9 @@ class _CoordinateTransformer:
     Handle coordinate transformations between pixel and oversampled
     spaces.
 
-    This class centralizes all coordinate system conversions used in
-    ePSF building, providing consistent transformations between the
-    input star coordinate system and the oversampled ePSF coordinate
-    system.
+    This class provides the conversions between the input star
+    coordinate system and the oversampled ePSF coordinate system that
+    are shared by the ePSF building steps.
 
     Parameters
     ----------
@@ -831,7 +837,7 @@ class _CoordinateTransformer:
 
         Parameters
         ----------
-        star_x, star_y : array_like
+        star_x, star_y : `~numpy.ndarray`
             Star coordinates in undersampled units relative to star
             center.
 
@@ -840,7 +846,7 @@ class _CoordinateTransformer:
 
         Returns
         -------
-        epsf_x, epsf_y : array_like
+        epsf_x, epsf_y : `~numpy.ndarray` of int
             Integer coordinates in the oversampled ePSF grid.
         """
         # Apply oversampling transformation
@@ -920,7 +926,7 @@ class _CoordinateTransformer:
 
         Returns
         -------
-        x_under, y_under : array_like or float
+        x_under, y_under : float or `~numpy.ndarray`
             Coordinates in the undersampled (original) grid.
         """
         return x / self.oversampling[1], y / self.oversampling[0]
@@ -931,12 +937,12 @@ class _CoordinateTransformer:
 
         Parameters
         ----------
-        x, y : array_like or float
+        x, y : float or `~numpy.ndarray`
             Coordinates in the undersampled (original) grid.
 
         Returns
         -------
-        x_over, y_over : array_like or float
+        x_over, y_over : float or `~numpy.ndarray`
             Coordinates in the oversampled grid.
         """
         return x * self.oversampling[1], y * self.oversampling[0]
@@ -1130,8 +1136,8 @@ class EPSFBuildResults:
 
     n_excluded_stars : int
         The number of individual stars (including those from linked
-        stars) that were excluded from fitting due to repeated fit
-        failures.
+        stars) that were excluded from fitting. A star is excluded when
+        its fit fails in any iteration after the third.
 
     excluded_star_indices : list
         Indices of stars that were excluded from fitting during the
@@ -1211,7 +1217,7 @@ class EPSFBuildResults:
     Notes
     -----
     This result object maintains backward compatibility by implementing
-    tuple unpacking, so existing code like:
+    tuple unpacking, so existing code like::
 
         epsf, stars = epsf_builder(stars)
 
@@ -1303,10 +1309,10 @@ class EPSFBuildResults:
         the ePSF with a logarithmic stretch that is common to all
         the rows. The right panel shows the difference from the ePSF
         of the previous iteration, as a fraction of the peak of the
-        final ePSF, with a symmetric linear stretch of its own. For
-        the first iteration the right panel shows the difference from
-        ``initial_epsf``, or the ePSF itself if the ePSF was built from
-        scratch.
+        ePSF of the last iteration, with a symmetric linear stretch of
+        its own. For the first iteration the right panel shows the
+        difference from ``initial_epsf``, or the ePSF itself if the ePSF
+        was built from scratch.
 
         If the wings of the final ePSF were smoothed (see the
         ``wing_smoothing`` keyword of `EPSFBuilder`), the figure can
@@ -1492,7 +1498,9 @@ class EPSFFitter:
         Parameters
         ----------
         epsf : `ImagePSF`
-            An ePSF model to be fitted to the stars.
+            An ePSF model to be fitted to the stars. The ``flux``,
+            ``x_0``, and ``y_0`` parameters of this model are
+            overwritten during the fit.
 
         stars : `EPSFStars` object
             The stars to be fit. The center coordinates for each star
@@ -1505,7 +1513,11 @@ class EPSFFitter:
         fitted_stars : `EPSFStars` object
             The fitted stars. The ePSF-fitted center position and flux
             are stored in the ``center`` (and ``cutout_center``) and
-            ``flux`` attributes.
+            ``flux`` attributes. A star that is excluded from fitting,
+            or whose fit box is not fully inside the cutout, is fully
+            masked, or gives a fitted position outside the cutout, keeps
+            its input center and flux. The centers of linked stars are
+            then constrained to the same sky coordinate.
         """
         if len(stars) == 0:
             return stars
@@ -1689,20 +1701,21 @@ class EPSFBuilder:
         factor. The output ePSF will always have odd sizes along both
         axes to ensure a well-defined central pixel.
 
-    smoothing_kernel : {'auto', 'quartic', 'quadratic'}, 2D array, or `None`
+    smoothing_kernel : str, 2D `~numpy.ndarray`, or `None`, optional
         The smoothing kernel to apply to the ePSF during each iteration
-        step. If ``'auto'``, a least-squares quartic polynomial kernel
-        (see Notes) whose width is the largest odd number of oversampled
-        grid points that is not larger than 0.7 times the FWHM of the
-        current ePSF is used, and no smoothing is applied if that
-        width is less than 5 grid points, i.e., for ePSFs with fewer
-        than about 7 grid points per FWHM. The kernel is square and
-        the FWHM is measured in each iteration along the narrowest
-        axis of the ePSF, so with anisotropic oversampling the axis
-        with the fewer grid points per FWHM sets the kernel size. If
-        the FWHM cannot be measured, the ``'quartic'`` kernel is used
-        and a warning is emitted. The predefined ``'quartic'`` and
-        ``'quadratic'`` kernels are 5x5 kernels (in oversampled grid
+        step. A string must be ``'auto'``, ``'quartic'``, or
+        ``'quadratic'``. If ``'auto'``, a least-squares quartic
+        polynomial kernel (see Notes) whose width is the largest odd
+        number of oversampled grid points that is not larger than 0.7
+        times the FWHM of the current ePSF is used, and no smoothing
+        is applied if that width is less than 5 grid points, i.e., for
+        ePSFs with fewer than about 7 grid points per FWHM. The kernel
+        is square and the FWHM is measured in each iteration along the
+        narrowest axis of the ePSF, so with anisotropic oversampling
+        the axis with the fewer grid points per FWHM sets the kernel
+        size. If the FWHM cannot be measured, the ``'quartic'`` kernel
+        is used and a warning is emitted. The predefined ``'quartic'``
+        and ``'quadratic'`` kernels are 5x5 kernels (in oversampled grid
         points) derived from fourth and second degree polynomials,
         respectively. Alternatively, a custom 2D array can be input.
         If `None` then no smoothing will be performed. The kernels are
@@ -1782,14 +1795,16 @@ class EPSFBuilder:
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters used to determine which pixels are ignored
-        when stacking the ePSF residuals in each iteration step. If
-        `None` then no sigma clipping will be performed.
+        when stacking the ePSF residuals in each iteration step. The
+        default is a `~astropy.stats.SigmaClip` with ``sigma=3.0`` and
+        ``maxiters=10``. If `None` then no sigma clipping will be
+        performed.
 
     recentering_func : callable, optional
         A callable object that is used to calculate the centroid of
-        a 2D array. The callable must accept a 2D `~numpy.ndarray`,
-        have a ``mask`` keyword and optionally an ``error`` keyword.
-        The callable object must return a tuple of (x, y) centroids.
+        a 2D array. The callable must accept a 2D `~numpy.ndarray`
+        and have a ``mask`` keyword. The callable object must return a
+        tuple of (x, y) centroids.
         The default is `~photutils.centroids.centroid_symmetry`, the
         point about which the core of the ePSF is most symmetric,
         which is the center definition of Anderson 2016. With the
@@ -2500,7 +2515,8 @@ class EPSFBuilder:
         -------
         epsf_resid : 3D `~numpy.ndarray`
             A 3D cube containing the resampled residual images, one
-            per star. The images contain NaNs where there is no data.
+            per star that is not excluded from fitting. The images
+            contain NaNs where there is no data.
         """
         ny, nx = epsf.data.shape
         good_stars = stars.all_good_stars
@@ -2633,7 +2649,9 @@ class EPSFBuilder:
         Returns
         -------
         result : 2D `~numpy.ndarray`
-            The smoothed (convolved) ePSF data.
+            The smoothed (convolved) ePSF data. The input array is
+            returned unchanged if the smoothing kernel of the current
+            iteration is `None`.
         """
         return _SmoothingKernel.apply_smoothing(
             epsf_data, self._current_smoothing_kernel())
@@ -2817,11 +2835,10 @@ class EPSFBuilder:
 
         centroid_func : callable, optional
             A callable object used to calculate the centroid of a 2D
-            array. The callable must accept a 2D `~numpy.ndarray`,
-            have a ``mask`` keyword, and optionally an ``error``
-            keyword. The callable object must return a tuple of (x, y)
-            scalar centroids. If `None`, uses the builder's configured
-            recentering_func.
+            array. The callable must accept a 2D `~numpy.ndarray`
+            and have a ``mask`` keyword. The callable object must
+            return a tuple of (x, y) scalar centroids. If `None`, uses
+            the builder's configured recentering_func.
 
         box_size : int or tuple of two ints, optional
             The size (in pixels) of the box used to calculate the
@@ -2837,9 +2854,9 @@ class EPSFBuilder:
 
         center_accuracy : float, optional
             The desired accuracy for the center position. The centering
-            iterations will stop if the center of the ePSF changes by
-            less than ``center_accuracy`` pixels between iterations. If
-            `None`, uses 1.0e-4.
+            iterations will stop if the center of the ePSF changes
+            by less than ``center_accuracy`` oversampled pixels between
+            iterations. If `None`, uses 1.0e-4.
 
         Returns
         -------
@@ -3070,10 +3087,11 @@ class EPSFBuilder:
         less than the configured center accuracy.
 
         The movement is measured relative to the median movement of the
-        stars. A shift of the center of the ePSF moves all of the star
-        centers by the same amount, which changes neither the shape of
-        the ePSF nor the relative positions of the stars. The median
-        movement must itself be less than the center accuracy.
+        stars if at least 3 stars were successfully fitted. A shift
+        of the center of the ePSF moves all of the star centers by the
+        same amount, which changes neither the shape of the ePSF nor
+        the relative positions of the stars. The median movement must
+        itself be less than the center accuracy.
 
         Parameters
         ----------
@@ -3101,7 +3119,9 @@ class EPSFBuilder:
 
         common_center_dist_sq : float
             The squared median movement of the successfully fitted
-            stars.
+            stars. It is zero if fewer than 3 stars were successfully
+            fitted. It is NaN, as is ``max_center_dist_sq``, if no star
+            was successfully fitted.
 
         new_centers : `~numpy.ndarray`
             Updated star center positions.
@@ -3159,7 +3179,10 @@ class EPSFBuilder:
         fitted_stars : `EPSFStars` object
             The fitted stars. The ePSF-fitted center position and flux
             are stored in the ``center`` (and ``cutout_center``) and
-            ``flux`` attributes.
+            ``flux`` attributes. The centers of linked stars are then
+            constrained to the same sky coordinate, and their fluxes to
+            their mean if ``constrain_fluxes`` is `True`. Stars that are
+            excluded from fitting are returned unchanged.
         """
         if len(stars) == 0:
             return stars
@@ -3225,7 +3248,11 @@ class EPSFBuilder:
         Returns
         -------
         star : `EPSFStar`
-            The fitted star with updated cutout center and flux.
+            A shallow copy of the star with the fitted cutout center and
+            flux. The center and flux are not changed if the fitting box
+            does not fit within the cutout, if the fitting region is
+            fully masked, or if the fitted center is outside of the
+            cutout.
         """
         fit_shape = self._current_fit_shape()
         fitter = self.fitter
@@ -3333,8 +3360,9 @@ class EPSFBuilder:
         stars : `EPSFStars` object
             The stars used to build the ePSF.
 
-        epsf : `ImagePSF` object
-            Current ePSF model.
+        epsf : `ImagePSF` object or `None`
+            The current ePSF model. If `None`, the ePSF is built from
+            scratch.
 
         iter_num : int
             Current iteration number, counting the building and the
@@ -3474,7 +3502,8 @@ class EPSFBuilder:
             Final fitted stars.
 
         iter_num : int
-            Number of completed iterations.
+            Number of completed building iterations. The refinement
+            iterations are not counted.
 
         converged : bool
             Whether the building process converged.
@@ -3559,8 +3588,12 @@ class EPSFBuilder:
             The stars used to build the ePSF.
 
         epsf : `ImagePSF` object, optional
-            The initial ePSF model. If `None`, then the ePSF will be
-            built from scratch.
+            The initial ePSF model. Its oversampling must match the
+            ``oversampling`` of the builder, and its shape must be at
+            least the largest star cutout shape times the oversampling
+            (plus one along an axis where that product is even). The
+            output ePSF has the shape of this model. If `None`, then the
+            ePSF will be built from scratch.
 
         Returns
         -------
@@ -3569,6 +3602,14 @@ class EPSFBuilder:
             the building process. For backward compatibility, the
             result can be unpacked as a tuple: ``(epsf, fitted_stars) =
             epsf_builder(stars)``.
+
+        Raises
+        ------
+        ValueError
+            If the oversampling or shape of the input ``epsf`` is
+            incompatible with the builder or the stars, if the ``shape``
+            of the builder is too small for the stars, if the stars are
+            invalid, or if the ePSF fit fails for all stars.
 
         Notes
         -----
@@ -3589,6 +3630,8 @@ class EPSFBuilder:
         - iteration_info: Table of the convergence statistics of each
           iteration
         - initial_epsf: Image of the input ePSF, if any
+        - center_asymmetry: Offset of the center of mass of the final
+          ePSF from its symmetry center
         """
         initial_epsf = None
         if epsf is not None:

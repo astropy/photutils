@@ -341,7 +341,9 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
         ``order`` is not an integer.
 
     RuntimeError
-        If ``order`` is not in the range 0 to 5.
+        If ``order`` is not in the range 0 to 5. A non-integer
+        ``order``, such as 1.5, can also raise this exception instead of
+        a `TypeError`.
 
     Notes
     -----
