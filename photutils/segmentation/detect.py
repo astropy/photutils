@@ -101,13 +101,11 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
     sigma-clipped background statistics. If ``background`` and ``error``
     are both input, then ``mask`` and ``sigma_clip`` are ignored.
 
-    If ``background`` or ``error`` is estimated with sigma clipping
-    and the unmasked ``data`` contain non-finite values (NaN or inf),
-    then the sigma clipping emits an
-    `~astropy.utils.exceptions.AstropyUserWarning` and the non-finite
-    values are excluded from the statistics. If ``sigma_clip`` is
-    `None`, then NaN values are excluded from the statistics without
-    a warning, and infinite values are not excluded.
+    If ``background`` or ``error`` is estimated and the unmasked
+    ``data`` contain non-finite values (NaN or inf), then an
+    `~astropy.utils.exceptions.AstropyUserWarning` is emitted and the
+    non-finite values are excluded from the statistics, with or without
+    sigma clipping.
     """
     inputs = (data, background, error)
     names = ('data', 'background', 'error')
@@ -126,8 +124,17 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
             data = np.ma.MaskedArray(data, mask)
 
         if sigma_clip is None:
-            # Masked values are excluded from the statistics
-            clipped_data = np.ma.filled(data.astype(float), np.nan)
+            # Masked and non-finite values are excluded from the
+            # statistics
+            clipped_data = np.ma.getdata(data).astype(float)
+            masked = np.ma.getmaskarray(data)
+            nonfinite = ~np.isfinite(clipped_data)
+            if np.any(nonfinite & ~masked):
+                msg = ('Input data contains non-finite values (NaN or '
+                       'inf), which were excluded from the background '
+                       'statistics.')
+                warnings.warn(msg, AstropyUserWarning)
+            clipped_data[nonfinite | masked] = np.nan
         else:
             clipped_data = sigma_clip(data, masked=False,
                                       return_bounds=False, copy=True)

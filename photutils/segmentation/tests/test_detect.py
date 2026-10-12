@@ -182,6 +182,28 @@ class TestDetectThreshold:
         expected = np.mean(data[~mask]) + 2.0 * np.std(data[~mask])
         assert_allclose(threshold, expected)
 
+    @pytest.mark.parametrize('value', [np.nan, np.inf, -np.inf])
+    def test_sigma_clip_none_nonfinite(self, value):
+        """
+        Test that sigma_clip=None warns about the unmasked non-finite
+        values and excludes them from the statistics.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(5.0, 1.0, (50, 50))
+        data[10, 10] = value
+        good = np.isfinite(data)
+        expected = np.mean(data[good]) + 2.0 * np.std(data[good])
+        match = 'Input data contains non-finite values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            threshold = detect_threshold(data, n_sigma=2.0, sigma_clip=None)
+        assert_allclose(threshold, expected)
+
+        # No warning is emitted if the non-finite value is masked
+        threshold = detect_threshold(data, n_sigma=2.0, mask=~good,
+                                     sigma_clip=None)
+        assert_allclose(threshold, expected)
+
+    def test_invalid_sigma_clip(self):
         """
         Test invalid sigma clip.
         """
