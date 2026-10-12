@@ -3631,7 +3631,7 @@ class SourceCatalog:
         """
         Upper-left *outside* pixel corner location (not index).
         """
-        return np.array([(bbox_.ixmin - 0.5, bbox_.iymax + 0.5)
+        return np.array([(bbox_.ixmin - 0.5, bbox_.iymax - 0.5)
                          for bbox_ in self._bbox])
 
     @cached_property
@@ -3640,7 +3640,7 @@ class SourceCatalog:
         """
         Lower-right *outside* pixel corner location (not index).
         """
-        return np.array([(bbox_.ixmax + 0.5, bbox_.iymin - 0.5)
+        return np.array([(bbox_.ixmax - 0.5, bbox_.iymin - 0.5)
                          for bbox_ in self._bbox])
 
     @cached_property
@@ -3649,7 +3649,7 @@ class SourceCatalog:
         """
         Upper-right *outside* pixel corner location (not index).
         """
-        return np.array([(bbox_.ixmax + 0.5, bbox_.iymax + 0.5)
+        return np.array([(bbox_.ixmax - 0.5, bbox_.iymax - 0.5)
                          for bbox_ in self._bbox])
 
     @cached_property
