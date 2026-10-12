@@ -1174,8 +1174,10 @@ Bug Fixes
   - Fixed the aperture-based initial flux of ``PSFPhotometry`` and
     ``IterativePSFPhotometry`` when a local background is used. The
     per-pixel ``local_bkg`` value was subtracted once from the aperture
-    sum. It is now multiplied by the aperture area first. Only the
-    initial guess (the ``flux_init`` column) changes. [#2508]
+    sum. It is now multiplied by the aperture area first. For sources
+    found in a later iteration of ``IterativePSFPhotometry`` with
+    ``mode='all'``, the local background was not subtracted at all.
+    Only the initial guess (the ``flux_init`` column) changes. [#2508]
 
 - ``photutils.psf_matching``
 
