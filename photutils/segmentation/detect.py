@@ -75,11 +75,12 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
         Masked pixels are ignored when computing the image background
         statistics.
 
-    sigma_clip : `astropy.stats.SigmaClip`, optional
+    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
         clipping parameters. The default is a
         `~astropy.stats.SigmaClip` with ``sigma=3.0`` and
-        ``maxiters=10``.
+        ``maxiters=10``. If `None` then no sigma clipping will be
+        performed.
 
     Returns
     -------
@@ -100,10 +101,13 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
     sigma-clipped background statistics. If ``background`` and ``error``
     are both input, then ``mask`` and ``sigma_clip`` are ignored.
 
-    If ``background`` or ``error`` is estimated and the unmasked
-    ``data`` contain non-finite values (NaN or inf), then the sigma
-    clipping emits an `~astropy.utils.exceptions.AstropyUserWarning`
-    and the non-finite values are excluded from the statistics.
+    If ``background`` or ``error`` is estimated with sigma clipping
+    and the unmasked ``data`` contain non-finite values (NaN or inf),
+    then the sigma clipping emits an
+    `~astropy.utils.exceptions.AstropyUserWarning` and the non-finite
+    values are excluded from the statistics. If ``sigma_clip`` is
+    `None`, then NaN values are excluded from the statistics without
+    a warning, and infinite values are not excluded.
     """
     inputs = (data, background, error)
     names = ('data', 'background', 'error')
@@ -113,28 +117,32 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
     if sigma_clip is SIGMA_CLIP:
         sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
                                               maxiters=SIGMA_CLIP.maxiters)
-    if not isinstance(sigma_clip, SigmaClip):
-        msg = 'sigma_clip must be a SigmaClip object'
+    if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
+        msg = 'sigma_clip must be a SigmaClip object or None'
         raise TypeError(msg)
 
     if background is None or error is None:
         if mask is not None:
             data = np.ma.MaskedArray(data, mask)
 
-        clipped_data = sigma_clip(data, masked=False, return_bounds=False,
-                                  copy=True)
+        if sigma_clip is None:
+            # Masked values are excluded from the statistics
+            clipped_data = np.ma.filled(data.astype(float), np.nan)
+        else:
+            clipped_data = sigma_clip(data, masked=False,
+                                      return_bounds=False, copy=True)
 
     if background is None:
         background = nanmean(clipped_data)
 
-    if not np.isscalar(background) and background.shape != data.shape:
+    if np.ndim(background) != 0 and background.shape != data.shape:
         msg = ('If input background is 2D, then it must have the same '
                'shape as the input data.')
         raise ValueError(msg)
 
     if error is None:
         error = nanstd(clipped_data)
-    if not np.isscalar(error) and error.shape != data.shape:
+    if np.ndim(error) != 0 and error.shape != data.shape:
         msg = ('If input error is 2D, then it must have the same shape '
                'as the input data.')
         raise ValueError(msg)

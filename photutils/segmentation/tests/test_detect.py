@@ -103,6 +103,17 @@ class TestDetectThreshold:
         with pytest.raises(ValueError, match=match):
             detect_threshold(DATA, n_sigma=2.0, error=wrong_shape)
 
+    def test_zero_dimensional_background_error(self):
+        """
+        Test that 0-d array background and error values are treated as
+        scalars.
+        """
+        ref = detect_threshold(DATA, n_sigma=2.0, background=1.0, error=0.5)
+        threshold = detect_threshold(DATA, n_sigma=2.0,
+                                     background=np.array(1.0),
+                                     error=np.array(0.5))
+        assert_allclose(threshold, ref)
+
     def test_background_error(self):
         """
         Test background error.
@@ -151,7 +162,26 @@ class TestDetectThreshold:
         ref = (1.0 / 8.0) * np.ones((3, 3))
         assert_equal(threshold, ref)
 
-    def test_invalid_sigma_clip(self):
+    def test_sigma_clip_none(self):
+        """
+        Test that sigma_clip=None turns off the sigma clipping.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(5.0, 1.0, (50, 50))
+        data[10, 10] = 1000.0
+        threshold = detect_threshold(data, n_sigma=2.0, sigma_clip=None)
+        assert_allclose(threshold, np.mean(data) + 2.0 * np.std(data))
+        clipped = detect_threshold(data, n_sigma=2.0)
+        assert np.all(clipped < threshold)
+
+        # Masked pixels are still excluded
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10, 10] = True
+        threshold = detect_threshold(data, n_sigma=2.0, mask=mask,
+                                     sigma_clip=None)
+        expected = np.mean(data[~mask]) + 2.0 * np.std(data[~mask])
+        assert_allclose(threshold, expected)
+
         """
         Test invalid sigma clip.
         """
