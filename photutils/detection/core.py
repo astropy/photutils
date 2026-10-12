@@ -121,8 +121,22 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         Returns
         -------
         result : Nx2 `~numpy.ndarray` or `None`
-            An Nx2 array containing the (x, y) pixel coordinates. `None`
-            is returned if no sources are found.
+            An Nx2 array containing the (x, y) integer pixel
+            coordinates of the peak pixels. These are integer indices,
+            not subpixel centroids. The star finder classes compute
+            subpixel centroid positions separately from these peak
+            positions. `None` is returned if no sources are found.
+
+        Notes
+        -----
+        Because the returned positions are the integer pixel
+        coordinates of the peak pixels, the ``min_separation``
+        constraint applies to these integer positions. The star finder
+        classes subsequently compute subpixel centroid positions (e.g.,
+        via marginal Gaussian fits), which may shift sources slightly.
+        This means the final centroid-based separations in the star
+        finder output tables can be slightly smaller (or larger) than
+        ``min_separation``.
         """
         # Define a local footprint for the peak finder
         find_peaks_kwargs = {}

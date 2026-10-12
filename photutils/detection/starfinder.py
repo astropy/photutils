@@ -166,6 +166,8 @@ class StarFinder(StarFinderBase):
                                       fill_value=0.0,
                                       check_normalization=False)
 
+        # _find_stars returns the integer peak pixel positions.
+        # The subpixel centroids are computed later in the catalog.
         xypos = self._find_stars(convolved_data, kernel, self.threshold,
                                  min_separation=self.min_separation,
                                  mask=mask, exclude_border=self.exclude_border)

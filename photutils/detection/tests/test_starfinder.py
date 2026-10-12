@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.table import Table
-from numpy.testing import assert_array_equal, assert_equal
+from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.detection import StarFinder
 from photutils.utils.exceptions import (NoDetectionsWarning,
@@ -115,8 +115,11 @@ class TestStarFinder:
         data[9:12, 9:12] = 1
         kernel = np.ones((3, 3))
 
-        finder0 = StarFinder(1, kernel, exclude_border=False)
-        finder1 = StarFinder(1, kernel, exclude_border=True)
+        # min_separation=0 keeps the equal-valued peaks
+        finder0 = StarFinder(1, kernel, exclude_border=False,
+                             min_separation=0)
+        finder1 = StarFinder(1, kernel, exclude_border=True,
+                             min_separation=0)
         tbl0 = finder0(data)
         tbl1 = finder1(data)
         assert len(tbl0) > len(tbl1)
@@ -150,6 +153,23 @@ class TestStarFinder:
         tbl_bool = starfinder(data, mask=bool_mask)
         tbl_int = starfinder(data, mask=int_mask)
         assert_array_equal(tbl_bool, tbl_int)
+
+    def test_min_separation_equal_values(self):
+        """
+        Test that equal-valued pixels of the convolved image give one
+        source, unless min_separation is 0.
+        """
+        data = np.zeros((40, 40))
+        data[18:23, 18:23] = 100.0
+        kernel = np.ones((3, 3))
+
+        tbl = StarFinder(1, kernel)(data)
+        assert len(tbl) == 1
+        assert_allclose(tbl['x_centroid'], 20.0)
+        assert_allclose(tbl['y_centroid'], 20.0)
+
+        tbl = StarFinder(1, kernel, min_separation=0)(data)
+        assert len(tbl) == 9
 
     def test_min_separation(self, data, kernel):
         """

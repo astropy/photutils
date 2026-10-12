@@ -1438,6 +1438,18 @@ API Changes
     from zero instead of half to even, consistent with the rounding
     convention used elsewhere in photutils. [#2375]
 
+  - The ``find_peaks`` ``min_separation`` keyword (also used by the
+    star finder classes) now returns only one peak for pixels with
+    identical values that are within ``min_separation`` of each other.
+    A group of connected equal-valued peak pixels (e.g., a saturated
+    star) is replaced by its pixel nearest to the centroid of the
+    group, and only one of any remaining equal-valued peaks that
+    are separated by ``min_separation`` or less is kept. All
+    returned peaks are now separated by more than ``min_separation``
+    pixels. Previously, all pixels that were tied for the maximum
+    were returned. Use a circular ``footprint`` for the previous
+    behavior. [#2506]
+
 - ``photutils.geometry``
 
   - The ``circular_overlap_grid``, ``elliptical_overlap_grid``, and
