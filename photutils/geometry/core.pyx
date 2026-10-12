@@ -49,14 +49,16 @@ cdef double area_arc_unit(double x1, double y1, double x2,
     ----------
     http://mathworld.wolfram.com/CircularSegment.html
     """
-    cdef double a, theta
+    cdef double chord
 
-    a = distance(x1, y1, x2, y2)
-    # Clamp the half-chord length to 1 to guard against floating-point
-    # round-off pushing a near-diameter chord past the domain of asin,
-    # which would return NaN.
-    theta = 2.0 * asin(fmin(1.0, 0.5 * a))
-    return 0.5 * (theta - sin(theta))
+    # The chord length is twice the sine of half the angle that the
+    # chord subtends, but recovering the angle from it with an arcsine
+    # loses half of the precision when the chord is nearly a diameter.
+    # The sine and cosine of the full angle are the cross and dot
+    # products of the two points, which atan2 handles accurately for
+    # any chord.
+    chord = fabs(x1 * y2 - y1 * x2)
+    return 0.5 * (atan2(chord, x1 * x2 + y1 * y2) - chord)
 
 
 cdef int in_triangle(double x, double y, double x1, double y1, double x2,
@@ -321,7 +323,7 @@ cdef double overlap_area_vertex_on_unit_circle(double x1, double y1,
     """
     cdef double dx2, dy2, dx3, dy3
     cdef double n2, n3, c2, c3, cross
-    cdef double f2, f3, area, chord, cap, side0, side1
+    cdef double f2, f3, area, cap, side0, side1
     cdef intersections inter
 
     dx2 = x2 - x1
@@ -364,14 +366,7 @@ cdef double overlap_area_vertex_on_unit_circle(double x1, double y1,
     # Remove the circular segment beyond the opposite edge
     inter = circle_segment(x2, y2, x3, y3)
     if inter.p1.x <= 1.:
-        # The opposite edge passes through the circle center whenever
-        # the ellipse center lies on a pixel edge or diagonal. Its
-        # chord is then a diameter, where the arcsine of the half-chord
-        # length used by ``area_arc_unit`` loses half of its precision.
-        # The angle subtended by the chord is taken from atan2 instead.
-        chord = fabs(inter.p1.x * inter.p2.y - inter.p1.y * inter.p2.x)
-        cap = 0.5 * (atan2(chord, inter.p1.x * inter.p2.x
-                           + inter.p1.y * inter.p2.y) - chord)
+        cap = area_arc_unit(inter.p1.x, inter.p1.y, inter.p2.x, inter.p2.y)
         # The segment is the larger of the two cut by the chord when
         # the opposite edge separates the first vertex from the circle
         # center.
