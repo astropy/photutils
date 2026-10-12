@@ -911,6 +911,17 @@ def test_major_axis_angle():
     assert np.isnan(angle[5])
 
 
+def test_major_axis_angle_negative_zero():
+    """
+    Test that a negative-zero covariance gives 90 and not -90 degrees.
+    """
+    var_a = np.array([1.0, 1.0])
+    var_b = np.array([2.0, 2.0])
+    covar_ab = np.array([-0.0, 0.0])
+    angle = major_axis_angle(var_a, var_b, covar_ab)
+    assert_equal(angle, [90.0, 90.0])
+
+
 def test_orientation_from_covariance(covariances):
     """
     Test the orientation in degrees, including the (-90, 90] range.

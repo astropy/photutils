@@ -1208,6 +1208,11 @@ Bug Fixes
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the
     user's ``SigmaClip`` instance. [#2364]
 
+  - Fixed the ``orientation`` and ``sky_orientation`` properties of
+    ``SourceCatalog`` and ``ApertureStats`` returning -90 degrees,
+    outside of the documented (-90, 90] range, for a source with a
+    negative-zero covariance. [#2500]
+
   - Fixed ``ImageDepth`` so that repeated calls on the same instance
     no longer accumulate the ``fluxes`` attribute across calls. The
     result attributes now always reflect only the most recent call.

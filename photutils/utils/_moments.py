@@ -512,9 +512,11 @@ def major_axis_angle(var_a, var_b, covar_ab):
         difference of the variances is undefined.
     """
     # Ignore floating-point errors from non-finite values (e.g., the
-    # difference of two infinite variances)
+    # difference of two infinite variances). Adding zero turns a
+    # negative-zero covariance into positive zero, which keeps the angle
+    # at 90 instead of -90 degrees when var_a < var_b.
     with np.errstate(over='ignore', invalid='ignore'):
-        angle = 0.5 * np.arctan2(2.0 * covar_ab, var_a - var_b)
+        angle = 0.5 * np.arctan2(2.0 * covar_ab + 0.0, var_a - var_b)
     return np.rad2deg(angle)
 
 
