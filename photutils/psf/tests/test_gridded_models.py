@@ -1140,7 +1140,8 @@ def test_stdpsfgrid_repr_str():
     assert grid_str == str(psfgrid)
 
     assert 'STDPSF_NRCA1_F150W_mock.fits' in grid_str
-    assert 'Detector: NRCA1' in grid_str
+    assert 'Instrument: JWST/NIRCam' in grid_str
+    assert 'Detector: A1' in grid_str
     assert 'Filter: F150W' in grid_str
     assert 'Grid shape: (5, 5)' in grid_str
     assert f'Number of PSFs: {psfgrid.data.shape[0]}' in grid_str

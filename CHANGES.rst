@@ -1157,6 +1157,14 @@ Bug Fixes
     Such an uncertainty is now assumed to be a standard deviation.
     [#2508]
 
+  - Fixed ``stdpsf_reader`` setting the ``instrument`` and instrument
+    detector name in the ``meta`` of the returned ``GriddedPSFModel``
+    only when a ``detector_id`` was input. For a file with a single
+    detector, the metadata no longer depends on ``detector_id``, and
+    ``meta['detector']`` is now the detector name (e.g., ``'A1'``)
+    instead of the filename field (e.g., ``'NRCA1'``). ``STDPSFGrid``
+    sets the same metadata. [#2508]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

@@ -442,9 +442,8 @@ def _get_metadata(filename, detector_id):
         already-open `~astropy.io.fits.HDUList`.
 
     detector_id : int or `None`
-        The detector ID. If `None`, the ``instrument`` metadata is not
-        set and the ``detector`` metadata is the detector field of the
-        filename.
+        The detector ID. It selects the detector name for a file that
+        contains ePSF grids for multiple detectors.
 
     Returns
     -------
@@ -475,14 +474,18 @@ def _get_metadata(filename, detector_id):
             'detector': detector,
             'filter': filter_name}
 
-    if detector_id is not None:
-        try:
-            # Copy so that the module-level map is never mutated
-            inst_det = list(_STDPSF_DETECTOR_MAP[detector])
-        except KeyError as exc:
-            msg = f'Unknown detector {detector}'
-            raise ValueError(msg) from exc
+    try:
+        # Copy so that the module-level map is never mutated
+        inst_det = list(_STDPSF_DETECTOR_MAP[detector])
+    except KeyError as exc:
+        if detector_id is None:
+            return meta
+        msg = f'Unknown detector {detector}'
+        raise ValueError(msg) from exc
 
+    # The detector name within a multi-detector file depends on
+    # detector_id
+    if detector_id is not None:
         if inst_det[1] == 'WFPC2':
             wfpc2_map = {1: 'PC', 2: 'WF2', 3: 'WF3', 4: 'WF4'}
             inst_det[1] = wfpc2_map[detector_id]
@@ -496,8 +499,8 @@ def _get_metadata(filename, detector_id):
                       5: 'B1', 6: 'B2', 7: 'B3', 8: 'B4'}
             inst_det[1] = sw_map[detector_id]
 
-        meta['instrument'] = inst_det[0]
-        meta['detector'] = inst_det[1]
+    meta['instrument'] = inst_det[0]
+    meta['detector'] = inst_det[1]
 
     return meta
 
@@ -532,10 +535,8 @@ def stdpsf_reader(filename, detector_id=None):
     detector_id : `None` or int, optional
         For STDPSF files that contain ePSF grids for multiple detectors,
         one will need to identify the detector for which to extract the
-        ePSF grid. For STDPSF files that do not contain ePSF grids for
-        multiple detectors, this keyword does not affect the ePSF data.
-        If it is not `None`, the ``instrument`` and ``detector``
-        metadata are set from the detector name in the filename.
+        ePSF grid. This keyword is ignored for STDPSF files that do not
+        contain ePSF grids for multiple detectors.
 
         For WFPC2, the detector value (int) should be:
 
