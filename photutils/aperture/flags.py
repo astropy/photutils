@@ -83,16 +83,16 @@ class _ApertureFlags(FlagRegistry):
             name='non_finite_data',
             description='non-finite data values within the aperture',
             detailed_description=('One or more unmasked data values '
-                                  '(NaN or inf) with nonzero aperture '
-                                  'weight are non-finite.'),
+                                  'with nonzero aperture weight are '
+                                  'non-finite (NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=32,
             name='non_finite_error',
             description='non-finite error values within the aperture',
             detailed_description=('One or more unmasked error values '
-                                  '(NaN or inf) with nonzero aperture '
-                                  'weight are non-finite.'),
+                                  'with nonzero aperture weight are '
+                                  'non-finite (NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=64,

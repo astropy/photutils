@@ -80,8 +80,10 @@ class AperturePhotometry:
         list of `~photutils.aperture.Aperture` or `regions.Region`
         The aperture(s) to use for the photometry. If ``apertures`` is
         a list of `~photutils.aperture.Aperture` or `regions.Region`,
-        then they all must have the same position(s). If ``apertures``
-        contains a `~photutils.aperture.SkyAperture` or `~regions.SkyRegion`
+        then they all must have the same position(s). A tuple or
+        `~numpy.ndarray` of them is also accepted. The list must not
+        be empty. If ``apertures`` contains a
+        `~photutils.aperture.SkyAperture` or `~regions.SkyRegion`
         object, then a WCS must be input using the ``wcs`` keyword.
         Region objects are converted to aperture objects.
 
@@ -124,8 +126,8 @@ class AperturePhotometry:
         underlying kernels release the Python global interpreter
         lock (GIL), so multithreading can significantly speed up the
         photometry for many aperture positions. Multithreading is
-        used only for apertures supported by the fast batch code
-        path. Otherwise, the computation is serial.
+        used only for apertures and input arrays supported by the
+        fast batch code path. Otherwise, the computation is serial.
 
     See Also
     --------
@@ -138,12 +140,13 @@ class AperturePhotometry:
     `~regions.Region` objects are converted to `Aperture` objects using
     the :func:`region_to_aperture` function.
 
-    If the input ``data`` is a `~astropy.nddata.NDData` instance,
-    then the ``error``, ``mask``, and ``wcs`` keyword inputs are
-    ignored. Instead, these values should be defined as attributes in
-    the `~astropy.nddata.NDData` object. In the case of ``error``,
-    it must be defined in the ``uncertainty`` attribute with a
-    `~astropy.nddata.StdDevUncertainty` instance.
+    If the input ``data`` is a `~astropy.nddata.NDData` object, then
+    its ``mask``, ``wcs``, unit, and uncertainty are used. The
+    ``error``, ``mask``, and ``wcs`` keywords are then ignored, and an
+    `~astropy.utils.exceptions.AstropyUserWarning` is issued for each
+    one that is input. The uncertainty is used as ``error`` only if it
+    is a `~astropy.nddata.StdDevUncertainty`. Any other uncertainty
+    type is ignored.
 
     The measured `flux`, `flux_err`, `area`, and `flags` attributes
     (as well as `id`, `x_center`, `y_center`, and `sky_center`) are
@@ -331,8 +334,9 @@ class AperturePhotometry:
     @cached_property
     def isscalar(self):
         """
-        Whether the instance is scalar (i.e., a single aperture
-        position).
+        Whether the instance is scalar (i.e., a single scalar
+        aperture position such as ``CircularAperture((10, 20), r=5)``,
+        not a length-1 list of positions).
         """
         return self._pixel_apertures[0].isscalar
 
@@ -420,6 +424,10 @@ class AperturePhotometry:
 
         The values are always float64, regardless of the input ``data``
         dtype (a `~astropy.units.Quantity` if ``data`` has units).
+
+        The value is NaN where the aperture bounding box does not
+        overlap the data, and 0 where the bounding box overlaps the data
+        but the aperture itself does not.
         """
         values = self._stack('flux')
         if self._data_unit is not None:
@@ -449,7 +457,9 @@ class AperturePhotometry:
         This takes into account the aperture mask method, masked
         data pixels (``mask`` keyword), segmentation masking, and
         partial/no overlap of the aperture with the data. The value is
-        NaN where an aperture does not overlap the data.
+        NaN where the aperture bounding box does not overlap the data,
+        and 0 where the bounding box overlaps the data but the aperture
+        itself does not.
         """
         values = [result.area for result in self._photometry_results]
         if self._single_aperture:
@@ -475,7 +485,7 @@ class AperturePhotometry:
 
         Parameters
         ----------
-        columns : str, list of str, `None`, optional
+        columns : str, list or tuple of str, or `None`, optional
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are
             ``'id'``, ``'x_center'``, ``'y_center'``, ``'sky_center'``,
@@ -593,15 +603,18 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         should be background-subtracted. If ``data`` is a
         `~astropy.units.Quantity` array, then ``error`` (if input)
         must also be a `~astropy.units.Quantity` array with the same
-        units. See the Notes section below for more information about
+        units. Non-finite ``data`` values (NaN and inf) are not masked
+        automatically. An aperture that contains one has a non-finite
+        sum. See the Notes section below for more information about
         `~astropy.nddata.NDData` input.
 
     apertures : `~photutils.aperture.Aperture`, supported `regions.Region`, \
         list of `~photutils.aperture.Aperture` or `regions.Region`
         The aperture(s) to use for the photometry. If ``apertures`` is
         a list of `~photutils.aperture.Aperture` or `regions.Region`,
-        then they all must have the same position(s). If
-        ``apertures`` contains a `~photutils.aperture.SkyAperture` or
+        then they all must have the same position(s). A tuple or
+        `~numpy.ndarray` of them is also accepted. If ``apertures``
+        contains a `~photutils.aperture.SkyAperture` or
         `~regions.SkyRegion` object, then a WCS must be input using
         the ``wcs`` keyword. Region objects are converted to aperture
         objects.
@@ -644,6 +657,12 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           The ``x`` and ``y`` pixel coordinates of the input aperture
           center(s).
 
+          .. deprecated:: 3.0
+              The ``'xcenter'`` and ``'ycenter'`` column names are
+              deprecated aliases of ``'x_center'`` and ``'y_center'``.
+              They emit a deprecation warning when used and will be
+              removed in version 4.0.
+
         * ``'sky_center'``:
           The sky coordinates of the input aperture center(s). Returned
           if a ``wcs`` is input.
@@ -659,25 +678,36 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           (always float64). Returned only if the input ``error`` is not
           `None`.
 
-        If multiple apertures are input, the ``'aperture_sum'`` and
-        ``'aperture_sum_err'`` columns will have a ``'_i'`` suffix
-        (e.g., ``'aperture_sum_0'``), where ``i`` is the index of the
-        aperture in the input list.
+        If a list of apertures is input (even a list with one
+        aperture), the ``'aperture_sum'`` and ``'aperture_sum_err'``
+        columns will have a ``'_i'`` suffix (e.g.,
+        ``'aperture_sum_0'``), where ``i`` is the index of the aperture
+        in the input list.
 
-        The table metadata includes the Astropy and Photutils version
-        numbers and the `aperture_photometry` calling arguments.
+        The table metadata includes the date, the version numbers of
+        Python, Photutils, and its dependencies, the ``method`` and
+        ``subpixels`` calling arguments, and the class name and shape
+        parameters of each input aperture.
+
+    Raises
+    ------
+    ValueError
+        If ``apertures`` contains a `~photutils.aperture.SkyAperture`
+        or `~regions.SkyRegion` and no WCS is input, or if the input
+        apertures do not all have identical positions.
 
     Notes
     -----
     `~regions.Region` objects are converted to `Aperture` objects using
     the :func:`region_to_aperture` function.
 
-    If the input ``data`` is a `~astropy.nddata.NDData` instance,
-    then the ``error``, ``mask``, and ``wcs`` keyword inputs are
-    ignored. Instead, these values should be defined as attributes in
-    the `~astropy.nddata.NDData` object. In the case of ``error``,
-    it must be defined in the ``uncertainty`` attribute with a
-    `~astropy.nddata.StdDevUncertainty` instance.
+    If the input ``data`` is a `~astropy.nddata.NDData` object, then
+    its ``mask``, ``wcs``, unit, and uncertainty are used. The
+    ``error``, ``mask``, and ``wcs`` keywords are then ignored, and an
+    `~astropy.utils.exceptions.AstropyUserWarning` is issued for each
+    one that is input. The uncertainty is used as ``error`` only if it
+    is a `~astropy.nddata.StdDevUncertainty`. Any other uncertainty
+    type is ignored.
     """
     if isinstance(data, NDData):
         data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)

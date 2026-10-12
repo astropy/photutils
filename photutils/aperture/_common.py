@@ -96,8 +96,8 @@ def validate_array(array, name, *, ndim=2, shape=None):
     Parameters
     ----------
     array : array_like or `None`
-        The array to validate. `None` (and, for a mask,
-        `numpy.ma.nomask`) is returned unchanged.
+        The array to validate. `None` is returned unchanged. For a
+        mask, `numpy.ma.nomask` is converted to `None`.
 
     name : str
         The name of the array, used in the error messages.
@@ -111,7 +111,8 @@ def validate_array(array, name, *, ndim=2, shape=None):
     Returns
     -------
     array : `~numpy.ndarray` or `None`
-        The input array as an ndarray, or `None`.
+        The input array as an ndarray (subclasses are preserved), or
+        `None`.
     """
     if name == 'mask' and array is np.ma.nomask:
         array = None
@@ -198,8 +199,8 @@ def batch_array_supported(array):
     Returns
     -------
     supported : bool
-        `True` if the array is a plain `~numpy.ndarray` with a numeric
-        or boolean dtype of at most 8 bytes.
+        `True` if the array is a plain `~numpy.ndarray` with a
+        floating-point, integer, or boolean dtype of at most 8 bytes.
     """
     return (type(array) is np.ndarray and array.dtype.kind in 'fiub'
             and array.dtype.itemsize <= 8)

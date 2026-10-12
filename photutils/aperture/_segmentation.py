@@ -89,7 +89,7 @@ def process_segmentation_inputs(segmentation_image, labels,
 
     Returns
     -------
-    segmentation : 2D `~numpy.ndarray` (intp) or `None`
+    segmentation : 2D `~numpy.ndarray` (int32 or intp) or `None`
         The validated segmentation array, or `None` if
         ``mask_method`` is ``'none'``.
 
