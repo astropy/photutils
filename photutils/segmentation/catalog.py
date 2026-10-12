@@ -4899,7 +4899,7 @@ class SourceCatalog:
 
         return flux, flux_err
 
-    def _make_elliptical_apertures(self, *, scale=6.0, min_circ_radius=0.0):
+    def _make_elliptical_apertures(self, *, scale, min_circ_radius):
         """
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
@@ -4914,15 +4914,16 @@ class SourceCatalog:
 
         Parameters
         ----------
-        scale : float or `~numpy.ndarray`, optional
+        scale : float or `~numpy.ndarray`
             The scale factor to apply to the ellipse major and minor
-            axes. The default value of 6.0 is roughly two times the
-            isophotal extent of the source. A `~numpy.ndarray` input
-            must be a 1D array of length ``n_labels``.
+            axes. A `~numpy.ndarray` input must be a 1D array of length
+            ``n_labels``.
 
-        min_circ_radius : float, optional
+        min_circ_radius : float
             The radius in pixels of the circular aperture that is
-            returned for a source whose scaled axes are zero.
+            returned for a source whose scaled axes are zero. The scaled
+            axes are zero only for a positive minimum circular radius,
+            so a value of zero never makes an aperture.
 
         Returns
         -------
