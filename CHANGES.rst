@@ -1144,6 +1144,9 @@ Bug Fixes
     sources do not overlap the image and are now flagged or skipped.
     [#2484]
 
+  - Fixed ``PSFPhotometry`` and ``IterativePSFPhotometry`` returning
+    zero for the fixed model parameters of grouped sources. [#2508]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

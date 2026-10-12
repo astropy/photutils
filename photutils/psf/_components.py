@@ -1121,7 +1121,9 @@ class PSFFitter:
             List of individual PSF models, one for each source.
         """
         source_models = []
-        param_names = self.param_mapper.fitted_param_names
+        # Fixed parameters are copied as well because their per-source
+        # values are stored only in the flat model
+        param_names = self.psf_model.param_names
 
         for i in range(n_sources):
             # Create a copy of the base PSF model
