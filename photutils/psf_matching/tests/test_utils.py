@@ -421,6 +421,17 @@ class TestResizePSF:
         with pytest.raises(ValueError, match=match):
             resize_psf(psf, 1.0, 3.0, order=1)
 
+    @pytest.mark.parametrize('order', [-1, 6, 1.5, 3.0, '3', None])
+    def test_invalid_order(self, order):
+        """
+        Test that an order that is not an integer from 0 to 5 raises
+        ValueError.
+        """
+        psf = _make_gaussian_psf(11, 2.0)
+        match = 'order must be an integer from 0 to 5'
+        with pytest.raises(ValueError, match=match):
+            resize_psf(psf, 0.1, 0.05, order=order)
+
     def test_rectangular(self):
         """
         Test a PSF with different sizes along the two axes.

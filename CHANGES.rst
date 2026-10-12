@@ -1202,6 +1202,10 @@ Bug Fixes
     which the output grid lies within the outermost pixel centers of
     the input PSF, which can be smaller than before. [#2474]
 
+  - ``resize_psf`` now raises a ``ValueError`` if ``order`` is not an
+    integer from 0 to 5. The exception was a ``RuntimeError`` or a
+    ``TypeError``, depending on the value. [#2508]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
