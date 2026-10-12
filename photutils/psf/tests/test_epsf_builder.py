@@ -94,6 +94,10 @@ class _MockWCS:
     Mock WCS with an identity pixel-to-world transform.
     """
 
+    world_axis_units = ('deg', 'deg')
+    world_axis_object_components = (('celestial', 0, 'spherical.lon.degree'),
+                                    ('celestial', 1, 'spherical.lat.degree'))
+
     def pixel_to_world_values(self, x, y):
         return x, y
 

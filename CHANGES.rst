@@ -1147,6 +1147,10 @@ Bug Fixes
   - Fixed ``PSFPhotometry`` and ``IterativePSFPhotometry`` returning
     zero for the fixed model parameters of grouped sources. [#2508]
 
+  - Fixed ``LinkedEPSFStar.constrain_centers`` computing wrong star
+    centers for a WCS whose latitude axis comes first (e.g., ``CTYPE1 =
+    'DEC--TAN'``). [#2508]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

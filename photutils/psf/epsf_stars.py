@@ -18,6 +18,8 @@ from photutils.aperture import BoundingBox
 from photutils.psf.utils import _interpolate_missing_data
 from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import as_pair
+from photutils.utils._wcs_helpers import (_low_level_wcs,
+                                          _pixel_to_world_radians)
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
 
@@ -772,8 +774,8 @@ class LinkedEPSFStar:
         # Note: each star may have a different WCS, so we cannot
         # vectorize.
         good_stars = self.all_good_stars
-        sky_coords = np.array([
-            star.wcs_large.pixel_to_world_values(*star.center)
+        sky_coords = np.rad2deg([
+            _pixel_to_world_radians(star.wcs_large, *star.center)
             for star in good_stars])
 
         # Compute mean sky coordinate using spherical averaging
@@ -782,8 +784,8 @@ class LinkedEPSFStar:
         # Convert mean sky coordinate back to pixel coordinates for each
         # star
         for star in good_stars:
-            pixel_center = star.wcs_large.world_to_pixel_values(
-                mean_lon, mean_lat)
+            pixel_center = _lonlat_to_pixel(star.wcs_large, mean_lon,
+                                            mean_lat)
             star.cutout_center = np.asarray(pixel_center) - star.origin
 
     def constrain_fluxes(self):
@@ -822,6 +824,46 @@ class LinkedEPSFStar:
         mean_flux = np.mean([star.flux for star in good_stars])
         for star in good_stars:
             star.flux = mean_flux
+
+
+def _lonlat_to_pixel(wcs, lon, lat):
+    """
+    Convert a world longitude and latitude in degrees to pixel
+    coordinates.
+
+    The longitude and latitude are placed in the world axis order and
+    units of the WCS, so a WCS whose latitude axis comes first (e.g.,
+    ``CTYPE1 = 'DEC--TAN'``) is handled correctly.
+
+    Parameters
+    ----------
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    lon, lat : float
+        The world longitude and latitude in degrees.
+
+    Returns
+    -------
+    x, y : float
+        The pixel coordinates.
+    """
+    low_level_wcs = _low_level_wcs(wcs)
+
+    # The second element of each world_axis_object_components entry
+    # is the index of the axis within the sky coordinate, 0 for the
+    # longitude and 1 for the latitude
+    component_indices = [comp[1] for comp
+                         in low_level_wcs.world_axis_object_components]
+    units = low_level_wcs.world_axis_units
+    world = [None, None]
+    for component, value in enumerate((lon, lat)):
+        idx = component_indices.index(component)
+        world[idx] = value * u.deg.to(units[idx])
+    return low_level_wcs.world_to_pixel_values(*world)
 
 
 def _compute_mean_sky_coordinate(sky_coords):
