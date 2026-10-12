@@ -1165,6 +1165,12 @@ Bug Fixes
     instead of the filename field (e.g., ``'NRCA1'``). ``STDPSFGrid``
     sets the same metadata. [#2508]
 
+  - Fixed ``fit_2dgaussian`` and ``fit_fwhm`` raising a
+    ``NoOverlapError`` for a position whose fit region lies completely
+    outside the image. Such a source is now flagged in the
+    ``fit_2dgaussian`` results and has a NaN ``fit_fwhm`` value.
+    [#2508]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

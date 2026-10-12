@@ -9,6 +9,7 @@ from collections.abc import Iterator
 
 import numpy as np
 from astropy.modeling import Model
+from astropy.nddata import NoOverlapError
 from astropy.table import QTable
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
@@ -352,7 +353,16 @@ def _fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
 
     flux_init = []
     for yxpos in xypos[:, ::-1]:
-        cutout = CutoutImage(data, yxpos, tuple(fit_shape))
+        try:
+            cutout = CutoutImage(data, yxpos, tuple(fit_shape))
+        except NoOverlapError:
+            # PSFPhotometry flags a source whose fit region is off the
+            # image, so it only needs a finite placeholder here
+            zero_flux = 0.0
+            if isinstance(data, Quantity):
+                zero_flux <<= data.unit
+            flux_init.append(zero_flux)
+            continue
         good = np.isfinite(cutout.data)
         if mask is not None:
             mask_cutout = CutoutImage(mask, yxpos, tuple(fit_shape))
