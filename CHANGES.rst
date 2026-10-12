@@ -604,6 +604,12 @@ Bug Fixes
     now calculated in ``float64``, as are all of the other statistics.
     [#2446]
 
+  - Fixed the ``exact`` method of ``EllipticalAperture`` and
+    ``EllipticalAnnulus`` (and their sky variants) returning incorrect
+    overlap fractions, including values greater than 1, when a pixel
+    edge is tangent to the ellipse or a pixel corner lies exactly on
+    it. [#2497]
+
 - ``photutils.background``
 
   - Fixed the ``exclude_percentile`` box-exclusion criterion in

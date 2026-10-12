@@ -12,6 +12,7 @@ the modules that cimport them.
 
 cdef extern from "math.h" nogil:
     double asin(double x)
+    double atan2(double y, double x)
     double sin(double x)
     double sqrt(double x)
     double fabs(double x)
