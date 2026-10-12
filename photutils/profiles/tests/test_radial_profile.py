@@ -121,6 +121,24 @@ class TestRadialProfile:
         n_boundary = np.sum(rp.data_radius == max_radius)
         assert n_boundary == np.sum(dist == max_radius)
 
+    def test_data_min_radius(self):
+        """
+        Test that pixels whose centers lie inside the minimum radius are
+        excluded from the data profile.
+        """
+        data = np.ones((101, 101))
+        xycen = (50.0, 50.0)
+        min_radius = 5
+        max_radius = 25
+        rp = RadialProfile(data, xycen, np.arange(min_radius, max_radius + 1))
+
+        yy, xx = np.mgrid[0:101, 0:101]
+        dist = np.hypot(xx - xycen[0], yy - xycen[1])
+        within = (dist >= min_radius) & (dist <= max_radius)
+        assert np.min(rp.data_radius) == min_radius
+        assert len(rp.data_radius) == np.sum(within)
+        assert rp.data_radius.shape == rp.data_profile.shape
+
     def test_data_profile_access_after_normalize(self, profile_data):
         """
         Test that data_profile is consistent with the profile
@@ -397,6 +415,42 @@ class TestRadialProfile:
                             error=error << unit)
         rp3.plot()
         rp3.plot_error()
+
+    @pytest.mark.parametrize('name', ['gaussian', 'moffat'])
+    def test_fit_units(self, profile_data, name):
+        """
+        Test the Gaussian and Moffat fits with ``Quantity`` data.
+
+        The model amplitude has the data unit and is dimensionless after
+        the profile is normalized.
+        """
+        xycen, data, error, _ = profile_data
+        edge_radii = np.arange(36)
+        unit = u.Jy
+        rp1 = RadialProfile(data, xycen, edge_radii, error=error)
+        rp2 = RadialProfile(data << unit, xycen, edge_radii,
+                            error=error << unit)
+
+        fit1 = getattr(rp1, f'{name}_fit')
+        fit2 = getattr(rp2, f'{name}_fit')
+        assert fit2.amplitude.unit == unit
+        assert_allclose(fit2.amplitude.value, fit1.amplitude.value)
+        profile = getattr(rp2, f'{name}_profile')
+        assert profile.unit == unit
+        assert_allclose(fit2(rp2.radius), profile)
+
+        rp1.normalize()
+        rp2.normalize()
+        fit1 = getattr(rp1, f'{name}_fit')
+        fit2 = getattr(rp2, f'{name}_fit')
+        assert fit2.amplitude.unit == u.dimensionless_unscaled
+        assert_allclose(fit2.amplitude.value, fit1.amplitude.value)
+        profile = getattr(rp2, f'{name}_profile')
+        assert profile.unit == u.dimensionless_unscaled
+        assert_allclose(fit2(rp2.radius), profile)
+
+        rp2.unnormalize()
+        assert getattr(rp2, f'{name}_fit').amplitude.unit == unit
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_ylabel_units(self, profile_data):

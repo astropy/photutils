@@ -43,7 +43,8 @@ class _CurveOfGrowthBase(ProfileBase):
     def _raw_profile(self):
         """
         The raw (unnormalized) curve-of-growth profile as a 1D
-        `~numpy.ndarray`.
+        `~numpy.ndarray`, or a `~astropy.units.Quantity` if the input
+        ``data`` has units.
         """
         return self._photometry[0]
 
@@ -51,7 +52,8 @@ class _CurveOfGrowthBase(ProfileBase):
     def _raw_profile_error(self):
         """
         The raw (unnormalized) curve-of-growth profile errors as a 1D
-        `~numpy.ndarray`.
+        `~numpy.ndarray`, or a `~astropy.units.Quantity` if the input
+        ``data`` has units.
 
         If no ``error`` array was provided, an empty array with shape
         ``(0,)`` is returned.
@@ -61,8 +63,8 @@ class _CurveOfGrowthBase(ProfileBase):
     @cached_property
     def area(self):
         """
-        The unmasked area within each aperture as a function of radius
-        as a 1D `~numpy.ndarray`.
+        The unmasked area within each aperture as a 1D
+        `~numpy.ndarray`.
         """
         return self._photometry[2]
 
@@ -79,7 +81,7 @@ class CurveOfGrowth(_CurveOfGrowthBase):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
         Non-finite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
@@ -87,19 +89,21 @@ class CurveOfGrowth(_CurveOfGrowthBase):
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    radii : 1D float `~numpy.ndarray`
+    radii : 1D array_like of float
         An array of the circular radii. ``radii`` must be strictly
         increasing with a minimum value greater than zero, and contain
         at least 2 values. The radial spacing does not need to be
-        constant.
+        constant. ``radii`` must be in pixels and cannot be a
+        `~astropy.units.Quantity`.
 
-    error : 2D `~numpy.ndarray`, optional
+    error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
         to include all sources of error, including the Poisson error of
         the sources (see `~photutils.utils.calc_total_error`). ``error``
-        must have the same shape as the input ``data``. Non-finite
-        values (e.g., NaN or inf) in the ``data`` or ``error`` array are
-        automatically masked.
+        must have the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity`, then ``error`` must have the same
+        units. Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -107,6 +111,25 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         Masked data are excluded from all calculations.
 
     <method_subpixels_descriptions>
+
+    Raises
+    ------
+    TypeError
+        If ``radii`` is a `~astropy.units.Quantity`.
+
+    ValueError
+        If ``data`` is not a 2D array, if ``radii`` is not a 1D array
+        with at least two values, has a value less than or equal to
+        zero, or is not strictly increasing, if ``error`` or ``mask``
+        does not have the same shape as ``data``, if ``data`` and
+        ``error`` do not have the same units, or if ``method`` or
+        ``subpixels`` is invalid.
+
+    Warns
+    -----
+    `~astropy.utils.exceptions.AstropyUserWarning`
+        If the ``data`` or ``error`` array contains non-finite values
+        that are not already masked by ``mask``.
 
     See Also
     --------
@@ -222,7 +245,7 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         cog.plot(ax=ax)
         cog.plot_error(ax=ax)
 
-    Plot a couple of the apertures on the data.
+    Plot three of the apertures on the data.
 
     .. plot::
 
@@ -299,11 +322,12 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         Calculate the encircled energy at a given radius using a cubic
         interpolator based on the profile data.
 
-        Note that this method assumes that input data has been
+        Note that this method assumes that the input data have been
         normalized such that the total enclosed flux is 1 for an
         infinitely large radius. You can also use the `normalize` method
-        before calling this method to normalize the profile to be 1 at
-        the largest input ``radii``.
+        before calling this method to normalize the profile such that
+        its maximum value is 1. For noisy data, the maximum may not
+        occur at the largest input ``radii``.
 
         Parameters
         ----------
@@ -324,14 +348,17 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         Calculate the radius at a given encircled energy using a cubic
         interpolator based on the profile data.
 
-        Note that this method assumes that input data has been
+        Note that this method assumes that the input data have been
         normalized such that the total enclosed flux is 1 for an
         infinitely large radius. You can also use the `normalize` method
-        before calling this method to normalize the profile to be 1 at
-        the largest input ``radii``.
+        before calling this method to normalize the profile such that
+        its maximum value is 1. For noisy data, the maximum may not
+        occur at the largest input ``radii``.
 
-        This interpolator returns values only for regions where the
-        curve-of-growth profile is monotonically increasing.
+        The interpolator uses only the leading part of the profile, up
+        to the first radius where the curve-of-growth profile stops
+        strictly increasing (or becomes non-finite). Profile values
+        beyond that point are ignored.
 
         Parameters
         ----------
@@ -342,7 +369,14 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         -------
         radius : `~numpy.ndarray`
             The radius at each encircled energy. Returns NaN for
-            encircled energies outside the range of the profile data.
+            encircled energies outside the range of the leading strictly
+            increasing part of the profile.
+
+        Raises
+        ------
+        ValueError
+            If the profile is not strictly increasing over at least its
+            first two values.
         """
         radius, profile = self._trim_to_monotonic(
             self.radius, self.profile, 'curve-of-growth')
@@ -362,7 +396,7 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
         Non-finite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
@@ -370,20 +404,22 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    half_sizes : 1D float `~numpy.ndarray`
+    half_sizes : 1D array_like of float
         An array of the square half side lengths. ``half_sizes`` must
         be strictly increasing with a minimum value greater than zero,
         and contain at least 2 values. The spacing does not need to be
         constant. The full side length of each square aperture is
-        ``2 * half_sizes``.
+        ``2 * half_sizes``. ``half_sizes`` must be in pixels and cannot
+        be a `~astropy.units.Quantity`.
 
-    error : 2D `~numpy.ndarray`, optional
+    error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
         to include all sources of error, including the Poisson error of
         the sources (see `~photutils.utils.calc_total_error`). ``error``
-        must have the same shape as the input ``data``. Non-finite
-        values (e.g., NaN or inf) in the ``data`` or ``error`` array are
-        automatically masked.
+        must have the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity`, then ``error`` must have the same
+        units. Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -391,6 +427,25 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         Masked data are excluded from all calculations.
 
     <method_subpixels_descriptions>
+
+    Raises
+    ------
+    TypeError
+        If ``half_sizes`` is a `~astropy.units.Quantity`.
+
+    ValueError
+        If ``data`` is not a 2D array, if ``half_sizes`` is not a 1D
+        array with at least two values, has a value less than or equal
+        to zero, or is not strictly increasing, if ``error`` or ``mask``
+        does not have the same shape as ``data``, if ``data`` and
+        ``error`` do not have the same units, or if ``method`` or
+        ``subpixels`` is invalid.
+
+    Warns
+    -----
+    `~astropy.utils.exceptions.AstropyUserWarning`
+        If the ``data`` or ``error`` array contains non-finite values
+        that are not already masked by ``mask``.
 
     See Also
     --------
@@ -474,7 +529,7 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         ecog.plot(ax=ax)
         ecog.plot_error(ax=ax)
 
-    Plot a couple of the apertures on the data.
+    Plot three of the apertures on the data.
 
     .. plot::
 
@@ -582,11 +637,12 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         Calculate the ensquared energy at a given half-size using a
         cubic interpolator based on the profile data.
 
-        Note that this method assumes that input data has been
+        Note that this method assumes that the input data have been
         normalized such that the total enclosed flux is 1 for an
         infinitely large half-size. You can also use the `normalize`
-        method before calling this method to normalize the profile to
-        be 1 at the largest input ``half_sizes``.
+        method before calling this method to normalize the profile such
+        that its maximum value is 1. For noisy data, the maximum may not
+        occur at the largest input ``half_sizes``.
 
         Parameters
         ----------
@@ -607,14 +663,17 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         Calculate the half-size at a given ensquared energy using a
         cubic interpolator based on the profile data.
 
-        Note that this method assumes that input data has been
+        Note that this method assumes that the input data have been
         normalized such that the total enclosed flux is 1 for an
         infinitely large half-size. You can also use the `normalize`
-        method before calling this method to normalize the profile to
-        be 1 at the largest input ``half_sizes``.
+        method before calling this method to normalize the profile such
+        that its maximum value is 1. For noisy data, the maximum may not
+        occur at the largest input ``half_sizes``.
 
-        This interpolator returns values only for regions where the
-        ensquared curve-of-growth profile is monotonically increasing.
+        The interpolator uses only the leading part of the profile,
+        up to the first half-size where the ensquared curve-of-growth
+        profile stops strictly increasing (or becomes non-finite).
+        Profile values beyond that point are ignored.
 
         Parameters
         ----------
@@ -625,7 +684,14 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         -------
         half_size : `~numpy.ndarray`
             The half-size at each ensquared energy. Returns NaN for
-            ensquared energies outside the range of the profile data.
+            ensquared energies outside the range of the leading strictly
+            increasing part of the profile.
+
+        Raises
+        ------
+        ValueError
+            If the profile is not strictly increasing over at least its
+            first two values.
         """
         half_size, profile = self._trim_to_monotonic(
             self.half_size, self.profile,
@@ -647,7 +713,7 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
         Non-finite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
@@ -655,11 +721,12 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
 
-    radii : 1D float `~numpy.ndarray`
+    radii : 1D array_like of float
         An array of the ellipse semimajor-axis lengths. ``radii`` must
         be strictly increasing with a minimum value greater than zero,
         and contain at least 2 values. The spacing does not need to be
-        constant.
+        constant. ``radii`` must be in pixels and cannot be a
+        `~astropy.units.Quantity`.
 
     axis_ratio : float
         The ratio of the semiminor axis to the semimajor axis
@@ -669,15 +736,16 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         The rotation angle as an angular quantity
         (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
         value in radians (as a float) from the positive ``x`` axis. The
-        rotation angle increases counterclockwise.
+        rotation angle increases counterclockwise. The default is 0.
 
-    error : 2D `~numpy.ndarray`, optional
+    error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
         to include all sources of error, including the Poisson error of
         the sources (see `~photutils.utils.calc_total_error`). ``error``
-        must have the same shape as the input ``data``. Non-finite
-        values (e.g., NaN or inf) in the ``data`` or ``error`` array are
-        automatically masked.
+        must have the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity`, then ``error`` must have the same
+        units. Non-finite values (e.g., NaN or inf) in the ``data`` or
+        ``error`` array are automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -685,6 +753,26 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         Masked data are excluded from all calculations.
 
     <method_subpixels_descriptions>
+
+    Raises
+    ------
+    TypeError
+        If ``radii`` is a `~astropy.units.Quantity`.
+
+    ValueError
+        If ``data`` is not a 2D array, if ``radii`` is not a 1D array
+        with at least two values, has a value less than or equal to
+        zero, or is not strictly increasing, if ``axis_ratio`` is not in
+        the range ``0 < axis_ratio <= 1``, if ``error`` or ``mask`` does
+        not have the same shape as ``data``, if ``data`` and ``error``
+        do not have the same units, or if ``method`` or ``subpixels`` is
+        invalid.
+
+    Warns
+    -----
+    `~astropy.utils.exceptions.AstropyUserWarning`
+        If the ``data`` or ``error`` array contains non-finite values
+        that are not already masked by ``mask``.
 
     See Also
     --------
@@ -779,7 +867,7 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         ecog.plot(ax=ax)
         ecog.plot_error(ax=ax)
 
-    Plot a couple of the apertures on the data.
+    Plot three of the apertures on the data.
 
     .. plot::
 
@@ -877,11 +965,12 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         Calculate the encircled energy at a given semimajor-axis length
         using a cubic interpolator based on the profile data.
 
-        Note that this method assumes that input data has been
+        Note that this method assumes that the input data have been
         normalized such that the total enclosed flux is 1 for an
         infinitely large radius. You can also use the `normalize` method
-        before calling this method to normalize the profile to be 1 at
-        the largest input ``radii``.
+        before calling this method to normalize the profile such that
+        its maximum value is 1. For noisy data, the maximum may not
+        occur at the largest input ``radii``.
 
         Parameters
         ----------
@@ -902,14 +991,17 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         Calculate the semimajor-axis length at a given encircled energy
         using a cubic interpolator based on the profile data.
 
-        Note that this method assumes that input data has been
+        Note that this method assumes that the input data have been
         normalized such that the total enclosed flux is 1 for an
         infinitely large radius. You can also use the `normalize` method
-        before calling this method to normalize the profile to be 1 at
-        the largest input ``radii``.
+        before calling this method to normalize the profile such that
+        its maximum value is 1. For noisy data, the maximum may not
+        occur at the largest input ``radii``.
 
-        This interpolator returns values only for regions where the
-        elliptical curve-of-growth profile is monotonically increasing.
+        The interpolator uses only the leading part of the profile,
+        up to the first semimajor-axis length where the elliptical
+        curve-of-growth profile stops strictly increasing (or becomes
+        non-finite). Profile values beyond that point are ignored.
 
         Parameters
         ----------
@@ -920,8 +1012,14 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         -------
         radius : `~numpy.ndarray`
             The semimajor-axis length at each encircled energy. Returns
-            NaN for encircled energies outside the range of the profile
-            data.
+            NaN for encircled energies outside the range of the leading
+            strictly increasing part of the profile.
+
+        Raises
+        ------
+        ValueError
+            If the profile is not strictly increasing over at least its
+            first two values.
         """
         radius, profile = self._trim_to_monotonic(
             self.radius, self.profile,

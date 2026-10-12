@@ -307,6 +307,14 @@ class TestMakeKernelWiener:
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(psf1, psf2, regularization=0.0)
 
+    def test_nan_regularization(self, psf1, psf2):
+        """
+        Test that NaN regularization raises ValueError.
+        """
+        match = 'regularization must be a positive number'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, regularization=np.nan)
+
     def test_penalty_string_equals_array(self, psf1, psf2):
         """
         Test that 'laplacian' string gives the same result as the

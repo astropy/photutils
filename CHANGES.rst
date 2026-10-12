@@ -772,6 +772,26 @@ Bug Fixes
     longer includes the data unit after the profile has been normalized
     (a normalized profile is dimensionless). [#2371]
 
+  - Fixed the ``RadialProfile`` ``gaussian_fit`` and ``moffat_fit``
+    attributes for ``Quantity`` input data. Previously, a ``UnitsError``
+    was raised for an unnormalized profile and the model amplitude had
+    inverse data units for a normalized profile. [#2494]
+
+  - The profile classes now raise a ``ValueError`` for an invalid
+    ``method`` or ``subpixels`` value, or for ``data`` that is not 2D,
+    when the class is created. Previously, the error was raised only
+    when the profile was first computed. [#2494]
+
+  - The profile ``normalize`` method now emits a warning and leaves
+    the profile unchanged when the maximum or sum of the profile is
+    negative. Previously, the profile was divided by the negative
+    value, which reversed its sign. [#2494]
+
+  - The ``RadialProfile`` ``data_radius`` and ``data_profile``
+    attributes now exclude pixels whose centers lie inside the minimum
+    input radius, consistent with the binned profile. Previously, only
+    the maximum input radius was applied. [#2494]
+
   - A ``Quantity`` ``radii`` (or ``half_sizes``) input to the profile
     classes now raises a ``TypeError``. Previously, the units were
     silently dropped. [#2371]
@@ -1096,6 +1116,10 @@ Bug Fixes
     ``ValueError`` if the computed kernel contains non-finite values,
     which can occur when the Fourier-space denominator is zero at
     frequencies where the numerator is also zero. [#2372]
+
+  - ``make_wiener_kernel`` now raises a ``ValueError`` stating that
+    ``regularization`` must be positive when it is NaN. Previously, an
+    unrelated error about a non-finite kernel was raised. [#2494]
 
   - Fixed ``resize_psf`` to return a PSF with the requested pixel
     scale. The output pixel scale was ``input_pixel_scale * (n_in - 1) /
