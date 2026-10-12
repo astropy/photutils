@@ -1151,6 +1151,10 @@ Bug Fixes
     ``ValueError`` with a clear message if all the parameters of the
     PSF model are fixed. [#2508]
 
+  - The ``qfit`` and ``cfit`` values of ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` are now ``0.0`` instead of ``-0.0`` for
+    an exact fit. [#2509]
+
   - Fixed ``LinkedEPSFStar.constrain_centers`` computing wrong star
     centers for a WCS whose latitude axis comes first (e.g., ``CTYPE1 =
     'DEC--TAN'``). [#2508]

@@ -391,7 +391,7 @@ class _FitEngine:
         for idx, valid_idx in enumerate(valid_indices):
             source_residuals = residuals[starts[idx]:starts[idx + 1]]
 
-            # The residuals are (data - model) / error when errors are
+            # The residuals are (model - data) / error when errors are
             # input. qfit and cfit need the raw residuals, so multiply
             # by the errors, which run_fitter has validated as positive
             # and finite.
@@ -404,6 +404,7 @@ class _FitEngine:
             sum_abs_residuals[valid_idx] = float(np.abs(raw_residuals).sum())
             cen_idx = cen_index[valid_idx]
             if np.isfinite(cen_idx):
+                # cfit uses (data - model)
                 cen_residuals[valid_idx] = float(-raw_residuals[int(cen_idx)])
 
             # The reduced chi-squared needs errors and degrees of

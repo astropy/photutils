@@ -1369,6 +1369,14 @@ class PSFResultsAssembler:
             cfit[cfit_mask] = (cen_residuals[cfit_mask]
                                / flux_vals[cfit_mask])
 
+        # An exact fit has zero residuals, and the sign of the resulting
+        # zero depends on the sign convention of the fitter residuals
+        # (cfit) and on the sign of the flux (qfit and cfit). Adding
+        # zero turns a negative zero (-0.0) into a positive zero and
+        # leaves all other values, including NaN, unchanged.
+        qfit += 0.0
+        cfit += 0.0
+
         return qfit, cfit, reduced_chi2
 
     @_update_flags_docstring
