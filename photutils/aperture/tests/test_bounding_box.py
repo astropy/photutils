@@ -176,6 +176,17 @@ class TestSetOperations:
 
         assert bbox1.intersection(BoundingBox(30, 40, 50, 60)) is None
 
+    def test_intersection_touching(self):
+        """
+        Test that bounding boxes that share only an edge or a corner do
+        not intersect.
+        """
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert bbox.intersection(BoundingBox(10, 12, 2, 20)) is None
+        assert bbox.intersection(BoundingBox(1, 10, 20, 25)) is None
+        assert bbox.intersection(BoundingBox(10, 12, 20, 25)) is None
+        assert (bbox & BoundingBox(10, 12, 2, 20)) is None
+
     def test_operators_invalid_type(self):
         """
         Test that the | and & operators raise the standard TypeError

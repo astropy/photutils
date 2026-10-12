@@ -617,6 +617,10 @@ Bug Fixes
     input inner-to-outer size ratios, which is always a valid annulus
     and is recovered exactly by the inverse conversion. [#2505]
 
+  - Fixed ``BoundingBox.intersection`` returning a ``BoundingBox`` with
+    zero width or height for two bounding boxes that share only an edge
+    or a corner. `None` is now returned. [#2505]
+
 - ``photutils.background``
 
   - Fixed the ``exclude_percentile`` box-exclusion criterion in
