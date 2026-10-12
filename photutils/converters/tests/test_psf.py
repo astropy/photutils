@@ -121,6 +121,33 @@ def test_psf_converters_preserve_fitting_state(tmp_path, example):
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('example', MODEL_EXAMPLES, ids=_example_id)
+def test_psf_converters_preserve_zero_bounds(tmp_path, example):
+    """
+    Test that bounds whose limits are all zero or `None` survive a
+    round trip.
+
+    The asdf-astropy transform converter does not write these bounds
+    (e.g., a non-negative flux bound of ``(0, None)``).
+    """
+    psf, _ = example()
+    psf.bounds[psf.param_names[0]] = (0, None)
+    psf.bounds[psf.param_names[1]] = (None, 0)
+    psf.bounds[psf.param_names[2]] = (0, 0)
+
+    filename = tmp_path / 'psf.asdf'
+    with asdf.AsdfFile() as af:
+        af['psf'] = psf
+        af.write_to(filename)
+
+    with asdf.open(filename) as af:
+        psf2 = af['psf']
+
+    assert psf2.bounds == psf.bounds
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
 def test_psf_examples_cover_all_converters():
     """
     Test that the round-trip test exercises every type handled by a PSF

@@ -6,7 +6,7 @@ Converters to and from the ASDF format for photutils.psf.functional_models.
 from asdf_astropy.converters.transform.core import (TransformConverterBase,
                                                     parameter_to_value)
 
-from photutils.converters._utils import optional_params
+from photutils.converters._utils import add_parameter_bounds, optional_params
 
 __all__ = ['AiryDiskPRFConverter',
            'AiryDiskPSFConverter',
@@ -47,6 +47,11 @@ class _PSFModelConverter(TransformConverterBase):
 
         return getattr(psf, self.types[0].rsplit('.', 1)[-1])
 
+    def to_yaml_tree(self, obj, tag, ctx):
+        node = super().to_yaml_tree(obj, tag, ctx)
+        add_parameter_bounds(node, obj)
+        return node
+
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
         names = ('flux', 'x_0', 'y_0', *self.model_params,
                  *self.optional_model_params)
@@ -67,9 +72,9 @@ class _PSFModelConverter(TransformConverterBase):
                               'bbox_factor', *self.optional_attributes),
         )
 
-        # The file stores only the fixed=True entries and the non-empty
-        # bounds, relative to a baseline of fixed=False and bounds of
-        # (None, None). The photutils models default their shape
+        # The file stores only the fixed=True entries and the bounds
+        # that are set, relative to a baseline of fixed=False and bounds
+        # of (None, None). The photutils models default their shape
         # parameters to fixed=True with bounds set, so the constraints
         # are reset to that baseline here. The caller then applies the
         # stored constraints on top, which reconstructs the saved state
