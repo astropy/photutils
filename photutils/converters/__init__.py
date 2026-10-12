@@ -2,9 +2,10 @@
 """
 ASDF converters.
 
-The aperture converters need only ``asdf``. The PSF converters are built
-on the ``asdf-astropy`` transform machinery, so they are defined only
-when that optional dependency is installed.
+The converters are defined only when the optional dependencies they
+need are installed. The aperture converters need only ``asdf``. The PSF
+converters are built on the ``asdf-astropy`` transform machinery, so
+they also need ``asdf-astropy``.
 """
 
 from importlib.util import find_spec

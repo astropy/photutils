@@ -75,7 +75,7 @@ def make_wcs(shape, galactic=False):
         wcs.wcs.radesys = 'ICRS'
         wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
     else:
-        wcs.wcs.ctype = ['GLON-CAR', 'GLAT-CAR']
+        wcs.wcs.ctype = ['GLON-TAN', 'GLAT-TAN']
 
     return wcs
 

@@ -8,8 +8,8 @@ grid.
 The cdef functions are not intended to be called from Python code.
 They are pure C math functions declared ``noexcept nogil`` so they can
 be called without the GIL, including from multiple threads on
-free-threaded Python builds. Their signatures are exported via
-circle_overlap.pxd for reuse elsewhere.
+free-threaded Python builds. The signatures of the single-pixel
+functions are exported via circle_overlap.pxd for reuse elsewhere.
 
 NOTE: The ``circular_overlap_grid`` function should be named
 ``circle_overlap_grid``, but it has been public for a long time and
@@ -60,16 +60,17 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     use_exact : 0 or 1
         Set to ``1`` to use an exact method to calculate the overlap
         between the circle and each pixel. Set to ``0`` to use a
-        sub-pixel sampling method to calculate the overlap, where each
+        subpixel sampling method to calculate the overlap, where each
         pixel is divided into ``subpixels ** 2`` subpixels and the
         fraction of subpixels that are within the circle is used to
         estimate the overlap.
 
     subpixels : int
         The number of subpixels to use in each dimension when using
-        the sub-pixel sampling method. Each pixel is resampled by this
-        factor in each dimension, so each pixel is divided into
-        ``subpixels ** 2`` subpixels.
+        the subpixel sampling method (``use_exact=0``). It must be at
+        least 1 in that case. It is ignored when ``use_exact=1``. Each
+        pixel is resampled by this factor in each dimension, so each
+        pixel is divided into ``subpixels ** 2`` subpixels.
 
         A subpixel is included only if its center lies strictly inside
         the circle. Subpixel centers lying exactly on the circle
@@ -84,6 +85,12 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         corners at (xmin + i * dx, ymin + j * dy) and (xmin + (i + 1)
         * dx, ymin + (j + 1) * dy), where dx and dy are the width of
         each pixel in the x and y direction, respectively.
+
+    Raises
+    ------
+    ValueError
+        If ``use_exact`` is not 0 or 1, or if ``subpixels`` is less
+        than 1 when ``use_exact=0``.
     """
     if use_exact != 0 and use_exact != 1:
         msg = 'use_exact must be 0 or 1'

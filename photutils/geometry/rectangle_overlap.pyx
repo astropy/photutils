@@ -64,28 +64,30 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         direction, respectively.
 
     width : float
-        The width of the rectangle.
+        The full extent of the rectangle along its rotated x axis (the
+        direction given by ``theta``).
 
     height : float
-        The height of the rectangle.
+        The full extent of the rectangle perpendicular to ``width``.
 
     theta : float
-        The position angle of the rectangle in radians
-        (counterclockwise).
+        The rotation angle of the ``width`` side in radians, measured
+        counterclockwise from the positive x axis.
 
     use_exact : 0 or 1
         Set to ``1`` to use an exact method to calculate the overlap
         between the rectangle and each pixel. Set to ``0`` to use a
-        sub-pixel sampling method to calculate the overlap, where each
+        subpixel sampling method to calculate the overlap, where each
         pixel is divided into ``subpixels ** 2`` subpixels and the
         fraction of subpixels that are within the rectangle is used to
         estimate the overlap.
 
     subpixels : int
         The number of subpixels to use in each dimension when using
-        the sub-pixel sampling method. Each pixel is resampled by this
-        factor in each dimension, so each pixel is divided into
-        ``subpixels ** 2`` subpixels.
+        the subpixel sampling method (``use_exact=0``). It must be at
+        least 1 in that case. It is ignored when ``use_exact=1``. Each
+        pixel is resampled by this factor in each dimension, so each
+        pixel is divided into ``subpixels ** 2`` subpixels.
 
         A subpixel is included only if its center lies strictly inside
         the rectangle. Subpixel centers lying exactly on the rectangle
@@ -100,6 +102,12 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         corners at (xmin + i * dx, ymin + j * dy) and (xmin + (i + 1)
         * dx, ymin + (j + 1) * dy), where dx and dy are the width of
         each pixel in the x and y direction, respectively.
+
+    Raises
+    ------
+    ValueError
+        If ``use_exact`` is not 0 or 1, or if ``subpixels`` is less
+        than 1 when ``use_exact=0``.
     """
     if use_exact != 0 and use_exact != 1:
         msg = 'use_exact must be 0 or 1'

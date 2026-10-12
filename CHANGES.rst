@@ -755,6 +755,10 @@ Bug Fixes
     confusing units-mismatch error was raised when ``data`` was a
     ``Quantity``. [#2370]
 
+  - Fixed ``data_properties`` and ``gini`` to use the mask of a
+    ``numpy.ma.MaskedArray`` input. Previously, the mask was ignored
+    and the masked values were included in the calculations. [#2499]
+
 - ``photutils.profiles``
 
   - Fixed ``RadialProfile.data_profile`` so that its values are always
@@ -1325,6 +1329,22 @@ API Changes
   - The ``make_model_params`` output table now includes the creation
     date and photutils version metadata, consistent with
     ``make_random_models_table``. [#2374]
+
+  - ``make_wcs`` with ``galactic=True`` now returns a WCS with a
+    tangent (TAN) projection instead of a plate carree (CAR)
+    projection, so that it is equivalent to the ``make_gwcs`` WCS.
+    [#2499]
+
+  - ``make_model_params`` now raises a ``ValueError`` if a keyword
+    argument is named ``id`` or has the same name as ``x_name`` or
+    ``y_name``, and ``make_random_models_table`` now raises a
+    ``ValueError`` if ``param_ranges`` contains an ``'id'`` key.
+    Previously, the ID or position column was silently replaced.
+    [#2499]
+
+  - ``make_model_image`` now raises a ``ValueError`` with a clear
+    message if a ``params_table`` column has units and
+    ``params_table`` is not a ``QTable``. [#2499]
 
 - ``photutils.detection``
 

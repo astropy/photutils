@@ -67,10 +67,12 @@ def make_4gaussians_image(noise=True):
     Make an example image containing four 2D Gaussians plus a constant
     background.
 
-    The background has a mean of 5.
+    The constant background has a value of 5.
 
     If ``noise`` is `True`, then Gaussian noise with a mean of 0 and a
-    standard deviation of 5 is added to the output image.
+    standard deviation of 5 is added to the output image. The noise is
+    generated with a fixed random seed, so the output image is the same
+    for every call.
 
     Parameters
     ----------
@@ -81,7 +83,8 @@ def make_4gaussians_image(noise=True):
     Returns
     -------
     image : 2D `~numpy.ndarray`
-        Image containing four 2D Gaussian sources.
+        The image, with shape (100, 200), containing four 2D Gaussian
+        sources.
 
     See Also
     --------
@@ -111,10 +114,12 @@ def make_100gaussians_image(noise=True):
     Make an example image containing 100 2D Gaussians plus a constant
     background.
 
-    The background has a mean of 5.
+    The constant background has a value of 5.
 
     If ``noise`` is `True`, then Gaussian noise with a mean of 0 and a
-    standard deviation of 2 is added to the output image.
+    standard deviation of 2 is added to the output image. The noise is
+    generated with a fixed random seed, so the output image is the same
+    for every call.
 
     Parameters
     ----------
@@ -125,7 +130,8 @@ def make_100gaussians_image(noise=True):
     Returns
     -------
     image : 2D `~numpy.ndarray`
-        Image containing 100 2D Gaussian sources.
+        The image, with shape (300, 500), containing 100 2D Gaussian
+        sources.
 
     See Also
     --------

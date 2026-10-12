@@ -24,10 +24,11 @@ def gini(data, mask=None):
     .. math::
 
         G = \frac{1}{\overline{|x|} \, n \, (n - 1)}
-            \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
+            \sum_{i=1}^{n} (2i - n - 1) \left | x_i \right |
 
-    where :math:`\overline{|x|}` is the mean of the absolute value of
-    all pixel values :math:`x_i`. If all pixel values are zero, the Gini
+    where the :math:`n` pixel values :math:`x_i` are sorted in order
+    of increasing absolute value and :math:`\overline{|x|}` is the mean
+    of their absolute values. If all pixel values are zero, the Gini
     coefficient is zero.
 
     The Gini coefficient is a way of measuring the inequality in a given
@@ -38,10 +39,10 @@ def gini(data, mask=None):
     1 represents a galaxy image with all its light concentrated in just
     one pixel.
 
-    Usually Gini's measurement needs some sort of preprocessing for
-    defining the galaxy region in the image based on the quality of the
-    input data. As there is not a general standard for doing this, this
-    is left for the user.
+    Measuring the Gini coefficient usually requires some preprocessing
+    to define the galaxy region in the image, based on the quality of
+    the input data. There is no general standard for doing this, so it
+    is left to the user.
 
     Negative pixel values are used via their absolute value. Invalid
     values (NaN and inf) in the input are automatically excluded from
@@ -54,9 +55,11 @@ def gini(data, mask=None):
     data : array_like
         The data array or object that can be converted to an array. The
         array may have any dimensionality (e.g., a 1D array or a 2D
-        image), with its values treated as a flattened set.
+        image), with its values treated as a flattened set. If ``data``
+        is a `~numpy.ma.MaskedArray`, its mask is combined with the
+        input ``mask``.
 
-    mask : array_like, optional
+    mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where `True`
         values indicate masked pixels. Masked pixels are excluded from
         the calculation.
@@ -73,15 +76,22 @@ def gini(data, mask=None):
         If ``mask`` is provided and does not have the same shape as
         ``data``.
     """
+    data_mask = None
+    if isinstance(data, np.ma.MaskedArray):
+        data_mask = np.ma.getmaskarray(data)
+        data = data.data
     data = np.asarray(data)
     if mask is not None:
         mask = np.asarray(mask, dtype=bool)
         if mask.shape != data.shape:
             msg = 'mask must have the same shape as data'
             raise ValueError(msg)
-        values = np.ravel(data[~mask])
+        if data_mask is not None:
+            mask = mask | data_mask
     else:
-        values = np.ravel(data)
+        mask = data_mask
+
+    values = np.ravel(data) if mask is None else np.ravel(data[~mask])
 
     # Exclude invalid values (NaN, inf)
     values = np.abs(values[np.isfinite(values)])

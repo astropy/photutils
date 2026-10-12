@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# cython: language_level=3
+# cython: language_level=3, cdivision=True
 """
 Declarations needed to cimport the core geometry functions into other
 Cython files. All functions are pure C math functions that are safe to
@@ -51,15 +51,15 @@ cdef inline double distance(double x1, double y1, double x2,
 
     Parameters
     ----------
-    x1, y1 : float
+    x1, y1 : double
         The coordinates of the first point.
 
-    x2, y2 : float
+    x2, y2 : double
         The coordinates of the second point.
 
     Returns
     -------
-    d : float
+    d : double
         The Euclidean distance between the two points.
     """
     return sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
@@ -77,15 +77,15 @@ cdef inline double area_arc(double x1, double y1, double x2, double y2,
 
     Parameters
     ----------
-    x1, y1, x2, y2 : float
+    x1, y1, x2, y2 : double
         The coordinates of the two points defining the chord.
 
-    r : float
+    r : double
         The radius of the circle.
 
     Returns
     -------
-    area : float
+    area : double
         The area of the circular segment.
 
     References
@@ -109,12 +109,12 @@ cdef inline double area_triangle(double x1, double y1, double x2, double y2,
 
     Parameters
     ----------
-    x1, y1, x2, y2, x3, y3 : float
+    x1, y1, x2, y2, x3, y3 : double
         The coordinates of the three vertices.
 
     Returns
     -------
-    area : float
+    area : double
         The (unsigned) area of the triangle.
     """
     return 0.5 * fabs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))

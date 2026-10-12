@@ -66,14 +66,15 @@ PHOTUTILS_MANIFEST_URIS = [
 
 def get_extensions():
     """
-    Get the photutils extension.
+    Get the photutils ASDF extensions.
 
-    This method is registered with the asdf.extensions entry point.
+    This function is registered with the ``asdf.extensions`` entry
+    point.
 
     Returns
     -------
-    extensions : list
-        A list of ASDF extensions.
+    extensions : list of ``asdf.extension.ManifestExtension``
+        The ASDF extensions, one for each photutils manifest.
     """
     return [
         ManifestExtension.from_uri(
@@ -86,16 +87,15 @@ def get_extensions():
 
 def get_resource_mappings():
     """
-    Get the resource mapping instances for the photutils schemas and
-    manifests.
+    Get the resource mappings for the photutils schemas and manifests.
 
-    This method is registered with the asdf.resource_mappings entry
-    point.
+    This function is registered with the ``asdf.resource_mappings``
+    entry point.
 
     Returns
     -------
-    mappings : list
-        A list of `collections.abc.Mapping` of ASDF resource mappings.
+    mappings : list of `collections.abc.Mapping`
+        The ASDF resource mappings for the schemas and the manifests.
     """
     from . import resources
 

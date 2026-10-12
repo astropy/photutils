@@ -22,8 +22,8 @@ def test_make_wcs():
     assert wcs.wcs.radesys == 'ICRS'
 
     wcs = make_wcs(shape, galactic=True)
-    assert wcs.wcs.ctype[0] == 'GLON-CAR'
-    assert wcs.wcs.ctype[1] == 'GLAT-CAR'
+    assert wcs.wcs.ctype[0] == 'GLON-TAN'
+    assert wcs.wcs.ctype[1] == 'GLAT-TAN'
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
@@ -47,16 +47,21 @@ def test_make_gwcs():
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
-def test_make_wcs_compare():
+@pytest.mark.parametrize('galactic', [False, True])
+def test_make_wcs_compare(galactic):
     """
     Test that make_wcs and make_gwcs return equivalent WCS
     transformations.
-    """
-    shape = (200, 300)
-    wcs = make_wcs(shape)
-    gwcs_obj = make_gwcs(shape)
-    sc1 = wcs.pixel_to_world((50, 75), (50, 100))
-    sc2 = gwcs_obj.pixel_to_world((50, 75), (50, 100))
 
-    assert_allclose(sc1.ra, sc2.ra)
-    assert_allclose(sc1.dec, sc2.dec)
+    The image is large so that the corners are far enough from the
+    reference pixel to distinguish between projections.
+    """
+    shape = (4000, 6000)
+    wcs = make_wcs(shape, galactic=galactic)
+    gwcs_obj = make_gwcs(shape, galactic=galactic)
+    xpos = (0, 5999, 0, 5999, 3000)
+    ypos = (0, 0, 3999, 3999, 2000)
+    sc1 = wcs.pixel_to_world(xpos, ypos)
+    sc2 = gwcs_obj.pixel_to_world(xpos, ypos)
+
+    assert_allclose(sc1.separation(sc2).arcsec, 0, atol=1e-6)

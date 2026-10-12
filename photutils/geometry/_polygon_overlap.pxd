@@ -1,5 +1,5 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# cython: language_level=3
+# cython: language_level=3, cdivision=True
 """
 Declarations needed to cimport the polygon overlap functions into other
 Cython files. These single-pixel functions are pure C math functions
@@ -93,10 +93,11 @@ cdef inline void polygon_work_partition(double *base, int n_poly,
     Parameters
     ----------
     base : double *
-        The workspace buffer, of at least ``polygon_work_size(n_poly)``
-        doubles. The layout is the polygon vertex arrays (``n_poly``
-        each), the four clip buffers (``buf_size`` each), and the three
-        edge-normal arrays (``n_poly`` each).
+        The workspace buffer, of at least the number of doubles
+        returned by ``polygon_work_size``. The layout is the polygon
+        vertex arrays (``n_poly`` each), the four clip buffers
+        (``buf_size`` each), and the three edge-normal arrays
+        (``n_poly`` each).
 
     n_poly : int
         The number of polygon vertices.
