@@ -29,7 +29,7 @@ class BatchFluxRadiusArgs(NamedTuple):
 
     counts: np.ndarray
     """The number of cutout pixels of each source (zero for a source
-    without a solution)."""
+    skipped by the preparation)."""
 
     nx: np.ndarray
     """The cutout width of each source."""
