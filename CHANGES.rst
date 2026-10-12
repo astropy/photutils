@@ -1147,6 +1147,10 @@ Bug Fixes
   - Fixed ``PSFPhotometry`` and ``IterativePSFPhotometry`` returning
     zero for the fixed model parameters of grouped sources. [#2508]
 
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise a
+    ``ValueError`` with a clear message if all the parameters of the
+    PSF model are fixed. [#2508]
+
   - Fixed ``LinkedEPSFStar.constrain_centers`` computing wrong star
     centers for a WCS whose latitude axis comes first (e.g., ``CTYPE1 =
     'DEC--TAN'``). [#2508]

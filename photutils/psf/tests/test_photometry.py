@@ -1205,7 +1205,11 @@ def test_local_bkg_nonfinite_measured(test_data):
     assert np.all(phot['flux_err'] > 0)
 
 
-def test_fixed_params(test_data):
+@pytest.mark.parametrize('grouper', [None, SourceGrouper(20)])
+def test_all_params_fixed(test_data, grouper):
+    """
+    Test that a PSF model with no free parameters raises a clear error.
+    """
     data, error, _ = test_data
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
@@ -1215,9 +1219,9 @@ def test_fixed_params(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
-                            aperture_radius=4)
+                            grouper=grouper, aperture_radius=4)
 
-    match = r'`bounds` must contain 2 elements'
+    match = 'psf_model has no free parameters to fit'
     with pytest.raises(ValueError, match=match):
         psfphot(data, error=error)
 

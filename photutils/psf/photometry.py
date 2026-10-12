@@ -1750,6 +1750,11 @@ class PSFPhotometry:
         # Reset state from previous runs
         self._reset_results()
 
+        if not self._param_mapper.fitted_param_names:
+            msg = ('psf_model has no free parameters to fit. At least one '
+                   'model parameter must not be fixed.')
+            raise ValueError(msg)
+
         try:
             # Handle NDData input
             if isinstance(data, NDData):
