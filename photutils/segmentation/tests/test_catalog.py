@@ -4926,7 +4926,9 @@ def _masked_quad_inputs():
 def test_centroid_quad_masked_pixels(bad_pixels, bad_value):
     """
     Test that masked and non-finite pixels in the 3x3 box are left out
-    of the quadratic centroid fit and of its error propagation.
+    of the quadratic centroid fit and of its error propagation, and that
+    an unmasked box pixel outside of the source segment is fit with its
+    data value.
     """
     data, error, segment_map = _masked_quad_inputs()
     bad = np.zeros(data.shape, dtype=bool)
@@ -4940,12 +4942,11 @@ def test_centroid_quad_masked_pixels(bad_pixels, bad_value):
         cat = SourceCatalog(data, segment_map, error=error)
     assert not cat.centroid_quad_fallback[0]
 
-    # The reference is centroid_quadratic on the cutout with the pixels
-    # outside of the source segment set to zero and the bad pixels
-    # masked
+    # The reference is centroid_quadratic on the data cutout with the
+    # bad pixels masked
     slc = cat.slices[0]
-    outside = segment_map.data[slc] == 0
-    cutout = np.where(outside, 0.0, data[slc])
+    assert segment_map.data[14, 13] == 0
+    cutout = data[slc]
     cutout_mask = bad[slc]
 
     def reference(values):
@@ -4955,14 +4956,13 @@ def test_centroid_quad_masked_pixels(bad_pixels, bad_value):
                     rtol=1.0e-10)
 
     # The errors are propagated with a numerical Jacobian over the
-    # fitted pixels within the source segment. The masked pixels and
-    # the zero-filled pixels outside of the segment have no variance.
+    # fitted pixels. The masked pixels have no variance.
     eps = 1.0e-6
     var_expected = np.zeros(2)
     for yidx in range(12, 15):
         for xidx in range(11, 14):
             idx = (yidx - slc[0].start, xidx - slc[1].start)
-            if cutout_mask[idx] or outside[idx]:
+            if cutout_mask[idx]:
                 continue
             cutout_p = cutout.copy()
             cutout_p[idx] += eps
@@ -4972,6 +4972,27 @@ def test_centroid_quad_masked_pixels(bad_pixels, bad_value):
             var_expected += jacobian**2 * error[yidx, xidx]**2
     assert_allclose(cat.centroid_quad_err[0], np.sqrt(var_expected),
                     rtol=1.0e-6)
+
+
+def test_centroid_quad_outside_segment():
+    """
+    Test that the unmasked pixels of the 3x3 box that are outside of
+    the source segment, including a pixel of a neighboring source, are
+    fit with their data values.
+    """
+    data, error, segment_map = _masked_quad_inputs()
+    segment_data = segment_map.data.copy()
+    segment_data[12, 11] = 2
+    cat = SourceCatalog(data, SegmentationImage(segment_data), error=error)
+    assert not cat.centroid_quad_fallback[0]
+
+    slc = cat.slices[0]
+    expected = centroid_quadratic(data[slc], fit_boxsize=3)
+    assert_allclose(cat.cutout_centroid_quad[0], expected, rtol=1.0e-10)
+
+    zero_filled = np.where(segment_data[slc] == 1, data[slc], 0.0)
+    biased = centroid_quadratic(zero_filled, fit_boxsize=3)
+    assert not np.allclose(expected, biased, rtol=1.0e-3)
 
 
 @pytest.mark.parametrize('bad_pixels', [

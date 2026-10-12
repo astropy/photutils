@@ -3104,8 +3104,8 @@ class SourceCatalog:
 
         compute_err = self._error is not None
 
-        # Gather the 3x3 box around the peak pixel of each masked
-        # (zero-filled) cutout.
+        # Gather the 3x3 box of data values around the peak pixel of
+        # each masked (zero-filled) cutout.
         arrays = self._get_batch_arrays()
         iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         status, peak, boxes, box_var, fitted = self._threaded_batch(
@@ -3176,9 +3176,8 @@ class SourceCatalog:
                 # pixel values (``c = pinv @ pixels``) and the peak
                 # position is a rational function of the coefficients,
                 # so the position variances follow from the delta
-                # method. Pixels outside the source segment have a fixed
-                # (zeroed) data value and masked pixels are not in the
-                # fit, so neither contributes variance.
+                # method. Masked pixels are not in the fit, so they do
+                # not contribute variance.
                 zeros = np.zeros(n_src)
                 grad_x = np.column_stack(
                     [zeros,
@@ -3236,8 +3235,9 @@ class SourceCatalog:
         segment, masked, or non-finite are set to zero before the peak
         is located. Pixels of the 3x3 box that are masked (by the input
         ``mask``) or that have a non-finite ``data`` value are left out
-        of the fit. The other pixels of the box that are outside the
-        source segment enter the fit with a value of zero.
+        of the fit. The other pixels of the box enter the fit with their
+        ``data`` values, including pixels that are outside the source
+        segment or that belong to a neighboring source.
 
         The isophotal centroid (`cutout_centroid`) is returned instead
         (NaN where the isophotal centroid is NaN) in these cases:
@@ -3274,8 +3274,9 @@ class SourceCatalog:
         segment, masked, or non-finite are set to zero before the peak
         is located. Pixels of the 3x3 box that are masked (by the input
         ``mask``) or that have a non-finite ``data`` value are left out
-        of the fit. The other pixels of the box that are outside the
-        source segment enter the fit with a value of zero.
+        of the fit. The other pixels of the box enter the fit with their
+        ``data`` values, including pixels that are outside the source
+        segment or that belong to a neighboring source.
 
         The isophotal `centroid` is returned instead (NaN where the
         isophotal centroid is NaN) in these cases:

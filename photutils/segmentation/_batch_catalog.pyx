@@ -1514,8 +1514,8 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
     and the box pixels that enter the fit. A masked box pixel
     (input-masked or non-finite data, inside or outside of the source
     segment) is left out of the fit. An unmasked box pixel outside of
-    the source segment enters the fit with a value of zero and no
-    variance.
+    the source segment, including a pixel of a neighboring source,
+    enters the fit with its data value and variance.
 
     Parameters
     ----------
@@ -1528,8 +1528,8 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
 
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where nonzero values indicate masked pixels,
-        which are zero when the peak is located and are left out of the
-        fit. Must have the same shape as ``data``. Bit 1 (value 1)
+        which cannot be the peak pixel and are left out of the fit.
+        Must have the same shape as ``data``. Bit 1 (value 1)
         marks input-masked pixels and bit 2 (value 2) marks non-finite
         data pixels folded into the mask by the caller.
 
@@ -1563,15 +1563,14 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
         otherwise.
 
     boxes : 2D ndarray of float64
-        The zero-filled cutout values of the 3x3 box around the peak in
-        row-major order, with shape ``(n_sources, 9)``. Zero for the
-        box pixels that are masked or outside the source segment, and
-        for statuses other than 0.
+        The data values of the 3x3 box around the peak in row-major
+        order, with shape ``(n_sources, 9)``. Zero for the box pixels
+        that are masked and for statuses other than 0.
 
     box_var : 2D ndarray of float64
-        The pixel variances of the box, zero for masked pixels and for
-        pixels outside the source segment, with shape
-        ``(n_sources, 9)``. All zero unless ``compute_err`` is nonzero.
+        The pixel variances of the box, zero for masked pixels, with
+        shape ``(n_sources, 9)``. All zero unless ``compute_err`` is
+        nonzero.
 
     fitted : 2D ndarray of uint8
         Whether each box pixel enters the fit, with shape
@@ -1667,7 +1666,7 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
                 for bx in range(xpeak - 1, xpeak + 2):
                     if mask[by, bx] != 0:
                         fitted[i, k] = 0
-                    elif segm[by, bx] == lbl:
+                    else:
                         boxes[i, k] = data[by, bx]
                         if compute_err:
                             e = err_ptr[by * nx_data + bx]

@@ -49,8 +49,10 @@ def _reference_centroid_quad_results(cat):
     ``_centroid_quad_results`` that the batch path replaces, with
     a final column that is 1.0 where the centroid is not a quadratic
     fit maximum. The pixels of the 3x3 box that are input-masked or
-    have a non-finite data value are left out of the fit. It is the
-    numerical reference for the batch path.
+    have a non-finite data value are left out of the fit. The other
+    pixels of the box are fit with their data values, inside or outside
+    of the source segment. It is the numerical reference for the batch
+    path.
     """
     xi = np.arange(3)
     x, y = np.meshgrid(xi, xi)
@@ -87,6 +89,8 @@ def _reference_centroid_quad_results(cat):
             results.append(nan_result)
             continue
 
+        data_cutout = np.array(cutout, dtype=float)
+        data_cutout[excluded] = 0.0
         cutout = np.array(cutout, dtype=float)
         cutout[mask] = 0.0
 
@@ -99,7 +103,8 @@ def _reference_centroid_quad_results(cat):
 
         xidx0 = xidx - 1
         yidx0 = yidx - 1
-        cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
+        cutout_flat = data_cutout[yidx0:yidx0 + 3,
+                                  xidx0:xidx0 + 3].ravel()
 
         # Fit only the box pixels that are not excluded
         pinv = full_pinv
@@ -132,8 +137,7 @@ def _reference_centroid_quad_results(cat):
         if compute_err:
             box_var = (error_cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3]
                        .astype(float).ravel()**2)
-            box_var[mask[yidx0:yidx0 + 3,
-                         xidx0:xidx0 + 3].ravel()] = 0.0
+            box_var[~keep] = 0.0
             var_x, var_y, cov_xy = _centroid_quad_var(
                 c, xm_rel, ym_rel, pinv, box_var)
 

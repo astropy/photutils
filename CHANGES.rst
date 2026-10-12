@@ -1221,11 +1221,12 @@ Bug Fixes
     pixels with a non-finite ``data`` value where the input
     ``convolved_data`` value is finite. [#2503]
 
-  - Fixed the ``SourceCatalog`` quadratic centroid treating masked and
-    non-finite pixels in its 3x3 fitting box as zeros. They are now
-    excluded from the fit, and the isophotal centroid is returned (with
-    ``centroid_quad_fallback`` set) if the remaining pixels do not
-    determine the fit. [#2503]
+  - Fixed the ``SourceCatalog`` quadratic centroid setting the pixels
+    of its 3x3 fitting box that are outside of the source segment to
+    zero, which biased the centroid of a source whose peak pixel is
+    next to the edge of its segment. The unmasked pixels of the box,
+    including the pixels of neighboring sources, are now fit with their
+    ``data`` values. [#2503]
 
   - Fixed the Kron flags and flux error of a ``SourceCatalog`` source
     that is completely masked in the catalog but not in its
