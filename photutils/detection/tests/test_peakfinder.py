@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from astropy.tests.helper import assert_quantity_allclose
 from numpy.testing import assert_array_equal, assert_equal
+from scipy.spatial import cKDTree
 
 from photutils.centroids import centroid_com
 from photutils.datasets import make_gwcs, make_wcs
@@ -466,25 +467,184 @@ class TestFindPeaks:
         assert len(tbl) == 1
         assert tbl['peak_value'][0] == 10.0
 
-    def test_min_separation_plateau(self):
+    @pytest.mark.parametrize('min_separation', [1, 1.5, 5, 15])
+    def test_min_separation_plateau(self, min_separation):
         """
-        Test that min_separation treats plateaus identically to an
-        equivalent circular footprint (all equal-valued plateau pixels
-        are local maxima).
+        Test that a plateau of connected equal-valued pixels gives one
+        peak at its center, even if the plateau is larger than
+        min_separation.
         """
         data = np.zeros((50, 50))
-        data[20:30, 20:30] = 10.0  # 10x10 plateau (diagonal ~12.7 px)
+        data[20:31, 18:29] = 10.0  # 11x11 plateau
 
-        for radius in (5, 15):
-            idx = np.arange(-radius, radius + 1)
-            xx, yy = np.meshgrid(idx, idx)
-            fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
-            tbl_ref = find_peaks(data, 1.0, footprint=fp)
-            tbl_fast = find_peaks(data, 1.0, min_separation=radius)
+        tbl = find_peaks(data, 1.0, min_separation=min_separation)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 23
+        assert tbl['y_peak'][0] == 25
 
-            assert len(tbl_ref) == len(tbl_fast)
-            assert_array_equal(tbl_ref['x_peak'], tbl_fast['x_peak'])
-            assert_array_equal(tbl_ref['y_peak'], tbl_fast['y_peak'])
+    def test_min_separation_plateau_tie(self):
+        """
+        Test that the first pixel in row-major order is kept when
+        plateau pixels are equally close to the plateau centroid.
+        """
+        data = np.zeros((20, 20))
+        data[10:12, 5:7] = 10.0  # 2x2 plateau
+
+        tbl = find_peaks(data, 1.0, min_separation=3)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 5
+        assert tbl['y_peak'][0] == 10
+
+    def test_min_separation_plateau_concave(self):
+        """
+        Test that the peak of a plateau is one of its pixels when the
+        plateau centroid is not in the plateau.
+        """
+        data = np.zeros((30, 30))
+        data[10, 10:21] = 10.0
+        data[10:21, 10] = 10.0  # L-shaped plateau
+
+        tbl = find_peaks(data, 1.0, min_separation=2)
+        assert len(tbl) == 1
+        assert data[tbl['y_peak'][0], tbl['x_peak'][0]] == 10.0
+
+    def test_min_separation_plateau_exact_tie(self):
+        """
+        Test that the first pixel in row-major order is kept when
+        plateau pixels are equally close to a plateau centroid that is
+        not exactly represented as a float.
+        """
+        plateau = np.array([[1, 1, 0],
+                            [0, 1, 0],
+                            [1, 0, 0],
+                            [1, 1, 0],
+                            [1, 1, 1]])
+        data = np.zeros((20, 20))
+        data[5:10, 8:11] = 10.0 * plateau
+
+        # the (2, 0) and (3, 1) plateau pixels are equally close to the
+        # centroid at (y, x) = (7/3, 2/3)
+        tbl = find_peaks(data, 1.0, min_separation=3)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 8
+        assert tbl['y_peak'][0] == 7
+
+    def test_min_separation_plateau_mask(self):
+        """
+        Test that a mask splits a plateau into separate plateaus.
+        """
+        data = np.zeros((30, 30))
+        data[10:15, 10:21] = 9.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10:15, 15] = True
+
+        tbl = find_peaks(data, 1.0, min_separation=3, mask=mask)
+        assert_array_equal(tbl['x_peak'], [12, 18])
+        assert_array_equal(tbl['y_peak'], [12, 12])
+
+        # the two plateaus have the same size
+        tbl = find_peaks(data, 1.0, min_separation=30, mask=mask)
+        assert_array_equal(tbl['x_peak'], [12])
+        assert_array_equal(tbl['y_peak'], [12])
+
+    def test_min_separation_plateau_threshold(self):
+        """
+        Test that only the plateau pixels above a threshold array are
+        used to find the plateau peak.
+        """
+        data = np.zeros((30, 30))
+        data[10:15, 10:21] = 9.0
+        threshold = np.ones(data.shape)
+        threshold[:, :14] = 100.0
+
+        tbl = find_peaks(data, threshold, min_separation=3)
+        assert_array_equal(tbl['x_peak'], [17])
+        assert_array_equal(tbl['y_peak'], [12])
+
+    def test_min_separation_plateau_border(self):
+        """
+        Test that only the plateau pixels inside the border are used to
+        find the plateau peak.
+        """
+        data = np.zeros((30, 30))
+        data[10:15, 10:21] = 9.0
+
+        tbl = find_peaks(data, 1.0, min_separation=3, border_width=12)
+        assert_array_equal(tbl['x_peak'], [14])
+        assert_array_equal(tbl['y_peak'], [13])
+
+    def test_min_separation_saturated_star(self):
+        """
+        Test that a saturated star gives one peak near its center.
+        """
+        yy, xx = np.mgrid[:101, :101]
+        data = 5.0e5 * np.exp(-((xx - 50.3)**2 + (yy - 49.6)**2) / 18.0)
+        data = np.minimum(data, 65535.0)
+        assert np.count_nonzero(data == 65535.0) > 100
+
+        tbl = find_peaks(data, 500.0, min_separation=4)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 50
+        assert tbl['y_peak'][0] == 50
+
+    def test_min_separation_plateaus_separate(self):
+        """
+        Test that separate plateaus each give one peak.
+        """
+        data = np.zeros((60, 60))
+        data[10:15, 10:15] = 10.0
+        data[40:45, 30:35] = 10.0
+        data[20:23, 40:43] = 8.0
+
+        tbl = find_peaks(data, 1.0, min_separation=3)
+        assert len(tbl) == 3
+        assert_array_equal(tbl['x_peak'], [12, 41, 32])
+        assert_array_equal(tbl['y_peak'], [12, 21, 42])
+
+    def test_min_separation_plateau_preferred(self):
+        """
+        Test that the peak of a plateau is kept instead of a nearby
+        equal-valued isolated pixel, regardless of their order in the
+        image.
+        """
+        for y_pixel in (8, 32):
+            data = np.zeros((41, 41))
+            data[17:24, 17:24] = 10.0  # 7x7 plateau centered at (20, 20)
+            data[y_pixel, 20] = 10.0  # not connected to the plateau
+
+            tbl = find_peaks(data, 1.0, min_separation=15)
+            assert len(tbl) == 1
+            assert tbl['x_peak'][0] == 20
+            assert tbl['y_peak'][0] == 20
+
+            tbl = find_peaks(data, 1.0, min_separation=5)
+            assert len(tbl) == 2
+
+    def test_min_separation_subpixel(self):
+        """
+        Test that adjacent pixels are separate peaks for a
+        min_separation smaller than 1 pixel.
+        """
+        data = np.zeros((20, 20))
+        data[10, 5:8] = [10.0, 10.0, 7.0]
+
+        tbl = find_peaks(data, 1.0, min_separation=0.5)
+        assert len(tbl) == 3
+
+    def test_min_separation_diagonal_plateau(self):
+        """
+        Test that equal-valued diagonal neighbors are one plateau only
+        if they are within min_separation of each other.
+        """
+        data = np.zeros((20, 20))
+        data[10, 10] = 10.0
+        data[11, 11] = 10.0
+
+        tbl = find_peaks(data, 1.0, min_separation=1.2)
+        assert len(tbl) == 2
+
+        tbl = find_peaks(data, 1.0, min_separation=1.5)
+        assert len(tbl) == 1
 
     def test_min_separation_with_units(self):
         """
@@ -557,8 +717,10 @@ class TestFindPeaks:
     def test_min_separation_matches_circular_footprint(self, radius,
                                                        offset):
         """
-        Test that min_separation produces the same peaks as an
-        equivalent circular footprint passed to maximum_filter.
+        Test that min_separation produces a subset of the peaks found
+        by an equivalent circular footprint. The min_separation result
+        is at least as strict, because equal-valued peaks are further
+        pruned.
 
         The radii cover both the footprint filter used for small radii
         and the box filters used for large radii. The fractional radii
@@ -582,13 +744,24 @@ class TestFindPeaks:
 
         tbl_fast = find_peaks(data, threshold, min_separation=radius)
 
+        # The min_separation result is a subset of the footprint
+        # result, because equal-valued peaks may be removed.
         ref_xy = set(zip(tbl_ref['x_peak'].tolist(),
                          tbl_ref['y_peak'].tolist(),
                          strict=True))
         fast_xy = set(zip(tbl_fast['x_peak'].tolist(),
                           tbl_fast['y_peak'].tolist(),
                           strict=True))
-        assert ref_xy == fast_xy
+        assert fast_xy <= ref_xy
+
+        # All surviving peaks must satisfy min_separation
+        if len(tbl_fast) > 1:
+            x = np.array(tbl_fast['x_peak'], dtype=float)
+            y = np.array(tbl_fast['y_peak'], dtype=float)
+            for i in range(len(tbl_fast)):
+                for j in range(i + 1, len(tbl_fast)):
+                    dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2)
+                    assert dist > radius
 
     def test_min_separation_diagonal_neighbors(self):
         """
@@ -635,33 +808,106 @@ class TestFindPeaks:
         assert tbl['x_peak'][0] == 50
         assert tbl['y_peak'][0] == 50
 
-    def test_min_separation_keeps_nearby_true_maxima(self):
+    def test_min_separation_equal_peaks_pruned(self):
         """
-        Test that two equal-valued peaks within min_separation of each
-        other are both retained, matching the circular footprint result.
+        Test that two equal-valued peaks within min_separation are
+        pruned by the greedy spacing step, keeping only the first one
+        in row-major order.
         """
         radius = 12
         data = np.zeros((100, 100))
 
-        # Two equal-valued peaks separated by less than min_separation
-        # (dist = 11 px < radius = 12 px). Because they are equal,
-        # each is tied for the max in its own circle, so both should
-        # be detected (same behavior as maximum_filter with a circular
-        # footprint).
+        # Two equal-valued peaks separated by 11 px < radius = 12 px
         data[50, 40] = 10.0
         data[50, 51] = 10.0
 
-        # Reference: actual circular footprint
-        idx = np.arange(-radius, radius + 1)
-        xx, yy = np.meshgrid(idx, idx)
-        fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
-        tbl_ref = find_peaks(data, 1.0, footprint=fp)
-        tbl_fast = find_peaks(data, 1.0, min_separation=radius)
+        tbl = find_peaks(data, 1.0, min_separation=radius)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 40
+        assert tbl['y_peak'][0] == 50
 
-        assert len(tbl_ref) == 2
-        assert len(tbl_fast) == 2
-        assert_array_equal(tbl_ref['x_peak'], tbl_fast['x_peak'])
-        assert_array_equal(tbl_ref['y_peak'], tbl_fast['y_peak'])
+    @pytest.mark.parametrize(('radius', 'n_peaks'), [(4.9, 2), (5, 1)])
+    def test_min_separation_equal_peaks_boundary(self, radius, n_peaks):
+        """
+        Test that equal-valued peaks separated by exactly
+        min_separation are too close, as for peaks with different
+        values.
+        """
+        data = np.zeros((40, 40))
+        data[20, 10] = 10.0
+        data[23, 14] = 10.0  # 5 pixels from the first peak
+
+        tbl = find_peaks(data, 1.0, min_separation=radius)
+        assert len(tbl) == n_peaks
+
+    @pytest.mark.parametrize('dtype', [np.uint16, np.int32, np.float32])
+    def test_min_separation_equal_peaks_dtype(self, dtype):
+        """
+        Test that equal-valued peaks are reduced for integer and
+        unsigned integer data.
+        """
+        data = np.zeros((40, 40), dtype=dtype)
+        data[10, [10, 13]] = 500
+        data[20:23, 30] = 100
+        data[30, [10, 14]] = 7
+
+        tbl = find_peaks(data, 1, min_separation=5)
+        assert_array_equal(tbl['x_peak'], [10, 30, 10])
+        assert_array_equal(tbl['y_peak'], [10, 21, 30])
+        assert_array_equal(tbl['peak_value'], [500, 100, 7])
+
+    def test_min_separation_equal_peaks_chain(self):
+        """
+        Test that the greedy spacing step keeps a peak that is too
+        close only to a peak that was itself removed.
+        """
+        data = np.zeros((20, 40))
+        data[10, [10, 14, 18]] = 10.0
+
+        tbl = find_peaks(data, 1.0, min_separation=5)
+        assert_array_equal(tbl['x_peak'], [10, 18])
+
+    @pytest.mark.parametrize('radius', [3, 8, 20])
+    def test_min_separation_many_pairs(self, radius, monkeypatch):
+        """
+        Test that the two ways of finding the equal-valued peaks that
+        are too close give the same peaks.
+
+        A sparse image of ones has many pairs of equal-valued peaks.
+        """
+        from photutils.detection import peakfinder
+
+        rng = np.random.default_rng(0)
+        data = (rng.random((150, 150)) < 0.1).astype(float)
+
+        monkeypatch.setattr(peakfinder, '_MAX_PAIRS_PER_PEAK', np.inf)
+        tbl1 = find_peaks(data, 0.5, min_separation=radius)
+        monkeypatch.setattr(peakfinder, '_MAX_PAIRS_PER_PEAK', 0)
+        tbl2 = find_peaks(data, 0.5, min_separation=radius)
+
+        assert len(tbl1) > 10
+        assert_array_equal(tbl1['x_peak'], tbl2['x_peak'])
+        assert_array_equal(tbl1['y_peak'], tbl2['y_peak'])
+
+        xypos = np.transpose((tbl1['x_peak'], tbl1['y_peak']))
+        assert len(cKDTree(xypos).query_pairs(radius)) == 0
+
+    def test_min_separation_integer_data(self):
+        """
+        Test that all peaks are separated by more than min_separation
+        for integer-valued data, which has many equal-valued peaks.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.poisson(5, (200, 200)).astype(float)
+        radius = 5
+
+        tbl = find_peaks(data, 8, min_separation=radius)
+        xypos = np.transpose((tbl['x_peak'], tbl['y_peak']))
+        assert len(cKDTree(xypos).query_pairs(radius)) == 0
+
+        # the peaks stay in row-major order
+        idx = np.lexsort((tbl['x_peak'], tbl['y_peak']))
+        assert_array_equal(idx, np.arange(len(tbl)))
 
     def test_nan_no_false_peaks(self):
         """
@@ -741,3 +987,39 @@ class TestFindPeaks:
         assert 'x_centroid' in tbl.colnames
         assert 'y_centroid' in tbl.colnames
         assert len(tbl) > 0
+
+    @pytest.mark.parametrize('axis', ['x', 'y'])
+    def test_min_separation_noninteger_radius_regression(self, axis):
+        """
+        Regression test for non-integer min_separation with peaks
+        separated by 12 pixels (< min_separation = 12.5).
+
+        With a non-integer radius the circular footprint had an
+        even number of elements, causing an asymmetric half-pixel
+        shift that allowed the fainter peak to survive depending on
+        which side of the brighter peak it was placed.
+        """
+        data = np.zeros((100, 100))
+        if axis == 'x':
+            data[50, 40] = 15.0  # brighter
+            data[50, 52] = 10.0  # fainter, 12 px away
+        else:
+            data[40, 50] = 15.0  # brighter
+            data[52, 50] = 10.0  # fainter, 12 px away
+
+        # 12 < 12.5, so only the brighter peak should survive
+        tbl = find_peaks(data, 1.0, min_separation=12.5)
+        assert len(tbl) == 1
+        assert tbl['peak_value'][0] == 15.0
+
+    def test_min_separation_equal_at_boundary(self):
+        """
+        Test that two peaks separated by more than min_separation are
+        both retained.
+        """
+        data = np.zeros((100, 100))
+        data[50, 30] = 10.0
+        data[50, 44] = 8.0  # distance = 14 > 13
+
+        tbl = find_peaks(data, 1.0, min_separation=13)
+        assert len(tbl) == 2

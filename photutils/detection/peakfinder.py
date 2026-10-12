@@ -8,7 +8,8 @@ import warnings
 
 import numpy as np
 from astropy.table import QTable
-from scipy.ndimage import maximum_filter
+from scipy.ndimage import label, maximum_filter
+from scipy.spatial import cKDTree
 
 from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._misc import _get_meta
@@ -22,6 +23,201 @@ __all__ = ['find_peaks']
 # The radius in pixels below which the circular footprint filter is
 # faster than the box filters with circular verification
 _MIN_FAST_RADIUS = 4.0
+
+# The mean number of too-close pairs per equal-valued peak above which
+# the neighbors of only the kept peaks are found, instead of all the
+# pairs at once
+_MAX_PAIRS_PER_PEAK = 4
+
+# The number of equal-valued peaks used to estimate the mean number of
+# too-close pairs per peak
+_N_SAMPLE_PEAKS = 1000
+
+
+def _collapse_plateaus(peak_mask, min_separation):
+    """
+    Find the peak pixels, with each plateau reduced to a single pixel.
+
+    A peak pixel is the maximum within the circle of radius
+    ``min_separation`` centered on it, so connected peak pixels always
+    have equal values (e.g., the pixels of a saturated star). Each
+    group of connected peak pixels is replaced by its pixel that is
+    nearest to the centroid of the group. For equal distances, the
+    first pixel in row-major order is kept.
+
+    Parameters
+    ----------
+    peak_mask : 2D bool `~numpy.ndarray`
+        The boolean mask of peak pixels. It is not modified.
+
+    min_separation : float
+        The radius in pixels of the circular region that was used to
+        find the peaks.
+
+    Returns
+    -------
+    y_peaks, x_peaks : 1D `~numpy.ndarray`
+        The pixel coordinates of the peaks, in row-major order
+        (ascending y, then x).
+
+    n_pixels : 1D `~numpy.ndarray` or `None`
+        The number of pixels in the plateau of each peak. `None` is
+        returned if there are no plateaus.
+    """
+    if min_separation < 1:
+        # Adjacent pixels are outside of each other's circular region,
+        # so they are separate peaks that can have different values
+        return *peak_mask.nonzero(), None
+
+    # Diagonal neighbors are within the circular region, and therefore
+    # are equal valued, only if the radius is at least sqrt(2) pixels
+    use_diagonals = min_separation**2 >= 2
+
+    # Checking for adjacent peak pixels is much faster than labeling
+    # the peak pixels, and most images have no plateaus
+    has_plateau = (np.any(peak_mask[:, 1:] & peak_mask[:, :-1])
+                   or np.any(peak_mask[1:] & peak_mask[:-1]))
+    if not has_plateau and use_diagonals:
+        has_plateau = (np.any(peak_mask[1:, 1:] & peak_mask[:-1, :-1])
+                       or np.any(peak_mask[1:, :-1] & peak_mask[:-1, 1:]))
+    if not has_plateau:
+        return *peak_mask.nonzero(), None
+
+    structure = np.ones((3, 3)) if use_diagonals else None
+    labels, n_labels = label(peak_mask, structure=structure)
+    y_peaks, x_peaks = peak_mask.nonzero()
+    idx = labels[y_peaks, x_peaks] - 1
+    counts = np.bincount(idx, minlength=n_labels)
+
+    # The squared distance of a pixel from the centroid of its label
+    # is (y**2 + x**2) - 2 * (y * y_sum + x * x_sum) / count plus a
+    # constant. It is multiplied by the count and calculated with
+    # integers so that equal distances compare as equal. The sums are
+    # integer valued and are exact as floats.
+    y_sum = np.bincount(idx, weights=y_peaks, minlength=n_labels)
+    x_sum = np.bincount(idx, weights=x_peaks, minlength=n_labels)
+    y_sum = y_sum.astype(np.int64)[idx]
+    x_sum = x_sum.astype(np.int64)[idx]
+    y_pix = y_peaks.astype(np.int64)
+    x_pix = x_peaks.astype(np.int64)
+    dist = (counts[idx] * (y_pix**2 + x_pix**2)
+            - 2 * (y_pix * y_sum + x_pix * x_sum))
+
+    # Sort by label and then by the distance from the label centroid.
+    # The first pixel of each label is then the one to keep.
+    order = np.lexsort((dist, idx))
+    first = np.ones(len(order), dtype=bool)
+    first[1:] = idx[order[1:]] != idx[order[:-1]]
+    keep = np.sort(order[first])  # row-major order
+
+    return y_peaks[keep], x_peaks[keep], counts[idx[keep]]
+
+
+def _remove_tied_peaks(x_peaks, y_peaks, peak_values, min_separation,
+                       n_pixels=None):
+    """
+    Remove equal-valued peaks that are too close to each other.
+
+    The input peaks must each be the maximum within the circle of
+    radius ``min_separation`` centered on it. Two such peaks can be
+    separated by ``min_separation`` or less only if they have equal
+    values, so only the peaks with a repeated value are searched. This
+    function is therefore not valid for peaks found in any other way.
+
+    Of the equal-valued peaks that are too close to each other, the
+    peak of the larger plateau is kept, so that a saturated star is
+    preferred over a nearby isolated saturated pixel. For equal-sized
+    plateaus, the first peak in row-major order (ascending y, then x)
+    is kept. The peaks are selected greedily in that order, so a peak
+    is removed only if it is too close to a peak that is kept.
+
+    Parameters
+    ----------
+    x_peaks : 1D `~numpy.ndarray`
+        The x pixel coordinates of the peaks.
+
+    y_peaks : 1D `~numpy.ndarray`
+        The y pixel coordinates of the peaks.
+
+    peak_values : 1D `~numpy.ndarray`
+        The peak values.
+
+    min_separation : float
+        The minimum separation (in pixels) between peaks. Peaks
+        separated by exactly this distance are too close, which matches
+        the circular region used to find the peaks.
+
+    n_pixels : 1D `~numpy.ndarray` or `None`, optional
+        The number of pixels in the plateau of each peak. If `None`,
+        every peak is a single pixel.
+
+    Returns
+    -------
+    x_peaks, y_peaks, peak_values : tuple of `~numpy.ndarray`
+        The filtered arrays, in the same row-major order (ascending y,
+        then x) as the input arrays.
+    """
+    # Sorting the values is much faster than finding the index of the
+    # unique values, and most images have no repeated peak values
+    sorted_values = np.sort(peak_values)
+    if not np.any(sorted_values[1:] == sorted_values[:-1]):
+        return x_peaks, y_peaks, peak_values
+
+    _, inverse, counts = np.unique(peak_values, return_inverse=True,
+                                   return_counts=True)
+    repeated = np.nonzero(counts[inverse] > 1)[0]
+
+    # Sort by descending intensity and then by descending plateau size
+    # (the stable sort preserves the row-major order for ties). The
+    # index of the unique values is used as the intensity rank because
+    # unsigned integer values cannot be negated.
+    if n_pixels is None:
+        n_pixels = np.ones(len(x_peaks), dtype=int)
+    order = repeated[np.lexsort((-n_pixels[repeated], -inverse[repeated]))]
+    coords = np.column_stack((x_peaks[order], y_peaks[order]))
+
+    # An unbalanced tree is much faster to build, and is as fast to
+    # query, for peaks that are spread over the image
+    tree = cKDTree(coords, balanced_tree=False, compact_nodes=False)
+
+    # Estimate the mean number of pairs per peak from a sample of the
+    # peaks, which is much faster than counting all the pairs. The
+    # count for a peak includes the peak itself, and each pair is
+    # counted from both of its peaks.
+    n_peaks = len(order)
+    step = max(1, n_peaks // _N_SAMPLE_PEAKS)
+    n_close = tree.query_ball_point(coords[::step], min_separation,
+                                    return_length=True)
+    pairs_per_peak = (np.mean(n_close) - 1) / 2
+
+    keep = np.ones(n_peaks, dtype=bool)
+    if pairs_per_peak <= _MAX_PAIRS_PER_PEAK:
+        # Each row is a pair of peaks (i, j) with i < j
+        pairs = tree.query_pairs(min_separation, output_type='ndarray')
+        if len(pairs) == 0:
+            return x_peaks, y_peaks, peak_values
+
+        pairs = pairs[np.argsort(pairs[:, 0], kind='stable')]
+        first, starts = np.unique(pairs[:, 0], return_index=True)
+        neighbors = np.split(pairs[:, 1], starts[1:])
+        for i, later in zip(first, neighbors, strict=True):
+            if keep[i]:
+                keep[later] = False
+    else:
+        # With many pairs per peak, the array of all the pairs can need
+        # more memory than the image, but few peaks are kept. Finding
+        # the neighbors of only the kept peaks is then faster and needs
+        # little memory.
+        for i in range(n_peaks):
+            if keep[i]:
+                neighbors = np.array(tree.query_ball_point(coords[i],
+                                                           min_separation))
+                keep[neighbors[neighbors > i]] = False
+
+    good = np.ones(len(x_peaks), dtype=bool)
+    good[order[~keep]] = False
+
+    return x_peaks[good], y_peaks[good], peak_values[good]
 
 
 def _verify_ring_candidates(data, peak_mask, needs_verify, footprint_bool,
@@ -204,10 +400,11 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     peaks unless there are identical peaks within the region.
 
     When ``min_separation`` is set, a fast algorithm is used that
-    produces results equivalent to using a circular ``footprint`` of the
-    given radius for `~scipy.ndimage.maximum_filter`, but is typically
-    ~10-400x faster (depending on the radius). When set, ``box_size``
-    and ``footprint`` are not used for peak detection.
+    finds local maxima within a circular region of the given radius.
+    Pixels with identical intensities are then reduced so that all
+    returned peaks are separated by more than ``min_separation``
+    pixels. When set, ``box_size`` and ``footprint`` are not used for
+    peak detection.
 
     If ``centroid_func`` is input, then it will be used to calculate a
     centroid within the defined local region centered on each detected
@@ -277,15 +474,28 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     min_separation : float or None, optional
         The minimum allowed separation (in pixels) between detected
-        peaks, enforced using a circular region of this radius. Each
-        detected peak must be the maximum value (or tied for the
-        maximum) of the pixels whose centers are within a circle of
-        this radius centered on the peak pixel. This is equivalent to
-        using a circular ``footprint`` of the given radius, but uses a
-        fast algorithm that is much faster for large radii. When set
-        to a positive value, ``box_size`` and ``footprint`` are not
-        used for peak detection. If `None` (default) or 0, the peak
-        detection uses ``box_size`` or ``footprint`` as specified.
+        peaks. When set to a positive value, a fast algorithm first
+        identifies the local maxima within a circular region of this
+        radius centered on each pixel. A group of connected peak
+        pixels, which have identical values (e.g., a saturated star),
+        is then replaced by its pixel nearest to the centroid of the
+        group. Finally, only one of any remaining equal-valued peaks
+        that are separated by ``min_separation`` or less is kept (see
+        Notes). All returned peaks are therefore separated by more
+        than ``min_separation`` pixels. Peaks separated by exactly
+        ``min_separation`` are too close. This is much faster for large
+        radii than using an explicit circular ``footprint`` of the
+        given radius. When set to a positive value, ``box_size`` and
+        ``footprint`` are not used for peak detection. If `None`
+        (default) or 0, the peak detection uses ``box_size`` or
+        ``footprint`` as specified. To return every pixel that is tied
+        for the maximum, use a circular ``footprint`` instead.
+
+        .. versionchanged:: 3.1
+            Pixels with identical values that are within
+            ``min_separation`` of each other now give only one peak.
+            Previously, every pixel that was tied for the maximum was
+            returned.
 
     centroid_func : callable, optional
         A callable object (e.g., function or class) that is used to
@@ -328,16 +538,35 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     of the maximum pixel value within the input ``box_size`` or
     ``footprint`` (i.e., only the peak pixel is identified).
 
-    When ``min_separation`` is given, the detected peaks are the
-    same as those found with a circular ``footprint`` of the given
-    radius, centered on each pixel, for
-    `~scipy.ndimage.maximum_filter`. For a radius of at least 4 pixels,
-    the algorithm uses two fast O(N) separable box filters (inscribed
-    and circumscribed squares of the circle) to classify most
-    candidates, then verifies only the remaining few against the exact
-    circular region. This is about 15 times faster than the footprint
-    filter for a radius of 10 pixels, and the gain grows with the
-    radius. Smaller radii use the footprint filter directly.
+    When ``min_separation`` is given, peaks are detected in three
+    steps. First, the local maxima within a circular ``footprint`` of
+    the given radius, centered on each pixel, are identified. For a
+    radius of at least 4 pixels, the algorithm uses two fast O(N)
+    separable box filters (inscribed and circumscribed squares of the
+    circle) to classify most candidates, then verifies only the
+    remaining few against the exact circular region. Smaller radii use
+    the footprint filter directly.
+
+    The local-maximum step returns every pixel that is tied for the
+    maximum, so the next two steps handle pixels with identical
+    values. Second, each group of connected peak pixels (a plateau,
+    e.g., the pixels of a saturated star) is replaced by its pixel
+    nearest to the centroid of the group. A plateau therefore gives
+    one peak, even if it is larger than ``min_separation``. Adjacent
+    peak pixels are connected only if they are within
+    ``min_separation`` of each other. Diagonal neighbors are therefore
+    connected only for a ``min_separation`` of at least ``sqrt(2)``
+    pixels, and this step is skipped for a ``min_separation`` smaller
+    than 1 pixel, for which every pixel above the threshold is a peak.
+
+    Third, for any remaining equal-valued peaks that are separated by
+    ``min_separation`` or less, only one is kept. This includes the
+    peak of a plateau, which can be removed in favor of a nearby
+    equal-valued peak. The peak of the plateau with the most pixels is
+    kept, so that a saturated star is preferred over a nearby isolated
+    saturated pixel. For plateaus of equal size, including single
+    pixels, the first peak in row-major order (ascending y, then x) is
+    kept.
 
     A centroiding function can be input via the ``centroid_func``
     keyword to compute centroid coordinates with subpixel precision
@@ -426,7 +655,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         data[mask] = nanmin(data)
 
     # peak_goodmask: good pixels are True
-    if min_separation is not None and min_separation > 0:
+    use_min_separation = min_separation is not None and min_separation > 0
+    if use_min_separation:
         peak_goodmask = _fast_circular_peaks(data, min_separation)
     elif footprint is not None:
         data_max = maximum_filter(data, footprint=footprint, mode='constant',
@@ -454,8 +684,20 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     # Exclude peaks below the threshold
     peak_goodmask = np.logical_and(peak_goodmask, (data > threshold))
 
-    y_peaks, x_peaks = peak_goodmask.nonzero()
-    peak_values = data[y_peaks, x_peaks]
+    # The circular local maxima include every pixel that is tied for
+    # the maximum. Reduce each plateau of connected peak pixels to one
+    # pixel, then remove the remaining equal-valued peaks that are
+    # still too close to each other.
+    if use_min_separation:
+        y_peaks, x_peaks, n_pixels = _collapse_plateaus(peak_goodmask,
+                                                        min_separation)
+        peak_values = data[y_peaks, x_peaks]
+        x_peaks, y_peaks, peak_values = _remove_tied_peaks(
+            x_peaks, y_peaks, peak_values, min_separation,
+            n_pixels=n_pixels)
+    else:
+        y_peaks, x_peaks = peak_goodmask.nonzero()
+        peak_values = data[y_peaks, x_peaks]
 
     if unit is not None:
         peak_values <<= unit

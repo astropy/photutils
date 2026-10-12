@@ -184,6 +184,17 @@ class IRAFStarFinder(StarFinderBase):
 
     * `~photutils.detection.IRAFStarFinder` calculates the objects'
       centroid, roundness, and sharpness using image moments.
+
+    This routine differs from IRAF's starfind for pixels of the
+    convolved image that have identical values, which are uncommon
+    for floating-point data (a saturated star usually has none).
+    For a positive ``min_separation``, such pixels that are
+    within ``min_separation`` of each other give only one source (see
+    `~photutils.detection.find_peaks`). IRAF's starfind keeps every
+    pixel that is tied for the maximum within ``sepmin``, except for
+    those that follow a detected pixel within ``sepmin`` along the same
+    image line. With ``min_separation=0``, this routine keeps every
+    pixel that is tied for the maximum within the kernel footprint.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -318,6 +329,8 @@ class IRAFStarFinder(StarFinderBase):
                                       check_normalization=False)
 
         if self.xycoords is None:
+            # _find_stars returns the integer peak pixel positions.
+            # The subpixel centroids are computed later in the catalog.
             xypos = self._find_stars(convolved_data, self.kernel,
                                      self.threshold,
                                      min_separation=self.min_separation,

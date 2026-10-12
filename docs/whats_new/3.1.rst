@@ -1589,3 +1589,39 @@ now stored as arrays directly under ``'non_positive_min_labels'``
 and ``'too_many_markers_labels'`` keys in the returned
 `~photutils.segmentation.SegmentationImage` ``info`` dictionary,
 replacing the nested ``info['warnings']`` dictionary.
+
+``find_peaks`` ``min_separation`` Enforcement
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``min_separation`` keyword of
+:func:`~photutils.detection.find_peaks` now strictly enforces the
+minimum separation between all returned peaks. Previously, the result
+was equivalent to passing a circular ``footprint`` of the given radius
+to :func:`~scipy.ndimage.maximum_filter`, which returns every pixel
+that is tied for the maximum. Pixels with identical values could
+therefore all be returned as peaks, even when they were adjacent (e.g.,
+the pixels of a saturated star or peaks in integer-valued data).
+
+Pixels with identical values are now handled in two steps. First, each
+group of connected peak pixels is replaced by its pixel nearest to the
+centroid of the group. A saturated star therefore gives one peak near
+its center, even if its saturated core is larger than
+``min_separation``. Second, for any remaining equal-valued peaks that
+are separated by ``min_separation`` or less, only one is kept. The peak
+of the largest group of connected pixels is preferred, so that a
+saturated star is kept instead of a nearby isolated saturated pixel.
+
+The returned peaks are a subset of the peaks previously found. Use a
+circular ``footprint`` to return every pixel that is tied for the
+maximum, as before. The star finder classes
+(:class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder`), which use ``min_separation``
+internally, may now return fewer sources if the convolved image has
+pixels with identical values. Such pixels are uncommon for
+floating-point data.
+
+Note that the star finders apply ``min_separation`` to the integer
+peak-pixel positions. The subpixel centroids computed afterwards may
+shift sources slightly, so the centroid-based separations in the output
+tables can be slightly smaller than ``min_separation``.
