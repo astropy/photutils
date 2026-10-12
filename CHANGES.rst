@@ -1096,6 +1096,10 @@ Bug Fixes
     which can occur when the Fourier-space denominator is zero at
     frequencies where the numerator is also zero. [#2372]
 
+  - ``make_wiener_kernel`` now raises a ``ValueError`` stating that
+    ``regularization`` must be positive when it is NaN. Previously, an
+    unrelated error about a non-finite kernel was raised. [#2494]
+
   - Fixed ``resize_psf`` to return a PSF with the requested pixel
     scale. The output pixel scale was ``input_pixel_scale * (n_in - 1) /
     (n_out - 1)``, where ``n_in`` and ``n_out`` are the input and output

@@ -4,14 +4,13 @@ Tools for matching PSFs using Fourier methods.
 """
 
 import numpy as np
-from astropy.utils.decorators import deprecated
 from scipy.fft import fft2, fftshift, ifft2
 
 from photutils.psf_matching.utils import (_apply_window_to_fourier,
                                           _convert_psf_to_otf,
                                           _normalize_kernel,
                                           _validate_kernel_inputs)
-from photutils.utils.exceptions import PhotutilsDeprecationWarning
+from photutils.utils._deprecation import deprecated
 
 __all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel']
 
@@ -440,7 +439,8 @@ array-like, optional
     source_psf, target_psf = _validate_kernel_inputs(
         source_psf, target_psf, window)
 
-    if regularization <= 0:
+    # The negated comparison also rejects NaN
+    if not regularization > 0:
         msg = 'regularization must be a positive number.'
         raise ValueError(msg)
 
@@ -489,16 +489,11 @@ array-like, optional
     return _normalize_kernel(kernel)
 
 
-@deprecated('3.0', alternative='make_kernel',
-            warning_type=PhotutilsDeprecationWarning)
+@deprecated(since='3.0', alternative='make_kernel', until='4.0')
 def create_matching_kernel(source_psf, target_psf, *,
                            regularization=1e-4, window=None):
     """
     Create a kernel to match 2D point spread functions (PSF).
-
-    .. deprecated:: 3.0
-        ``create_matching_kernel`` is deprecated as of Photutils 3.0 and
-        will be removed in version 4.0. Use `make_kernel` instead.
     """
     return make_kernel(source_psf,
                        target_psf,

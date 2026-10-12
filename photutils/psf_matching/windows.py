@@ -107,8 +107,8 @@ class SplitCosineBellWindow:
             raise ValueError(msg)
 
         if alpha + beta > 1.0:
-            msg = ('alpha + beta > 1.0, so the taper region will be '
-                   'clipped to the array boundary.')
+            msg = ('alpha + beta > 1.0, so the taper extends beyond the '
+                   'maximum radius and is truncated by the array edges.')
             warnings.warn(msg, AstropyUserWarning)
 
         self.alpha = float(alpha)
