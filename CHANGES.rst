@@ -1171,6 +1171,12 @@ Bug Fixes
     ``fit_2dgaussian`` results and has a NaN ``fit_fwhm`` value.
     [#2508]
 
+  - Fixed the aperture-based initial flux of ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` when a local background is used. The
+    per-pixel ``local_bkg`` value was subtracted once from the aperture
+    sum. It is now multiplied by the aperture area first. Only the
+    initial guess (the ``flux_init`` column) changes. [#2508]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

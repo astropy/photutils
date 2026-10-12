@@ -1103,6 +1103,27 @@ def test_local_bkg(test_data):
     assert np.count_nonzero(phot['local_bkg']) == len(sources)
 
 
+def test_local_bkg_init_flux():
+    """
+    Test that the aperture-based initial flux has the local background
+    subtracted over the whole aperture area.
+    """
+    model = CircularGaussianPRF(fwhm=3)
+    sources = Table({'x_0': [30.0, 2.0], 'y_0': [30.0, 30.0],
+                     'flux': [1000.0, 1000.0]})
+    data = make_model_image((61, 61), model, sources, model_shape=(31, 31))
+    data += 5.0
+    init = Table({'x': sources['x_0'], 'y': sources['y_0'],
+                  'local_bkg': [5.0, 5.0]})
+    psfphot = PSFPhotometry(model, (7, 7), aperture_radius=5)
+    phot = psfphot(data, init_params=init)
+
+    # The aperture of the second source is cut off by the image edge
+    assert_allclose(phot['flux_init'][0], 1000.0, rtol=1e-3)
+    assert 950 < phot['flux_init'][1] < 1000
+    assert_allclose(phot['flux_fit'], 1000.0)
+
+
 def test_local_bkg_nonfinite(test_data):
     """
     Test that non-finite local background values are handled correctly.

@@ -500,7 +500,7 @@ class PSFDataProcessor:
 
         return init_params
 
-    def get_aper_fluxes(self, data, mask, init_params):
+    def get_aper_fluxes(self, data, mask, init_params, *, local_bkg=None):
         """
         Estimate aperture fluxes at the initial (x, y) positions.
 
@@ -517,6 +517,11 @@ class PSFDataProcessor:
             Table containing initial source positions with validated
             column names.
 
+        local_bkg : `~numpy.ndarray` or None, optional
+            The per-pixel local background level of each source. If
+            input, each finite value times the unmasked aperture area
+            within the image is subtracted from the aperture flux.
+
         Returns
         -------
         flux : `~numpy.ndarray`
@@ -526,7 +531,14 @@ class PSFDataProcessor:
         y_pos = init_params[self.param_mapper.init_colnames['y']]
         apertures = CircularAperture(zip(x_pos, y_pos, strict=True),
                                      r=self.aperture_radius)
-        return AperturePhotometry(data, apertures, mask=mask).flux
+        phot = AperturePhotometry(data, apertures, mask=mask)
+        flux = phot.flux
+        if local_bkg is not None:
+            bkg_flux = local_bkg * phot.area.value
+            finite_mask = np.isfinite(bkg_flux)
+            flux = flux.copy()
+            flux[finite_mask] -= bkg_flux[finite_mask]
+        return flux
 
     def find_sources_if_needed(self, data, mask, init_params):
         """
@@ -669,15 +681,12 @@ class PSFDataProcessor:
                        'not in init_params')
                 raise ValueError(msg)
 
-            flux = self.get_aper_fluxes(data, mask, init_params)
+            # Only finite local_bkg values are subtracted
+            local_bkg = np.asarray(init_params['local_bkg'].value)
+            flux = self.get_aper_fluxes(data, mask, init_params,
+                                        local_bkg=local_bkg)
             if self.data_unit is not None:
                 flux <<= self.data_unit
-
-            # Subtract only finite local_bkg values
-            local_bkg = init_params['local_bkg']
-            finite_mask = np.isfinite(local_bkg.value)
-            if np.any(finite_mask):
-                flux[finite_mask] -= local_bkg[finite_mask]
 
             init_params[flux_col] = flux
 
