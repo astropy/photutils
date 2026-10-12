@@ -268,6 +268,36 @@ class TestDeblendSources:
         expected = [1] if relabel else [1000]
         assert_equal(result.labels, expected)
 
+    def test_contrast_one_fresh_image(self):
+        """
+        Test that contrast=1 (no deblending) returns an image without
+        the info, flags, and deblended labels of an input image that
+        was itself deblended.
+        """
+        data = self.data - 20
+        match = 'The deblending mode of one or more source labels from the'
+        with pytest.warns(DeblendWarning, match=match):
+            segm = deblend_sources(data, self.segm, self.n_pixels)
+        assert segm.info
+        assert np.any(segm.flags)
+        assert len(segm.deblended_labels) > 0
+
+        result = deblend_sources(data, segm, self.n_pixels, contrast=1)
+        assert_equal(result.data, segm.data)
+        assert result.info == {}
+        assert not np.any(result.flags)
+        assert len(result.deblended_labels) == 0
+
+    def test_contrast_one_invalid_labels(self):
+        """
+        Test that contrast=1 (no deblending) validates the labels
+        keyword.
+        """
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
+            deblend_sources(self.data, self.segm, self.n_pixels,
+                            contrast=1, labels=1000)
+
     def test_empty_segmentation_image(self):
         """
         Test that a segmentation image with no non-zero labels raises a
@@ -422,6 +452,29 @@ class TestDeblendSources:
         assert segm2.n_labels == 2
         # The NaN pixel is assigned to the source surrounding it
         assert segm2.data[50, 50] == segm2.data[50, 51] != 0
+
+    @pytest.mark.parametrize('n_threads', [1, 2])
+    def test_data_nan_basin_contrast(self, n_threads):
+        """
+        Test that a NaN pixel does not change which sources pass the
+        basin contrast criterion.
+
+        The NaN pixel is excluded from the flux of the source it is
+        assigned to, so only the faint source that is below the
+        contrast is removed.
+        """
+        kwargs = {'contrast': 0.2, 'contrast_method': 'basin',
+                  'n_threads': n_threads}
+        result = deblend_sources(self.data3, self.segm3, self.n_pixels,
+                                 **kwargs)
+        assert result.n_labels == 2
+
+        # A NaN pixel at the peak of one of the bright sources
+        data = self.data3.copy()
+        data[50, 50] = np.nan
+        result_nan = deblend_sources(data, self.segm3, self.n_pixels,
+                                     **kwargs)
+        assert_equal(result_nan.data, result.data)
 
     def test_watershed(self):
         """

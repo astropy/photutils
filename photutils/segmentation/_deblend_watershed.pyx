@@ -483,7 +483,7 @@ def deblend_contrast_chunk(const data_t[:, ::1] data,
     data : 2D float `~numpy.ndarray`
         The full data array. NaN pixels within a segment are flooded
         after all the finite pixels, so they are assigned to a
-        neighboring basin. They contribute NaN to the flux of that
+        neighboring basin. They are excluded from the flux of that
         basin, as in the NumPy implementation.
 
     segm_data : 2D int `~numpy.ndarray`
@@ -606,8 +606,9 @@ def deblend_contrast_chunk(const data_t[:, ::1] data,
                     posimg[p] = <double>data_ptr[idx]
                     if isnan(posimg[p]):
                         # NaN pixels are flooded after all finite
-                        # pixels
+                        # pixels and add nothing to the basin fluxes
                         negimg[p] = INFINITY
+                        posimg[p] = 0.0
                     else:
                         negimg[p] = -posimg[p]
                     mask[p] = segm_ptr[idx] == labels[isrc]

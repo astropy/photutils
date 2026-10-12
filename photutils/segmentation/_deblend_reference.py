@@ -503,7 +503,9 @@ class _SingleSourceDeblender:
             if labels.size == 1 or self.contrast_method == 'saddle':
                 remove_marker = False
             else:
-                flux_frac = (sum_labels(self.data, markers, index=labels)
+                # NaN pixels are excluded from the basin fluxes
+                flux = np.where(np.isnan(self.data), 0.0, self.data)
+                flux_frac = (sum_labels(flux, markers, index=labels)
                              / self.source_sum)
                 remove_marker = any(flux_frac < self.contrast)
 

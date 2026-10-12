@@ -1240,6 +1240,16 @@ Bug Fixes
     deblended labels of more than one parent is kept under each of its
     parents. [#2503]
 
+  - Fixed ``deblend_sources`` with the ``'basin'`` contrast method
+    including NaN pixels in the flux of a deblended source, which made
+    that flux NaN and changed which sources passed the contrast
+    criterion. [#2503]
+
+  - Fixed ``deblend_sources`` with ``contrast=1`` (no deblending)
+    returning the ``info``, ``flags``, and deblended labels of an input
+    segmentation image that was itself deblended, and not validating
+    the input ``labels``. [#2503]
+
 - ``photutils.utils``
 
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the
