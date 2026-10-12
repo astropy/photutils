@@ -178,6 +178,11 @@ class SourceGroups:
         x, y : `~numpy.ndarray`
             Arrays of x and y coordinates for all sources in the
             specified group.
+
+        Raises
+        ------
+        ValueError
+            If ``group_id`` is not one of the group IDs.
         """
         if group_id not in self.groups:
             msg = f'Group ID {group_id} not found in groups'

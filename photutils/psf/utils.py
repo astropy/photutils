@@ -189,9 +189,11 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         fitting process.
 
     fit_shape : int or tuple of two ints, optional
-        The shape of the fitting region. If a scalar, then it is assumed
-        to be a square. If `None`, then the shape of the input ``data``
-        will be used.
+        The shape of the fitting region. Each element must be a positive
+        odd number. If a scalar, then it is assumed to be a square. If
+        `None`, then the shape of the input ``data`` is used, with any
+        even dimension reduced by one pixel, and a warning is issued.
+        ``fit_shape`` must be given when fitting more than one source.
 
     mask : array-like (bool), optional
         A boolean mask with the same shape as the input ``data``, where
@@ -257,7 +259,6 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     Fit a 2D Gaussian model to multiple sources in an image:
 
     >>> import numpy as np
-    >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import (CircularGaussianPRF, fit_2dgaussian,
     ...                            make_psf_model_image)
     >>> model = CircularGaussianPRF()
@@ -265,8 +266,6 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     ...                                      min_separation=25,
     ...                                      model_shape=(15, 15),
     ...                                      flux=(100, 200), fwhm=[3, 8])
-    >>> finder = DAOStarFinder(0.1, 5)
-    >>> finder_tbl = finder(data)
     >>> xypos = zip(sources['x_0'], sources['y_0'])
     >>> psfphot = fit_2dgaussian(data, xypos=xypos, fit_shape=7,
     ...                          fix_fwhm=False)
@@ -414,9 +413,11 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
         sizes of the ``fit_shape`` values.
 
     fit_shape : int or tuple of two ints, optional
-        The shape of the fitting region. If a scalar, then it is assumed
-        to be a square. If `None`, then the shape of the input ``data``
-        will be used.
+        The shape of the fitting region. Each element must be a positive
+        odd number. If a scalar, then it is assumed to be a square. If
+        `None`, then the shape of the input ``data`` is used, with any
+        even dimension reduced by one pixel, and a warning is issued.
+        ``fit_shape`` must be given when fitting more than one source.
 
     mask : array-like (bool), optional
         A boolean mask with the same shape as the input ``data``, where
@@ -435,8 +436,15 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     Returns
     -------
     fwhm : `~numpy.ndarray`
-        The FWHM of the sources. Note that the returned FWHM values are
-        always positive.
+        The FWHM of the sources. The fitted FWHM values are constrained
+        to be non-negative. The value is NaN for a source that could
+        not be fit (e.g., a fully masked source).
+
+    Warns
+    -----
+    `~astropy.utils.exceptions.AstropyUserWarning`
+        If one or more fits may not have converged, or if ``fit_shape``
+        is `None`.
 
     See Also
     --------
@@ -483,7 +491,6 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     Fit the FWHMs of multiple sources in an image:
 
     >>> import numpy as np
-    >>> from photutils.detection import DAOStarFinder
     >>> from photutils.psf import (CircularGaussianPRF, fit_fwhm,
     ...                            make_psf_model_image)
     >>> model = CircularGaussianPRF()
@@ -491,8 +498,6 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     ...                                      min_separation=25,
     ...                                      model_shape=(15, 15),
     ...                                      flux=(100, 200), fwhm=[3, 8])
-    >>> finder = DAOStarFinder(0.1, 5)
-    >>> finder_tbl = finder(data)
     >>> xypos = zip(sources['x_0'], sources['y_0'])
     >>> fwhms = fit_fwhm(data, xypos=xypos, fit_shape=7)
     >>> fwhms
@@ -530,7 +535,7 @@ def _interpolate_missing_data(data, mask, *, method='cubic'):
         that will be interpolated.
 
     method : {'cubic', 'nearest'}, optional
-        The method of used to interpolate the missing data:
+        The method used to interpolate the missing data:
 
         * ``'cubic'``:  Masked data are interpolated using 2D cubic
           splines. If any masked pixels cannot be interpolated using
@@ -606,13 +611,12 @@ def _validate_psf_model(psf_model):
     """
     Validate the PSF model.
 
-    The PSF model must be a subclass of
-    `astropy.modeling.Fittable2DModel`. It must also be two-dimensional
-    and have a single output.
+    The PSF model must be an instance of `astropy.modeling.Model`. It
+    must also be two-dimensional and have a single output.
 
     Parameters
     ----------
-    psf_model : `astropy.modeling.Fittable2DModel`
+    psf_model : `astropy.modeling.Model`
         The PSF model to validate.
 
     Returns
@@ -623,7 +627,7 @@ def _validate_psf_model(psf_model):
     Raises
     ------
     TypeError
-        If the PSF model is not an Astropy Model subclass.
+        If the PSF model is not an Astropy Model instance.
 
     ValueError
         If the PSF model is not two-dimensional with n_inputs=2 and
@@ -650,7 +654,7 @@ def _get_psf_model_main_params(psf_model):
     'flux' or it must have 'x_name', 'y_name', and 'flux_name'
     attributes. Otherwise, a `ValueError` is raised.
 
-    The PSF model must be a subclass of `astropy.modeling.Model`. It
+    The PSF model must be an instance of `astropy.modeling.Model`. It
     must also be two-dimensional and have a single output.
 
     Parameters
@@ -711,7 +715,8 @@ def _create_call_docstring(*, iterative=False):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray` or `~astropy.nddata.NDData`
+        data : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, or \
+                `~astropy.nddata.NDData`
             The 2D array on which to perform photometry. Invalid data
             values (i.e., NaN or inf) are automatically masked. If an
             `~astropy.nddata.NDData` object is input, its ``data``,
@@ -732,13 +737,17 @@ def _create_call_docstring(*, iterative=False):
             have the same shape as the input ``data``. If ``data`` is a
             `~astropy.units.Quantity` array, then ``error`` must also be
             a `~astropy.units.Quantity` array with the same units.
+            The ``error`` values of the unmasked pixels that are fit
+            must be finite and strictly positive. Otherwise, a
+            `ValueError` is raised.
 
         init_params : `~astropy.table.Table` or `None`, optional
             A table containing the initial guesses of the model
             parameters (e.g., x, y, flux) for each
-            source{init_params_suffix}. If the initial x and y
-            values are not included, then the ``finder`` keyword must
-            be defined. If the initial flux values are not included,
+            source{init_params_suffix}. If input, the table must
+            include the initial x and y values. If `None`, the
+            ``finder`` keyword must be defined and is used to find
+            the sources. If the initial flux values are not included,
             then the ``aperture_radius`` keyword must be defined to
             measure the initial flux values. Note that the initial
             flux values refer to the model flux parameters and are
@@ -784,31 +793,53 @@ def _create_call_docstring(*, iterative=False):
             be used and ``grouper`` keyword will be ignored. If
             ``local_bkg`` is input, those values will be used and the
             ``local_bkg_estimator`` will be ignored. If ``data`` has
-            units, then the ``local_bkg`` values must have the same
+            units, then the ``local_bkg`` values must have compatible
             units.
+
+            The table can also have an ``'id'`` column of unique source
+            identification numbers. If it is not input, the sources are
+            numbered from 1 in row order. The output table is sorted by
+            ``'id'``.
 
         Returns
         -------
-        table : `~astropy.table.QTable`
-            An astropy table with the PSF-fitting results. The table
-            will contain the following columns:
+        table : `~astropy.table.QTable` or `None`
+            An astropy table with the PSF-fitting results. `None` is
+            returned if no sources are found. If ``data`` has units,
+            the ``'local_bkg'`` and flux columns have the same units.
+            The columns are ordered as listed below, except that all
+            of the ``_init`` columns come first, followed by all of
+            the ``_fit`` columns and then all of the ``_err`` columns.
+            The table will contain the following columns:
 
             * ``'id'`` : unique identification number for the source
             * ``'group_id'`` : unique identification number for the
               source group
             * ``'group_size'`` : the total number of sources in the group.
-              This number includes sources that are in the group, but were
-              not fit due to being masked, having no overlap with the
-              input data, or having too few pixels for a fit.
-            {iter_detected_column}
+              This number includes sources that are in the group,
+              but were not fit due to being masked, having no overlap
+              with the input data, or having too few pixels
+              for a fit.{iter_detected_column}
+            * ``'local_bkg'`` : the local background value subtracted
+              from the data before the fit (zero if no local background
+              was used)
             * ``'x_init'``, ``'x_fit'``, ``'x_err'`` : the initial,
               fit, and error of the source x center
             * ``'y_init'``, ``'y_fit'``, ``'y_err'`` : the initial, fit,
               and error of the source y center
             * ``'flux_init'``, ``'flux_fit'``, ``'flux_err'`` : the
               initial, fit, and error of the source flux
+            * ``'<name>_init'``, ``'<name>_fit'``, ``'<name>_err'`` :
+              the initial, fit, and error of any additional free model
+              parameter, where ``<name>`` is the parameter name
             * ``'n_pixels_fit'`` : the number of unmasked pixels used to
               fit the source
+
+              .. deprecated:: 3.0
+                  The ``'npixfit'`` column name is deprecated and will
+                  be removed in version 4.0. Use ``'n_pixels_fit'``
+                  instead.
+
             * ``'qfit'`` : a quality-of-fit metric defined as the sum
               of the absolute value of the fit residuals divided by
               the fit flux. ``'qfit'`` is zero for sources that are
@@ -816,26 +847,28 @@ def _create_call_docstring(*, iterative=False):
             * ``'cfit'`` : a quality-of-fit metric defined as the
               fit residual (data - model) in the initial central pixel
               value divided by the fit flux. NaN values indicate that
-              the central pixel was masked. Large positive values
-              indicate sources that are sharper than the PSF model
-              (e.g., cosmic ray, hot pixel, etc.). Large negative values
-              indicate sources that are broader than the PSF model
+              the central pixel was masked or outside the image, or that
+              the source was not fit. Large positive values indicate
+              sources that are sharper than the PSF model (e.g., cosmic
+              ray, hot pixel, etc.). Large negative values indicate
+              sources that are broader than the PSF model.
             * ``'reduced_chi2'`` : the reduced chi-squared statistic. If
               no ``error`` array is provided, ``'reduced_chi2'`` values
               will be NaN.
             * ``'flags'`` : The bitwise quality flags for the source.
-              See `~photutils.psf.decode_psf_flags` for decoding flag
-              values. The flags are:
+              A warning is issued if one or more fits may not have
+              converged. See `~photutils.psf.decode_psf_flags` for
+              decoding flag values. The flags are:
               <flag_descriptions>
 
         Notes
         -----
         The ``qfit`` and ``cfit`` metrics are equivalent to the ``q``
-        and ``C`` fits metrics defined by the HST PSF photometry
+        and ``C`` fit metrics defined by the HST PSF photometry
         `hst1pass
         <https://www.stsci.edu/files/live/sites/www/files/home/hst/instr
         umentation/acs/documentation/instrument-science-reports-isrs/_do
-        cuments/isr2202.pdf>`_ software.  They are also similar to the
+        cuments/isr2202.pdf>`_ software. They are also similar to the
         ``chi`` (``qfit``) and ``sharp`` (``cfit``) metrics used by
         `DAOPHOT
         <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_.
@@ -845,8 +878,8 @@ def _create_call_docstring(*, iterative=False):
             # Customizations for IterativePSFPhotometry
             indent = ' ' * 12
             suffix = (' *only for the first iteration*')
-            iter_detected_column = ("* ``'iter_detected'`` : the "
-                                    'iteration number in which the\n'
+            iter_detected_column = (f"\n{indent}* ``'iter_detected'`` : "
+                                    'the iteration number in which the\n'
                                     f"{indent}  source was detected")
             customized_docstring = base_docstring.format(
                 init_params_suffix=suffix,

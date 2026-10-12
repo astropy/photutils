@@ -2,8 +2,9 @@
 """
 Private implementation classes for PSF photometry components.
 
-This is a private module. The classes within are implementation details
-of the PSFPhotometry class and are not intended for direct public use.
+This is a private module. Its classes and functions are implementation
+details of the PSF photometry classes and are not intended for direct
+public use.
 """
 
 import contextlib
@@ -48,9 +49,10 @@ def _apply_bounds_to_param(model, param_name, param_value, bound_value):
     param_value : float
         Current value of the parameter.
 
-    bound_value : float
+    bound_value : float or None
         The bound offset (parameter will be bounded to
-        [param_value - bound_value, param_value + bound_value]).
+        [param_value - bound_value, param_value + bound_value]). If
+        None, no bounds are applied.
     """
     if bound_value is not None:
         param_obj = getattr(model, param_name)
@@ -84,9 +86,10 @@ def _create_flat_model_class(n_sources, psf_model):
 
     This function creates a dynamically-generated flat model class that
     avoids CompoundModel by creating a custom model class where all
-    parameters are top-level (e.g., x_0, y_0, flux_0, x_1, y_1, flux_1,
-    etc.) rather than nested. This eliminates the parameter tree traversal
-    and nested structure overhead of CompoundModel.
+    parameters are top-level (e.g., x_0_0, y_0_0, flux_0, x_0_1, y_0_1,
+    flux_1, etc., which is each base parameter name followed by the
+    source index) rather than nested. This eliminates the parameter tree
+    traversal and nested structure overhead of CompoundModel.
 
     The dynamic flat model class directly evaluates each PSF and sums them,
     providing much better performance for large groups.
@@ -189,13 +192,14 @@ def _instantiate_flat_model(model_class, sources, psf_model, param_mapper, *,
 
     param_mapper : object
         Parameter mapper for handling column name mappings and model
-        parameters. Must have `alias_to_model_param` and `init_colnames`
-        attributes.
+        parameters. Must have ``alias_to_model_param`` and
+        ``init_colnames`` attributes.
 
-    xy_bounds : tuple of float or None, optional
+    xy_bounds : 2-element sequence of float or None, or None, optional
         Bounds for x and y position parameters as (x_bound, y_bound).
         If provided, fitting positions will be constrained to within
-        these bounds of the initial values.
+        these bounds of the initial values. An element of `None` means
+        no bound along that axis.
 
     Returns
     -------
@@ -268,8 +272,9 @@ def _get_flat_model(sources, psf_model, param_mapper, *, xy_bounds=None,
         Parameter mapper for handling column name mappings and model
         parameters.
 
-    xy_bounds : tuple of float or None, optional
+    xy_bounds : 2-element sequence of float or None, or None, optional
         Bounds for x and y position parameters as (x_bound, y_bound).
+        An element of `None` means no bound along that axis.
 
     class_cache : dict or None, optional
         Cache of flat model classes keyed on the number of sources. If
@@ -351,8 +356,9 @@ class PSFDataProcessor:
             Input array to validate. Can be None for optional arrays.
 
         name : str
-            Name of the array for error messages (e.g., 'data', 'error',
-            'mask').
+            Name of the array, used in error messages (e.g., 'data',
+            'error', 'mask'). If 'mask', `numpy.ma.nomask` is converted
+            to None and the array is converted to bool.
 
         data_shape : tuple of int, optional
             Expected shape of the array. If provided, validates that
@@ -460,7 +466,10 @@ class PSFDataProcessor:
             If ``init_params`` is not an astropy Table.
 
         ValueError
-            If required position columns are missing.
+            If required position columns are missing, or if the units
+            of the flux or local_bkg column are not consistent with the
+            data units (only one of them has units, or the units are
+            incompatible).
         """
         if init_params is None:
             return init_params
@@ -680,10 +689,10 @@ class PSFDataProcessor:
 
         Returns
         -------
-        offsets : tuple of `~numpy.ndarray`
-            Tuple containing (y_offsets, x_offsets) arrays with shape
-            ``fit_shape``, where each array contains coordinate offsets
-            from the origin.
+        offsets : `~numpy.ndarray`
+            Array of shape ``(2, ny, nx)``, where ``(ny, nx)`` is
+            ``fit_shape``, that unpacks into the (y_offsets, x_offsets)
+            arrays of coordinate offsets from the origin.
         """
         # fit_shape is fixed at construction, so compute only once
         if self._cached_offsets is None:
@@ -759,13 +768,24 @@ class PSFDataProcessor:
         -------
         cutout_data : dict
             Dictionary containing cutout information:
+
             - 'valid' : bool, whether the cutout is valid
-            - 'reason' : str or None, reason if invalid
-            - 'xx' : array, x pixel coordinates (flattened)
-            - 'yy' : array, y pixel coordinates (flattened)
-            - 'cutout' : array, data values (background-subtracted)
-            - 'n_pixels' : int, number of pixels in cutout
-            - 'cen_index' : int or nan, index of center pixel
+            - 'reason' : str or None, reason if invalid ('no_overlap'
+              or 'fully_masked')
+            - 'xx' : 1D array or None, x pixel indices of the unmasked
+              cutout pixels
+            - 'yy' : 1D array or None, y pixel indices of the unmasked
+              cutout pixels
+            - 'cutout' : 1D array or None, data values of the unmasked
+              cutout pixels, with the local background subtracted if
+              it is finite
+            - 'n_pixels' : int, number of unmasked pixels in the cutout
+            - 'cen_index' : int or nan, index in the 1D arrays of the
+              pixel containing the source center, or nan if that pixel
+              is masked or outside the image
+
+            If the cutout is not valid, 'xx', 'yy', and 'cutout' are
+            None, 'n_pixels' is 0, and 'cen_index' is nan.
         """
         x_cen = row[self.param_mapper.init_colnames['x']]
         y_cen = row[self.param_mapper.init_colnames['y']]
@@ -866,12 +886,14 @@ class PSFFitter:
         Astropy fitter instance to use for PSF fitting. If None,
         defaults to `~astropy.modeling.fitting.TRFLSQFitter`.
 
-    fitter_maxiters : int, optional
-        Maximum number of fitting iterations. Default is 100.
+    fitter_maxiters : int or None, optional
+        Maximum number of fitting iterations. Default is 100. If None,
+        the default of the fitter is used.
 
-    xy_bounds : tuple of float or None, optional
+    xy_bounds : 2-element sequence of float or None, or None, optional
         Bounds for x and y position parameters as (x_bound, y_bound).
-        If provided, fitting positions will be constrained to within
+        An element of `None` means no bound along that axis. If
+        provided, fitting positions will be constrained to within
         these bounds of the initial values.
     """
 
@@ -894,8 +916,9 @@ class PSFFitter:
         sources.
 
         This method avoids CompoundModel by creating a custom model
-        class where all parameters are top-level (e.g., x_0, y_0,
-        flux_0, x_1, y_1, flux_1, etc.) rather than nested. This
+        class where all parameters are top-level (e.g., x_0_0, y_0_0,
+        flux_0, x_0_1, y_0_1, flux_1, etc., which is each base parameter
+        name followed by the source index) rather than nested. This
         eliminates the parameter tree traversal and nested structure
         overhead of CompoundModel.
 
@@ -908,8 +931,8 @@ class PSFFitter:
 
         Parameters
         ----------
-        sources : list of `~astropy.table.Row`
-            List of source rows from the sources table for the group.
+        sources : `~astropy.table.Table` or list of `~astropy.table.Row`
+            Source rows from the sources table for the group.
 
         Returns
         -------
@@ -993,7 +1016,8 @@ class PSFFitter:
         Raises
         ------
         ValueError
-            If error array contains non-positive or non-finite values.
+            If the error array contains non-positive or non-finite
+            values at the fit pixels.
         """
         kwargs = {'inplace': True}
 
@@ -1045,10 +1069,10 @@ class PSFFitter:
         Extract individual source covariance matrices from group
         covariance.
 
-        This method assumes that the group covariance matrix is
-        block-diagonal, with each block corresponding to a source.
-        The extracted source covariance matrices do not include
-        the covariances between different sources.
+        The group covariance matrix is assumed to be ordered by source,
+        with ``n_fit_params`` consecutive rows and columns for each
+        source. Only the diagonal block of each source is extracted.
+        The covariances between different sources are not included.
 
         Parameters
         ----------
@@ -1231,7 +1255,7 @@ class PSFResultsAssembler:
             Boolean array indicating which sources had valid fits.
 
         data_unit : `~astropy.units.Unit` or None
-            Unit of the input data for applying to flux-related columns.
+            Unit of the input data, applied to the flux error column.
 
         Returns
         -------
@@ -1281,7 +1305,9 @@ class PSFResultsAssembler:
     def calc_fit_metrics(self, results_tbl, sum_abs_residuals, cen_residuals,
                          reduced_chi2):
         """
-        Calculate fit quality metrics qfit, cfit, and reduced_chi2.
+        Calculate the qfit and cfit fit quality metrics.
+
+        The input ``reduced_chi2`` values are returned unchanged.
 
         Parameters
         ----------
@@ -1307,8 +1333,8 @@ class PSFResultsAssembler:
             Array of cfit quality metrics (central pixel residual
             divided by flux).
 
-        reduced_chi2 : `~numpy.ndarray`
-            Array of reduced chi-squared values.
+        reduced_chi2 : array-like
+            The input reduced chi-squared values, unchanged.
         """
         flux_col = self.param_mapper.fit_colnames['flux']
         flux_vals = results_tbl[flux_col]
@@ -1364,8 +1390,9 @@ class PSFResultsAssembler:
         fitted_models_table : `~astropy.table.Table`
             Table containing fitted model parameters with bounds info.
 
-        valid_mask : `~numpy.ndarray` or None
-            Boolean array indicating valid sources.
+        valid_mask : `~numpy.ndarray`
+            Boolean array indicating valid sources. Only valid sources
+            are checked for parameters near a bound.
 
         invalid_reasons : list or None
             List of reasons why sources were invalid.
@@ -1492,7 +1519,7 @@ class PSFResultsAssembler:
         The final results table is built by merging the input
         ``init_params`` table with the ``fit_params`` table. Additional
         columns are added for ``n_pixels_fit``, ``group_size``, ``qfit``,
-        ``cfit``, and ``flags``.
+        ``cfit``, ``reduced_chi2``, and ``flags``.
 
         This method also cleans up the state dictionary as data is
         consumed to reduce memory usage.
@@ -1512,13 +1539,15 @@ class PSFResultsAssembler:
             State dictionary containing fitting data and metadata.
 
         calc_fit_metrics_func : callable
-            Function to calculate fit quality metrics (qfit, cfit).
+            Function to calculate fit quality metrics (qfit, cfit,
+            reduced_chi2).
 
         define_flags_func : callable
             Function to define per-source bitwise flags.
 
         class_name : str
-            Name of the calling class for warning messages.
+            Name of the calling class, stored in the ``'psf_class'``
+            entry of the table metadata.
 
         metadata_attrs : dict
             Dictionary of metadata attributes to add to the table.
@@ -1535,9 +1564,9 @@ class PSFResultsAssembler:
             - Source ID and group ID
             - Initial parameter estimates
             - Fitted parameters with uncertainties
-            - Quality metrics (qfit, cfit)
+            - Quality metrics (qfit, cfit, reduced_chi2)
             - Bitwise flags indicating fit conditions
-            - Iterator statistics (n_pixels_fit, group_size)
+            - Fit statistics (n_pixels_fit, group_size)
         """
         # Add metrics and flags column to fit_params. The results in the
         # state container match the order of the fit_params results,
@@ -1618,10 +1647,10 @@ def _make_model_image_docstring(func):
 
         Parameters
         ----------
-        shape : 2 tuple of int
+        shape : 2-tuple of int
             The shape of the output array.
 
-        psf_shape : 2-tuple of int, optional
+        psf_shape : int, 2-tuple of int, or `None`, optional
             The shape of the region around the center of the fit model
             to render in the output image. If ``psf_shape`` is a scalar
             integer, then a square shape of size ``psf_shape`` will be
@@ -1645,6 +1674,12 @@ def _make_model_image_docstring(func):
             The rendered image from the fit PSF models. If the fit
             was performed on data with units, the image will be a
             `~astropy.units.Quantity` with the same units.
+
+        Raises
+        ------
+        ValueError
+            If no results are available because the instance has not
+            been run or no sources were found.
         """
     return func
 
@@ -1656,12 +1691,13 @@ def _make_residual_image_docstring(func):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, or \
+`~astropy.nddata.NDData`
             The 2D array on which photometry was performed. This should
             be the same array input when calling the PSF-photometry
             class.
 
-        psf_shape : 2-tuple of int, optional
+        psf_shape : int, 2-tuple of int, or `None`, optional
             The shape of the region around the center of the fit model
             to subtract. If ``psf_shape`` is a scalar integer, then
             a square shape of size ``psf_shape`` will be used. If
@@ -1680,9 +1716,19 @@ def _make_residual_image_docstring(func):
 
         Returns
         -------
-        array : 2D `~numpy.ndarray`
+        array : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, or \
+`~astropy.nddata.NDData`
             The residual image of the ``data`` minus the fit PSF models
-            minus the optional ``local_bkg``.
+            minus the optional ``local_bkg``. The output has the same
+            type as the input ``data``. If ``data`` is an
+            `~astropy.nddata.NDData` object, a copy is returned with
+            the residual image as its data.
+
+        Raises
+        ------
+        ValueError
+            If no results are available because the instance has not
+            been run or no sources were found.
         """
     return func
 
@@ -1693,13 +1739,14 @@ class _ModelImageMaker:
 
     Parameters
     ----------
-    psf_model : `astropy.modeling.Model`
+    psf_model : `~astropy.modeling.Model`
         The PSF model.
 
     model_params : `~astropy.table.Table`
         The model parameters.
 
-    local_bkg : `~numpy.ndarray`, optional
+    local_bkg : `~astropy.table.Column` or `~astropy.units.Quantity`, \
+optional
         The local background values.
 
     progress_bar : bool, optional

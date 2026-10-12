@@ -86,7 +86,7 @@ class _PSFParameterMapper:
         params_map : dict
             A dictionary mapping parameter aliases to their actual
             names in the PSF model. The keys are 'x', 'y', 'flux', and
-            any additional parameters defined in the model.
+            any additional model parameters that are free (not fixed).
         """
         # The order of the main parameters is important. It defines
         # the order of table outputs.
@@ -208,7 +208,7 @@ class _PSFParameterMapper:
         Returns
         -------
         table : `~astropy.table.Table`
-            The input table with columns renamed to the `_init` format
+            The input table with columns renamed to the ``_init`` format
             based on the parameter aliases.
         """
         for param_alias in self.alias_to_model_param:
@@ -272,7 +272,7 @@ class _FitEngine:
     psf_model : `~astropy.modeling.Model`
         The PSF model.
 
-    param_mapper : `~photutils.psf._components._PSFParameterMapper`
+    param_mapper : `_PSFParameterMapper`
         The parameter mapper of the PSF model.
 
     data_processor : `~photutils.psf._components.PSFDataProcessor`
@@ -599,15 +599,16 @@ class PSFPhotometry:
     finder : callable or `~photutils.detection.StarFinderBase` or `None`, \
             optional
         A callable used to identify sources in an image. The
-        ``finder`` must accept a 2D image as input and return a
-        `~astropy.table.Table` containing the x and y centroid
-        positions. These positions are used as the starting points for
-        the PSF fitting. The allowed ``x`` column names are (same suffix
-        for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``,
-        ``'x0'``, ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``,
-        ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``,
-        and ``'xfit'``. If `None`, then the initial (x, y) model
-        positions must be input using the ``init_params`` keyword
+        ``finder`` must accept a 2D image as its first argument
+        and a ``mask`` keyword, and return a `~astropy.table.Table`
+        containing the x and y centroid positions (or `None` if no
+        sources are found). These positions are used as the starting
+        points for the PSF fitting. The allowed ``x`` column names are
+        (same suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``,
+        ``'x_0'``, ``'x0'``, ``'xcentroid'``, ``'x_centroid'``,
+        ``'x_peak'``, ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``,
+        ``'x_fit'``, and ``'xfit'``. If `None`, then the initial (x, y)
+        model positions must be input using the ``init_params`` keyword
         when calling the class. The (x, y) values in ``init_params``
         override this keyword. If this class is run on an image that has
         units (i.e., a `~astropy.units.Quantity` array), then certain
@@ -627,7 +628,7 @@ class PSFPhotometry:
         keyword. A warning is raised if any group size is larger than
         ``group_warning_threshold`` sources.
 
-    fitter : `~astropy.modeling.fitting.Fitter`, optional
+    fitter : `~astropy.modeling.fitting.Fitter` or `None`, optional
         The fitter object used to perform the fit of the
         model to the data. If `None`, then the default
         `astropy.modeling.fitting.TRFLSQFitter` is used.
@@ -637,7 +638,8 @@ class PSFPhotometry:
         called for each source. The value can be increased if the fit
         is not converging for sources. This parameter is passed to the
         ``fitter`` if it supports the ``maxiter`` parameter and ignored
-        otherwise.
+        otherwise. In the latter case, a warning is issued when the
+        class is created.
 
     xy_bounds : `None`, float, or 2-tuple of float, optional
         The maximum distance in pixels that a fitted source can be from
@@ -703,11 +705,11 @@ class PSFPhotometry:
         with keys such as ``param_cov``, ``ierr``, ``message``, and
         ``status`` (the exact keys depend on the ``fitter``).
 
-    finder_results : `~astropy.table.QTable` or `None`
+    finder_results : `~astropy.table.Table` or `None`
         The table of sources returned by the ``finder`` during the
         most recent call, or `None` if the finder was not used.
 
-    init_params : `~astropy.table.QTable` or `None`
+    init_params : `~astropy.table.Table` or `None`
         The table of initial parameters used in the most recent call,
         or `None` if the instance has not yet been run.
 
@@ -962,8 +964,8 @@ class PSFPhotometry:
         name : str
             Name of the parameter for error messages.
 
-        expected_type : type or tuple of types
-            Expected type(s) for the object.
+        expected_type : type
+            Expected type for the object.
 
         Returns
         -------
@@ -972,7 +974,7 @@ class PSFPhotometry:
 
         Raises
         ------
-        error_type
+        TypeError
             If obj is not None and not an instance of expected_type.
         """
         if obj is not None and not isinstance(obj, expected_type):
@@ -1147,7 +1149,7 @@ class PSFPhotometry:
 
         Parameters
         ----------
-        maxiters : int or None
+        maxiters : int
             Maximum number of fitter iterations to validate.
 
         Returns
@@ -1354,8 +1356,8 @@ class PSFPhotometry:
             The validated input image data.
 
         mask : 2D `numpy.ndarray` or `None`
-            The validated boolean mask where `True` values are masked.
-            If no mask was input, then `None` is returned.
+            The boolean mask combining the input mask and any
+            non-finite data values, or `None` if no pixels are masked.
 
         error : 2D `numpy.ndarray` or `None`
             The validated 1-sigma uncertainties of the input data.
@@ -1363,7 +1365,8 @@ class PSFPhotometry:
 
         init_params : `~astropy.table.Table` or `None`
             The table of initial parameters ready for fitting, or `None`
-            if no sources were found.
+            if no sources were found. In that case, the other three
+            return values are also `None`.
         """
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
@@ -1606,8 +1609,8 @@ class PSFPhotometry:
         Returns
         -------
         fit_params : `~astropy.table.Table`
-            The table of fitted parameters and fit quality metrics for
-            each source.
+            The table of fitted parameters and their errors for each
+            source.
         """
         # Add row index for stable mapping
         if '_row_index' not in init_params.colnames:
@@ -2050,7 +2053,7 @@ class PSFPhotometry:
         ----------
         return_bit_values : bool, optional
             If `True`, return the decoded bit flags (integers) instead
-            of the flag descriptions (strings). Default is `False`.
+            of the flag names (strings). Default is `False`.
 
         Returns
         -------

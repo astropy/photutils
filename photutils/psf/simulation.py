@@ -47,9 +47,10 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         given ``shape`` and therefore the number of sources generated
         may be less than ``n_sources``.
 
-    model_shape : `None` or 2-tuple of int, optional
-        The shape around the center (x, y) position that will used to
-        evaluate the ``psf_model``. If `None`, then the shape will be
+    model_shape : `None`, int, or 2-tuple of int, optional
+        The shape around the center (x, y) position that will be used
+        to evaluate the ``psf_model``. If a single integer is provided,
+        a square shape is used. If `None`, then the shape will be
         determined from the ``psf_model`` bounding box (an error will be
         raised if the model does not have a bounding box).
 
@@ -93,11 +94,20 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
     data : 2D `~numpy.ndarray`
         The simulated image.
 
-    table : `~astropy.table.Table`
-        A table containing the (x, y, flux) parameters of the generated
-        sources. The column names will correspond to the names of the
-        input ``psf_model`` (x, y, flux) parameter names. The table will
-        also contain an ``'id'`` column with unique source IDs.
+    table : `~astropy.table.QTable`
+        A table containing the parameters of the generated sources.
+        It has an ``'id'`` column with unique source IDs, columns for
+        the x and y positions named after the ``psf_model`` position
+        parameters, and one column for each model parameter given in
+        ``**kwargs``, named after the model parameter. A parameter
+        that is not given, including the flux, has no column and takes
+        the value set in ``psf_model`` for every source.
+
+    Warns
+    -----
+    `~astropy.utils.exceptions.AstropyUserWarning`
+        If fewer than ``n_sources`` sources could be generated with
+        the given ``shape`` and ``min_separation``.
 
     Examples
     --------
