@@ -60,13 +60,27 @@ class SplitCosineBellWindow:
     Parameters
     ----------
     alpha : float
-        The percentage of array values that are tapered. ``alpha`` must
-        be between 0.0 and 1.0, inclusive.
+        The width of the cosine taper as a fraction of the maximum
+        radius. The maximum radius is the distance in pixels from the
+        array center to the edge along the shortest axis,
+        ``(min(shape) - 1) / 2``. ``alpha`` must be between 0.0 and
+        1.0, inclusive.
 
     beta : float
-        The inner diameter as a fraction of the array size beyond
-        which the taper begins. ``beta`` must be between 0.0 and 1.0,
-        inclusive.
+        The radius of the inner flat region as a fraction of the
+        maximum radius. The taper begins beyond this radius. ``beta``
+        must be between 0.0 and 1.0, inclusive.
+
+    Raises
+    ------
+    ValueError
+        If ``alpha`` or ``beta`` is not between 0.0 and 1.0, inclusive.
+
+    Warns
+    -----
+    `~astropy.utils.exceptions.AstropyUserWarning`
+        If ``alpha + beta`` is greater than 1.0. The taper then extends
+        beyond the maximum radius and is truncated by the array edges.
 
     Examples
     --------
@@ -128,12 +142,20 @@ class SplitCosineBellWindow:
         Parameters
         ----------
         shape : tuple of int
-            The size of the output array along each axis.
+            The shape of the output array. It must have two elements.
+            The window radii are defined relative to
+            ``(min(shape) - 1) / 2``, so the window is circular for a
+            non-square shape.
 
         Returns
         -------
         result : 2D `~numpy.ndarray`
             The window function as a 2D array.
+
+        Raises
+        ------
+        ValueError
+            If ``shape`` does not have two elements.
         """
         dist = _distance_grid(shape)
 
@@ -235,10 +257,17 @@ class TukeyWindow(SplitCosineBellWindow):
     Parameters
     ----------
     alpha : float
-        The percentage of array values that are tapered. Must be
-        between 0.0 and 1.0, inclusive. When ``alpha=0``, this
-        becomes a `TopHatWindow`. When ``alpha=1``, this becomes a
-        `HanningWindow`.
+        The width of the cosine taper as a fraction of the maximum
+        radius. The maximum radius is the distance in pixels from the
+        array center to the edge along the shortest axis,
+        ``(min(shape) - 1) / 2``. Must be between 0.0 and 1.0,
+        inclusive. When ``alpha=0``, this becomes a `TopHatWindow`. When
+        ``alpha=1``, this becomes a `HanningWindow`.
+
+    Raises
+    ------
+    ValueError
+        If ``alpha`` is not between 0.0 and 1.0, inclusive.
 
     Notes
     -----
@@ -290,18 +319,29 @@ class CosineBellWindow(SplitCosineBellWindow):
     inner plateau) and extends outward over a fraction ``alpha`` of the
     maximum radius.
 
-    Use this window when you want to preserve the very center of an
-    image while applying a gentle taper that starts relatively far from
-    the edges. It provides less artifact suppression than `TukeyWindow`
-    for the same ``alpha`` value because the taper region is positioned
-    differently.
+    The window is zero beyond a radius of ``alpha`` times the maximum
+    radius, so a small ``alpha`` removes all but the lowest spatial
+    frequencies. For the same ``alpha`` value, it suppresses much more
+    high-frequency noise than `TukeyWindow`, which equals 1.0 out to a
+    radius of ``1 - alpha`` times the maximum radius. The cost is that
+    it also removes more of the high-frequency signal. Use this window
+    when you want a smooth low-pass taper with no flat inner region.
 
     Parameters
     ----------
     alpha : float
-        The percentage of array values that are tapered. Must be between
-        0.0 and 1.0, inclusive. When ``alpha=1``, this becomes a
-        `HanningWindow`.
+        The width of the cosine taper as a fraction of the maximum
+        radius. The maximum radius is the distance in pixels from the
+        array center to the edge along the shortest axis,
+        ``(min(shape) - 1) / 2``. Must be between 0.0 and 1.0,
+        inclusive. When ``alpha=1``, this becomes a `HanningWindow`.
+        When ``alpha=0``, the window is zero everywhere except at the
+        central pixel of an array with odd dimensions.
+
+    Raises
+    ------
+    ValueError
+        If ``alpha`` is not between 0.0 and 1.0, inclusive.
 
     Notes
     -----
@@ -353,9 +393,10 @@ class TopHatWindow(SplitCosineBellWindow):
 
     This window preserves the most data (everything inside the cutoff
     radius is untouched), but the sharp edge creates strong ringing
-    artifacts in the matching kernel. Use this only when you need to strictly
-    preserve data within a specific region and can tolerate significant
-    artifacts, or when the sharp cutoff is explicitly desired.
+    artifacts in the matching kernel. Use this only when you need to
+    strictly preserve data within a specific region and can tolerate
+    significant artifacts, or when the sharp cutoff is explicitly
+    desired.
 
     For most PSF matching applications, `TukeyWindow` is preferred as
     it provides much better artifact suppression while still preserving
@@ -365,9 +406,16 @@ class TopHatWindow(SplitCosineBellWindow):
     Parameters
     ----------
     beta : float
-        The inner diameter as a fraction of the array size beyond
-        which the window drops to zero. Must be between 0.0 and 1.0,
-        inclusive.
+        The radius of the window as a fraction of the maximum radius.
+        The maximum radius is the distance in pixels from the array
+        center to the edge along the shortest axis,
+        ``(min(shape) - 1) / 2``. The window is zero beyond the window
+        radius. Must be between 0.0 and 1.0, inclusive.
+
+    Raises
+    ------
+    ValueError
+        If ``beta`` is not between 0.0 and 1.0, inclusive.
 
     Notes
     -----

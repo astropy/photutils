@@ -21,7 +21,7 @@ def _build_penalty_array(penalty):
 
     Parameters
     ----------
-    penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D array-like
+    penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D array_like
         The regularization penalty operator.
 
     Returns
@@ -90,9 +90,9 @@ def make_kernel(source_psf, target_psf, *, regularization=1e-4, window=None):
 
     This function computes the matching kernel in the Fourier domain by
     dividing the target PSF's Fourier transform by the source PSF's
-    Fourier transform. To avoid division by near-zero values, the Fourier
-    ratio is set to zero at frequencies where the source OTF (Optical
-    Transfer Function) amplitude falls below a threshold.
+    Fourier transform. To avoid division by near-zero values, the
+    Fourier ratio is set to zero at frequencies where the source OTF
+    (Optical Transfer Function) amplitude falls below a threshold.
 
     The kernel is computed as:
 
@@ -117,17 +117,19 @@ def make_kernel(source_psf, target_psf, *, regularization=1e-4, window=None):
 
     Parameters
     ----------
-    source_psf : 2D `~numpy.ndarray`
+    source_psf : 2D array_like
         The source PSF. The source PSF should have higher resolution
         (i.e., narrower) than the target PSF. ``source_psf`` and
         ``target_psf`` must have the same shape and pixel scale. It is
-        assumed to be centered on the central pixel.
+        assumed to be centered on the central pixel. It is normalized to
+        sum to 1 before the kernel is computed.
 
-    target_psf : 2D `~numpy.ndarray`
+    target_psf : 2D array_like
         The target PSF. The target PSF should have lower resolution
         (i.e., broader) than the source PSF. ``source_psf`` and
         ``target_psf`` must have the same shape and pixel scale. It is
-        assumed to be centered on the central pixel.
+        assumed to be centered on the central pixel. It is normalized to
+        sum to 1 before the kernel is computed.
 
     regularization : float, optional
         The regularization parameter that controls the OTF amplitude
@@ -145,9 +147,9 @@ def make_kernel(source_psf, target_psf, *, regularization=1e-4, window=None):
         to remove high frequency noise from the PSF matching kernel.
         The window function should be a callable that accepts a single
         ``shape`` parameter (a tuple defining the 2D array shape) and
-        returns a 2D array of the same shape. The returned window
-        values must be in the range [0, 1], where 1.0 indicates full
-        preservation of that spatial frequency and 0.0 indicates
+        returns a 2D `~numpy.ndarray` of the same shape. The returned
+        window values must be in the range [0, 1], where 1.0 indicates
+        full preservation of that spatial frequency and 0.0 indicates
         complete suppression. The window must be centered on the central
         pixel. Built-in window classes include:
 
@@ -264,9 +266,10 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
             \\frac{T \\cdot S^{*}}
                   {|S|^{2} + \\lambda \\cdot |P|^{2}} \\right]
 
-    where :math:`P` is the OTF of the ``penalty`` operator. This
-    penalizes high spatial frequencies more heavily, which is
-    particularly effective at suppressing noise amplification.
+    where :math:`P` is the OTF of the ``penalty`` operator. For a
+    derivative operator such as the Laplacian, this penalizes high
+    spatial frequencies more heavily, which is particularly effective
+    at suppressing noise amplification.
 
     In both equations, :math:`\\mathcal{F}^{-1}` is the inverse Fourier
     transform, :math:`S` and :math:`T` are the Fourier transforms of
@@ -274,7 +277,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     conjugate of :math:`S`, :math:`\\lambda` is the ``regularization``
     parameter, and :math:`W` is the optional ``window`` function
     (defaulting to 1 if not provided). :math:`|S|^{2}` is the power
-    spectrum of the source OTF.
+    spectrum of the source PSF.
 
     When the ``penalty`` is set to ``'laplacian'``, the regularization
     reproduces the approach used by the ``pypher`` package (`Boucaud
@@ -297,17 +300,19 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
 
     Parameters
     ----------
-    source_psf : 2D `~numpy.ndarray`
+    source_psf : 2D array_like
         The source PSF. The source PSF should have higher resolution
         (i.e., narrower) than the target PSF. ``source_psf`` and
         ``target_psf`` must have the same shape and pixel scale. It is
-        assumed to be centered on the central pixel.
+        assumed to be centered on the central pixel. It is normalized to
+        sum to 1 before the kernel is computed.
 
-    target_psf : 2D `~numpy.ndarray`
+    target_psf : 2D array_like
         The target PSF. The target PSF should have lower resolution
         (i.e., broader) than the source PSF. ``source_psf`` and
         ``target_psf`` must have the same shape and pixel scale. It is
-        assumed to be centered on the central pixel.
+        assumed to be centered on the central pixel. It is normalized to
+        sum to 1 before the kernel is computed.
 
     regularization : float, optional
         The regularization parameter that controls the strength
@@ -320,7 +325,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         more detail but may amplify noise. Must be a positive number.
 
     penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D \
-array-like, optional
+array_like, optional
         The regularization penalty operator. This controls the
         structure of the regularization term in the denominator:
 
@@ -351,7 +356,7 @@ array-like, optional
           of reduced accuracy in matching. Requires PSFs to be at least
           5x5.
 
-        * 2D array-like: A custom penalty operator array.
+        * 2D array_like: A custom penalty operator array.
           Its OTF will be computed and used in the denominator as
           :math:`|S|^2 + \\lambda \\cdot |P|^2`. The array must have
           odd dimensions in both axes, contain only finite values, and
@@ -363,9 +368,9 @@ array-like, optional
         to remove high frequency noise from the PSF matching kernel.
         The window function should be a callable that accepts a single
         ``shape`` parameter (a tuple defining the 2D array shape) and
-        returns a 2D array of the same shape. The returned window
-        values must be in the range [0, 1], where 1.0 indicates full
-        preservation of that spatial frequency and 0.0 indicates
+        returns a 2D `~numpy.ndarray` of the same shape. The returned
+        window values must be in the range [0, 1], where 1.0 indicates
+        full preservation of that spatial frequency and 0.0 indicates
         complete suppression. The window must be centered on the central
         pixel. Built-in window classes include:
 

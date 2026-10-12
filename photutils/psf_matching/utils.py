@@ -17,10 +17,10 @@ def _validate_kernel_inputs(source_psf, target_psf, window):
 
     Parameters
     ----------
-    source_psf : array-like
+    source_psf : array_like
         The source PSF array.
 
-    target_psf : array-like
+    target_psf : array_like
         The target PSF array.
 
     window : callable or None
@@ -38,10 +38,10 @@ def _validate_kernel_inputs(source_psf, target_psf, window):
     ------
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, do not have
-        the same shape, or contain NaN or Inf values.
+        the same shape, contain NaN or Inf values, or have a zero sum.
 
     TypeError
-        If the input ``window`` is not callable.
+        If ``window`` is not `None` and is not callable.
     """
     # Copy as float so in-place normalization doesn't modify inputs
     source_psf = np.array(source_psf, dtype=float)
@@ -68,7 +68,8 @@ def _validate_kernel_inputs(source_psf, target_psf, window):
 
 def _validate_psf(psf, name):
     """
-    Validate that a PSF is 2D with odd dimensions.
+    Validate that a PSF is a finite 2D array with odd dimensions and a
+    non-zero sum.
 
     Parameters
     ----------
@@ -81,8 +82,8 @@ def _validate_psf(psf, name):
     Raises
     ------
     ValueError
-        If the PSF is not 2D, has even dimensions, or contains NaN or
-        Inf values.
+        If the PSF is not 2D, has even dimensions, contains NaN or Inf
+        values, or has a zero sum.
     """
     if psf.ndim != 2:
         msg = f'{name} must be a 2D array.'
@@ -184,7 +185,7 @@ def _convert_psf_to_otf(psf, shape):
     Convert a point-spread function to an optical transfer function.
 
     This computes the FFT of a PSF array after centering it in a
-    zero-padded array of the output shape and applying `ifftshift` to
+    zero-padded array of the output shape and applying ``ifftshift`` to
     move the PSF center to position [0, 0].
 
     The PSF is first placed at the center of the zero-padded array,
@@ -193,9 +194,9 @@ def _convert_psf_to_otf(psf, shape):
     than the target shape, so that the resulting OTF has the correct
     size for element-wise operations with other same-shaped OTFs.
 
-    The `ifftshift` operation then moves the PSF center from the array
-    center to position [0, 0], which is the standard convention for
-    computing OTFs via FFT. This ensures correct complex phase in
+    The ``ifftshift`` operation then moves the PSF center from the
+    array center to position [0, 0], which is the standard convention
+    for computing OTFs via FFT. This ensures correct complex phase in
     the resulting OTF for general use. Note that when only the power
     spectrum (|OTF|^2) is needed, the shift has no effect because it
     only changes the phase.
@@ -296,7 +297,7 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
 
     Parameters
     ----------
-    psf : 2D `~numpy.ndarray`
+    psf : 2D array_like
         The 2D data array of the PSF. The PSF must have odd dimensions.
         It is assumed to be centered on the central pixel.
 
@@ -336,7 +337,11 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
 
     TypeError
         If the pixel scales have units that are not convertible to each
-        other.
+        other, if only one of them is a `~astropy.units.Quantity`, or if
+        ``order`` is not an integer.
+
+    RuntimeError
+        If ``order`` is not in the range 0 to 5.
 
     Notes
     -----
