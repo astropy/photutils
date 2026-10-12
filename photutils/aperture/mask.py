@@ -140,24 +140,26 @@ class ApertureMask:
         Parameters
         ----------
         data : array_like
-            A 2D array on which to apply the aperture mask.
+            The 2D array from which to extract the cutout.
 
         fill_value : float, optional
             The value used to fill pixels where the aperture mask does
-            not overlap with the input ``data``. The default is 0.
+            not overlap with the input ``data``. The default is 0. For
+            a partial overlap, the cutout has the data type of ``data``,
+            so ``fill_value`` is cast to that type. A non-finite
+            ``fill_value`` gives a float cutout.
 
         copy : bool, optional
             If `True` then the returned cutout array will always hold a
             copy of the input ``data``. If `False` and the mask is fully
             within the input ``data``, then the returned cutout array
-            will be a view into the input ``data``. In cases where the
-            mask partially overlaps or has no overlap with the input
-            ``data``, the returned cutout array will always hold a copy
-            of the input ``data`` (i.e., this keyword has no effect).
+            will be a view into the input ``data``. If the mask only
+            partially overlaps the input ``data``, the returned cutout
+            array is always a copy (i.e., this keyword has no effect).
 
         Returns
         -------
-        result : `~numpy.ndarray` or `None`
+        result : `~numpy.ndarray`, `~astropy.units.Quantity`, or `None`
             A 2D array cut out from the input ``data`` representing
             the same cutout region as the aperture mask. If there is a
             partial overlap of the aperture mask with the input data,
@@ -210,12 +212,16 @@ class ApertureMask:
             The 2D array to multiply with the aperture mask.
 
         fill_value : float, optional
-            The value is used to fill pixels where the aperture mask
-            does not overlap with the input ``data``. The default is 0.
+            The value assigned to pixels where the aperture mask does
+            not overlap with the input ``data`` and to pixels within
+            the bounding box where the mask weight is zero. Pixels
+            outside of the input ``data`` that have a nonzero mask
+            weight are set to ``fill_value`` multiplied by the mask
+            weight. The default is 0.
 
         Returns
         -------
-        result : `~numpy.ndarray` or `None`
+        result : `~numpy.ndarray`, `~astropy.units.Quantity`, or `None`
             A 2D mask-weighted cutout from the input ``data``. If
             there is a partial overlap of the aperture mask with the
             input data, pixels outside the data will be assigned to
@@ -263,11 +269,15 @@ class ApertureMask:
             the small array. `None` is returned if there is no overlap
             of the bounding box with the given image shape.
 
-        aper_weights : 2D float `~numpy.ndarray`
-            The cutout aperture mask weights for the overlap.
+        aper_weights : 2D float `~numpy.ndarray` or `None`
+            The cutout aperture mask weights for the overlap. `None` is
+            returned if there is no overlap.
 
-        pixel_mask : 2D bool `~numpy.ndarray`
-            The cutout pixel mask for the overlap.
+        pixel_mask : 2D bool `~numpy.ndarray` or `None`
+            The cutout pixel mask for the overlap, where `True`
+            indicates a pixel with a nonzero aperture weight that is
+            not masked in the input ``mask``. `None` is returned if
+            there is no overlap.
 
         Notes
         -----
@@ -296,16 +306,16 @@ class ApertureMask:
         """
         Get the mask-weighted pixel values from the data as a 1D array.
 
-        If the ``ApertureMask`` was created with ``method='center'``,
+        If the ``ApertureMask`` was created with ``method='center'``
         (where the mask weights are only 1 or 0), then the returned
         values will simply be pixel values extracted from the data.
 
         Parameters
         ----------
-        data : array_like or `~astropy.units.Quantity`
+        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The 2D array from which to get mask-weighted values.
 
-        mask : array_like (bool), optional
+        mask : 2D bool `~numpy.ndarray`, optional
             A boolean mask with the same shape as ``data`` where a
             `True` value indicates the corresponding element of ``data``
             is not returned in the result.
@@ -314,10 +324,12 @@ class ApertureMask:
         -------
         result : `~numpy.ndarray` or `~astropy.units.Quantity`
             A 1D array of mask-weighted pixel values from the input
-            ``data``. If there is no overlap of the aperture with the
-            input ``data``, the result will be an empty array with shape
-            (0,). If ``data`` is a `~astropy.units.Quantity`, the result
-            is a `~astropy.units.Quantity` with the same units.
+            ``data``. Only pixels with a nonzero mask weight that lie
+            within ``data`` are returned. If there is no overlap of the
+            aperture with the input ``data``, the result will be an
+            empty array with shape (0,). If ``data`` is a
+            `~astropy.units.Quantity`, the result is a
+            `~astropy.units.Quantity` with the same units.
         """
         slc_large, aper_weights, pixel_mask = self._get_overlap_cutouts(
             data.shape, mask=mask)

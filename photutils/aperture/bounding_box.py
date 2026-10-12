@@ -91,8 +91,9 @@ class BoundingBox:
         * pixel 2: from 1.5 to 2.5
 
         In addition, because `BoundingBox` upper limits are exclusive
-        (by definition), 1 is added to the upper pixel edges. See
-        examples below.
+        (by definition), the upper limits are one larger than the index
+        of the last pixel that the rectangle touches. See examples
+        below.
 
         Parameters
         ----------
@@ -228,9 +229,10 @@ class BoundingBox:
     @property
     def extent(self):
         """
-        The extent of the mask, defined as the ``(xmin, xmax, ymin,
-        ymax)`` bounding box from the bottom-left corner of the lower-
-        left pixel to the upper-right corner of the upper-right pixel.
+        The extent of the bounding box, defined as the ``(xmin, xmax,
+        ymin, ymax)`` edges from the bottom-left corner of the
+        lower-left pixel to the upper-right corner of the upper-right
+        pixel.
 
         The upper edges here are the actual pixel positions of the
         edges, i.e., they are not "exclusive" indices used for python
@@ -326,8 +328,8 @@ class BoundingBox:
 
     def union(self, other):
         """
-        Return a `BoundingBox` representing the union of this
-        `BoundingBox` with another `BoundingBox`.
+        Return the smallest `BoundingBox` that contains both this
+        `BoundingBox` and another `BoundingBox`.
 
         Parameters
         ----------
@@ -337,8 +339,8 @@ class BoundingBox:
         Returns
         -------
         result : `BoundingBox`
-            A `BoundingBox` representing the union of the input
-            `BoundingBox` with this one.
+            The smallest `BoundingBox` that contains both the input
+            `BoundingBox` and this one.
         """
         if not isinstance(other, BoundingBox):
             msg = 'BoundingBox can be joined only with another BoundingBox.'
