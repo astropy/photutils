@@ -45,10 +45,12 @@ def _reference_centroid_quad_results(cat):
     """
     Compute the quadratic centroid results of each source.
 
-    This is a verbatim port of the per-source Python implementation
-    of ``_centroid_quad_results`` that the batch path replaces, with
+    This is a port of the per-source Python implementation of
+    ``_centroid_quad_results`` that the batch path replaces, with
     a final column that is 1.0 where the centroid is not a quadratic
-    fit maximum. It is the numerical reference for the batch path.
+    fit maximum. The pixels of the 3x3 box that are input-masked or
+    have a non-finite data value are left out of the fit. It is the
+    numerical reference for the batch path.
     """
     xi = np.arange(3)
     x, y = np.meshgrid(xi, xi)
@@ -61,7 +63,7 @@ def _reference_centroid_quad_results(cat):
     coeff_matrix[:, 3] = x * y
     coeff_matrix[:, 4] = x * x
     coeff_matrix[:, 5] = y * y
-    pinv = np.linalg.pinv(coeff_matrix)
+    full_pinv = np.linalg.pinv(coeff_matrix)
 
     compute_err = cat._error is not None
 
@@ -69,11 +71,13 @@ def _reference_centroid_quad_results(cat):
     nan_result = (_nan, _nan, _nan, _nan, _nan, 1.0)
     results = []
 
-    for cutout, error_cutout, mask in zip(cat._data_cutouts,
-                                          cat._error_cutouts,
-                                          cat._cutout_total_masks,
-                                          strict=True):
+    for cutout, error_cutout, mask, input_mask in zip(
+            cat._data_cutouts, cat._error_cutouts, cat._cutout_total_masks,
+            cat._mask_cutouts, strict=True):
         ny, nx = cutout.shape
+        excluded = ~np.isfinite(cutout)
+        if input_mask is not None:
+            excluded |= input_mask
 
         if ny < 3 or nx < 3:
             results.append(nan_result)
@@ -96,6 +100,16 @@ def _reference_centroid_quad_results(cat):
         xidx0 = xidx - 1
         yidx0 = yidx - 1
         cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
+
+        # Fit only the box pixels that are not excluded
+        pinv = full_pinv
+        keep = ~excluded[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
+        if not np.all(keep):
+            if np.linalg.matrix_rank(coeff_matrix[keep]) < 6:
+                results.append(nan_result)
+                continue
+            pinv = np.zeros((6, 9))
+            pinv[:, keep] = np.linalg.pinv(coeff_matrix[keep])
 
         c = pinv @ cutout_flat
         c10, c01, c11, c20, c02 = c[1], c[2], c[3], c[4], c[5]
@@ -213,7 +227,7 @@ def test_edge_cases():
     # centroid
     arrays = cat._get_batch_arrays()
     iymin, iymax, ixmin, ixmax = cat._get_batch_bboxes()
-    status, peak, boxes, box_var = batch_quad_boxes(
+    status, peak, boxes, box_var, fitted = batch_quad_boxes(
         arrays['data'], error=arrays['error'], mask=arrays['mask'],
         segm=arrays['segm'],
         labels=np.ascontiguousarray(cat.labels, dtype=np.intp),
@@ -224,6 +238,9 @@ def test_edge_cases():
     assert_array_equal(peak[3], [2, 2])  # the masked (zero) pixel
     assert np.all(boxes[3] <= 0)
     assert box_var[3, 4] == 0  # the masked center pixel
+    # Only the masked center pixel is left out of the fit
+    assert_array_equal(fitted[3], [1, 1, 1, 1, 0, 1, 1, 1, 1])
+    assert np.all(fitted[[0, 1, 2, 4, 5, 6]] == 1)
     assert np.all(box_var[5] == 0.3**2)
     # Edge peaks report the peak position without errors
     assert_allclose(cat._centroid_quad_results[2, :2], peak[2])
@@ -287,7 +304,7 @@ def test_no_error_boxes(scene):
     inp = _driver_inputs(cat)
     inp['error'] = None
     inp['compute_err'] = 0
-    _, _, _, box_var = _call_driver(inp)
+    _, _, _, box_var, _ = _call_driver(inp)
     assert np.all(box_var == 0)
 
 

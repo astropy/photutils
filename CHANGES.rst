@@ -1207,6 +1207,32 @@ Bug Fixes
     ``sky_bbox_ur`` properties, which were one pixel beyond the
     bounding box along its upper and right edges. [#2502]
 
+  - Fixed ``SourceCatalog.select_label`` and ``select_labels``
+    returning the wrong source or raising an ``IndexError`` for a label
+    that is in the segmentation image but not in a sliced catalog. A
+    ``ValueError`` is now raised. [#2503]
+
+  - Fixed ``SourceCatalog.flux_radius`` returning the radii of the
+    ``detection_catalog`` when one was input. The radius is now
+    measured in the catalog ``data`` as a fraction of its own Kron
+    flux. [#2503]
+
+  - Fixed the ``SourceCatalog`` centroid and shape properties including
+    pixels with a non-finite ``data`` value where the input
+    ``convolved_data`` value is finite. [#2503]
+
+  - Fixed the ``SourceCatalog`` quadratic centroid treating masked and
+    non-finite pixels in its 3x3 fitting box as zeros. They are now
+    excluded from the fit, and the isophotal centroid is returned (with
+    ``centroid_quad_fallback`` set) if the remaining pixels do not
+    determine the fit. [#2503]
+
+  - Fixed the Kron flags and flux error of a ``SourceCatalog`` source
+    that is completely masked in the catalog but not in its
+    ``detection_catalog``. Its ``kron_flux_err`` is now NaN and the
+    ``kron_undefined`` flag is set instead of ``kron_non_finite_data``.
+    [#2503]
+
 - ``photutils.utils``
 
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the

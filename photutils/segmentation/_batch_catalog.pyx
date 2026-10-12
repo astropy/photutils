@@ -1511,7 +1511,11 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
     input-masked, or non-finite are zero, and the first (row-major)
     maximum of that cutout is the peak pixel. The 3x3 box centered on
     the peak is returned together with the pixel variances of the box
-    (zero for masked pixels).
+    and the box pixels that enter the fit. A masked box pixel
+    (input-masked or non-finite data, inside or outside of the source
+    segment) is left out of the fit. An unmasked box pixel outside of
+    the source segment enters the fit with a value of zero and no
+    variance.
 
     Parameters
     ----------
@@ -1523,8 +1527,9 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
         ``data``. Required (not `None`) if ``compute_err`` is nonzero.
 
     mask : 2D ndarray of uint8 (C-contiguous)
-        A mask array where nonzero values indicate masked (zeroed)
-        pixels. Must have the same shape as ``data``. Bit 1 (value 1)
+        A mask array where nonzero values indicate masked pixels,
+        which are zero when the peak is located and are left out of the
+        fit. Must have the same shape as ``data``. Bit 1 (value 1)
         marks input-masked pixels and bit 2 (value 2) marks non-finite
         data pixels folded into the mask by the caller.
 
@@ -1559,13 +1564,19 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
 
     boxes : 2D ndarray of float64
         The zero-filled cutout values of the 3x3 box around the peak in
-        row-major order, with shape ``(n_sources, 9)``. Zero for
-        statuses other than 0.
+        row-major order, with shape ``(n_sources, 9)``. Zero for the
+        box pixels that are masked or outside the source segment, and
+        for statuses other than 0.
 
     box_var : 2D ndarray of float64
-        The pixel variances of the box, zero for masked pixels, with
-        shape ``(n_sources, 9)``. All zero unless ``compute_err`` is
-        nonzero.
+        The pixel variances of the box, zero for masked pixels and for
+        pixels outside the source segment, with shape
+        ``(n_sources, 9)``. All zero unless ``compute_err`` is nonzero.
+
+    fitted : 2D ndarray of uint8
+        Whether each box pixel enters the fit, with shape
+        ``(n_sources, 9)``. Zero for the masked pixels of the box and
+        one otherwise. All one for statuses other than 0.
 
     Raises
     ------
@@ -1599,10 +1610,12 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
     peak_arr = np.full((n_src, 2), -1, dtype=np.intp)
     boxes_arr = np.zeros((n_src, 9))
     box_var_arr = np.zeros((n_src, 9))
+    fitted_arr = np.ones((n_src, 9), dtype=np.uint8)
     cdef Py_ssize_t[::1] status = status_arr
     cdef Py_ssize_t[:, ::1] peak = peak_arr
     cdef double[:, ::1] boxes = boxes_arr
     cdef double[:, ::1] box_var = box_var_arr
+    cdef unsigned char[:, ::1] fitted = fitted_arr
     cdef const real_t *err_ptr = NULL
     if has_error:
         err_ptr = &error[0, 0]
@@ -1610,7 +1623,7 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
     cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl, k
     cdef Py_ssize_t xpeak, ypeak, bx, by
     cdef double v, vmax, e
-    cdef bint found, masked
+    cdef bint found
     with nogil:
         for i in range(n_src):
             lbl = labels[i]
@@ -1652,14 +1665,15 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
             k = 0
             for by in range(ypeak - 1, ypeak + 2):
                 for bx in range(xpeak - 1, xpeak + 2):
-                    masked = (segm[by, bx] != lbl or mask[by, bx] != 0)
-                    if not masked:
+                    if mask[by, bx] != 0:
+                        fitted[i, k] = 0
+                    elif segm[by, bx] == lbl:
                         boxes[i, k] = data[by, bx]
                         if compute_err:
                             e = err_ptr[by * nx_data + bx]
                             box_var[i, k] = e * e
                     k += 1
-    return status_arr, peak_arr, boxes_arr, box_var_arr
+    return status_arr, peak_arr, boxes_arr, box_var_arr, fitted_arr
 
 
 def batch_segment_gather(const real_t[:, ::1] values, *,
@@ -1910,8 +1924,9 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
     The moments are computed up to 3rd order along each axis over the
     segment bounding box of each source, using coordinates relative
     to the bounding-box origin (i.e., the cutout frame). Pixels
-    outside the source segment, input-masked pixels, non-finite
-    values, and negative values contribute zero.
+    outside the source segment, masked pixels (input-masked or
+    non-finite data), and non-finite or negative convolved values
+    contribute zero.
 
     Parameters
     ----------
@@ -1922,7 +1937,7 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
         and bit 2 (value 2) marks non-finite data pixels folded into
-        the mask by the caller. Only bit 1 excludes a pixel here.
+        the mask by the caller. Any nonzero value excludes the pixel.
         Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
@@ -1992,7 +2007,7 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
                 for ix in range(x0, x1):
                     if segm[iy, ix] != lbl:
                         continue
-                    if mask[iy, ix] & 1:
+                    if mask[iy, ix] != 0:
                         continue
                     v = convdata[iy, ix]
                     if not isfinite(v) or v < 0.0:
@@ -2037,7 +2052,7 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
         and bit 2 (value 2) marks non-finite data pixels folded into
-        the mask by the caller. Only bit 1 excludes a pixel here.
+        the mask by the caller. Any nonzero value excludes the pixel.
         Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
@@ -2116,7 +2131,7 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
                 for ix in range(x0, x1):
                     if segm[iy, ix] != lbl:
                         continue
-                    if mask[iy, ix] & 1:
+                    if mask[iy, ix] != 0:
                         continue
                     v = convdata[iy, ix]
                     if not isfinite(v) or v < 0.0:

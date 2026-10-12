@@ -590,8 +590,14 @@ class SourceCatalog:
         ``kron_params`` keywords will be ignored. This keyword affects
         `circular_photometry` (including returned apertures), all Kron
         parameters (Kron radius, flux, flux errors, apertures, and
-        custom `kron_photometry`), and `flux_radius` (which is based on
-        the Kron flux).
+        custom `kron_photometry`), and `flux_radius`. The aperture
+        fluxes and `flux_radius` are measured in the input ``data``
+        using the detection catalog centroids and Kron apertures.
+        `flux_radius` is the radius that encloses the given fraction
+        of the Kron flux measured in the input ``data``, so it is not
+        the ``flux_radius`` of the detection catalog. The windowed
+        centroids are those of the detection catalog, which uses its
+        own half-light radius to compute them.
 
     n_threads : int, optional
         The number of threads to use for the compiled per-source
@@ -847,6 +853,9 @@ class SourceCatalog:
             if shape and array.shape != self._data.shape:
                 msg = f'data and {name} must have the same shape'
                 raise ValueError(msg)
+            if name == 'mask':
+                # A non-boolean mask would be used as a fancy index
+                array = array.astype(bool, copy=False)
         return array
 
     @staticmethod
@@ -1622,7 +1631,16 @@ class SourceCatalog:
 
         new_name : str
             The new attribute name.
+
+        Raises
+        ------
+        ValueError
+            If ``name`` is not a user-defined property.
         """
+        if name not in self._custom_properties:
+            msg = f'{name} is not a defined property'
+            raise ValueError(msg)
+
         self.add_property(new_name, getattr(self, name))
         idx = self.custom_properties.index(name)
         self.remove_property(name)
@@ -1790,6 +1808,11 @@ class SourceCatalog:
         cat : `SourceCatalog`
             A new `SourceCatalog` object containing only the source with
             the input ``label``.
+
+        Raises
+        ------
+        ValueError
+            If ``label`` is not a label in this catalog.
         """
         return self.select_labels(label)
 
@@ -1808,8 +1831,25 @@ class SourceCatalog:
         cat : `SourceCatalog`
             A new `SourceCatalog` object containing only the sources with
             the input ``labels``.
+
+        Raises
+        ------
+        ValueError
+            If any of the input ``labels`` is not a label in this
+            catalog.
         """
-        self._segmentation_image.check_labels(labels)
+        bad_labels = np.setdiff1d(labels, self.labels)
+        if bad_labels.size > 0:
+            bad_labels = [int(label) for label in bad_labels]
+            label_str = 'label'
+            conj_str = 'is'
+            if len(bad_labels) > 1:
+                label_str = 'labels'
+                conj_str = 'are'
+            msg = (f'{label_str} {bad_labels} {conj_str} invalid (not in '
+                   'this catalog)')
+            raise ValueError(msg)
+
         sorter = np.argsort(self.labels)
         indices = sorter[np.searchsorted(self.labels, labels, sorter=sorter)]
         return self[indices]
@@ -2172,14 +2212,15 @@ class SourceCatalog:
         If a ``detection_catalog`` was input, the shape
         (``undefined_shape``, ``singular_covariance``) and Kron
         aperture geometry (``kron_undefined``, ``kron_minimum_radius``)
-        flags derive from the detection catalog. The Kron
-        photometry-loop flags (``kron_no_overlap``,
-        ``kron_partial_overlap``, ``kron_masked_pixels``,
-        ``kron_non_finite_data``, ``kron_non_finite_error``,
-        ``kron_neighbor_pixels``, ``kron_uncorrected_pixels``), like the
-        segment-level edge, mask, non-finite, ``all_masked``, and
-        ``local_bkg_too_few_pixels`` flags, are evaluated on this
-        catalog's own inputs.
+        flags derive from the detection catalog. The ``kron_undefined``
+        flag is also set for a source that is completely masked in this
+        catalog, whose Kron flux is NaN. The Kron photometry-loop flags
+        (``kron_no_overlap``, ``kron_partial_overlap``,
+        ``kron_masked_pixels``, ``kron_non_finite_data``,
+        ``kron_non_finite_error``, ``kron_neighbor_pixels``,
+        ``kron_uncorrected_pixels``), like the segment-level edge, mask,
+        non-finite, ``all_masked``, and ``local_bkg_too_few_pixels``
+        flags, are evaluated on this catalog's own inputs.
 
         Accessing ``flags`` computes the moment, covariance, local
         background, and Kron-aperture properties if they have not
@@ -3067,7 +3108,7 @@ class SourceCatalog:
         # (zero-filled) cutout.
         arrays = self._get_batch_arrays()
         iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        status, peak, boxes, box_var = self._threaded_batch(
+        status, peak, boxes, box_var, fitted = self._threaded_batch(
             batch_quad_boxes, self._batch_bbox_args(),
             merge=_concatenate_arrays,
             data=arrays['data'], error=arrays['error'],
@@ -3093,6 +3134,22 @@ class SourceCatalog:
         # arithmetic independent of the number of sources, so a sliced
         # catalog reproduces the parent catalog values exactly.
         coeffs = np.einsum('ij,nj->ni', pinv, boxes)
+
+        # Sources with masked pixels in the box are fit without those
+        # pixels, using the pseudo-inverse of the design matrix with
+        # the rows of the masked pixels set to zero. The fit needs a
+        # design matrix of rank 6, which requires at least 6 pixels
+        # that are not all in two rows or two columns of the box.
+        partial_idx = np.flatnonzero(fit & ~np.all(fitted, axis=1))
+        if partial_idx.size > 0:
+            design = (coeff_matrix
+                      * fitted[partial_idx, :, np.newaxis].astype(float))
+            partial_pinv = np.linalg.pinv(design)
+            coeffs[partial_idx] = np.einsum('nij,nj->ni', partial_pinv,
+                                            boxes[partial_idx])
+            deficient = np.linalg.matrix_rank(design) < 6
+            fit[partial_idx[deficient]] = False
+
         c10 = coeffs[:, 1]
         c01 = coeffs[:, 2]
         c11 = coeffs[:, 3]
@@ -3119,8 +3176,9 @@ class SourceCatalog:
                 # pixel values (``c = pinv @ pixels``) and the peak
                 # position is a rational function of the coefficients,
                 # so the position variances follow from the delta
-                # method. Masked pixels have a fixed (zeroed) data
-                # value, so they contribute no variance.
+                # method. Pixels outside the source segment have a fixed
+                # (zeroed) data value and masked pixels are not in the
+                # fit, so neither contributes variance.
                 zeros = np.zeros(n_src)
                 grad_x = np.column_stack(
                     [zeros,
@@ -3138,6 +3196,11 @@ class SourceCatalog:
                      -4.0 * c20 * ym_rel / det])
                 u_x = np.einsum('ni,ij->nj', grad_x, pinv)
                 u_y = np.einsum('ni,ij->nj', grad_y, pinv)
+                if partial_idx.size > 0:
+                    u_x[partial_idx] = np.einsum(
+                        'ni,nij->nj', grad_x[partial_idx], partial_pinv)
+                    u_y[partial_idx] = np.einsum(
+                        'ni,nij->nj', grad_y[partial_idx], partial_pinv)
                 results[fit, 2] = np.sum(u_x**2 * box_var, axis=1)[fit]
                 results[fit, 3] = np.sum(u_y**2 * box_var, axis=1)[fit]
                 results[fit, 4] = np.sum(u_x * u_y * box_var, axis=1)[fit]
@@ -3171,13 +3234,19 @@ class SourceCatalog:
         ``fit_boxsize=3``, applied to the bounding-box cutout of the
         source. Pixels in the cutout that are outside the source
         segment, masked, or non-finite are set to zero before the peak
-        is located and the fit is performed.
+        is located. Pixels of the 3x3 box that are masked (by the input
+        ``mask``) or that have a non-finite ``data`` value are left out
+        of the fit. The other pixels of the box that are outside the
+        source segment enter the fit with a value of zero.
 
         The isophotal centroid (`cutout_centroid`) is returned instead
         (NaN where the isophotal centroid is NaN) in these cases:
 
         * the bounding box of the source is smaller than 3 pixels along
           either axis
+        * the pixels left in the fit do not determine the quadratic
+          polynomial, which requires at least 6 pixels that are not all
+          in two rows or two columns of the box
         * the quadratic fit does not have a maximum
         * the quadratic fit maximum falls on or outside the outermost
           pixel centers of the bounding-box cutout
@@ -3203,13 +3272,19 @@ class SourceCatalog:
         ``fit_boxsize=3``, applied to the bounding-box cutout of the
         source. Pixels in the cutout that are outside the source
         segment, masked, or non-finite are set to zero before the peak
-        is located and the fit is performed.
+        is located. Pixels of the 3x3 box that are masked (by the input
+        ``mask``) or that have a non-finite ``data`` value are left out
+        of the fit. The other pixels of the box that are outside the
+        source segment enter the fit with a value of zero.
 
         The isophotal `centroid` is returned instead (NaN where the
         isophotal centroid is NaN) in these cases:
 
         * the bounding box of the source is smaller than 3 pixels along
           either axis
+        * the pixels left in the fit do not determine the quadratic
+          polynomial, which requires at least 6 pixels that are not all
+          in two rows or two columns of the box
         * the quadratic fit does not have a maximum
         * the quadratic fit maximum falls on or outside the outermost
           pixel centers of the bounding-box cutout
@@ -3278,14 +3353,11 @@ class SourceCatalog:
         Sources where the quadratic centroid fell back to the
         isophotal `centroid` have the isophotal centroid errors (see
         `centroid_err`). The errors are NaN for sources where the
-        maximum data value is at the edge of the source segment (where
-        the position of the maximum pixel is returned instead of a fit).
+        peak pixel is at the edge of the bounding-box cutout (where the
+        position of the peak pixel is returned instead of a fit).
 
         The delta method linearizes the peak solution at the fitted
         coefficients, whose curvature terms are noisy for faint peaks.
-        The errors are accurate for well-detected peaks but run several
-        percent high when the peak is only a few tens of sigma above the
-        noise.
         """
         results = self._centroid_quad_results
         with warnings.catch_warnings():
@@ -3365,6 +3437,12 @@ class SourceCatalog:
         angle, i.e., including the cos(dec) factor) and the second
         is along North (Declination).
 
+        The directions are those of the longitude and latitude axes
+        of the celestial frame of the ``wcs``. They are Right Ascension
+        and Declination only for an equatorial frame (e.g., ICRS).
+        For another frame (e.g., Galactic), the errors are along the
+        longitude and latitude of that frame.
+
         `None` if ``wcs`` is not input. NaN where the pixel errors are
         unavailable (e.g., no ``error`` input).
         """
@@ -3381,6 +3459,9 @@ class SourceCatalog:
         Ascension direction, as a great-circle angle in arcsec (i.e.,
         including the cos(dec) factor).
 
+        If the celestial frame of the ``wcs`` is not equatorial, this is
+        the error along the longitude direction of that frame.
+
         `None` if ``wcs`` is not input.
         """
         if self.wcs is None:
@@ -3393,6 +3474,9 @@ class SourceCatalog:
         """
         The 1-sigma error on the `sky_centroid` position along the
         Declination direction, in arcsec.
+
+        If the celestial frame of the ``wcs`` is not equatorial, this is
+        the error along the latitude direction of that frame.
 
         `None` if ``wcs`` is not input.
         """
@@ -3446,6 +3530,12 @@ class SourceCatalog:
         (Declination). Fallback sources use the isophotal centroid error
         covariance.
 
+        The directions are those of the longitude and latitude axes
+        of the celestial frame of the ``wcs``. They are Right Ascension
+        and Declination only for an equatorial frame (e.g., ICRS).
+        For another frame (e.g., Galactic), the errors are along the
+        longitude and latitude of that frame.
+
         `None` if ``wcs`` is not input. NaN where the pixel errors are
         unavailable (e.g., no ``error`` input).
         """
@@ -3463,6 +3553,9 @@ class SourceCatalog:
         Right Ascension direction, as a great-circle angle in arcsec
         (i.e., including the cos(dec) factor).
 
+        If the celestial frame of the ``wcs`` is not equatorial, this is
+        the error along the longitude direction of that frame.
+
         `None` if ``wcs`` is not input.
         """
         if self.wcs is None:
@@ -3475,6 +3568,9 @@ class SourceCatalog:
         """
         The 1-sigma error on the `sky_centroid_win` position along the
         Declination direction, in arcsec.
+
+        If the celestial frame of the ``wcs`` is not equatorial, this is
+        the error along the latitude direction of that frame.
 
         `None` if ``wcs`` is not input.
         """
@@ -3517,6 +3613,12 @@ class SourceCatalog:
         covariance. The errors are NaN for sources where the peak pixel
         position is returned instead of a fit.
 
+        The directions are those of the longitude and latitude axes
+        of the celestial frame of the ``wcs``. They are Right Ascension
+        and Declination only for an equatorial frame (e.g., ICRS).
+        For another frame (e.g., Galactic), the errors are along the
+        longitude and latitude of that frame.
+
         `None` if ``wcs`` is not input. NaN where the pixel errors are
         unavailable (e.g., no ``error`` input).
         """
@@ -3534,6 +3636,9 @@ class SourceCatalog:
         Right Ascension direction, as a great-circle angle in arcsec
         (i.e., including the cos(dec) factor).
 
+        If the celestial frame of the ``wcs`` is not equatorial, this is
+        the error along the longitude direction of that frame.
+
         `None` if ``wcs`` is not input.
         """
         if self.wcs is None:
@@ -3546,6 +3651,9 @@ class SourceCatalog:
         """
         The 1-sigma error on the `sky_centroid_quad` position along the
         Declination direction, in arcsec.
+
+        If the celestial frame of the ``wcs`` is not equatorial, this is
+        the error along the latitude direction of that frame.
 
         `None` if ``wcs`` is not input.
         """
@@ -4523,7 +4631,6 @@ class SourceCatalog:
         return apertures
 
     @cached_property
-    @use_detcat
     def local_background_aperture(self):
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
@@ -4782,7 +4889,7 @@ class SourceCatalog:
 
         return flux, flux_err
 
-    def _make_elliptical_apertures(self, *, scale=6.0):
+    def _make_elliptical_apertures(self, *, scale=6.0, min_circ_radius=0.0):
         """
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
@@ -4790,9 +4897,10 @@ class SourceCatalog:
         If a ``detection_catalog`` was input to `SourceCatalog`, then
         its source `centroid` and shape parameters will be used.
 
-        If scale is zero (due to a minimum circular radius set in
-        ``kron_params``) then a circular aperture will be returned with
-        the minimum circular radius.
+        If the scaled axes of a source are zero (its ``scale`` is zero
+        due to a minimum circular radius set in ``kron_params``) then
+        a circular aperture with radius ``min_circ_radius`` will be
+        returned for that source.
 
         Parameters
         ----------
@@ -4802,12 +4910,17 @@ class SourceCatalog:
             isophotal extent of the source. A `~numpy.ndarray` input
             must be a 1D array of length ``n_labels``.
 
+        min_circ_radius : float, optional
+            The radius in pixels of the circular aperture that is
+            returned for a source whose scaled axes are zero.
+
         Returns
         -------
-        result : list of `~photutils.aperture.EllipticalAperture`
-            A list of `~photutils.aperture.EllipticalAperture`
-            instances. The aperture will be `None` where the source
-            `centroid` position or elliptical shape parameters are not
+        result : list of `~photutils.aperture.PixelAperture`
+            A list of `~photutils.aperture.EllipticalAperture` or
+            `~photutils.aperture.CircularAperture` instances. The
+            aperture will be `None` where the source `centroid`
+            position or scaled elliptical shape parameters are not
             finite or where the source is completely masked.
         """
         xcen = np.atleast_1d(self.x_centroid)
@@ -4826,7 +4939,7 @@ class SourceCatalog:
             # kron_radius = 0 -> scale = 0 -> major/minor_size = 0
             if values[2] == 0 and values[3] == 0:
                 aperture.append(CircularAperture((values[0], values[1]),
-                                                 r=self.kron_params[2]))
+                                                 r=min_circ_radius))
                 continue
 
             (xcen_, ycen_, major_, minor_, theta_) = values[:-1]
@@ -5059,7 +5172,9 @@ class SourceCatalog:
         # NOTE: if kron_radius = NaN, scale = NaN and kron_aperture = None
         kron_radius = self._calc_kron_radius(kron_params)
         scale = kron_radius.value * kron_params[0]
-        return self._make_elliptical_apertures(scale=scale)
+        min_circ_radius = kron_params[2] if len(kron_params) == 3 else 0.0
+        return self._make_elliptical_apertures(
+            scale=scale, min_circ_radius=min_circ_radius)
 
     @cached_property
     @use_detcat
@@ -5133,6 +5248,7 @@ class SourceCatalog:
         """
         if kron_params is None:
             return self.kron_aperture
+        kron_params = self._validate_kron_params(kron_params)
         return self._make_scalar(self._make_kron_apertures(kron_params))
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -5195,6 +5311,7 @@ class SourceCatalog:
         if kron_params is None:
             apertures = self._array('kron_aperture')
         else:
+            kron_params = self._validate_kron_params(kron_params)
             apertures = self._make_kron_apertures(kron_params)
 
         patches = []
@@ -5355,8 +5472,8 @@ class SourceCatalog:
         defined : 1D `~numpy.ndarray` (bool)
             `False` where the aperture is undefined (`None` in
             `kron_aperture`). The aperture is undefined where the
-            source is completely masked or its centroid or elliptical
-            shape parameters are not finite.
+            source is completely masked or its centroid, elliptical
+            shape parameters, or Kron radius are not finite.
         """
         # NOTE: if kron_radius = NaN, scale = NaN and the aperture is
         # undefined
@@ -5382,8 +5499,10 @@ class SourceCatalog:
         See the `SourceCatalog` ``aperture_mask_method`` keyword for
         options to mask neighboring sources.
 
-        If the Kron aperture is undefined (`None` in `kron_aperture`),
-        then ``np.nan`` will be returned.
+        If the Kron aperture is undefined (`None` in `kron_aperture`)
+        or the source is completely masked in this catalog, then
+        ``np.nan`` will be returned and the ``kron_undefined`` flag is
+        set.
 
         If ``detection_catalog`` is input, then its `centroid` values
         will be used.
@@ -5411,6 +5530,10 @@ class SourceCatalog:
             kron_params = self._validate_kron_params(kron_params)
         (xcen, ycen, major, minor, theta, circular,
          defined) = source._kron_aperture_params(kron_params)
+        # A source that is completely masked in this catalog has no
+        # Kron photometry, also where the detection catalog defines its
+        # aperture
+        defined = defined & ~self._all_masked
 
         n_src = len(xcen)
         flux = np.full(n_src, np.nan)
@@ -5683,13 +5806,17 @@ class SourceCatalog:
         return radius
 
     @cached_property
-    @use_detcat
     def _flux_radius_optimizer_args(self):
         """
         The prepared per-source inputs of the flux-radius
         root-find (see ``batch_flux_radius_prepare``), as a
         `~photutils.segmentation._batch_results.BatchFluxRadiusArgs`
         with one entry per source.
+
+        The pixel values, mask, local background, and Kron flux are
+        those of this catalog. If a ``detection_catalog`` was input,
+        the centroids and the maximum radii are those of the detection
+        catalog.
 
         A source that cannot have a solution has a zero pixel count.
         This cached property snapshots the current
@@ -5737,6 +5864,21 @@ class SourceCatalog:
         fraction of the Kron flux.
 
         To estimate the half-light radius, use ``fraction = 0.5``.
+
+        The radius is measured in the ``data`` of this catalog, after
+        subtracting its local background, in circular apertures centered
+        on the source `centroid`. It encloses the given fraction of the
+        `kron_flux` of this catalog. The largest radius that is searched
+        is the semimajor axis of the Kron aperture (or its radius for a
+        circular Kron aperture).
+
+        If a ``detection_catalog`` was input to `SourceCatalog`, the
+        radius is still measured in the ``data`` of this catalog, with
+        its local background, as a fraction of its own `kron_flux`. Only
+        the source `centroid` and the Kron aperture, which define the
+        aperture centers and the largest radius, are taken from the
+        detection catalog. The radius is therefore not the
+        ``flux_radius`` of the detection catalog.
 
         Parameters
         ----------

@@ -22,6 +22,7 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture)
 from photutils.background import Background2D, MedianBackground
+from photutils.centroids import centroid_quadratic
 from photutils.datasets import (make_100gaussians_image, make_gwcs,
                                 make_noise_image, make_wcs)
 from photutils.segmentation.catalog import SourceCatalog
@@ -1286,6 +1287,174 @@ class TestSourceCatalog:
             assert_allclose(skycoord.separation(expected).arcsec, 0.0,
                             atol=1.0e-8)
 
+    def test_select_labels_sliced(self):
+        """
+        Test that select_label and select_labels on a sliced catalog
+        use the labels of the sliced catalog.
+        """
+        cat = self.cat[[0, 2, 4]]
+        assert_equal(cat.labels, (1, 3, 5))
+        assert cat.select_label(3).label == 3
+        assert_equal(cat.select_labels((5, 1)).labels, (5, 1))
+
+        # Labels 2 and 7 are in the segmentation image, but not in the
+        # sliced catalog
+        match = r'label \[2\] is invalid \(not in this catalog\)'
+        with pytest.raises(ValueError, match=match):
+            cat.select_label(2)
+        match = r'labels \[2, 7\] are invalid \(not in this catalog\)'
+        with pytest.raises(ValueError, match=match):
+            cat.select_labels((1, 7, 2))
+
+    def test_rename_property_invalid(self):
+        """
+        Test that renaming a name that is not a user-defined property
+        raises an error and leaves the catalog unchanged.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        cat.add_property('prop1', np.arange(len(cat)))
+        for name in ('area', 'not_a_property'):
+            match = f'{name} is not a defined property'
+            with pytest.raises(ValueError, match=match):
+                cat.rename_property(name, 'new_prop')
+            assert cat.custom_properties == ['prop1']
+            assert 'new_prop' not in cat.__dict__
+
+    @pytest.mark.parametrize('cat_kron_params', [(2.5, 1.4, 0.0),
+                                                 (2.5, 1.4)])
+    def test_make_kron_apertures_min_circ_radius(self, cat_kron_params):
+        """
+        Test that make_kron_apertures uses the minimum circular radius
+        of the input kron_params.
+        """
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=cat_kron_params,
+                            aperture_mask_method='none')
+        kron_params = (2.5, 1.4, 20.0)
+        apertures = cat.make_kron_apertures(kron_params=kron_params)
+        circular = np.array([isinstance(aperture, CircularAperture)
+                             for aperture in apertures])
+        assert 0 < np.count_nonzero(circular) < len(cat)
+        for aperture in np.array(apertures, dtype=object)[circular]:
+            assert aperture.r == 20.0
+
+        # The apertures are those used by kron_photometry
+        kron_flux, _ = cat.kron_photometry(kron_params)
+        flux = []
+        for aperture in apertures:
+            aperture_mask = aperture.to_mask(method='exact')
+            weights = aperture_mask.to_image(self.data.shape)
+            flux.append(np.sum(weights * self.data))
+        assert_allclose(kron_flux, flux)
+
+        # The Kron apertures of the catalog, which have no minimum
+        # circular radius, are unchanged
+        for aperture in cat.kron_aperture:
+            assert isinstance(aperture, EllipticalAperture)
+
+    def test_make_kron_apertures_invalid(self):
+        """
+        Test that make_kron_apertures and plot_kron_apertures validate
+        the input kron_params.
+        """
+        match = r'kron_params\[0\] must be > 0'
+        with pytest.raises(ValueError, match=match):
+            self.cat.make_kron_apertures(kron_params=(-2.5, 1.4))
+        with pytest.raises(ValueError, match=match):
+            self.cat.plot_kron_apertures(kron_params=(-2.5, 1.4))
+        match = 'kron_params must have 2 or 3 elements'
+        with pytest.raises(ValueError, match=match):
+            self.cat.make_kron_apertures(kron_params=(2.5,))
+        with pytest.raises(ValueError, match=match):
+            self.cat.plot_kron_apertures(kron_params=(2.5,))
+
+    def test_flux_radius_detection_catalog(self):
+        """
+        Test that flux_radius with a detection catalog encloses the
+        fraction of the Kron flux measured in the catalog data.
+        """
+        # The measurement image has narrower sources and a pedestal
+        yy, xx = np.mgrid[0:101, 0:101]
+        data2 = (Gaussian2D(300.0, 51.0, 52.7, 5.0, 2.0,
+                            theta=np.pi / 6.0)(xx, yy)
+                 + Gaussian2D(90.0, 20, 80, 3.0, 2.5)(xx, yy)
+                 + Gaussian2D(150.0, 75, 18, 5.5, 3.0)(xx, yy)
+                 + Gaussian2D(200.0, 90, 90, 2.5, 1.5,
+                              theta=-np.pi / 6.0)(xx, yy) + 3.0)
+        detcat = SourceCatalog(self.data, self.segm, local_bkg_width=24)
+        det_radius = detcat.flux_radius(0.5).copy()
+        det_centroid_win = detcat.centroid_win.copy()
+        cat = SourceCatalog(data2, self.segm, local_bkg_width=10,
+                            detection_catalog=detcat)
+
+        fraction = 0.5
+        radius = cat.flux_radius(fraction)
+        labels = (1, 2, 6, 7)  # the sources in the measurement image
+        idx = np.searchsorted(cat.labels, labels)
+        assert np.all(np.isfinite(radius[idx]))
+        assert np.all(np.abs(radius[idx] - det_radius[idx]) > 0.3 * u.pix)
+
+        # The radius encloses the fraction of the Kron flux of the
+        # catalog, measured in the catalog data with the catalog local
+        # background at the detection catalog centroid
+        for i in idx:
+            flux, _ = cat.circular_photometry(radius[i].value)
+            assert_allclose(flux[i], fraction * cat.kron_flux[i],
+                            rtol=1.0e-5)
+
+        # A catalog sliced before the measurement gives the same radius
+        cat2 = SourceCatalog(data2, self.segm, local_bkg_width=10,
+                             detection_catalog=detcat)
+        assert_equal(cat2[idx[1]].flux_radius(fraction), radius[idx[1]])
+
+        # The windowed centroid is that of the detection catalog, which
+        # uses the half-light radius of the detection catalog
+        assert_equal(detcat.flux_radius(0.5), det_radius)
+        assert_equal(cat.centroid_win, det_centroid_win)
+
+    def test_local_background_aperture_detection_catalog(self):
+        """
+        Test that local_background_aperture uses the local_bkg_width of
+        the catalog instead of that of the detection catalog.
+        """
+        detcat = SourceCatalog(self.data, self.segm, local_bkg_width=24)
+        cat = SourceCatalog(self.data, self.segm, local_bkg_width=10,
+                            detection_catalog=detcat)
+        for aperture, det_aperture in zip(cat.local_background_aperture,
+                                          detcat.local_background_aperture,
+                                          strict=True):
+            assert_allclose(aperture.w_out - aperture.w_in, 20.0)
+            assert_allclose(aperture.h_out - aperture.h_in, 20.0)
+            assert aperture.w_in == det_aperture.w_in
+            assert_allclose(det_aperture.w_out - det_aperture.w_in, 48.0)
+
+        cat = SourceCatalog(self.data, self.segm, local_bkg_width=0,
+                            detection_catalog=detcat)
+        assert cat.local_background_aperture[0] is None
+        assert_equal(cat.local_background, 0.0)
+
+    @pytest.mark.parametrize('dtype', [int, np.uint8, float])
+    def test_non_boolean_mask(self, dtype):
+        """
+        Test that a non-boolean mask gives the same catalog as the
+        equivalent boolean mask.
+        """
+        kwargs = {'error': self.error, 'local_bkg_width': 24}
+        cat1 = SourceCatalog(self.data, self.segm, mask=self.mask, **kwargs)
+        cat2 = SourceCatalog(self.data, self.segm,
+                             mask=self.mask.astype(dtype), **kwargs)
+        assert cat1._mask is self.mask
+        assert np.isnan(cat1.segment_flux[0])
+        props = ('segment_flux', 'segment_flux_err', 'centroid', 'area',
+                 'semimajor_axis', 'min_value', 'max_value',
+                 'local_background', 'kron_flux', 'kron_flux_err',
+                 'centroid_win', 'centroid_quad', 'flags')
+        for prop in props:
+            assert_equal(getattr(cat2, prop), getattr(cat1, prop))
+        for cutout1, cutout2 in zip(cat1.data_cutout_masked,
+                                    cat2.data_cutout_masked, strict=True):
+            assert_equal(cutout2.mask, cutout1.mask)
+
     def test_make_cutouts(self):
         """
         Test make cutouts.
@@ -1910,6 +2079,34 @@ class TestSourceCatalogFlags:
         cat = SourceCatalog(self.data, self.segm, mask=mask)
         assert cat.kron_aperture[0] is None
         assert cat.flags[0] & SEGMENTATION_FLAGS.KRON_UNDEFINED
+
+    @pytest.mark.parametrize('local_bkg_width', [0, 5])
+    def test_kron_undefined_detection_catalog(self, local_bkg_width):
+        """
+        Test the kron_undefined flag for a source that is fully masked
+        in the catalog, but not in its detection catalog.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[self.segm.data == self.segm.labels[0]] = True
+        error = np.ones(self.data.shape)
+        detcat = SourceCatalog(self.data, self.segm)
+        cat = SourceCatalog(self.data, self.segm, error=error, mask=mask,
+                            local_bkg_width=local_bkg_width,
+                            detection_catalog=detcat)
+        assert cat.kron_aperture[0] is not None
+        assert np.isnan(cat.kron_flux[0])
+        assert np.isnan(cat.kron_flux_err[0])
+        flags = cat.flags[0]
+        assert flags & SEGMENTATION_FLAGS.ALL_MASKED
+        assert flags & SEGMENTATION_FLAGS.KRON_UNDEFINED
+        assert not flags & SEGMENTATION_FLAGS.KRON_NON_FINITE_DATA
+        names = cat.decode_flags()[cat.labels[0]]
+        assert names == ['masked_pixels', 'all_masked', 'kron_undefined']
+
+        # The other source is measured
+        assert np.isfinite(cat.kron_flux[1])
+        assert np.isfinite(cat.kron_flux_err[1])
+        assert not cat.flags[1] & SEGMENTATION_FLAGS.KRON_UNDEFINED
 
     @pytest.mark.parametrize('circular', [False, True])
     def test_kron_undefined_oversized(self, circular):
@@ -4668,3 +4865,165 @@ def test_read_only_inputs(dtype, local_bkg_width):
         assert_equal(result[name], value)
     for arr, original in zip(arrays, originals, strict=True):
         assert_equal(arr, original)
+
+
+def test_moments_non_finite_data():
+    """
+    Test that a pixel with a non-finite data value and a finite
+    convolved_data value is excluded from the centroid and shape
+    properties, the same as a masked pixel.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    error = np.full(data.shape, 2.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[14, 15] = True
+    data_nan = data.copy()
+    data_nan[mask] = np.nan
+
+    kwargs = {'convolved_data': convolved_data, 'error': error}
+    cat = SourceCatalog(data, segment_map, **kwargs)
+    cat_mask = SourceCatalog(data, segment_map, mask=mask, **kwargs)
+    cat_nan = SourceCatalog(data_nan, segment_map, **kwargs)
+    props = ('moments', 'moments_central', 'centroid', 'centroid_err',
+             'covariance', 'semimajor_axis', 'semiminor_axis',
+             'orientation', 'fwhm', 'centroid_quad')
+    for prop in props:
+        assert_equal(getattr(cat_nan, prop), getattr(cat_mask, prop))
+    assert not np.allclose(cat_nan.centroid, cat.centroid, rtol=1.0e-4)
+    assert not np.allclose(cat_nan.covariance, cat.covariance, rtol=1.0e-4)
+
+
+def _masked_quad_inputs():
+    """
+    Make the inputs for the masked-pixel quadratic centroid tests.
+
+    The source peak pixel is at ``(x, y) = (12, 13)``. The pixel at
+    ``(13, 14)``, a corner of the 3x3 fit box, is outside of the source
+    segment.
+
+    Returns ``(data, error, segment_map)``.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
+    rng = np.random.default_rng(42)
+    error = rng.uniform(1.0, 3.0, data.shape)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_data[14, 13] = 0
+    return data, error, SegmentationImage(segment_data)
+
+
+@pytest.mark.parametrize('bad_value', ['mask', 'nan'])
+@pytest.mark.parametrize('bad_pixels', [((12, 11),), ((13, 13),),
+                                        ((12, 11), (14, 12)),
+                                        ((12, 11), (14, 11), (14, 12))])
+def test_centroid_quad_masked_pixels(bad_pixels, bad_value):
+    """
+    Test that masked and non-finite pixels in the 3x3 box are left out
+    of the quadratic centroid fit and of its error propagation.
+    """
+    data, error, segment_map = _masked_quad_inputs()
+    bad = np.zeros(data.shape, dtype=bool)
+    for (yidx, xidx) in bad_pixels:
+        bad[yidx, xidx] = True
+    if bad_value == 'mask':
+        cat = SourceCatalog(data, segment_map, error=error, mask=bad)
+    else:
+        data = data.copy()
+        data[bad] = np.nan
+        cat = SourceCatalog(data, segment_map, error=error)
+    assert not cat.centroid_quad_fallback[0]
+
+    # The reference is centroid_quadratic on the cutout with the pixels
+    # outside of the source segment set to zero and the bad pixels
+    # masked
+    slc = cat.slices[0]
+    outside = segment_map.data[slc] == 0
+    cutout = np.where(outside, 0.0, data[slc])
+    cutout_mask = bad[slc]
+
+    def reference(values):
+        return centroid_quadratic(values, mask=cutout_mask, fit_boxsize=3)
+
+    assert_allclose(cat.cutout_centroid_quad[0], reference(cutout),
+                    rtol=1.0e-10)
+
+    # The errors are propagated with a numerical Jacobian over the
+    # fitted pixels within the source segment. The masked pixels and
+    # the zero-filled pixels outside of the segment have no variance.
+    eps = 1.0e-6
+    var_expected = np.zeros(2)
+    for yidx in range(12, 15):
+        for xidx in range(11, 14):
+            idx = (yidx - slc[0].start, xidx - slc[1].start)
+            if cutout_mask[idx] or outside[idx]:
+                continue
+            cutout_p = cutout.copy()
+            cutout_p[idx] += eps
+            cutout_m = cutout.copy()
+            cutout_m[idx] -= eps
+            jacobian = (reference(cutout_p) - reference(cutout_m)) / (2 * eps)
+            var_expected += jacobian**2 * error[yidx, xidx]**2
+    assert_allclose(cat.centroid_quad_err[0], np.sqrt(var_expected),
+                    rtol=1.0e-6)
+
+
+@pytest.mark.parametrize('bad_pixels', [
+    # Only 5 pixels are left in the box
+    ((12, 11), (12, 13), (14, 11), (13, 11)),
+    # The 6 remaining pixels are in two rows (a rank-deficient fit)
+    ((12, 11), (12, 12), (12, 13)),
+    # The 6 remaining pixels are in two columns
+    ((12, 11), (13, 11), (14, 11))])
+def test_centroid_quad_masked_pixels_fallback(bad_pixels):
+    """
+    Test that the quadratic centroid falls back to the isophotal
+    centroid if too few pixels are left in the 3x3 box to fit the
+    quadratic polynomial.
+    """
+    data, error, segment_map = _masked_quad_inputs()
+    mask = np.zeros(data.shape, dtype=bool)
+    for (yidx, xidx) in bad_pixels:
+        mask[yidx, xidx] = True
+    cat = SourceCatalog(data, segment_map, error=error, mask=mask)
+    assert cat.centroid_quad_fallback[0]
+    assert_equal(cat.centroid_quad, cat.centroid)
+    assert_equal(cat.centroid_quad_err, cat.centroid_err)
+    assert np.all(np.isfinite(cat.centroid_quad_err))
+
+
+def test_centroid_quad_masked_pixels_sliced():
+    """
+    Test that a sliced catalog reproduces the quadratic centroids of
+    the parent catalog for sources with and without masked pixels in
+    the 3x3 box.
+    """
+    yy, xx = np.mgrid[0:25, 0:75]
+    data = (Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
+            + Gaussian2D(80.0, 37.4, 12.3, 1.5, 2.0, 0.2)(xx, yy)
+            + Gaussian2D(90.0, 62.7, 11.8, 1.8, 1.8)(xx, yy))
+    error = np.full(data.shape, 2.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_data[6:20, 31:45] = 2
+    segment_data[6:20, 56:70] = 3
+    segment_map = SegmentationImage(segment_data)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[12, 11] = True
+    mask[13, 62] = True
+    mask[11:14, 62] = True
+
+    cat = SourceCatalog(data, segment_map, error=error, mask=mask)
+    assert_equal(cat.centroid_quad_fallback, [False, False, True])
+    for i in range(len(cat)):
+        cat2 = SourceCatalog(data, segment_map, error=error, mask=mask)
+        obj = cat2[i]
+        assert_equal(obj.centroid_quad, cat.centroid_quad[i])
+        assert_equal(obj.centroid_quad_err, cat.centroid_quad_err[i])
+        assert obj.centroid_quad_fallback == cat.centroid_quad_fallback[i]
