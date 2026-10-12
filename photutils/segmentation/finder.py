@@ -63,9 +63,9 @@ class SourceFinder:
     n_levels : int, optional
         The number of multi-thresholding levels to use for deblending.
         Each source will be re-thresholded at ``n_levels`` levels spaced
-        exponentially or linearly (see the ``mode`` keyword) between
-        its minimum and maximum values. This keyword is ignored unless
-        ``deblend=True``.
+        between its minimum and maximum values (non-inclusive). The
+        ``mode`` keyword determines how the levels are spaced. This
+        keyword is ignored unless ``deblend=True``.
 
     contrast : float, optional
         The fraction of the total source flux that a local peak must
@@ -91,7 +91,7 @@ class SourceFinder:
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``n_levels`` keyword)
         during deblending. The ``'exponential'`` and ``'sinh'`` modes
-        have more threshold levels near the source minimum and less
+        have more threshold levels near the source minimum and fewer
         near the source maximum. The ``'linear'`` mode evenly spaces
         the threshold levels between the source minimum and maximum.
         The ``'exponential'`` and ``'sinh'`` modes differ in that
@@ -265,6 +265,21 @@ class SourceFinder:
             where sources are marked by different positive integer values. A
             value of zero is reserved for the background. If no sources are
             found then `None` is returned.
+
+        Warns
+        -----
+        NoDetectionsWarning
+            If no sources are found.
+
+        AstropyUserWarning
+            If ``threshold`` is negative or, for an array, has any
+            negative values.
+
+        DeblendWarning
+            If ``deblend=True`` and the deblending mode for one or more
+            sources was changed from ``mode`` to "sinh" due to
+            non-positive minimum data values or to "linear" due to too
+            many potential deblended sources.
         """
         segment_img = detect_sources(data, threshold, self.n_pixels[0],
                                      mask=mask, connectivity=self.connectivity)

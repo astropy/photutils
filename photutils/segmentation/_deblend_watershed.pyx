@@ -10,11 +10,11 @@ increasing image value, with the queue-entry age breaking ties so that
 plateaus are split between the markers that reach them first. The
 neighbors are visited with the orthogonal neighbors before the diagonal
 ones, each group in raster order. A pixel enters the queue with the
-larger of its own value and the value of the pixel it was reached
-from, so that the basins and plateaus below the current flood level
-are distributed between the contesting markers by queue-entry age. The
-kernel does no per-call validation, padding, or cropping, which would
-otherwise dominate the cost for small cutouts.
+larger of its own value and the flooding cost of the pixel it was
+reached from, so that the basins and plateaus below the current flood
+level are distributed between the contesting markers by queue-entry
+age. The kernel does no per-call validation, padding, or cropping,
+which would otherwise dominate the cost for small cutouts.
 
 The flood order is only defined for ordered image values, so the
 deblending entry point maps NaN data pixels to a +inf flooding cost.
@@ -498,8 +498,10 @@ def deblend_contrast_chunk(const data_t[:, ::1] data,
     packed : 1D int32 `~numpy.ndarray`
         The packed marker buffer written by ``deblend_markers_chunk``.
         On output, the region of every source that deblends holds its
-        final labels, consecutive from 1, and every other region is
-        zero.
+        final labels, consecutive from 1. The region of a source that
+        was flooded and has fewer than two final labels is zeroed. The
+        regions of the skipped sources are not modified
+        (``deblend_markers_chunk`` leaves them at zero).
 
     starts : 1D intp `~numpy.ndarray`
         The start index of each source's region in ``packed``.
@@ -530,7 +532,9 @@ def deblend_contrast_chunk(const data_t[:, ::1] data,
     n_labels : 1D intp `~numpy.ndarray`
         The number of final labels of each source. It is 0 for the
         skipped sources and 1 for the sources whose basins were all but
-        one removed, and the packed regions of both are zero.
+        one removed. The packed regions of the latter are zeroed. The
+        regions of the skipped sources are not modified
+        (``deblend_markers_chunk`` leaves them at zero).
 
     Raises
     ------

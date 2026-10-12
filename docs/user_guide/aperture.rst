@@ -229,8 +229,8 @@ its ``vertex_offsets``) that can be applied at one or more positions::
 The polygon must be simple (non-self-intersecting) with at least three
 vertices, but it does not need to be convex. Non-convex shapes such as
 L-shapes or stars are fully supported. The vertices may be input in
-either clockwise or counter-clockwise order. They are normalized to
-counter-clockwise order internally.
+either clockwise or counterclockwise order. They are normalized to
+counterclockwise order internally.
 
 A single polygon can also be constructed directly
 from its absolute vertex coordinates using the

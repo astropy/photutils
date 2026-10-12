@@ -26,7 +26,7 @@ def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
     ----------
     fwhm : float
         The full-width at half-maximum (FWHM) of the 2D circular
-        Gaussian kernel.
+        Gaussian kernel, in pixels.
 
     size : int or (2,) int array_like
         The size of the kernel along each axis. If ``size`` is a scalar
@@ -80,9 +80,9 @@ def _make_binary_structure(ndim, connectivity):
     connectivity : {4, 8}
         For the case of ``ndim=2``, the type of pixel connectivity used
         in determining how pixels are grouped into a detected source.
-        The options are 4 or 8 (default). 4-connected pixels touch along
-        their edges. 8-connected pixels touch along their edges or
-        corners. For reference, SourceExtractor uses 8-connected pixels.
+        The options are 4 or 8. 4-connected pixels touch along their
+        edges. 8-connected pixels touch along their edges or corners.
+        For reference, SourceExtractor uses 8-connected pixels.
 
     Returns
     -------
@@ -131,11 +131,11 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None,
         should be replaced, if possible, by mirrored pixel values. It
         must have the same shape as ``data``.
 
-    xycenter : tuple of two int
+    xycenter : tuple of two float
         The (x, y) center coordinates around which masked pixels will be
         mirrored.
 
-    mask : 2D bool `~numpy.ndarray`
+    mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask where `True` values indicate ``replace_mask``
         *mirrored* pixels that should never be used to fix
         ``replace_mask`` pixels. In other words, if a pixel in

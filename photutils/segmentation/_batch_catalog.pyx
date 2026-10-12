@@ -23,7 +23,7 @@ root-find entirely in C, using the ``brentq`` implementation exported
 by ``scipy.optimize.cython_optimize``, so that no Python call is made
 per root-finder iteration. Its prepared per-source inputs (the cleaned
 cutouts) are packed into one buffer, so the preparation and the solve
-each run as a single GIL-free loop over the sources.
+run their per-source computations without the GIL.
 
 The source loops run without the GIL and use no global mutable state,
 so this module is safe to use from multiple threads, including on
@@ -32,10 +32,10 @@ free-threaded Python builds.
 The image arrays are declared with fused types, so the drivers read
 C-contiguous float32 or float64 images and int32 or intp segmentation
 images directly, without the caller making full-image copies. All of
-the images passed in one call must have the same dtype. Each pixel
-value is converted to double as it is read, which is exact, and all
-arithmetic is performed in double precision, so the results agree to
-within rounding for either input dtype.
+the floating-point images passed in one call must have the same dtype.
+Each pixel value is converted to double as it is read, which is exact,
+and all arithmetic is performed in double precision, so the results
+agree to within rounding for either input dtype.
 """
 
 import numpy as np
@@ -742,10 +742,11 @@ cdef void _flux_radius_cutout(const real_t *data,
     Fill the cleaned, background-subtracted cutout of a single source
     for the flux-radius root-find.
 
-    Masked and non-finite pixels are zero, neighbor-source pixels are
-    zeroed or mirror-corrected per ``seg_method`` (an uncorrectable
-    neighbor pixel is zero), and every other pixel is
-    ``data - local_bkg``.
+    Pixels with a nonzero ``mask`` value are zero, neighbor-source
+    pixels are zeroed or mirror-corrected per ``seg_method`` (an
+    uncorrectable neighbor pixel is zero), and every other pixel is
+    ``data - local_bkg``. Non-finite pixels are zero only where the
+    caller has folded them into ``mask``.
     Writes the ``(y1 - y0, x1 - x0)`` cutout in row-major order into
     ``out``.
     """
@@ -1360,7 +1361,7 @@ cdef inline bint _is_source_pixel(const unsigned char *mask,
                                   Py_ssize_t y0, Py_ssize_t y1) noexcept nogil:
     """
     Whether a pixel is an unmasked pixel of the source segment, with
-    pixels outside the clipped bounding box treated as background.
+    pixels outside the bounding box treated as background.
     """
     if ix < x0 or ix >= x1 or iy < y0 or iy >= y1:
         return False
@@ -1429,9 +1430,9 @@ def batch_perimeter(const unsigned char[:, ::1] mask, *,
         The source label for each source, with shape ``(n_sources,)``.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     Returns
     -------
@@ -1536,9 +1537,9 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
         The source label for each source, with shape ``(n_sources,)``.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     compute_err : int
         If nonzero, also gather the pixel variances of the boxes.
@@ -1699,9 +1700,9 @@ def batch_segment_gather(const real_t[:, ::1] values, *,
         The source label for each source, with shape ``(n_sources,)``.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     Returns
     -------
@@ -1822,9 +1823,9 @@ def batch_minmax_index(const real_t[:, ::1] values, *,
         The source label for each source, with shape ``(n_sources,)``.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     Returns
     -------
@@ -1935,9 +1936,9 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
         ``(n_sources,)``.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     Returns
     -------
@@ -2022,10 +2023,10 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
     Compute the central spatial moments for many sources in one call.
 
     These are the translation-invariant moments up to 3rd order along
-    each axis, i.e., the raw moments of `batch_raw_moments` computed
+    each axis, i.e., the raw moments of ``batch_raw_moments`` computed
     with coordinates measured from the given cutout-frame centroid.
     The pixel-inclusion rules are identical to those of
-    `batch_raw_moments`.
+    ``batch_raw_moments``.
 
     Parameters
     ----------
@@ -2050,9 +2051,9 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
         ``(n_sources,)``.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     xcen, ycen : 1D ndarray of float64 (C-contiguous)
         The cutout-frame centroid of each source, with shape
@@ -2190,9 +2191,9 @@ def batch_moment_err(const real_t[:, ::1] error, *,
         ``(n_sources,)``.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     xcen, ycen : 1D ndarray of float64 (C-contiguous)
         The cutout-frame centroid of each source, with shape
@@ -2328,8 +2329,8 @@ cdef double _select_kth(double *a, Py_ssize_t n,
             hi = lo + n_below - 1
             continue
 
-        # Move the values equal to the pivot to a[i:i+n_equal]; the
-        # pivot itself is counted from a[hi]
+        # Move the values equal to the pivot to a[i:i+n_equal]. The
+        # pivot itself is counted from a[hi].
         lo = i
         for j in range(lo, hi):
             x = a[j]
@@ -2696,9 +2697,9 @@ def batch_local_background(const real_t[:, ::1] data, *,
         as ``data``. Every nonzero pixel is excluded.
 
     bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
-        The segment bounding box of each source, with shape
-        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
-        values).
+        The segment bounding box of each source, as C-contiguous
+        arrays with shape ``(n_sources,)``. The maxima are exclusive
+        (slice ``stop`` values).
 
     width : int
         The annulus width in pixels.

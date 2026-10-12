@@ -374,10 +374,10 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
     n_final = 0
     if result == 0 and use_saddle:
         # Saddle criterion: a junction splits where at least two
-        # sufficiently large children hold more flux above the junction
-        # level than the saddle limit. The markers are the passing
-        # children of splitting junctions that contain no deeper split
-        # themselves.
+        # sufficiently large children hold more flux above the level
+        # at which they separate than the saddle limit. The markers
+        # are the passing children of splitting junctions that contain
+        # no deeper split themselves.
         final = <Py_ssize_t*>malloc(nodes.n * sizeof(Py_ssize_t))
         passer = <unsigned char*>malloc(nodes.n
                                         * sizeof(unsigned char))
@@ -717,7 +717,7 @@ cdef void _source_stats(const data_t* data, const segm_t* segm,
 
     NaN pixels are excluded. The flux is accumulated sequentially in
     float64 in raster order. The minimum and maximum are NaN, and the
-    flux is 0, if the segment has no finite pixel.
+    flux is 0, if the pixels of the segment are all NaN.
     """
     cdef Py_ssize_t iy, ix, idx
     cdef double value
@@ -779,7 +779,7 @@ def deblend_source_stats(const data_t[:, ::1] data,
     source_min, source_max, source_sum : 1D float64 `~numpy.ndarray`
         The minimum, maximum, and flux of each source segment. The
         minimum and maximum are NaN, and the flux is 0, for a segment
-        without any finite pixel.
+        whose pixels are all NaN.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t img_nx = data.shape[1]
@@ -916,8 +916,9 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
         criterion instead of building all candidate markers. A
         junction of the component tree splits only where at least two
         sufficiently large components each hold more flux above the
-        junction level than this per-source limit (the contrast times
-        the total source flux).
+        level at which they separate (the threshold level above that
+        of the junction) than this per-source limit (the contrast
+        times the total source flux).
 
     Returns
     -------

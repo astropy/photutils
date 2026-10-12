@@ -56,18 +56,18 @@ class _SegmentationFlags(FlagRegistry):
             name='non_finite_data',
             description=('non-finite data values within the source '
                          'segment'),
-            detailed_description=('One or more data values (NaN or '
-                                  'inf) within the source segment '
-                                  'are non-finite.'),
+            detailed_description=('One or more data values within '
+                                  'the source segment are non-finite '
+                                  '(NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=4,
             name='non_finite_error',
             description=('non-finite error values within the source '
                          'segment'),
-            detailed_description=('One or more error values (NaN or '
-                                  'inf) within the source segment '
-                                  'are non-finite.'),
+            detailed_description=('One or more error values within '
+                                  'the source segment are non-finite '
+                                  '(NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=8,
@@ -103,10 +103,12 @@ class _SegmentationFlags(FlagRegistry):
             description=('deblending mode changed to sinh: '
                          'non-positive minimum'),
             detailed_description=('The deblending mode for the '
-                                  'parent source was changed to '
+                                  'input source (the parent source, '
+                                  'or the source itself if it was '
+                                  'not deblended) was changed to '
                                   '"sinh" because of a '
                                   'non-positive minimum data value '
-                                  'within the parent source '
+                                  'within the input source '
                                   'segment.'),
         ),
         FlagDefinition(
@@ -115,8 +117,10 @@ class _SegmentationFlags(FlagRegistry):
             description=('deblending mode changed to linear: too '
                          'many markers'),
             detailed_description=('The deblending mode for the '
-                                  'parent source was changed to '
-                                  '"linear" because the parent '
+                                  'input source (the parent source, '
+                                  'or the source itself if it was '
+                                  'not deblended) was changed to '
+                                  '"linear" because the input '
                                   'source had too many potential '
                                   'deblended sources.'),
         ),
@@ -190,9 +194,12 @@ class _SegmentationFlags(FlagRegistry):
             description=('minimum Kron radius or minimum circular '
                          'radius applied'),
             detailed_description=('The measured unscaled Kron radius '
-                                  'fell below the minimum unscaled '
-                                  'Kron radius (``kron_params[1]``) '
-                                  'and was clipped to it, or the '
+                                  'was at or below the minimum '
+                                  'unscaled Kron radius '
+                                  '(``kron_params[1]``) or could not '
+                                  'be measured (non-positive Kron '
+                                  'numerator or denominator), so the '
+                                  'minimum was used, or the '
                                   'minimum circular aperture '
                                   '(``kron_params[2]``) was used '
                                   'instead of the Kron ellipse.'),
@@ -229,10 +236,10 @@ class _SegmentationFlags(FlagRegistry):
             name='kron_non_finite_data',
             description=('non-finite data values within the Kron '
                          'aperture'),
-            detailed_description=('One or more data values (NaN or '
-                                  'inf) with nonzero aperture weight '
-                                  'within the Kron aperture are '
-                                  'non-finite.'),
+            detailed_description=('One or more unmasked data values '
+                                  'with nonzero aperture weight within '
+                                  'the Kron aperture are non-finite '
+                                  '(NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=65536,
@@ -240,9 +247,9 @@ class _SegmentationFlags(FlagRegistry):
             description=('non-finite error values within the Kron '
                          'aperture'),
             detailed_description=('One or more unmasked error values '
-                                  '(NaN or inf) with nonzero aperture '
-                                  'weight within the Kron aperture '
-                                  'are non-finite, so the Kron flux '
+                                  'with nonzero aperture weight within '
+                                  'the Kron aperture are non-finite '
+                                  '(NaN or inf), so the Kron flux '
                                   'error is NaN.'),
         ),
         FlagDefinition(

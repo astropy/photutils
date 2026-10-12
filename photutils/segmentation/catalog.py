@@ -92,10 +92,10 @@ class _SegmentValues:
 
     This is the container form of the ``batch_segment_gather`` outputs.
     Indexing it with an integer, slice, index array, or boolean mask
-    returns a new container holding the selected sources (always at
-    least one), which lets `SourceCatalog.__getitem__` slice the cached
-    values along the source axis. Iterating over it yields the 1D
-    array of each source.
+    returns a new container holding the selected sources (an integer
+    index gives a one-source container, never a bare array), which lets
+    `SourceCatalog.__getitem__` slice the cached values along the
+    source axis. Iterating over it yields the 1D array of each source.
 
     Parameters
     ----------
@@ -182,9 +182,11 @@ def _concatenate_aperture_sums(results):
     Concatenate per-chunk ``batch_aperture_sums`` results along the
     source axis.
 
-    Only the per-source fields are combined. The packed per-pixel
-    fields, which are empty unless the driver is called with
-    ``emit_sum``, are not merged and are returned as `None`.
+    Only the per-source fields are combined. The fields of the packed
+    per-pixel output (``starts``, ``sum_values``, ``sum_fracs``,
+    ``sum_errsq``, and ``sum_counts``), which hold no data unless the
+    driver is called with ``emit_sum``, are not merged and are returned
+    as `None`.
 
     Parameters
     ----------
@@ -300,7 +302,7 @@ def _batch_gini(values):
     sorted values.
 
     The values of each source are sorted with NumPy in a Python loop
-    rather than with the compiled ``batch_gini`` kernel shared with
+    rather than with the compiled ``batch_gini`` kernel used by
     `~photutils.aperture.ApertureStats`. NumPy's vectorized sort
     beats the kernel's scalar introsort for sources of more than ~50
     pixels. The kernel is faster only for very small sources, where the
@@ -408,8 +410,8 @@ _SCALAR_EXCLUDE = frozenset({'isscalar', 'n_labels', 'labels', 'properties',
 
 def use_detcat(method):
     """
-    Return a decorated method where it will return the value from the
-    detection image catalog instead of using the method to calculate it.
+    Decorate a method so that it returns the value from the detection
+    catalog, if one was input, instead of calculating it.
 
     Parameters
     ----------
@@ -459,7 +461,7 @@ class SourceCatalog:
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D array from which to calculate the source photometry and
         properties. If ``convolved_data`` is input, then a convolved
         version of ``data`` will be used instead of ``data`` to
@@ -480,8 +482,12 @@ class SourceCatalog:
         same smoothing kernel that was applied to the detection
         image when deriving the source segments (e.g., see
         :func:`~photutils.segmentation.detect_sources`). If
-        ``convolved_data`` is `None`, then the unconvolved ``data`` will
-        be used instead. Non-finite ``convolved_data`` values (NaN and
+        ``convolved_data`` is `None`, then the unconvolved ``data``
+        will be used instead. ``convolved_data`` must have the same
+        shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity` array then ``convolved_data`` must
+        be a `~astropy.units.Quantity` array (and vice versa) with
+        identical units. Non-finite ``convolved_data`` values (NaN and
         inf) are not automatically masked, unless they are at the same
         position of non-finite values in the input ``data`` array. Such
         pixels can be masked using the ``mask`` keyword.
@@ -513,7 +519,7 @@ class SourceCatalog:
         the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity` array then ``background`` must
         be a `~astropy.units.Quantity` array (and vice versa) with
-        identical units. Inputing the ``background`` merely allows
+        identical units. Inputting the ``background`` merely allows
         for its properties to be measured within each source segment.
         The input ``background`` does *not* get subtracted from the
         input ``data``, which should already be background-subtracted.
@@ -543,12 +549,12 @@ class SourceCatalog:
     aperture_mask_method : {'correct', 'mask', 'none'}, optional
         The method used to handle neighboring sources when performing
         aperture photometry (e.g., circular apertures or elliptical Kron
-        apertures). This parameter also affects the Kron radius. The
-        options are:
+        apertures). This parameter also affects the Kron radius, the
+        windowed centroids, and `flux_radius`. The options are:
 
-        * 'correct': replace pixels assigned to neighboring sources by
-          replacing them with pixels on the opposite side of the source
-          center (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
+        * 'correct': replace pixels assigned to neighboring sources
+          with the pixels on the opposite side of the source center
+          (equivalent to MASK_TYPE=CORRECT in SourceExtractor).
 
         * 'mask': mask pixels assigned to neighboring sources
           (equivalent to MASK_TYPE=BLANK in SourceExtractor).
@@ -560,8 +566,8 @@ class SourceCatalog:
         input. In that case, the ``aperture_mask_method`` set in the
         ``detection_catalog`` will be used.
 
-    kron_params : tuple of 2 or 3 floats, optional
-        A list of parameters used to determine the Kron aperture.
+    kron_params : 1D sequence of 2 or 3 floats, optional
+        The parameters used to determine the Kron aperture.
         The first item is the scaling parameter of the unscaled Kron
         radius and the second item represents the minimum value for
         the unscaled Kron radius in pixels. The optional third item is
@@ -591,15 +597,16 @@ class SourceCatalog:
         The number of threads to use for the compiled per-source
         measurements: the isophotal moments and their errors, the
         segment pixel statistics (e.g., `segment_flux`), the windowed
-        and quadratic centroids, `perimeter`, the Kron radii and
-        photometry, `circular_photometry`, and `flux_radius`, and
-        thus every property derived from them. The default is 1 (no
-        multithreading). When ``n_threads`` > 1, the sources are
-        divided into chunks that are processed concurrently. The
-        per-source results are independent, so they are identical to
-        the single-threaded computation. The underlying kernels release
-        the Python global interpreter lock (GIL), so multithreading can
-        significantly speed up these measurements for many sources.
+        and quadratic centroids, `perimeter`, the local background,
+        the Kron radii and photometry, `circular_photometry`, and
+        `flux_radius`, and thus every property derived from them. The
+        default is 1 (no multithreading). When ``n_threads`` > 1, the
+        sources are divided into chunks that are processed
+        concurrently. The per-source results are independent, so they
+        are identical to the single-threaded computation. The
+        underlying kernels release the Python global interpreter lock
+        (GIL), so multithreading can significantly speed up these
+        measurements for many sources.
 
     progress_bar : bool, optional
         Whether to display a progress bar when calculating properties.
@@ -650,16 +657,19 @@ class SourceCatalog:
     plane. C-contiguous, native byte-order image arrays that are all
     float32 or all float64 are read directly, as is a C-contiguous,
     native byte-order int32 or intp segmentation array, so no copies of
-    them are made. Image arrays with different dtypes from each other
-    (e.g., float32 ``data`` with a float64 ``error`` array) are
-    converted to float64 working copies, and a segmentation array with
-    another integer dtype is converted to intp. Any working copies are
-    built on first use and kept for the lifetime of the catalog (they
-    are shared with sliced catalogs). All calculations are performed in
-    float64 regardless of the input dtype, so float32 inputs give the
-    same results as the same values input as float64 (to within
-    floating-point rounding). If memory is a concern, input all of the
-    image arrays with the same dtype.
+    them are made. Image arrays that are not all float32 or all float64
+    (e.g., float32 ``data`` with a float64 ``error`` array, or integer
+    arrays) are converted, where needed, to working copies in a common
+    dtype, which is float64 unless every image array is a
+    floating-point array of at most 4 bytes per value. A segmentation
+    array with another integer dtype is converted to intp. Any working
+    copies are built on first use and kept for the lifetime of the
+    catalog (they are shared with sliced catalogs). All calculations
+    are performed in float64 regardless of the input dtype, so
+    float32 inputs give the same results as the same values input as
+    float64 (to within floating-point rounding). If memory is a
+    concern, input all of the image arrays as C-contiguous, native
+    byte-order arrays with the same float32 or float64 dtype.
     Otherwise, call
     `~photutils.segmentation.SourceCatalog.release_cache` after
     calculating the desired properties to free the working copies.
@@ -709,8 +719,8 @@ class SourceCatalog:
     multi-source catalog, but a single aperture object for a scalar
     catalog. Similarly, `data_cutout` returns a list of 2D cutout arrays
     for a multi-source catalog, but a single 2D array for a scalar
-    catalog. A scalar catalog is created when the a multi-source catalog
-    is indexed to select a single source.
+    catalog. A scalar catalog is created when a multi-source catalog is
+    indexed to select a single source.
 
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
@@ -1124,8 +1134,9 @@ class SourceCatalog:
         length-1 sequence, otherwise return ``value`` unchanged.
 
         This is the method-call analog of the scalar collapse performed
-        for attribute access by `__getattribute__`. Every caller passes
-        a sequence with one entry per source.
+        for attribute access by `__getattribute__`. Most callers pass
+        a sequence with one entry per source. The plotting methods pass
+        only the patches of the apertures that are not `None`.
         """
         if self.isscalar and len(value) == 1:
             return value[0]
@@ -1353,7 +1364,8 @@ class SourceCatalog:
     @cached_property
     def isscalar(self):
         """
-        Whether the instance is scalar (e.g., a single source).
+        Whether the instance is scalar (i.e., a single source selected
+        by indexing a catalog).
         """
         return self._labels.shape == ()
 
@@ -1408,8 +1420,7 @@ class SourceCatalog:
         Notes
         -----
         No copies are needed, and only the mask array is cached, when
-        the image arrays are C-contiguous and have a common
-        ``float32`` or ``float64`` dtype. The image arrays are
+        the conditions above are met. The image arrays are
         converted to ``float64`` copies, which need 8 bytes per pixel
         each, when their dtypes differ from each other (e.g.,
         ``float32`` data with a ``float64`` error array) or when any of
@@ -1446,8 +1457,8 @@ class SourceCatalog:
         The simplest way to avoid the working copies is to input all
         of the image arrays as C-contiguous arrays with the same
         ``float32`` or ``float64`` dtype. The results do not depend on
-        the input dtype, because all calculations are performed in
-        ``float64``.
+        the input dtype (to within floating-point rounding), because
+        all calculations are performed in ``float64``.
 
         Examples
         --------
@@ -1484,14 +1495,24 @@ class SourceCatalog:
         Parameters
         ----------
         name : str
-            The name of property. The name must not conflict with any of
-            the built-in property names or attributes.
+            The name of the property. The name must not conflict with
+            any of the built-in property names or attributes.
 
         value : array_like or float
-            The value to assign.
+            The value to assign. It must have one element per source
+            (the same length as the catalog), or be a scalar for a
+            single-source (scalar) catalog.
 
-        overwrite : bool, option
-            If `True`, will overwrite the existing property ``name``.
+        overwrite : bool, optional
+            If `True`, overwrite an existing user-defined property
+            ``name``. Built-in attributes can never be overwritten.
+
+        Raises
+        ------
+        ValueError
+            If ``name`` is a built-in attribute, if ``name`` already
+            exists and ``overwrite`` is `False`, or if ``value`` does
+            not have the same number of elements as the catalog.
         """
         # dir() includes all class-level attributes (properties, cached
         # properties, and methods), so built-in methods (e.g., to_table)
@@ -1564,6 +1585,11 @@ class SourceCatalog:
         ----------
         names : list of str or str
             The names of the properties to remove.
+
+        Raises
+        ------
+        ValueError
+            If any name in ``names`` is not a user-defined property.
         """
         if isinstance(names, str):
             names = [names]
@@ -1647,7 +1673,8 @@ class SourceCatalog:
         """
         A list of mask cutouts using the segmentation image slices.
 
-        If the input ``mask`` is None then a list of None is returned.
+        If the input ``mask`` is None then an array of `None` values is
+        returned.
         """
         if self._mask is None:
             return self._null_objects
@@ -1658,7 +1685,8 @@ class SourceCatalog:
         """
         A list of error cutouts using the segmentation image slices.
 
-        If the input ``error`` is None then a list of None is returned.
+        If the input ``error`` is None then an array of `None` values
+        is returned.
         """
         if self._error is None:
             return self._null_objects
@@ -1772,7 +1800,7 @@ class SourceCatalog:
 
         Parameters
         ----------
-        labels : list, tuple, or `~numpy.ndarray` of int
+        labels : int, list, tuple, or `~numpy.ndarray` of int
             The source label(s).
 
         Returns
@@ -1795,16 +1823,18 @@ class SourceCatalog:
         ----------
         columns : str, list of str, `None`, optional
             Names of columns, in order, to include in the output
-            `~astropy.table.QTable`. The allowed column names are any of
-            the `SourceCatalog` properties or custom properties added
-            using `add_property`. If ``columns`` is `None`, then a
-            default list of scalar-valued properties (as defined by the
-            ``default_columns`` attribute) will be used.
+            `~astropy.table.QTable`. The allowed column names are the
+            names in the `properties` attribute, except for the 2D
+            cutout image properties (e.g., ``data_cutout``), and any
+            custom properties added using `add_property`. If
+            ``columns`` is `None`, then a default list of scalar-valued
+            properties (as defined by the ``default_columns`` attribute)
+            will be used.
 
         Returns
         -------
         table : `~astropy.table.QTable`
-            A table of sources properties with one row per source.
+            A table of source properties with one row per source.
 
         Raises
         ------
@@ -1938,7 +1968,8 @@ class SourceCatalog:
     @cached_property
     def data_cutout(self):
         """
-        A 2D `~numpy.ndarray` cutout from the data using the minimal
+        A 2D `~numpy.ndarray` (or `~astropy.units.Quantity` if the input
+        ``data`` has units) cutout from the data using the minimal
         bounding box of the source.
 
         Returns a list of arrays for multi-source catalogs, or a single
@@ -1957,6 +1988,9 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
 
+        The masked array does not have units, even if the input ``data``
+        is a `~astropy.units.Quantity`.
+
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
         """
@@ -1966,7 +2000,8 @@ class SourceCatalog:
     @cached_property
     def conv_data_cutout(self):
         """
-        A 2D `~numpy.ndarray` cutout from the convolved data using the
+        A 2D `~numpy.ndarray` (or `~astropy.units.Quantity` if the input
+        ``data`` has units) cutout from the convolved data using the
         minimal bounding box of the source.
 
         Returns a list of arrays for multi-source catalogs, or a single
@@ -1985,6 +2020,9 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
 
+        The masked array does not have units, even if the input ``data``
+        is a `~astropy.units.Quantity`.
+
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
         """
@@ -1994,8 +2032,12 @@ class SourceCatalog:
     @cached_property
     def error_cutout(self):
         """
-        A 2D `~numpy.ndarray` cutout from the error array using the
+        A 2D `~numpy.ndarray` (or `~astropy.units.Quantity` if the input
+        ``data`` has units) cutout from the error array using the
         minimal bounding box of the source.
+
+        If ``error`` was not input, then `None` is returned for each
+        source.
 
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
@@ -2015,6 +2057,12 @@ class SourceCatalog:
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
 
+        The masked array does not have units, even if the input ``data``
+        is a `~astropy.units.Quantity`.
+
+        If ``error`` was not input, then `None` is returned for each
+        source.
+
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
         """
@@ -2026,8 +2074,12 @@ class SourceCatalog:
     @cached_property
     def background_cutout(self):
         """
-        A 2D `~numpy.ndarray` cutout from the background array using the
-        minimal bounding box of the source.
+        A 2D `~numpy.ndarray` (or `~astropy.units.Quantity` if the input
+        ``data`` has units) cutout from the background array using
+        the minimal bounding box of the source.
+
+        If ``background`` was not input, then `None` is returned for
+        each source.
 
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
@@ -2040,12 +2092,18 @@ class SourceCatalog:
     @cached_property
     def background_cutout_masked(self):
         """
-        A 2D `~numpy.ma.MaskedArray` cutout from the background array.
+        A 2D `~numpy.ma.MaskedArray` cutout from the background array
         using the minimal bounding box of the source.
 
         The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
+
+        The masked array does not have units, even if the input ``data``
+        is a `~astropy.units.Quantity`.
+
+        If ``background`` was not input, then `None` is returned for
+        each source.
 
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
@@ -2106,7 +2164,7 @@ class SourceCatalog:
 
         The flags combine deblending-provenance flags carried
         by the input segmentation image with measurement-time
-        flags computed from this catalog's ``data``,
+        flags computed from this catalog's ``data``, ``convolved_data``,
         ``mask``, ``error``, and segmentation image. Use
         `~photutils.segmentation.decode_segmentation_flags` to decode
         the values.
@@ -2269,7 +2327,8 @@ class SourceCatalog:
         Parameters
         ----------
         array : 2D `~numpy.ndarray`
-            The C-contiguous float64 full-image array to gather from.
+            The C-contiguous full-image array (float32 or float64) to
+            gather from.
 
         Returns
         -------
@@ -2300,7 +2359,8 @@ class SourceCatalog:
         Parameters
         ----------
         array : 2D `~numpy.ndarray`
-            The C-contiguous float64 full-image array to gather from.
+            The C-contiguous full-image array (float32 or float64) to
+            gather from.
 
         Returns
         -------
@@ -2534,6 +2594,9 @@ class SourceCatalog:
         through the center-of-mass centroid formula. If ``error`` was
         not input, then the errors are NaN.
 
+        If a ``detection_catalog`` was input, then the errors are those
+        of the detection catalog, computed from its ``error`` array.
+
         For a centroid defined as :math:`x_c = \\sum f_i x_i / F`,
         the variance is:
 
@@ -2659,7 +2722,9 @@ class SourceCatalog:
 
         * The windowed 2nd-order moments are negative
 
-        * The windowed covariance determinant is negative.
+        * The windowed covariance determinant is negative
+
+        * The windowed centroid is not finite
 
         Fallback sources also use the isophotal centroid errors. Sources
         with NaN half-light radius keep NaN.
@@ -2837,22 +2902,23 @@ class SourceCatalog:
         Notes
         -----
         During each iteration, the centroid is calculated using all
-        pixels within a circular aperture of ``4 * sigma`` from the
-        current position, weighting pixel values with a 2D Gaussian with
-        a standard deviation of ``sigma``. ``sigma`` is the half-light
-        radius (i.e., ``flux_radius(0.5)``) times (2.0 / 2.35). A
-        minimum half-light radius of 0.5 pixels is used. Iteration stops
-        when the change in centroid position falls below a pre-defined
-        threshold or a maximum number of iterations is reached.
+        pixels within a circular aperture of radius ``4 * sigma``
+        centered on the current position, weighting pixel values with
+        a 2D Gaussian with a standard deviation of ``sigma``. ``sigma``
+        is the half-light radius (i.e., ``flux_radius(0.5)``) times
+        (2.0 / 2.35). A minimum half-light radius of 0.5 pixels is
+        used. Iteration stops when the change in centroid position
+        falls below a pre-defined threshold or a maximum number of
+        iterations is reached.
 
         The windowed centroid is reset to the isophotal `centroid`
         if any of the following conditions hold: the centroid diverged
         far from the isophotal centroid and lies outside the 1-sigma
         ellipse, the total weighted flux is non-positive, the windowed
-        2nd-order moments are negative, or the windowed covariance
-        determinant is negative. If the half-light radius is not finite
-        (e.g., due to a non-finite Kron radius), then ``np.nan`` will be
-        returned.
+        2nd-order moments are negative, the windowed covariance
+        determinant is negative, or the windowed centroid is not
+        finite. If the half-light radius is not finite (e.g., due to a
+        non-finite Kron radius), then ``np.nan`` will be returned.
         """
         return self._centroid_win_results[:, 0:2].copy()
 
@@ -2890,6 +2956,9 @@ class SourceCatalog:
         The errors are computed by propagating the input ``error`` array
         through the Gaussian-weighted windowed centroid formula. If
         ``error`` was not input, then the errors are NaN.
+
+        If a ``detection_catalog`` was input, then the errors are those
+        of the detection catalog, computed from its ``error`` array.
 
         Sources where the windowed centroid fell back to the
         isophotal `centroid` have the isophotal centroid errors (see
@@ -3093,29 +3162,30 @@ class SourceCatalog:
     def cutout_centroid_quad(self):
         """
         The ``(x, y)`` centroid coordinate, relative to the cutout data,
-        calculated by fitting a 2D quadratic polynomial to the unmasked
-        pixels in the source segment.
+        calculated by fitting a 2D quadratic polynomial to the 3x3 pixel
+        box centered on the peak pixel of the source segment.
 
         Notes
         -----
-        `~photutils.centroids.centroid_quadratic` is used to calculate
-        the centroid with ``fit_boxsize=3``.
+        The fit follows `~photutils.centroids.centroid_quadratic` with
+        ``fit_boxsize=3``, applied to the bounding-box cutout of the
+        source. Pixels in the cutout that are outside the source
+        segment, masked, or non-finite are set to zero before the peak
+        is located and the fit is performed.
 
-        Because this centroid is based on fitting data, it can fail for
-        many reasons including:
+        The isophotal centroid (`cutout_centroid`) is returned instead
+        (NaN where the isophotal centroid is NaN) in these cases:
 
-        * quadratic fit failed
-        * quadratic fit does not have a maximum
-        * quadratic fit maximum falls outside image
-        * not enough unmasked data points (6 are required)
-        * no unmasked pixels within the source segment
+        * the bounding box of the source is smaller than 3 pixels along
+          either axis
+        * the quadratic fit does not have a maximum
+        * the quadratic fit maximum falls on or outside the outermost
+          pixel centers of the bounding-box cutout
+        * there are no unmasked pixels within the source segment
 
-        In these cases, then the isophotal `centroid` will be used
-        instead.
-
-        Also note that a fit is not performed if the maximum data value
-        is at the edge of the source segment. In this case, the position
-        of the maximum pixel will be returned.
+        A fit is not performed if the peak pixel is at the edge of the
+        bounding-box cutout. In this case, the position of the peak
+        pixel is returned.
         """
         return self._centroid_quad_results[:, 0:2].copy()
 
@@ -3124,29 +3194,30 @@ class SourceCatalog:
     def centroid_quad(self):
         """
         The ``(x, y)`` centroid coordinate, calculated by fitting a 2D
-        quadratic polynomial to the unmasked pixels in the source
-        segment.
+        quadratic polynomial to the 3x3 pixel box centered on the peak
+        pixel of the source segment.
 
         Notes
         -----
-        `~photutils.centroids.centroid_quadratic` is used to calculate
-        the centroid with ``fit_boxsize=3``.
+        The fit follows `~photutils.centroids.centroid_quadratic` with
+        ``fit_boxsize=3``, applied to the bounding-box cutout of the
+        source. Pixels in the cutout that are outside the source
+        segment, masked, or non-finite are set to zero before the peak
+        is located and the fit is performed.
 
-        Because this centroid is based on fitting data, it can fail for
-        many reasons including:
+        The isophotal `centroid` is returned instead (NaN where the
+        isophotal centroid is NaN) in these cases:
 
-        * quadratic fit failed
-        * quadratic fit does not have a maximum
-        * quadratic fit maximum falls outside image
-        * not enough unmasked data points (6 are required)
-        * no unmasked pixels within the source segment
+        * the bounding box of the source is smaller than 3 pixels along
+          either axis
+        * the quadratic fit does not have a maximum
+        * the quadratic fit maximum falls on or outside the outermost
+          pixel centers of the bounding-box cutout
+        * there are no unmasked pixels within the source segment
 
-        In these cases, the isophotal `centroid` is returned instead
-        (NaN where the isophotal centroid is NaN).
-
-        Also note that a fit is not performed if the maximum data value
-        is at the edge of the source segment. In this case, the position
-        of the maximum pixel will be returned.
+        A fit is not performed if the peak pixel is at the edge of the
+        bounding-box cutout. In this case, the position of the peak
+        pixel is returned.
 
         The `centroid_quad_fallback` property is `True` for sources
         without a quadratic-fit centroid.
@@ -3162,7 +3233,7 @@ class SourceCatalog:
         (`centroid_quad`) is not the maximum of a quadratic fit.
 
         This is the case where the maximum data value is at the edge
-        of the source segment (the position of the maximum pixel is
+        of the bounding-box cutout (the position of the maximum pixel is
         returned), where the fit failed (the isophotal `centroid` is
         returned), or where the centroid is NaN. See `centroid_quad`
         for details.
@@ -3174,8 +3245,8 @@ class SourceCatalog:
     def x_centroid_quad(self):
         """
         The ``x`` coordinate of the centroid (`centroid_quad`),
-        calculated by fitting a 2D quadratic polynomial to the unmasked
-        pixels in the source segment.
+        calculated by fitting a 2D quadratic polynomial to the 3x3 pixel
+        box centered on the peak pixel of the source segment.
         """
         return self._array('centroid_quad')[:, 0]
 
@@ -3184,8 +3255,8 @@ class SourceCatalog:
     def y_centroid_quad(self):
         """
         The ``y`` coordinate of the centroid (`centroid_quad`),
-        calculated by fitting a 2D quadratic polynomial to the unmasked
-        pixels in the source segment.
+        calculated by fitting a 2D quadratic polynomial to the 3x3 pixel
+        box centered on the peak pixel of the source segment.
         """
         return self._array('centroid_quad')[:, 1]
 
@@ -3200,6 +3271,9 @@ class SourceCatalog:
         through the least-squares quadratic fit and its peak solution
         using the delta method. If ``error`` was not input, then the
         errors are NaN.
+
+        If a ``detection_catalog`` was input, then the errors are those
+        of the detection catalog, computed from its ``error`` array.
 
         Sources where the quadratic centroid fell back to the
         isophotal `centroid` have the isophotal centroid errors (see
@@ -3225,9 +3299,10 @@ class SourceCatalog:
         The ``(n_labels, 2, 2)`` pixel error covariance matrices of the
         quadratic centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
 
-        Fallback sources hold the isophotal covariance (see
-        ``_centroid_err_cov``). Matrices are all-NaN where errors are
-        unavailable.
+        Sources whose centroid fell back to the isophotal centroid hold
+        the isophotal covariance (see ``_centroid_err_cov``). The
+        matrices are all-NaN where the errors are unavailable, including
+        sources whose peak pixel position is returned instead of a fit.
         """
         results = self._centroid_quad_results
         cov = np.empty((len(results), 2, 2))
@@ -3412,8 +3487,9 @@ class SourceCatalog:
     def sky_centroid_quad(self):
         """
         The sky coordinate of the centroid (`centroid_quad`), calculated
-        by fitting a 2D quadratic polynomial to the unmasked pixels in
-        the source segment.
+        by fitting a 2D quadratic polynomial to the 3x3 pixel box
+        centered on the peak pixel of the source segment, returned as a
+        `~astropy.coordinates.SkyCoord` object.
 
         The output coordinate frame is the same as the input ``wcs``.
 
@@ -3436,8 +3512,10 @@ class SourceCatalog:
         each source position. The first column is the error along East
         (the Right Ascension direction as a great-circle angle, i.e.,
         including the cos(dec) factor) and the second is along North
-        (Declination). Fallback sources use the isophotal centroid error
-        covariance.
+        (Declination). Sources where the quadratic centroid fell back
+        to the isophotal `centroid` use the isophotal centroid error
+        covariance. The errors are NaN for sources where the peak pixel
+        position is returned instead of a fit.
 
         `None` if ``wcs`` is not input. NaN where the pixel errors are
         unavailable (e.g., no ``error`` input).
@@ -3649,8 +3727,11 @@ class SourceCatalog:
     @cached_property
     def min_value(self):
         """
-        The minimum pixel value of the ``data`` within the source
-        segment.
+        The minimum value of the unmasked ``data`` pixels within the
+        source segment.
+
+        The local background, if computed (``local_bkg_width`` > 0), is
+        subtracted. The value is NaN for a completely masked source.
         """
         values = self._data_values.reduce(np.minimum)
         values -= self._local_background
@@ -3661,8 +3742,11 @@ class SourceCatalog:
     @cached_property
     def max_value(self):
         """
-        The maximum pixel value of the ``data`` within the source
-        segment.
+        The maximum value of the unmasked ``data`` pixels within the
+        source segment.
+
+        The local background, if computed (``local_bkg_width`` > 0), is
+        subtracted. The value is NaN for a completely masked source.
         """
         values = self._data_values.reduce(np.maximum)
         values -= self._local_background
@@ -3724,6 +3808,10 @@ class SourceCatalog:
 
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
+
+        The coordinates are integers. If any source in the catalog is
+        completely masked, then the coordinates are returned as floats
+        and are ``np.nan`` for that source.
         """
         return self._extreme_value_index(slice(0, 2), origin=False)
 
@@ -3735,6 +3823,10 @@ class SourceCatalog:
 
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
+
+        The coordinates are integers. If any source in the catalog is
+        completely masked, then the coordinates are returned as floats
+        and are ``np.nan`` for that source.
         """
         return self._extreme_value_index(slice(2, 4), origin=False)
 
@@ -3746,6 +3838,10 @@ class SourceCatalog:
 
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
+
+        The coordinates are integers. If any source in the catalog is
+        completely masked, then the coordinates are returned as floats
+        and are ``np.nan`` for that source.
         """
         return self._extreme_value_index(slice(0, 2), origin=True)
 
@@ -3757,6 +3853,10 @@ class SourceCatalog:
 
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
+
+        The coordinates are integers. If any source in the catalog is
+        completely masked, then the coordinates are returned as floats
+        and are ``np.nan`` for that source.
         """
         return self._extreme_value_index(slice(2, 4), origin=True)
 
@@ -3820,6 +3920,10 @@ class SourceCatalog:
 
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
+
+        If ``local_bkg_width`` > 0, the local background times the
+        number of unmasked pixels is also subtracted. The flux is NaN
+        for a completely masked source.
         """
         values = self._data_values
         source_sum = values.reduce(np.add)
@@ -3847,13 +3951,15 @@ class SourceCatalog:
             \Delta F = \sqrt{\sum_{i \in S} \sigma_{\mathrm{tot}, i}^2}
 
         where :math:`\Delta F` is the `segment_flux_err`,
-        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total errors
+        :math:`\sigma_{\mathrm{tot}, i}` are the pixel-wise total errors
         (``error``), and :math:`S` are the unmasked pixels in the source
         segment.
 
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically
         masked, are also masked in the error array.
+
+        If ``error`` was not input, then the errors are NaN.
         """
         if self._error is None:
             err = self._null_values
@@ -3873,6 +3979,8 @@ class SourceCatalog:
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically
         masked, are also masked in the background array.
+
+        If ``background`` was not input, then the values are NaN.
         """
         if self._background is None:
             bkg_sum = self._null_values
@@ -3891,6 +3999,8 @@ class SourceCatalog:
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically
         masked, are also masked in the background array.
+
+        If ``background`` was not input, then the values are NaN.
         """
         if self._background is None:
             bkg_mean = self._null_values
@@ -3915,6 +4025,9 @@ class SourceCatalog:
 
         The background values at fractional position values are
         determined using bilinear interpolation.
+
+        If ``background`` was not input, then the values are NaN. The
+        value is also NaN where the `centroid` is not finite.
         """
         if self._background is None:
             bkg = self._null_values
@@ -3957,6 +4070,10 @@ class SourceCatalog:
         Note that the source area may be smaller than its `segment_area`
         if a mask is input to `SourceCatalog` or if the ``data`` within
         the segment contains invalid values (NaN and inf).
+
+        The area is NaN for a completely masked source. If
+        ``detection_catalog`` is input, then its area is returned,
+        which reflects the mask and ``data`` of the detection catalog.
         """
         areas = self._data_values.counts.astype(float)
         areas[self._all_masked] = np.nan
@@ -4106,6 +4223,8 @@ class SourceCatalog:
         while the orientation and the variance along a resolved axis
         are unchanged. A source that is unresolved along both axes is
         isotropic, with an orientation of zero. The covariance is NaN if
+        the net flux of the source is not positive (e.g., a completely
+        masked source or a source with no positive data values) or if
         the second-order moments are not positive semidefinite.
         """
         return self._covariance * (u.pix**2)
@@ -4275,8 +4394,8 @@ class SourceCatalog:
     def covariance_xy(self):
         r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
-        matrix, representing :math:`\sigma_x \sigma_y`, in units of
-        pixel**2.
+        matrix, representing :math:`\sigma_{xy}` (the covariance of
+        ``x`` and ``y``), in units of pixel**2.
         """
         return self._covariance[:, 0, 1] * u.pix**2
 
@@ -4368,14 +4487,16 @@ class SourceCatalog:
             G = \frac{1}{\overline{|x|} \, n \, (n - 1)}
                 \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
-        where :math:`\overline{|x|}` is the mean of the absolute value
-        of all pixel values :math:`x_i`. If the sum of all pixel values
-        is zero, the Gini coefficient is zero.
+        where the :math:`n` pixel values :math:`x_i` are sorted in order
+        of increasing absolute value and :math:`\overline{|x|}` is the
+        mean of their absolute values. If all pixel values are zero, the
+        Gini coefficient is zero.
 
         Negative pixel values are used via their absolute value. Invalid
         values (NaN and inf) in the input are automatically excluded
         from the calculation. If only a single finite pixel remains
-        after filtering, the Gini coefficient is 0.0.
+        after filtering, the Gini coefficient is 0.0. The Gini
+        coefficient is NaN for a completely masked source.
         """
         return _batch_gini(self._data_values)
 
@@ -4407,6 +4528,8 @@ class SourceCatalog:
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
+
+        `None` if ``local_bkg_width`` is zero.
 
         Returns a list of apertures for multi-source catalogs, or a
         single aperture for a single-source catalog.
@@ -4474,6 +4597,10 @@ class SourceCatalog:
         with fewer than 10 usable annulus pixels, which sets the
         ``local_bkg_too_few_pixels`` flag (see `flags`). The sources
         are measured concurrently when ``n_threads`` > 1.
+
+        The local background is zero if ``local_bkg_width`` is zero. It
+        is NaN for a source that is completely masked (for any
+        ``local_bkg_width``).
         """
         bkg = self._local_background
         if self._data_unit is not None:
@@ -4482,7 +4609,7 @@ class SourceCatalog:
 
     def _make_circular_apertures(self, radius):
         """
-        Make circular aperture for each source.
+        Make a circular aperture for each source.
 
         The aperture for each source will be centered at its
         `centroid` position. If a ``detection_catalog`` was input to
@@ -4524,7 +4651,7 @@ class SourceCatalog:
 
     def make_circular_apertures(self, radius):
         """
-        Make circular aperture for each source.
+        Make a circular aperture for each source.
 
         The aperture for each source will be centered at its
         `centroid` position. If a ``detection_catalog`` was input to
@@ -4532,8 +4659,9 @@ class SourceCatalog:
 
         Parameters
         ----------
-        radius : float
-            The radius of the circle in pixels.
+        radius : float or 1D `~numpy.ndarray`
+            The radius of the circle in pixels, either a single value
+            or one value per source.
 
         Returns
         -------
@@ -4618,15 +4746,18 @@ class SourceCatalog:
             output the results in the table.
 
         overwrite : bool, optional
-            If True, overwrite the attribute ``name`` if it exists.
+            If True, overwrite the attributes ``[name]_flux`` and
+            ``[name]_flux_err`` if they exist.
 
         Returns
         -------
-        flux, flux_err : float or `~numpy.ndarray` of floats
-            The aperture fluxes and flux errors. NaN will be returned
-            where the aperture is `None` (e.g., where the source
-            `centroid` position is not finite or the source is
-            completely masked).
+        flux, flux_err : float, `~numpy.ndarray`, or \
+                         `~astropy.units.Quantity`
+            The aperture fluxes and flux errors, in the units of the
+            input ``data``. NaN will be returned where the aperture is
+            `None` (e.g., where the source `centroid` position is not
+            finite or the source is completely masked). If ``error``
+            was not input, then the flux errors are NaN.
         """
         if radius <= 0:
             msg = 'radius must be > 0'
@@ -4786,8 +4917,8 @@ class SourceCatalog:
         Calculate the *unscaled* first-moment Kron radius, applying any
         minimum Kron or circular radius to the measured Kron radius.
 
-        Returned as a Quantity array or scalar (if self isscalar) with
-        pixel units.
+        Returned as a Quantity array with pixel units and one value per
+        source, also for a scalar catalog.
         """
         kron_radius = self._measured_kron_radius.copy()
 
@@ -4946,9 +5077,9 @@ class SourceCatalog:
         radius (``kron_params[2]``), then the Kron aperture will be a
         circle with this minimum radius.
 
-        The aperture will be `None` where the source `centroid` position
-        or elliptical shape parameters are not finite or where the
-        source is completely masked.
+        The aperture will be `None` where the source `centroid`
+        position, elliptical shape parameters, or `kron_radius` are not
+        finite or where the source is completely masked.
 
         If a ``detection_catalog`` was input to `SourceCatalog`, then
         its ``kron_aperture`` will be returned.
@@ -4996,9 +5127,9 @@ class SourceCatalog:
             The Kron apertures for each source. Each aperture will
             either be a `~photutils.aperture.EllipticalAperture`,
             `~photutils.aperture.CircularAperture`, or `None`. The
-            aperture will be `None` where the source `centroid` position
-            or elliptical shape parameters are not finite or where the
-            source is completely masked.
+            aperture will be `None` where the source `centroid`
+            position, elliptical shape parameters, or `kron_radius` are
+            not finite or where the source is completely masked.
         """
         if kron_params is None:
             return self.kron_aperture
@@ -5016,8 +5147,9 @@ class SourceCatalog:
         `SourceCatalog`, then its `centroid` values will be used.
 
         An aperture will not be plotted for sources where the source
-        `centroid` position or elliptical shape parameters are not
-        finite or where the source is completely masked.
+        `centroid` position, elliptical shape parameters, or
+        `kron_radius` are not finite or where the source is completely
+        masked.
 
         Note that changing ``kron_params`` from the values
         input into `SourceCatalog` does not change the Kron
@@ -5055,9 +5187,10 @@ class SourceCatalog:
 
         Returns
         -------
-        patch : list of `~matplotlib.patches.Patch`
-            A list of matplotlib patches for the plotted aperture. The
-            patches can be used, for example, when adding a plot legend.
+        patch : `~matplotlib.patches.Patch` or \
+                list of `~matplotlib.patches.Patch`
+            The matplotlib patch for each plotted aperture. The patches
+            can be used, for example, when adding a plot legend.
         """
         if kron_params is None:
             apertures = self._array('kron_aperture')
@@ -5401,7 +5534,7 @@ class SourceCatalog:
 
         Parameters
         ----------
-        kron_params : list of 2 or 3 floats, optional
+        kron_params : list of 2 or 3 floats
             A list of parameters used to determine the Kron aperture.
             The first item is the scaling parameter of the unscaled
             Kron radius and the second item represents the minimum
@@ -5421,15 +5554,21 @@ class SourceCatalog:
             output the results in the table.
 
         overwrite : bool, optional
-            If True, overwrite the attribute ``name`` if it exists.
+            If True, overwrite the attributes ``[name]_flux`` and
+            ``[name]_flux_err`` if they exist.
 
         Returns
         -------
-        flux, flux_err : float or `~numpy.ndarray` of floats
-            The aperture fluxes and flux errors. NaN will be returned
-            where the aperture is `None` (e.g., where the source
-            `centroid` position or elliptical shape parameters are not
-            finite or where the source is completely masked).
+        flux, flux_err : float, `~numpy.ndarray`, or \
+                         `~astropy.units.Quantity`
+            The aperture fluxes and flux errors, in the units of the
+            input ``data``. NaN will be returned where the aperture is
+            `None` (e.g., where the source `centroid` position,
+            elliptical shape parameters, or `kron_radius` are not
+            finite or where the source is completely masked). NaN is
+            also returned where the aperture contains no unmasked
+            pixels within the data. If ``error`` was not input, then
+            the flux errors are NaN.
         """
         kron_flux, kron_flux_err, _ = self._calc_kron_photometry(
             kron_params=kron_params)
@@ -5488,9 +5627,10 @@ class SourceCatalog:
         options to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
-        returned. This will occur where the source `centroid` position
-        or elliptical shape parameters are not finite or where the
-        source is completely masked.
+        returned. This will occur where the source `centroid` position,
+        elliptical shape parameters, or `kron_radius` are not finite or
+        where the source is completely masked. NaN is also returned
+        where the aperture contains no unmasked pixels within the data.
         """
         kron_flux = self._kron_photometry[:, 0]
         if self._data_unit is not None:
@@ -5506,12 +5646,15 @@ class SourceCatalog:
         options to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
-        returned. This will occur where the source `centroid` position
-        or elliptical shape parameters are not finite or where the
-        source is completely masked.
+        returned. This will occur where the source `centroid` position,
+        elliptical shape parameters, or `kron_radius` are not finite or
+        where the source is completely masked. NaN is also returned
+        where the aperture contains no unmasked pixels within the data.
+        If ``error`` was not input, then the errors are NaN.
 
-        The error is the quadrature sum of the input ``error`` array
-        over the pixels in the Kron aperture, which is treated as fixed.
+        The error is the quadrature sum of the input ``error`` values
+        over the pixels in the Kron aperture, each weighted by its
+        aperture overlap fraction, with the aperture treated as fixed.
         The aperture center, shape, and radius are themselves measured
         from the data, and the flux variation from that aperture
         uncertainty is not propagated. The error is therefore a lower
@@ -5612,10 +5755,11 @@ class SourceCatalog:
 
         Returns
         -------
-        radius : 1D `~numpy.ndarray`
-            The circular radius that encloses the specified fraction of
-            the Kron flux. NaN is returned where no solution was found
-            or where the Kron flux is zero or non-finite.
+        radius : `~astropy.units.Quantity`
+            The circular radius, in pixels, that encloses the specified
+            fraction of the Kron flux. A scalar is returned for a
+            single-source catalog. NaN is returned where no solution
+            was found or where the Kron flux is zero or non-finite.
         """
         if fraction <= 0 or fraction > 1:
             msg = 'fraction must be > 0 and <= 1'
@@ -5659,7 +5803,7 @@ class SourceCatalog:
         shape : 2-tuple
             The cutout shape along each axis in ``(ny, nx)`` order.
 
-        array : `None` or 2D `~numpy.ndarray`
+        array : `None` or 2D `~numpy.ndarray`, optional
             A 2D array with the same shape as the ``data`` array input
             to `~photutils.segmentation.SourceCatalog`. If `None` then
             the ``data`` array will be used. If any cutout arrays
@@ -5678,11 +5822,10 @@ class SourceCatalog:
         fill_value : number, optional
             If ``mode='partial'``, the value to fill pixels in the
             extracted cutout array that do not overlap with the input
-            ``array_large``. ``fill_value`` will be changed to have
-            the same ``dtype`` as the ``array_large`` array, with
-            one exception. If ``array_large`` has integer type and
-            ``fill_value`` is ``np.nan``, then a `ValueError` will be
-            raised.
+            ``array``. ``fill_value`` will be changed to have the same
+            ``dtype`` as the ``array`` array, with one exception. If
+            ``array`` has integer type and ``fill_value`` is ``np.nan``,
+            then a `ValueError` will be raised.
 
         Returns
         -------

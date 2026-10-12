@@ -51,8 +51,9 @@ def label_stats(const segm_t[:, ::1] segm, long long max_label_limit):
     counts : 1D intp `~numpy.ndarray` or `None`
         The number of pixels of each label value, indexed by the label
         value. The background element is zero. `None` if ``segm`` has
-        a negative value or a value larger than ``max_label_limit``.
-        The label arrays below are then also `None`.
+        zero size, a negative value, or a value larger than
+        ``max_label_limit``. The label arrays below are then also
+        `None`.
 
     ymin, ymax, xmin, xmax : 1D intp `~numpy.ndarray` or `None`
         The inclusive bounds of the minimal bounding box of each label

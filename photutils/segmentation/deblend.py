@@ -135,7 +135,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D array of the image. If filtering is desired, please input
         a convolved image here. This array should be the same array used
         in `~photutils.segmentation.detect_sources`. NaN pixels within
@@ -147,9 +147,11 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         The segmentation image to deblend.
 
     n_pixels : int
-        The minimum number of connected pixels, each greater than
-        ``threshold``, that an object must have to be deblended.
-        ``n_pixels`` must be a positive integer.
+        The minimum number of connected pixels, each greater than a
+        given multi-thresholding level, that a local peak must have
+        at that level to be considered a separate object. ``n_pixels``
+        must be a positive integer. Sources with fewer than
+        ``2 * n_pixels`` pixels are not deblended.
 
     labels : int or array_like of int, optional
         The label numbers to deblend. If `None` (default), then all
@@ -199,7 +201,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``n_levels`` keyword)
         during deblending. The ``'exponential'`` and ``'sinh'`` modes
-        have more threshold levels near the source minimum and less
+        have more threshold levels near the source minimum and fewer
         near the source maximum. The ``'linear'`` mode evenly spaces
         the threshold levels between the source minimum and maximum.
         The ``'exponential'`` and ``'sinh'`` modes differ in that
@@ -209,7 +211,12 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         are not. Unlike the ``'exponential'`` mode, the ``'sinh'``
         and ``'linear'`` modes are well defined for sources with
         non-positive minimum data values. For such sources, the
-        ``'exponential'`` mode will be changed to ``'sinh'``.
+        ``'exponential'`` mode will be changed to ``'sinh'``. In
+        addition, with the ``'basin'`` contrast method, a source that
+        has more than 200 potential deblended sources (markers) in the
+        ``'exponential'`` or ``'sinh'`` mode is deblended again in the
+        ``'linear'`` mode, because that many markers make the
+        deblending very slow.
 
     connectivity : {8, 4}, optional
         The type of pixel connectivity used in determining how pixels
@@ -217,12 +224,16 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         or 4. 8-connected pixels touch along their edges or corners.
         4-connected pixels touch along their edges. The ``connectivity``
         must be the same as that used to create the input segmentation
-        image.
+        image. A `ValueError` is raised if a source cannot be deblended
+        because the connectivities differ.
 
     relabel : bool, optional
         If `True` (default), then the segmentation image will be
         relabeled such that the labels are in consecutive order starting
-        from 1.
+        from 1. If `False`, the labels of the sources that are not
+        deblended are unchanged, and each deblended source is replaced
+        by new labels that are larger than the maximum label of the
+        input segmentation image.
 
     n_threads : int, optional
         The number of threads to use to deblend the sources. The
@@ -742,7 +753,7 @@ def _make_flags_map(deblend_label_map, non_positive_min_labels,
     non_positive_min_labels, too_many_markers_labels : list of int
         Input parent labels affected by each mode fallback.
 
-    relabel_map : `~numpy.ndarray` or `None`
+    relabel_map : `~numpy.ndarray`, ``_SparseRelabelMap``, or `None`
         The relabeling map applied to the deblended image, or `None` if
         no relabeling was applied.
 
