@@ -476,18 +476,20 @@ class ApertureStats:
         self._validate_aperture(aperture)
         aperture_meta = _aperture_metadata(aperture)  # use input aperture
 
-        if isinstance(aperture, SkyAperture) and wcs is None:
-            msg = 'A wcs is required when using a SkyAperture'
-            raise ValueError(msg)
-
         # Convert region to aperture if necessary
         if not isinstance(aperture, Aperture):
             aperture = region_to_aperture(aperture)
+        if isinstance(aperture, SkyAperture) and wcs is None:
+            msg = 'A wcs is required when using a SkyAperture'
+            raise ValueError(msg)
         self.aperture = aperture
 
         data_shape = self._data.shape
         self._error = validate_array(error, 'error', shape=data_shape)
         self._mask = validate_array(mask, 'mask', shape=data_shape)
+        if self._mask is not None and self._mask.dtype != bool:
+            msg = 'mask must be a boolean array'
+            raise TypeError(msg)
         self._wcs = wcs
 
         if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
@@ -2357,13 +2359,6 @@ class ApertureStats:
         """
         return np.array([np.all(mask) for mask in self._mask_cutout_center])
 
-    @cached_property
-    def _overlap(self):
-        """
-        True if the aperture overlaps the data.
-        """
-        return list(zip(*self._aperture_cutouts_center, strict=True))[4]
-
     def _footprint_flag_inputs(self, footprint):
         """
         The per-source flag inputs for the given aperture footprint.
@@ -2453,10 +2448,13 @@ class ApertureStats:
             flags[(n_valid > 0)
                   & (n_kept == 0)] |= APERTURE_FLAGS.ALL_CLIPPED
 
+        # The standard errors are undefined for a single valid pixel
+        # and the variance needs more than ddof valid pixels
+        w_in = flag_counts[:, FLAG_COL_N_PIXELS]
+        too_few = n_kept == 1
         if self.ddof > 0:
-            w_in = flag_counts[:, FLAG_COL_N_PIXELS]
-            flags[(w_in > 0)
-                  & (n_kept <= self.ddof)] |= APERTURE_FLAGS.TOO_FEW_PIXELS
+            too_few |= n_kept <= self.ddof
+        flags[(w_in > 0) & too_few] |= APERTURE_FLAGS.TOO_FEW_PIXELS
 
         return flags
 
@@ -2558,13 +2556,16 @@ class ApertureStats:
         ``'non_finite_data'``, and the overlap flags) are evaluated
         on the union of the "center"-method footprint used by the
         value statistics and the ``sum_method`` footprint used by the
-        sum properties. The ``'non_finite_error'`` flag is evaluated
-        on the ``sum_method`` footprint. The ``'sigma_clipped'``,
-        ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
-        on the value-statistics footprint. The ``'too_few_pixels'``
-        flag is set only when ``ddof`` is greater than zero and the
-        number of valid pixels (after any sigma clipping) is not larger
-        than ``ddof``. The ``'undefined_shape'``,
+        sum properties. The ``'no_overlap'`` flag is set only if neither
+        footprint overlaps the data. The ``'non_finite_error'`` flag
+        is evaluated on the ``sum_method`` footprint. The
+        ``'sigma_clipped'``, ``'all_clipped'``, and ``'too_few_pixels'``
+        flags are evaluated on the value-statistics footprint. The
+        ``'too_few_pixels'`` flag is set when the aperture has a single
+        valid pixel (after any sigma clipping), for which ``mean_err``
+        and ``median_err`` are undefined, or when ``ddof`` is greater
+        than zero and the number of valid pixels is not larger than
+        ``ddof``. The ``'undefined_shape'``,
         ``'singular_covariance'``, and ``'centroid_outside_bbox'`` flags
         are always evaluated. Accessing ``flags`` computes the moment
         and covariance properties if they have not already been computed
@@ -2578,7 +2579,12 @@ class ApertureStats:
         """
         # The | allocates a new array, so the in-place |= below never
         # mutates the cached `_base_flags`
-        flags = self._base_flags | self._footprint_flags('sum')
+        base_flags = self._base_flags
+        sum_flags = self._footprint_flags('sum')
+        flags = base_flags | sum_flags
+        # The aperture overlaps the data if either footprint does
+        no_overlap = APERTURE_FLAGS.NO_OVERLAP
+        flags &= ~no_overlap | (base_flags & sum_flags)
         flags[self._undefined_shape_mask] |= (
             APERTURE_FLAGS.UNDEFINED_SHAPE)
         flags[self._singular_covariance_mask] |= (
@@ -2733,7 +2739,10 @@ class ApertureStats:
         The centroid is computed as the center of mass of the unmasked
         pixels within the aperture.
         """
-        origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
+        # The cutout is the bounding box clipped to the data, so its
+        # origin is never negative.
+        origin = np.transpose((np.maximum(self.bbox_xmin, 0),
+                               np.maximum(self.bbox_ymin, 0)))
         return self.cutout_centroid + origin
 
     @cached_property

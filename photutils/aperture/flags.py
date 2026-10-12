@@ -145,9 +145,12 @@ class _ApertureFlags(FlagRegistry):
             detailed_description=('There are too few valid pixels '
                                   'within the aperture to compute a '
                                   'requested statistic (e.g., the '
-                                  'variance and standard deviation are '
-                                  'undefined when the number of valid '
-                                  'pixels is not larger than ``ddof``).'),
+                                  'standard errors are undefined for '
+                                  'a single valid pixel, and '
+                                  'the variance and standard deviation '
+                                  'are undefined when the number of '
+                                  'valid pixels is not larger than '
+                                  '``ddof``).'),
         ),
         FlagDefinition(
             bit_value=4096,

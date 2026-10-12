@@ -813,11 +813,16 @@ overlap flags) are evaluated on the union of the ``'center'``-method
 footprint used by the value statistics (e.g., ``mean``, ``median``,
 ``std``) and the ``sum_method`` footprint used by the sum
 properties (``sum``, ``sum_err``, and ``sum_aper_area``). The
-``'non_finite_error'`` flag is evaluated on the ``sum_method``
-footprint, while the ``'sigma_clipped'``, ``'all_clipped'``, and
-``'too_few_pixels'`` flags are evaluated on the value-statistics
-footprint. The ``'undefined_shape'``, ``'singular_covariance'``, and
-``'centroid_outside_bbox'`` flags are always evaluated. Accessing
+``'no_overlap'`` flag is set only if neither footprint overlaps
+the data. The ``'non_finite_error'`` flag is evaluated on the
+``sum_method`` footprint, while the ``'sigma_clipped'``,
+``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated on
+the value-statistics footprint. The ``'too_few_pixels'`` flag is set
+for a single valid pixel, for which the standard errors are undefined,
+or when ``ddof`` is greater than zero and the number of valid pixels
+is not larger than ``ddof``. The ``'undefined_shape'``,
+``'singular_covariance'``, and ``'centroid_outside_bbox'`` flags are
+always evaluated. Accessing
 ``flags`` computes the sum, moment, and covariance quantities if they
 have not already been computed (the results are cached and shared with
 the corresponding properties), so the flag values never depend on which

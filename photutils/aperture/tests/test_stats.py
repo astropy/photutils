@@ -11,6 +11,7 @@ from unittest.mock import patch
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
@@ -396,8 +397,6 @@ class TestMasking(BaseApertureStatsData):
     def test_no_aperture_overlap(self):
         aperture = CircularAperture(((0, 0), (100, 100), (-100, -100)), r=5)
         apstats = ApertureStats(self.data, aperture)
-        assert_equal(apstats._overlap, [True, True, False])
-
         exclude = ('isscalar', 'n_positions', 'sky_centroid',
                    'sky_centroid_icrs', 'sky_orientation', 'flags')
         apstats1 = apstats[2]
@@ -699,6 +698,26 @@ class TestInputValidation(BaseApertureStatsData):
     Tests for the input validation and NDData input.
     """
 
+    @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+    def test_sky_region_without_wcs(self):
+        from regions import CircleSkyRegion
+
+        region = CircleSkyRegion(SkyCoord(10.0, 30.0, unit='deg'),
+                                 radius=1.0 * u.arcsec)
+        match = 'A wcs is required when using a SkyAperture'
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(self.data, region)
+
+    @pytest.mark.parametrize('dtype', [int, np.uint8, float])
+    def test_non_boolean_mask(self, dtype):
+        """
+        Test that a mask that is not a boolean array is rejected.
+        """
+        mask = np.zeros(self.data.shape, dtype=dtype)
+        match = 'mask must be a boolean array'
+        with pytest.raises(TypeError, match=match):
+            ApertureStats(self.data, self.aperture, mask=mask)
+
     def test_invalid_inputs(self):
         match = 'aperture must be an Aperture or Region object'
         with pytest.raises(TypeError, match=match):
@@ -876,15 +895,12 @@ class TestMaskPathParity(BaseApertureStatsData):
 
     def test_data_mask_fallback(self):
         """
-        Test that data/mask inputs not supported by the fast batch
-        driver fall back to the mask-based code path.
+        Test that data inputs not supported by the fast batch driver
+        fall back to the mask-based code path.
         """
         mdata = np.ma.MaskedArray(
             self.data, mask=np.zeros(self.data.shape, dtype=bool))
         assert ApertureStats(mdata, self.aperture)._fast_gather is None
-        mask = np.zeros(self.data.shape, dtype=int)
-        assert ApertureStats(self.data, self.aperture,
-                             mask=mask)._fast_gather is None
 
     @pytest.mark.parametrize('sum_method', ['exact', 'center'])
     @pytest.mark.parametrize('with_units', [False, True])
@@ -1001,6 +1017,49 @@ class TestMaskPathParity(BaseApertureStatsData):
                      'median_err'):
             assert_allclose(getattr(fast, prop), getattr(slow, prop),
                             rtol=1e-7, equal_nan=True, err_msg=prop)
+
+
+class TestEdgeClippedCentroid:
+    """
+    Tests that the centroid is correct for an aperture whose bounding
+    box extends beyond the data.
+    """
+
+    @pytest.mark.parametrize(('source', 'position'), [
+        ((1, 12), (1.0, 12.0)),
+        ((3, 1), (3.0, 1.0)),
+        ((1, 1), (0.5, 0.5)),
+        ((23, 12), (23.0, 12.0)),
+        ((12, 23), (12.0, 23.5)),
+    ])
+    @pytest.mark.parametrize('fast', [True, False])
+    def test_centroid(self, source, position, fast, monkeypatch):
+        if not fast:
+            monkeypatch.setattr(ApertureStats, '_batch_inputs', None)
+        data = np.zeros((25, 25))
+        x_source, y_source = source
+        data[y_source, x_source] = 10.0
+        aperture = CircularAperture([position, (12.0, 12.0)], r=3.0)
+        stats = ApertureStats(data, aperture)
+        assert_allclose(stats.centroid[0], source)
+        assert_allclose(stats.x_centroid[0], x_source)
+        assert_allclose(stats.y_centroid[0], y_source)
+        flags = stats.decode_flags()[1]
+        assert 'partial_overlap' in flags
+        assert 'centroid_outside_bbox' not in flags
+
+    def test_sky_centroid(self):
+        data = np.zeros((25, 25))
+        data[12, 1] = 10.0
+        wcs = WCS(naxis=2)
+        wcs.wcs.crpix = [12.5, 12.5]
+        wcs.wcs.cdelt = [-0.001, 0.001]
+        wcs.wcs.crval = [10.0, 30.0]
+        wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+        stats = ApertureStats(data, CircularAperture((1.0, 12.0), r=3.0),
+                              wcs=wcs)
+        expected = wcs.pixel_to_world(1.0, 12.0)
+        assert stats.sky_centroid.separation(expected) < 1e-6 * u.arcsec
 
 
 class TestStandardErrors(BaseApertureStatsData):

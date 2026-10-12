@@ -610,6 +610,13 @@ Bug Fixes
     edge is tangent to the ellipse or a pixel corner lies exactly on
     it. [#2497]
 
+  - Fixed the ``ApertureStats`` ``centroid``, ``x_centroid``,
+    ``y_centroid``, ``sky_centroid``, and ``sky_centroid_icrs``
+    properties for an aperture whose bounding box extends beyond the
+    left or bottom edge of the data. Previously, the centroid was offset
+    by the size of the part of the bounding box outside of the data.
+    [#2505]
+
   - Fixed the ``to_sky`` and ``to_pixel`` methods of the elliptical and
     rectangular annulus apertures raising a ``ValueError`` for a sheared
     WCS when the inner and outer shapes have different aspect ratios.
@@ -623,8 +630,9 @@ Bug Fixes
     now NaN, the same as for an aperture whose bounding box does not
     overlap the data. [#2505]
 
-  - Fixed the aperture ``subpixels`` keyword rejecting NumPy integers
-    (e.g., ``np.int64(5)``) with the ``'subpixel'`` method. [#2505]
+  - Fixed ``ApertureStats`` raising an ``AttributeError`` for a
+    ``regions.SkyRegion`` input without a ``wcs``. A ``ValueError``
+    is now raised, the same as for a ``SkyAperture``. [#2505]
 
   - Fixed ``BoundingBox.intersection`` returning a ``BoundingBox`` with
     zero width or height for two bounding boxes that share only an edge
