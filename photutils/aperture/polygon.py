@@ -189,10 +189,14 @@ def _validate_simple_polygon(verts, *, name='vertex_offsets',
                'area (vertices are collinear or coincident)')
         raise ValueError(msg)
 
-    if check_simple and not _polygon_is_simple(verts):
-        msg = (f'{name!r} must define a simple polygon, but its edges '
-               'self-intersect')
-        raise ValueError(msg)
+    if check_simple:
+        if np.any(np.all(verts == np.roll(verts, -1, axis=0), axis=1)):
+            msg = f'{name!r} must not contain repeated consecutive vertices'
+            raise ValueError(msg)
+        if not _polygon_is_simple(verts):
+            msg = (f'{name!r} must define a simple polygon, but its '
+                   'edges self-intersect')
+            raise ValueError(msg)
 
     if signed_area < 0:
         verts = verts[::-1].copy()
@@ -286,6 +290,16 @@ def _vertices_centroid(verts):
     cy = float(np.sum((y + y1) * cross)) / (6.0 * area)
 
     return np.array([cx, cy])
+
+
+def _wrap_degrees(angle):
+    """
+    Wrap an angle in degrees to the range ``[0, 360)``.
+
+    The second modulo maps the value of exactly 360 that the first one
+    returns for a tiny negative angle to 0.
+    """
+    return (angle % 360.0) % 360.0
 
 
 def _regular_polygon_offsets(n_vertices, radius, angle_rad):
@@ -384,7 +398,7 @@ class _RegularPolygonGeometry:
     def theta(self):
         dx, dy = self.offsets[0]
         theta_rad = np.arctan2(dy, dx) - np.pi / 2
-        return (np.degrees(theta_rad) % 360.0) * u.deg
+        return _wrap_degrees(np.degrees(theta_rad)) * u.deg
 
 
 @_enable_batch_photometry
@@ -1159,9 +1173,12 @@ class SkyPolygonAperture(SkyAperture):
             vertices.
         """
         if not isinstance(vertices, SkyCoord) or vertices.ndim != 1:
-            msg = ('vertices must be a 1-D SkyCoord with at least 3 '
-                   'vertices')
+            msg = 'vertices must be a one-dimensional SkyCoord'
             raise TypeError(msg)
+        if (n_vertices := vertices.shape[0]) < 3:
+            msg = ("'vertices' must define a polygon with at least 3 "
+                   f'vertices, got {n_vertices}')
+            raise ValueError(msg)
 
         # Provisional centroid: spherical mean approximated via mean of
         # offsets from the first vertex.
@@ -1181,10 +1198,10 @@ class SkyPolygonAperture(SkyAperture):
         Construct a regular `SkyPolygonAperture` from a center, vertex
         count, angular circumradius, and rotation angle.
 
-        The first vertex is placed at the ``+lat`` edge of the local
-        tangent plane (typically northward for standard right-handed
-        celestial coordinates) for ``theta == 0`` and is rotated
-        counterclockwise by ``theta``.
+        The first vertex is placed in the ``+lat`` direction from the
+        center (North for standard celestial coordinates) for ``theta
+        == 0`` and is rotated toward increasing longitude (East) by
+        ``theta``.
 
         Parameters
         ----------
@@ -1199,10 +1216,11 @@ class SkyPolygonAperture(SkyAperture):
             be a positive angular Quantity).
 
         theta : `~astropy.units.Quantity`, optional
-            The rotation angle of the polygon, measured
-            counterclockwise from the ``+lat`` axis on the local tangent
-            plane. This assumes a right-handed coordinate system (e.g.,
-            standard celestial coordinates).
+            The rotation angle of the polygon, measured from the
+            ``+lat`` direction (North) toward increasing longitude
+            (East). This is the same position-angle convention as
+            the ``theta`` parameter of the other sky apertures (e.g.,
+            `~photutils.aperture.SkyEllipticalAperture`).
 
         Returns
         -------
@@ -1229,9 +1247,12 @@ class SkyPolygonAperture(SkyAperture):
             msg = 'theta must be an angular Quantity'
             raise TypeError(msg)
 
+        # The offsets are (d_lon, d_lat), where a counterclockwise
+        # rotation moves North toward West. The sign of theta is
+        # flipped so that it is measured from North toward East.
         theta_rad = float(theta.to_value(u.radian))
         offsets_arcsec = _regular_polygon_offsets(n_vertices, radius_arcsec,
-                                                  theta_rad)
+                                                  -theta_rad)
         offsets = (offsets_arcsec * u.arcsec).to(radius.unit)
 
         return cls(positions=positions, vertex_offsets=offsets)
@@ -1356,11 +1377,10 @@ class SkyPolygonAperture(SkyAperture):
         The rotation angle of the regular polygon as an angular
         `~astropy.units.Quantity` in degrees.
 
-        The angle is measured counterclockwise from the ``+lat`` axis
-        on the local tangent plane to the first stored vertex, in
-        the range ``[0, 360) deg``. This assumes a right-handed
-        coordinate system (e.g., standard celestial coordinates).
-        This convention matches the ``theta`` parameter of
+        The angle is the position angle of the first stored vertex,
+        measured from the ``+lat`` direction (North) toward increasing
+        longitude (East), in the range ``[0, 360) deg``. This
+        convention matches the ``theta`` parameter of
         `~SkyPolygonAperture.from_regular_polygon`.
 
         Note that the rotation of a regular polygon with ``n``
@@ -1375,7 +1395,10 @@ class SkyPolygonAperture(SkyAperture):
         it for a non-regular polygon raises `ValueError`.
         """
         self._check_regular('theta')
-        return self._regular_geometry.theta
+        # The geometry angle is counterclockwise in the (d_lon, d_lat)
+        # plane, which is from North toward West.
+        theta = self._regular_geometry.theta.to_value(u.deg)
+        return _wrap_degrees(-theta) * u.deg
 
     @cached_property
     def vertices(self):

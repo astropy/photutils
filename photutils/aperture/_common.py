@@ -182,7 +182,8 @@ def validate_mask_method(method, subpixels, *, method_name='mask method'):
     # prevent subpixels=True from being silently used as 1
     if ((method == 'subpixel')
             and (isinstance(subpixels, bool)
-                 or not isinstance(subpixels, int) or subpixels <= 0)):
+                 or not isinstance(subpixels, (int, np.integer))
+                 or subpixels <= 0)):
         msg = 'subpixels must be a strictly positive integer'
         raise ValueError(msg)
 

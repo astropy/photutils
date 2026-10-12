@@ -197,6 +197,17 @@ class TestPolygonApertureTheta:
         assert isinstance(aper.theta, u.Quantity)
         assert_quantity_allclose(aper.theta, 0.0 * u.deg, atol=1e-10 * u.deg)
 
+    @pytest.mark.parametrize('n_vertices', [3, 4, 5, 6, 8])
+    def test_theta_full_turn(self, n_vertices):
+        """
+        Test that a rotation by a full turn is reported as 0 degrees.
+        """
+        aper = PolygonAperture.from_regular_polygon((0, 0), n_vertices, 5.0,
+                                                    theta=2.0 * np.pi)
+        assert aper.theta < 360.0 * u.deg
+        assert_quantity_allclose(aper.theta, 0.0 * u.deg,
+                                 atol=1e-9 * u.deg)
+
     def test_theta_unit(self):
         aper = PolygonAperture.from_regular_polygon((10, 20), 5, 3.0,
                                                     theta=np.pi / 3)
@@ -252,6 +263,32 @@ class TestSkyPolygonApertureTheta:
     """
     Tests for the ``theta`` attribute of `SkyPolygonAperture`.
     """
+
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 90.0, 200.0])
+    def test_theta_is_position_angle(self, theta_deg):
+        """
+        Test that ``theta`` is the position angle of the first vertex,
+        measured from North toward East.
+        """
+        center = SKYCOORD[0]
+        aper = SkyPolygonAperture.from_regular_polygon(
+            center, 5, 5.0 * u.arcsec, theta=theta_deg * u.deg)
+        pos_angle = center.position_angle(aper.vertices[0])
+        assert_quantity_allclose(pos_angle.to(u.deg), theta_deg * u.deg,
+                                 atol=1e-6 * u.deg)
+        assert_quantity_allclose(aper.theta, theta_deg * u.deg,
+                                 atol=1e-9 * u.deg)
+
+    @pytest.mark.parametrize('n_vertices', [3, 4, 5, 6, 8])
+    def test_theta_full_turn(self, n_vertices):
+        """
+        Test that a rotation by a full turn is reported as 0 degrees.
+        """
+        aper = SkyPolygonAperture.from_regular_polygon(
+            SKYCOORD[0], n_vertices, 5.0 * u.arcsec, theta=360.0 * u.deg)
+        assert aper.theta < 360.0 * u.deg
+        assert_quantity_allclose(aper.theta, 0.0 * u.deg,
+                                 atol=1e-9 * u.deg)
 
     def test_theta_zero(self):
         aper = SkyPolygonAperture.from_regular_polygon(
@@ -403,6 +440,19 @@ class TestPolygonValidation:
                  'its edges self-intersect')
         with pytest.raises(ValueError, match=match):
             PolygonAperture((0.0, 0.0), _pentagram())
+
+    def test_rejects_repeated_consecutive_vertices(self):
+        match = "'vertex_offsets' must not contain repeated consecutive"
+        offsets = np.array([[0.0, 0.0], [0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+        with pytest.raises(ValueError, match=match):
+            PolygonAperture((0.0, 0.0), offsets)
+        # The last vertex repeats the first one
+        offsets = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]])
+        with pytest.raises(ValueError, match=match):
+            PolygonAperture((0.0, 0.0), offsets)
+        match = "'vertices' must not contain repeated consecutive"
+        with pytest.raises(ValueError, match=match):
+            PolygonAperture.from_vertices(offsets)
 
     def test_sky_aperture_rejects_self_intersecting(self):
         pos = SkyCoord(ra=180.0, dec=0.0, unit='deg')
@@ -1016,10 +1066,16 @@ class TestSkyPolygonConstruction:
                                  atol=1e-9 * u.deg)
 
     def test_from_vertices_requires_skycoord(self):
-        match = 'vertices must be a 1-D SkyCoord with at least 3 vertices'
+        match = 'vertices must be a one-dimensional SkyCoord'
         with pytest.raises(TypeError, match=match):
             SkyPolygonAperture.from_vertices(np.array([[0.0, 0.0], [1.0, 0.0],
                                                        [1.0, 1.0]]))
+
+    def test_from_vertices_too_few(self):
+        verts = SkyCoord(ra=[180.0, 180.001], dec=[0.0, 0.001], unit='deg')
+        match = "'vertices' must define a polygon with at least 3 vertices"
+        with pytest.raises(ValueError, match=match):
+            SkyPolygonAperture.from_vertices(verts)
 
     def test_indexing(self):
         pos = SkyCoord(ra=[180.0, 181.0], dec=[0.0, 1.0], unit='deg')

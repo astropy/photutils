@@ -11,7 +11,7 @@ from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.aperture import (APERTURE_FLAGS, ApertureStats, CircularAnnulus,
-                                CircularAperture)
+                                CircularAperture, RectangularAperture)
 from photutils.aperture.tests.conftest import UNIT_SHAPE
 from photutils.segmentation import SegmentationImage
 
@@ -100,6 +100,25 @@ class TestOverlapFlags:
         assert stats.flags[1] == APERTURE_FLAGS.PARTIAL_OVERLAP
         assert stats.flags[2] == (APERTURE_FLAGS.NO_OVERLAP
                                   | APERTURE_FLAGS.NO_PIXELS)
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_no_overlap_needs_both_footprints(self, unit_data):
+        """
+        Test that no_overlap is not set when the sum footprint overlaps
+        the data and the "center" footprint does not.
+        """
+        data = unit_data
+        aper = CircularAperture((-2.4, -2.4), r=3.0)
+        stats = ApertureStats(data, aper)
+        assert stats.flags == (APERTURE_FLAGS.PARTIAL_OVERLAP
+                               | APERTURE_FLAGS.NO_PIXELS)
+        assert stats.sum > 0.0
+        assert np.isnan(stats.mean)
+
+        stats = ApertureStats(data, aper, sum_method='center')
+        assert stats.flags == (APERTURE_FLAGS.NO_OVERLAP
+                               | APERTURE_FLAGS.NO_PIXELS)
+        assert np.isnan(stats.sum)
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_no_pixels(self, unit_data):
@@ -272,6 +291,26 @@ class TestSigmaClipFlags:
         assert stats.flags == (APERTURE_FLAGS.SIGMA_CLIPPED
                                | APERTURE_FLAGS.ALL_CLIPPED)
         assert np.isnan(stats.mean)
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_too_few_pixels_single_pixel(self, unit_data):
+        """
+        Test that the too_few_pixels flag is set for a single valid
+        pixel, for which the standard errors are undefined.
+        """
+        data = unit_data
+        stats = ApertureStats(data, CircularAperture((12, 12), r=0.6))
+        assert stats.center_aper_area.value == 1
+        assert stats.flags & APERTURE_FLAGS.TOO_FEW_PIXELS
+        assert np.isnan(stats.mean_err)
+        assert np.isnan(stats.median_err)
+
+        # Two valid pixels define the standard errors
+        aper = RectangularAperture((12.5, 12), w=1.8, h=0.8)
+        stats = ApertureStats(data, aper)
+        assert stats.center_aper_area.value == 2
+        assert not stats.flags & APERTURE_FLAGS.TOO_FEW_PIXELS
+        assert np.isfinite(stats.mean_err)
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_too_few_pixels(self, unit_data):

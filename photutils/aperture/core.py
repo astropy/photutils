@@ -100,11 +100,12 @@ labels : int, 1D array_like, or `None`, optional
     with the aperture position(s). ``labels`` is required if
     ``segmentation_image`` is input and ``mask_method`` is
     ``'mask'``, ``'source_only'``, or ``'correct'``. It is not used
-    if ``mask_method`` is ``'background_only'``. ``labels`` must have
-    the same length as the number of aperture positions, and each
-    nonzero label must be present in the ``segmentation_image`` (unless
-    ``mask_method`` is ``'background_only'``). A label of 0 disables the
-    segmentation masking for that aperture.
+    if ``mask_method`` is ``'none'`` or ``'background_only'``.
+    ``labels`` must have the same length as the number of aperture
+    positions, and each nonzero label must be present in the
+    ``segmentation_image`` (unless ``mask_method`` is ``'none'`` or
+    ``'background_only'``). A label of 0 disables the segmentation
+    masking for that aperture.
 
 mask_method : {'none', 'mask', 'source_only', 'background_only', \
         'correct'}, optional
@@ -1216,6 +1217,14 @@ class PixelAperture(Aperture):
             data.shape, method=method, subpixels=subpixels,
             candidates=candidates)
         flags = _counts_to_flag_bits(fcounts, overlap, w_out)
+
+        # The results are undefined for an aperture with no weighted
+        # pixel inside the data, including one whose bounding box
+        # overlaps the data.
+        no_overlap = (flags & APERTURE_FLAGS.NO_OVERLAP) != 0
+        flux[no_overlap] = np.nan
+        flux_err[no_overlap] = np.nan
+        area[no_overlap] = np.nan
 
         # Apply units
         if unit is not None:

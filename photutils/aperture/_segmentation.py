@@ -50,6 +50,35 @@ def batch_segmentation_image(segmentation):
     return np.ascontiguousarray(segmentation, dtype=dtype)
 
 
+def _validate_labels_shape(labels, n_positions):
+    """
+    Validate that the labels are 1D with one entry per aperture
+    position.
+
+    Parameters
+    ----------
+    labels : int or array_like
+        The source label(s) associated with the aperture positions.
+
+    n_positions : int
+        The number of aperture positions.
+
+    Returns
+    -------
+    labels : 1D `~numpy.ndarray`
+        The labels as a 1D array.
+    """
+    labels = np.atleast_1d(labels)
+    if labels.ndim != 1:
+        msg = 'labels must be a 1D array'
+        raise ValueError(msg)
+    if labels.shape[0] != n_positions:
+        msg = ('labels must have the same length as the number of '
+               'aperture positions')
+        raise ValueError(msg)
+    return labels
+
+
 def process_segmentation_inputs(segmentation_image, labels,
                                 mask_method, positions, data_shape):
     """
@@ -73,9 +102,10 @@ def process_segmentation_inputs(segmentation_image, labels,
         ``'mask'``, ``'source_only'``, or ``'correct'``. Each nonzero
         label must be present in the ``segmentation_image``. A label of
         0 disables the masking for that aperture. ``labels`` is not used
-        when ``mask_method`` is ``'background_only'``. In that case the
-        labels need not be present in the ``segmentation_image``, but if
-        input they must still have one entry per aperture position.
+        when ``mask_method`` is ``'none'`` or ``'background_only'``. In
+        that case the labels need not be present in the
+        ``segmentation_image``, but if input they must still have one
+        entry per aperture position.
 
     mask_method : {'none', 'mask', 'source_only', 'background_only', \
             'correct'}
@@ -102,7 +132,14 @@ def process_segmentation_inputs(segmentation_image, labels,
         msg = f'mask_method must be one of {MASK_METHODS}'
         raise ValueError(msg)
 
+    positions = np.atleast_2d(positions)
+    n_positions = positions.shape[0]
+
     if mask_method == 'none':
+        # The labels are not used, but their shape is still validated
+        # because the input labels are stored and sliced per aperture.
+        if labels is not None:
+            _validate_labels_shape(labels, n_positions)
         return None, None
 
     if segmentation_image is None:
@@ -124,9 +161,6 @@ def process_segmentation_inputs(segmentation_image, labels,
 
     segm = batch_segmentation_image(segm)
 
-    positions = np.atleast_2d(positions)
-    n_positions = positions.shape[0]
-
     if labels is None:
         if mask_method == 'background_only':
             # The labels are not used, but the batch kernels require a
@@ -136,14 +170,7 @@ def process_segmentation_inputs(segmentation_image, labels,
                "and mask_method is not 'none'")
         raise ValueError(msg)
 
-    labels = np.atleast_1d(labels)
-    if labels.ndim != 1:
-        msg = 'labels must be a 1D array'
-        raise ValueError(msg)
-    if labels.shape[0] != n_positions:
-        msg = ('labels must have the same length as the number of '
-               'aperture positions')
-        raise ValueError(msg)
+    labels = _validate_labels_shape(labels, n_positions)
     labels = np.ascontiguousarray(labels, dtype=np.intp)
 
     if mask_method == 'background_only':

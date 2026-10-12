@@ -379,7 +379,7 @@ class BoundingBox:
         ixmax = min(self.ixmax, other.ixmax)
         iymin = max(self.iymin, other.iymin)
         iymax = min(self.iymax, other.iymax)
-        if ixmax < ixmin or iymax < iymin:
+        if ixmax <= ixmin or iymax <= iymin:
             return None
 
         return BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin, iymax=iymax)

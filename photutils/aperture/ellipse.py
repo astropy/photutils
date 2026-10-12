@@ -58,8 +58,8 @@ def _elliptical_polygon_offsets(a, b, theta, n_vertices, *, swap_axes=False):
         ``swap_axes=False`` (the pixel convention), it is measured
         counterclockwise from the first (``x``) coordinate axis. With
         ``swap_axes=True`` (the sky convention), it is the position
-        angle measured counterclockwise from North (+latitude), where
-        PA=0 places the semimajor axis along North.
+        angle measured from North (+latitude) toward East (+longitude),
+        where PA=0 places the semimajor axis along North.
 
     n_vertices : int
         The number of vertices used to approximate the ellipse. Must be
@@ -88,7 +88,11 @@ def _elliptical_polygon_offsets(a, b, theta, n_vertices, *, swap_axes=False):
     x = a * np.cos(angles)
     y = b * np.sin(angles)
     if swap_axes:
+        # A counterclockwise rotation in the (longitude, latitude)
+        # plane moves North toward West, so the sign of the position
+        # angle is flipped.
         x, y = y, x
+        theta = -theta
 
     cos_t = np.cos(theta)
     sin_t = np.sin(theta)
@@ -575,15 +579,16 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
 
-        The outer and inner ellipses are converted independently, so
-        an inner ellipse with a different aspect ratio keeps its own
-        converted axes. The annulus has a single rotation angle, which
-        is that of the converted outer ellipse. If the WCS is sheared
-        and the inner aspect ratio differs from the outer one, the
-        converted inner ellipse has a slightly different orientation,
-        so the inner shape of the returned annulus is approximate. The
-        inner axes always remain smaller than the outer axes, so the
-        result is always a valid annulus.
+        Only the outer ellipse is converted with the WCS. The inner
+        axes are the converted outer axes scaled by the input ratios
+        ``a_in / a_out`` and ``b_in / b_out``, so the inner axes always
+        remain smaller than the outer axes and the inner shape is
+        recovered exactly by the inverse conversion. The annulus has a
+        single rotation angle, which is that of the converted outer
+        ellipse. If the WCS is sheared and the inner aspect ratio
+        differs from the outer one, the inner ellipse of the returned
+        annulus is an approximation of the converted inner ellipse,
+        which would have a different orientation.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -591,19 +596,19 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
 
-        # Convert the outer and inner ellipses with one WCS evaluation.
-        # The rotation angle is that of the outer ellipse.
+        # Convert the outer ellipse. The inner axes keep their input
+        # ratios to the outer axes, which keeps the annulus valid for
+        # any WCS.
         sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
-            wcs, pixcoord, [2 * self.a_out, 2 * self.a_in],
-            [2 * self.b_out, 2 * self.b_in], self._theta_rad)
+            wcs, pixcoord, 2 * self.a_out, 2 * self.b_out, self._theta_rad)
 
-        a_out = Angle(sky_w[0] / 2, 'arcsec')
-        b_out = Angle(sky_h[0] / 2, 'arcsec')
-        a_in = Angle(sky_w[1] / 2, 'arcsec')
-        b_in = Angle(sky_h[1] / 2, 'arcsec')
+        a_out = Angle(sky_w / 2, 'arcsec')
+        b_out = Angle(sky_h / 2, 'arcsec')
+        a_in = a_out * (self.a_in / self.a_out)
+        b_in = b_out * (self.b_in / self.b_out)
         return SkyEllipticalAnnulus(positions=positions, a_in=a_in,
                                     a_out=a_out, b_out=b_out,
-                                    b_in=b_in, theta=sky_angle[0])
+                                    b_in=b_in, theta=sky_angle)
 
 
 class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
@@ -844,15 +849,16 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
 
-        The outer and inner ellipses are converted independently, so
-        an inner ellipse with a different aspect ratio keeps its own
-        converted axes. The annulus has a single rotation angle, which
-        is that of the converted outer ellipse. If the WCS is sheared
-        and the inner aspect ratio differs from the outer one, the
-        converted inner ellipse has a slightly different orientation,
-        so the inner shape of the returned annulus is approximate. The
-        inner axes always remain smaller than the outer axes, so the
-        result is always a valid annulus.
+        Only the outer ellipse is converted with the WCS. The inner
+        axes are the converted outer axes scaled by the input ratios
+        ``a_in / a_out`` and ``b_in / b_out``, so the inner axes always
+        remain smaller than the outer axes and the inner shape is
+        recovered exactly by the inverse conversion. The annulus has a
+        single rotation angle, which is that of the converted outer
+        ellipse. If the WCS is sheared and the inner aspect ratio
+        differs from the outer one, the inner ellipse of the returned
+        annulus is an approximation of the converted inner ellipse,
+        which would have a different orientation.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
@@ -860,21 +866,19 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
 
-        # Convert the outer and inner ellipses with one WCS evaluation.
-        # The rotation angle is that of the outer ellipse.
+        # Convert the outer ellipse. The inner axes keep their input
+        # ratios to the outer axes, which keeps the annulus valid for
+        # any WCS.
+        a_out_arcsec = self.a_out.to_value(u.arcsec)
+        b_out_arcsec = self.b_out.to_value(u.arcsec)
         _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
-            wcs, skypos,
-            [2 * self.a_out.to_value(u.arcsec),
-             2 * self.a_in.to_value(u.arcsec)],
-            [2 * self.b_out.to_value(u.arcsec),
-             2 * self.b_in.to_value(u.arcsec)],
+            wcs, skypos, 2 * a_out_arcsec, 2 * b_out_arcsec,
             self._theta_rad, pixcoord=first_pixcoord)
-        pix_angle = pix_angle[0]
 
-        a_out = pix_w[0] / 2
-        b_out = pix_h[0] / 2
-        a_in = pix_w[1] / 2
-        b_in = pix_h[1] / 2
+        a_out = pix_w / 2
+        b_out = pix_h / 2
+        a_in = a_out * (self.a_in.to_value(u.arcsec) / a_out_arcsec)
+        b_in = b_out * (self.b_in.to_value(u.arcsec) / b_out_arcsec)
         return EllipticalAnnulus(positions=positions, a_in=a_in,
                                  a_out=a_out, b_out=b_out,
                                  b_in=b_in, theta=pix_angle)

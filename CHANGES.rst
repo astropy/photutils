@@ -610,6 +610,34 @@ Bug Fixes
     edge is tangent to the ellipse or a pixel corner lies exactly on
     it. [#2497]
 
+  - Fixed the ``ApertureStats`` ``centroid``, ``x_centroid``,
+    ``y_centroid``, ``sky_centroid``, and ``sky_centroid_icrs``
+    properties for an aperture whose bounding box extends beyond the
+    left or bottom edge of the data. Previously, the centroid was offset
+    by the size of the part of the bounding box outside of the data.
+    [#2505]
+
+  - Fixed the ``to_sky`` and ``to_pixel`` methods of the elliptical and
+    rectangular annulus apertures raising a ``ValueError`` for a sheared
+    WCS when the inner and outer shapes have different aspect ratios.
+    The inner shape is now the converted outer shape scaled by the
+    input inner-to-outer size ratios, which is always a valid annulus
+    and is recovered exactly by the inverse conversion. [#2505]
+
+  - Fixed ``aperture_photometry`` and ``PixelAperture.do_photometry``
+    returning a sum of zero for an aperture whose bounding box overlaps
+    the data but that has no weighted pixel inside the data. The sum is
+    now NaN, the same as for an aperture whose bounding box does not
+    overlap the data. [#2505]
+
+  - Fixed ``ApertureStats`` raising an ``AttributeError`` for a
+    ``regions.SkyRegion`` input without a ``wcs``. A ``ValueError``
+    is now raised, the same as for a ``SkyAperture``. [#2505]
+
+  - Fixed ``BoundingBox.intersection`` returning a ``BoundingBox`` with
+    zero width or height for two bounding boxes that share only an edge
+    or a corner. `None` is now returned. [#2505]
+
 - ``photutils.background``
 
   - Fixed the ``exclude_percentile`` box-exclusion criterion in
