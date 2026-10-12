@@ -30,3 +30,25 @@ def optional_params(node, *names):
         the corresponding values.
     """
     return {name: node[name] for name in names if name in node}
+
+
+def add_parameter_bounds(node, model):
+    """
+    Store every parameter bound of a model in its YAML tree.
+
+    The ``asdf-astropy`` transform converter omits a bound whose limits
+    are all zero or `None` (e.g., a non-negative bound of ``(0,
+    None)``), so such a bound would be lost on a round trip.
+
+    Parameters
+    ----------
+    node : dict
+        The YAML tree of the model, which is modified in place.
+
+    model : `astropy.modeling.Model`
+        The model being serialized.
+    """
+    bounds = {name: bound for name, bound in model.bounds.items()
+              if any(limit is not None for limit in bound)}
+    if bounds:
+        node['bounds'] = bounds

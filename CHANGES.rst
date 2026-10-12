@@ -42,7 +42,7 @@ New Features
 ^^^^^^^^^^^^
 
 - Added an ASDF extension with converters to serialize all photutils
-  apertures and PSF models. [#2211, #2335, #2341]
+  apertures and PSF models. [#2211, #2335, #2341, #2498]
 
 - ``photutils.aperture``
 

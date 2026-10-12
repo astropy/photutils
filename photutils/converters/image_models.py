@@ -9,7 +9,7 @@ from asdf.extension import Converter
 from asdf_astropy.converters.transform.core import (TransformConverterBase,
                                                     parameter_to_value)
 
-from photutils.converters._utils import optional_params
+from photutils.converters._utils import add_parameter_bounds, optional_params
 
 __all__ = ['GriddedPSFModelConverter',
            'ImagePSFConverter',
@@ -24,6 +24,11 @@ class ImagePSFConverter(TransformConverterBase):
 
     tags = ('tag:astropy.org:photutils/psf/image_psf-*',)
     types = ('photutils.psf.ImagePSF',)
+
+    def to_yaml_tree(self, obj, tag, ctx):
+        node = super().to_yaml_tree(obj, tag, ctx)
+        add_parameter_bounds(node, obj)
+        return node
 
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
         return {
@@ -57,6 +62,11 @@ class GriddedPSFModelConverter(TransformConverterBase):
 
     tags = ('tag:astropy.org:photutils/psf/gridded_psf_model-*',)
     types = ('photutils.psf.GriddedPSFModel',)
+
+    def to_yaml_tree(self, obj, tag, ctx):
+        node = super().to_yaml_tree(obj, tag, ctx)
+        add_parameter_bounds(node, obj)
+        return node
 
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
         node = {
