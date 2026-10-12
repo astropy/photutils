@@ -4870,8 +4870,8 @@ def test_read_only_inputs(dtype, local_bkg_width):
 def test_moments_non_finite_data():
     """
     Test that a pixel with a non-finite data value and a finite
-    convolved_data value is excluded from the centroid and shape
-    properties, the same as a masked pixel.
+    convolved_data value is included in the centroid and shape
+    properties, and that it is excluded if it is also masked.
     """
     yy, xx = np.mgrid[0:25, 0:25]
     data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
@@ -4890,13 +4890,25 @@ def test_moments_non_finite_data():
     cat = SourceCatalog(data, segment_map, **kwargs)
     cat_mask = SourceCatalog(data, segment_map, mask=mask, **kwargs)
     cat_nan = SourceCatalog(data_nan, segment_map, **kwargs)
-    props = ('moments', 'moments_central', 'centroid', 'centroid_err',
-             'covariance', 'semimajor_axis', 'semiminor_axis',
-             'orientation', 'fwhm', 'centroid_quad')
-    for prop in props:
-        assert_equal(getattr(cat_nan, prop), getattr(cat_mask, prop))
-    assert not np.allclose(cat_nan.centroid, cat.centroid, rtol=1.0e-4)
-    assert not np.allclose(cat_nan.covariance, cat.covariance, rtol=1.0e-4)
+    cat_nan_mask = SourceCatalog(data_nan, segment_map,
+                                 mask=~np.isfinite(data_nan), **kwargs)
+
+    # The convolved_data value of the pixel is used
+    moment_props = ('moments', 'moments_central', 'centroid', 'covariance',
+                    'semimajor_axis', 'semiminor_axis', 'orientation',
+                    'fwhm')
+    for prop in moment_props:
+        assert_equal(getattr(cat_nan, prop), getattr(cat, prop))
+    assert not np.allclose(cat_nan.centroid, cat_mask.centroid, rtol=1.0e-4)
+
+    # The pixel does not contribute to the centroid errors, and it is
+    # excluded from the properties measured from the data
+    assert np.all(cat_nan.centroid_err < cat.centroid_err)
+    assert_equal(cat_nan.centroid_quad, cat_mask.centroid_quad)
+
+    # Masking the pixel excludes it from all of the properties
+    for prop in (*moment_props, 'centroid_err', 'centroid_quad'):
+        assert_equal(getattr(cat_nan_mask, prop), getattr(cat_mask, prop))
 
 
 def _masked_quad_inputs():

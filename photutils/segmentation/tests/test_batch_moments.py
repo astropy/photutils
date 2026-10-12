@@ -23,7 +23,7 @@ def _moment_cutout(cat, i):
     conv = cat._convolved_data[slc]
     segm = cat._segmentation_image.data[slc]
     bad = (~np.isfinite(conv) | (conv < 0)
-           | (segm != cat.labels[i]) | ~np.isfinite(cat._data[slc]))
+           | (segm != cat.labels[i]))
     if cat._mask is not None:
         bad |= cat._mask[slc]
     cutout = conv.astype(float).copy()
@@ -204,8 +204,8 @@ def _edge_catalog():
     convdata[4, 4] = np.nan  # non-finite convolved value
     convdata[8, 8] = np.inf
     convdata[9, 9] = 0.0  # zero flux weight, excluded from the errors
-    # Non-finite data with a finite convolved value is excluded from
-    # the moments and from the errors
+    # Non-finite data with a finite convolved value is included in
+    # the moments and excluded from the errors
     data[5, 5] = np.nan
     data[9, 7] = np.nan
     mask = np.zeros((ny, nx), dtype=bool)
@@ -269,13 +269,13 @@ def test_edge_case_inclusion_rules():
         bbox_ixmin=inp['bbox_ixmin'], bbox_ixmax=inp['bbox_ixmax'],
         xcen=xcen, ycen=ycen)
     reference_err = _reference_moment_err(cat, xcen, ycen)
-    # The non-finite data pixel is excluded from the moments and from
-    # the errors, so both use the same pixels
+    # The non-finite data pixel is excluded from the errors but not
+    # from the moments, so the error sums use fewer pixels
     n_moment = np.array([np.count_nonzero(_moment_cutout(cat, i))
                          for i in range(cat.n_labels)])
     n_err = np.array([np.count_nonzero(_reference_err_pixels(cat, i))
                       for i in range(cat.n_labels)])
-    assert np.all(n_err == n_moment)
+    assert np.all(n_err < n_moment)
 
     assert_allclose(err, reference_err, rtol=1e-12, atol=1e-10,
                     equal_nan=True)

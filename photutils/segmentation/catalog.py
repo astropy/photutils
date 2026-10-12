@@ -490,7 +490,16 @@ class SourceCatalog:
         identical units. Non-finite ``convolved_data`` values (NaN and
         inf) are not automatically masked, unless they are at the same
         position of non-finite values in the input ``data`` array. Such
-        pixels can be masked using the ``mask`` keyword.
+        pixels can be masked using the ``mask`` keyword. A pixel with
+        a non-finite ``data`` value and a finite ``convolved_data``
+        value (e.g., a NaN value that
+        :func:`~astropy.convolution.convolve` interpolated over) is
+        included in the isophotal centroid and morphological properties
+        with its ``convolved_data`` value, unlike a pixel masked with
+        the ``mask`` keyword. It does not contribute to the errors of
+        the isophotal centroid. To exclude such pixels from these
+        properties, include them in the input ``mask`` (e.g.,
+        ``mask=~np.isfinite(data)``).
 
     error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data``

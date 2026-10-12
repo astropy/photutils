@@ -1923,9 +1923,8 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
     The moments are computed up to 3rd order along each axis over the
     segment bounding box of each source, using coordinates relative
     to the bounding-box origin (i.e., the cutout frame). Pixels
-    outside the source segment, masked pixels (input-masked or
-    non-finite data), and non-finite or negative convolved values
-    contribute zero.
+    outside the source segment, input-masked pixels, non-finite
+    values, and negative values contribute zero.
 
     Parameters
     ----------
@@ -1936,7 +1935,7 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
         and bit 2 (value 2) marks non-finite data pixels folded into
-        the mask by the caller. Any nonzero value excludes the pixel.
+        the mask by the caller. Only bit 1 excludes a pixel here.
         Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
@@ -2006,7 +2005,7 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
                 for ix in range(x0, x1):
                     if segm[iy, ix] != lbl:
                         continue
-                    if mask[iy, ix] != 0:
+                    if mask[iy, ix] & 1:
                         continue
                     v = convdata[iy, ix]
                     if not isfinite(v) or v < 0.0:
@@ -2051,7 +2050,7 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
         and bit 2 (value 2) marks non-finite data pixels folded into
-        the mask by the caller. Any nonzero value excludes the pixel.
+        the mask by the caller. Only bit 1 excludes a pixel here.
         Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
@@ -2130,7 +2129,7 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
                 for ix in range(x0, x1):
                     if segm[iy, ix] != lbl:
                         continue
-                    if mask[iy, ix] != 0:
+                    if mask[iy, ix] & 1:
                         continue
                     v = convdata[iy, ix]
                     if not isfinite(v) or v < 0.0:

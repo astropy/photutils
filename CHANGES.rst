@@ -1217,10 +1217,6 @@ Bug Fixes
     measured in the catalog ``data`` as a fraction of its own Kron
     flux. [#2503]
 
-  - Fixed the ``SourceCatalog`` centroid and shape properties including
-    pixels with a non-finite ``data`` value where the input
-    ``convolved_data`` value is finite. [#2503]
-
   - Fixed the ``SourceCatalog`` quadratic centroid setting the pixels
     of its 3x3 fitting box that are outside of the source segment to
     zero, which biased the centroid of a source whose peak pixel is
