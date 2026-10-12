@@ -1203,6 +1203,10 @@ Bug Fixes
     zero-size ``SegmentationImage``. An empty list is now returned.
     [#2464]
 
+  - Fixed the ``SourceCatalog`` ``sky_bbox_ul``, ``sky_bbox_lr``, and
+    ``sky_bbox_ur`` properties, which were one pixel beyond the
+    bounding box along its upper and right edges. [#2502]
+
 - ``photutils.utils``
 
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the

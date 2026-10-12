@@ -1268,6 +1268,24 @@ class TestSourceCatalog:
         aper = obj.make_kron_apertures()
         assert isinstance(aper, EllipticalAperture)
 
+    def test_sky_bbox_corners(self):
+        """
+        Test that the sky bounding box vertices are at the outer pixel
+        corners of the bounding box.
+        """
+        cat = self.cat
+        xmin = cat.bbox_xmin - 0.5
+        xmax = cat.bbox_xmax + 0.5
+        ymin = cat.bbox_ymin - 0.5
+        ymax = cat.bbox_ymax + 0.5
+        corners = {'ll': (xmin, ymin), 'ul': (xmin, ymax),
+                   'lr': (xmax, ymin), 'ur': (xmax, ymax)}
+        for name, (xpos, ypos) in corners.items():
+            expected = self.wcs.pixel_to_world(xpos, ypos)
+            skycoord = getattr(cat, f'sky_bbox_{name}')
+            assert_allclose(skycoord.separation(expected).arcsec, 0.0,
+                            atol=1.0e-8)
+
     def test_make_cutouts(self):
         """
         Test make cutouts.
