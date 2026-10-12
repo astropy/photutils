@@ -227,7 +227,8 @@ class _SingleSourceDeblender:
 
     def multithreshold(self):
         """
-        Perform multithreshold detection for each source.
+        Perform multithreshold detection at each multithreshold level
+        of the source.
 
         This method is useful for debugging and testing.
 
@@ -255,8 +256,9 @@ class _SingleSourceDeblender:
         With the basin contrast criterion, the markers are built from
         a single component-tree pass over the level-quantized cutout
         (see `~photutils.segmentation._deblend_markers.make_deblend_markers`),
-        which produces markers identical to the per-level
-        multithreshold construction of ``make_markers_per_level``.
+        which produces the same marker regions in the same order as
+        the per-level multithreshold construction of
+        ``make_markers_per_level``. The label numbers can differ.
         With the saddle criterion, the markers are selected level by
         level in Python by ``make_saddle_markers``.
 
@@ -264,8 +266,10 @@ class _SingleSourceDeblender:
         -------
         markers : 2D `~numpy.ndarray` or `None`
             A segmentation image that contains markers for possible
-            sources. `None` is returned if there is only one source
-            at every threshold.
+            sources. With the basin criterion, `None` is returned if
+            no threshold level has two or more sources. With the
+            saddle criterion, `None` is returned if there are fewer
+            than two markers.
         """
         thresholds = self.compute_thresholds()
         if self.contrast_method == 'saddle':
@@ -375,15 +379,19 @@ class _SingleSourceDeblender:
         The markers are refined level by level, replacing every
         marker that splits at the next-higher threshold by its
         children (see ``make_marker_segment``). The last list
-        element contains the final markers, identical to the
-        ``make_markers`` result. This method is useful for debugging
-        and testing.
+        element contains the final markers, which have the same
+        regions in the same order as the ``make_markers`` result.
+        The label numbers can differ. This method is useful for
+        debugging and testing.
 
         Returns
         -------
         markers : list of (2D `~numpy.ndarray` or `None`)
-            The segmentation marker image after each threshold level
-            that had two or more segments.
+            The segmentation marker image for the first threshold
+            level, followed by the marker image after each higher
+            threshold level that had two or more segments. The first
+            element is `None` if the first threshold level had fewer
+            than two segments.
         """
         thresholds = self.compute_thresholds()
         segm_lower = _detect_sources_deblend(
@@ -408,16 +416,17 @@ class _SingleSourceDeblender:
 
         Parameters
         ----------
-        segment_lower : 2D `~numpy.ndarray`
-            The "lower" threshold level segmentation image.
+        segment_lower : 2D `~numpy.ndarray` or `None`
+            The "lower" threshold level segmentation image. If `None`,
+            then ``segment_upper`` is returned.
 
         segment_upper : 2D `~numpy.ndarray`
-            The next-highest threshold level segmentation image.
+            The next-higher threshold level segmentation image.
 
         Returns
         -------
         markers : 2D `~numpy.ndarray`
-            A segmentation image that contain markers for possible
+            A segmentation image that contains markers for possible
             sources.
 
         Notes

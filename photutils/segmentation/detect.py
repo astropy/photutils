@@ -54,7 +54,9 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
         shape as the input ``data``. If the input ``data`` has been
         background-subtracted, then set ``background`` to ``0.0`` (this
         should be typical). If `None`, then a scalar background value
-        will be estimated as the sigma-clipped image mean.
+        will be estimated as the sigma-clipped image mean. If ``data``
+        is a `~astropy.units.Quantity` array, then ``background`` must
+        have the same units as ``data``.
 
     error : float or 2D `~numpy.ndarray`, optional
         The Gaussian 1-sigma standard deviation of the background
@@ -63,7 +65,9 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
         sources. If ``error`` is a 2D image, then it should represent
         the 1-sigma background error in each pixel of ``data``. If
         `None`, then a scalar background rms value will be estimated
-        as the sigma-clipped image standard deviation.
+        as the sigma-clipped image standard deviation. If ``data`` is a
+        `~astropy.units.Quantity` array, then ``error`` must have the
+        same units as ``data``.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data``, where a `True`
@@ -71,10 +75,11 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
         Masked pixels are ignored when computing the image background
         statistics.
 
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
+    sigma_clip : `astropy.stats.SigmaClip`, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+        clipping parameters. The default is a
+        `~astropy.stats.SigmaClip` with ``sigma=3.0`` and
+        ``maxiters=10``.
 
     Returns
     -------
@@ -94,6 +99,11 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
     is necessary to estimate ``background`` or ``error`` using
     sigma-clipped background statistics. If ``background`` and ``error``
     are both input, then ``mask`` and ``sigma_clip`` are ignored.
+
+    If ``background`` or ``error`` is estimated and the unmasked
+    ``data`` contain non-finite values (NaN or inf), then the sigma
+    clipping emits an `~astropy.utils.exceptions.AstropyUserWarning`
+    and the non-finite values are excluded from the statistics.
     """
     inputs = (data, background, error)
     names = ('data', 'background', 'error')
@@ -142,8 +152,9 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask):
     """
     Detect sources above a specified threshold value in an image.
 
-    Detected sources must have ``n_pixels`` connected pixels that are
-    each greater than the ``threshold`` value in the input ``data``.
+    Detected sources must have at least ``n_pixels`` connected pixels
+    that are each greater than the ``threshold`` value in the input
+    ``data``.
 
     This function is the core algorithm for detecting sources in
     an image used by `detect_sources`. This function differs from
@@ -174,10 +185,11 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask):
         for connectivity along pixel edges only, the footprint is
         ``np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])``.
 
-    inverse_mask : 2D bool `~numpy.ndarray`
+    inverse_mask : 2D bool `~numpy.ndarray` or `None`
         A boolean mask, with the same shape as the input ``data``, where
         `False` values indicate masked pixels (the inverse of usual
         pixel masks). Masked pixels will not be included in any source.
+        If `None`, then no pixels are masked.
 
     Returns
     -------
@@ -254,8 +266,8 @@ def _warn_negative_threshold(threshold):
     sets negative data values to zero when computing the source
     moments, so they do not contribute to the centroids and shapes.
     A source whose minimum data value is not positive also switches
-    `~photutils.segmentation.deblend_sources` to its sinh fallback
-    mode.
+    `~photutils.segmentation.deblend_sources` from its exponential
+    mode to its sinh fallback mode.
 
     Parameters
     ----------
@@ -287,10 +299,10 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
     """
     Detect sources above a specified threshold value in an image.
 
-    Detected sources must have ``n_pixels`` connected pixels that are
-    each greater than the ``threshold`` value in the input ``data``. The
-    input ``mask`` can be used to mask pixels in the input data. Masked
-    pixels will not be included in any source.
+    Detected sources must have at least ``n_pixels`` connected pixels
+    that are each greater than the ``threshold`` value in the input
+    ``data``. The input ``mask`` can be used to mask pixels in the input
+    data. Masked pixels will not be included in any source.
 
     This function does not deblend overlapping sources.
     First use this function to detect sources followed by
@@ -302,7 +314,8 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
     ----------
     data : 2D `~numpy.ndarray`
         The 2D array of the image. If filtering is desired, please input
-        a convolved image.
+        a convolved image. Pixels with NaN values are never included in
+        a source.
 
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
@@ -339,6 +352,14 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
 
     Raises
     ------
+    ValueError
+        If ``n_pixels`` is not a positive integer, if ``connectivity``
+        is not 4 or 8, if ``data`` and ``threshold`` do not have the
+        same units, if ``mask`` does not have the same shape as
+        ``data``, or if ``mask`` is `True` for every pixel.
+
+    Warns
+    -----
     NoDetectionsWarning
         If no sources are found.
 
