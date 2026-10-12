@@ -1121,6 +1121,14 @@ Bug Fixes
     ``regularization`` must be positive when it is NaN. Previously, an
     unrelated error about a non-finite kernel was raised. [#2494]
 
+  - Fixed the window classes for non-square shapes. The window radii
+    are now defined relative to the size of the array along each axis,
+    so the window is elliptical instead of circular. Previously, a
+    window passed to ``make_kernel`` or ``make_wiener_kernel`` with
+    non-square PSFs cut off lower spatial frequencies along the longer
+    axis, which made the matching kernel too narrow along that axis.
+    Windows for square shapes are unchanged. [#2495]
+
   - Fixed ``resize_psf`` to return a PSF with the requested pixel
     scale. The output pixel scale was ``input_pixel_scale * (n_in - 1) /
     (n_out - 1)``, where ``n_in`` and ``n_out`` are the input and output

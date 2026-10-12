@@ -325,6 +325,11 @@ other four and is parameterized by two values:
 * ``beta``: the fraction of the array radius that remains at 1.0
   (the flat inner region).
 
+The array radius is the distance from the array center to the array
+edge. For a non-square array, it differs between the two axes, so the
+window is elliptical. The window then has the same cutoff in spatial
+frequency along both axes.
+
 The different window classes set these parameters in specific ways,
 offering different levels of convenience and control.
 

@@ -17,10 +17,14 @@ __all__ = [
 ]
 
 
-def _distance_grid(shape):
+def _normalized_distance_grid(shape):
     """
-    Return an array where each value is the Euclidean distance from the
-    array center.
+    Return an array where each value is the distance from the array
+    center in units of the half size of the array along each axis.
+
+    The distance is 1.0 at the centers of the edge pixels along the
+    central row and column, so the contours of constant distance are
+    ellipses for a non-square shape.
 
     Parameters
     ----------
@@ -32,7 +36,7 @@ def _distance_grid(shape):
     Returns
     -------
     result : 2D `~numpy.ndarray`
-        An array containing the Euclidean radial distances from the
+        An array containing the normalized radial distances from the
         array center.
     """
     if len(shape) != 2:
@@ -42,7 +46,10 @@ def _distance_grid(shape):
     y_cen, x_cen = (shape[0] - 1) / 2, (shape[1] - 1) / 2
     y_vals, x_vals = np.ogrid[:shape[0], :shape[1]]
 
-    return np.hypot(x_vals - x_cen, y_vals - y_cen)
+    # An axis of size 1 has a zero half size and its only pixel is at
+    # the center
+    return np.hypot((x_vals - x_cen) / (x_cen or 1.0),
+                    (y_vals - y_cen) / (y_cen or 1.0))
 
 
 class SplitCosineBellWindow:
@@ -62,9 +69,10 @@ class SplitCosineBellWindow:
     alpha : float
         The width of the cosine taper as a fraction of the maximum
         radius. The maximum radius is the distance in pixels from the
-        array center to the edge along the shortest axis,
-        ``(min(shape) - 1) / 2``. ``alpha`` must be between 0.0 and
-        1.0, inclusive.
+        array center to the edge, which is ``(n - 1) / 2`` along an
+        axis of size ``n``. For a non-square shape, it differs
+        between the two axes, so the window is elliptical. ``alpha``
+        must be between 0.0 and 1.0, inclusive.
 
     beta : float
         The radius of the inner flat region as a fraction of the
@@ -143,9 +151,11 @@ class SplitCosineBellWindow:
         ----------
         shape : tuple of int
             The shape of the output array. It must have two elements.
-            The window radii are defined relative to
-            ``(min(shape) - 1) / 2``, so the window is circular for a
-            non-square shape.
+            The window radii are defined relative to ``(n - 1) / 2``
+            along each axis of size ``n``, so the window is elliptical
+            for a non-square shape. When the window is applied to a
+            Fourier transform, it then has the same cutoff in spatial
+            frequency along both axes.
 
         Returns
         -------
@@ -157,12 +167,11 @@ class SplitCosineBellWindow:
         ValueError
             If ``shape`` does not have two elements.
         """
-        dist = _distance_grid(shape)
-
-        # Define geometry based on the smallest shape dimension
-        max_r = (min(shape) - 1.0) / 2.0
-        r_inner = self.beta * max_r
-        taper_width = self.alpha * max_r
+        # The distances are in units of the maximum radius along each
+        # axis
+        dist = _normalized_distance_grid(shape)
+        r_inner = self.beta
+        taper_width = self.alpha
         r_outer = r_inner + taper_width
 
         if taper_width > 0:
@@ -259,10 +268,12 @@ class TukeyWindow(SplitCosineBellWindow):
     alpha : float
         The width of the cosine taper as a fraction of the maximum
         radius. The maximum radius is the distance in pixels from the
-        array center to the edge along the shortest axis,
-        ``(min(shape) - 1) / 2``. Must be between 0.0 and 1.0,
-        inclusive. When ``alpha=0``, this becomes a `TopHatWindow`. When
-        ``alpha=1``, this becomes a `HanningWindow`.
+        array center to the edge, which is ``(n - 1) / 2`` along an
+        axis of size ``n``. For a non-square shape, it differs
+        between the two axes, so the window is elliptical. Must be
+        between 0.0 and 1.0, inclusive. When ``alpha=0``, this becomes a
+        `TopHatWindow`. When ``alpha=1``, this becomes a
+        `HanningWindow`.
 
     Raises
     ------
@@ -332,11 +343,12 @@ class CosineBellWindow(SplitCosineBellWindow):
     alpha : float
         The width of the cosine taper as a fraction of the maximum
         radius. The maximum radius is the distance in pixels from the
-        array center to the edge along the shortest axis,
-        ``(min(shape) - 1) / 2``. Must be between 0.0 and 1.0,
-        inclusive. When ``alpha=1``, this becomes a `HanningWindow`.
-        When ``alpha=0``, the window is zero everywhere except at the
-        central pixel of an array with odd dimensions.
+        array center to the edge, which is ``(n - 1) / 2`` along an
+        axis of size ``n``. For a non-square shape, it differs
+        between the two axes, so the window is elliptical. Must be
+        between 0.0 and 1.0, inclusive. When ``alpha=1``, this becomes a
+        `HanningWindow`. When ``alpha=0``, the window is zero everywhere
+        except at the central pixel of an array with odd dimensions.
 
     Raises
     ------
@@ -388,8 +400,9 @@ class TopHatWindow(SplitCosineBellWindow):
     Class to define a 2D top hat window function.
 
     This window equals 1.0 inside a circular region defined by ``beta``
-    and drops sharply to 0.0 outside, with no smooth transition. It is
-    also known as a rectangular or boxcar window.
+    (elliptical for a non-square shape) and drops sharply to 0.0
+    outside, with no smooth transition. It is also known as a
+    rectangular or boxcar window.
 
     This window preserves the most data (everything inside the cutoff
     radius is untouched), but the sharp edge creates strong ringing
@@ -408,9 +421,10 @@ class TopHatWindow(SplitCosineBellWindow):
     beta : float
         The radius of the window as a fraction of the maximum radius.
         The maximum radius is the distance in pixels from the array
-        center to the edge along the shortest axis,
-        ``(min(shape) - 1) / 2``. The window is zero beyond the window
-        radius. Must be between 0.0 and 1.0, inclusive.
+        center to the edge, which is ``(n - 1) / 2`` along an axis of
+        size ``n``. For a non-square shape, it differs between the two
+        axes, so the window is elliptical. The window is zero beyond the
+        window radius. Must be between 0.0 and 1.0, inclusive.
 
     Raises
     ------

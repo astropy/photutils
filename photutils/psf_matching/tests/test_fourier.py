@@ -34,6 +34,24 @@ class TestMakeKernel:
         assert_allclose(gfit.x_stddev, gfit.y_stddev)
         assert_allclose(gfit.x_stddev, np.sqrt(25 - 9), atol=0.06)
 
+    def test_window_nonsquare(self):
+        """
+        Test that a window gives a kernel with the same width along both
+        axes for non-square circular Gaussian PSFs.
+        """
+        shape = (51, 101)
+        yy, xx = np.mgrid[:shape[0], :shape[1]]
+        y0, x0 = shape[0] // 2, shape[1] // 2
+        rr2 = (xx - x0) ** 2 + (yy - y0) ** 2
+        psf1 = np.exp(-rr2 / (2 * 2.0**2))
+        psf2 = np.exp(-rr2 / (2 * 3.0**2))
+
+        window = SplitCosineBellWindow(alpha=0.3, beta=0.1)
+        kernel = make_kernel(psf1, psf2, window=window)
+        x_sigma = np.sqrt(np.sum(kernel * (xx - x0) ** 2))
+        y_sigma = np.sqrt(np.sum(kernel * (yy - y0) ** 2))
+        assert_allclose(x_sigma, y_sigma, rtol=0.01)
+
     def test_without_window(self, psf1, psf2):
         """
         Test without a window function.
