@@ -591,32 +591,32 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
 
-        The outer and inner rectangles are converted independently, so
-        an inner rectangle with a different aspect ratio keeps its own
-        converted sides. The annulus has a single rotation angle, which
-        is that of the converted outer rectangle. If the WCS is sheared
-        and the inner aspect ratio differs from the outer one, the
-        converted inner rectangle has a slightly different orientation,
-        so the inner shape of the returned annulus is approximate. The
-        inner sides always remain smaller than the outer sides, so the
-        result is always a valid annulus.
+        Only the outer rectangle is converted with the WCS. The inner
+        sides are the converted outer sides scaled by the input ratios
+        ``w_in / w_out`` and ``h_in / h_out``, so the inner sides always
+        remain smaller than the outer sides and the inner shape is
+        recovered exactly by the inverse conversion. The annulus has a
+        single rotation angle, which is that of the converted outer
+        rectangle. If the WCS is sheared and the inner aspect ratio
+        differs from the outer one, the inner rectangle of the returned
+        annulus is an approximation of the converted inner rectangle,
+        which would have a different orientation.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
 
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
-        # Convert the outer and inner rectangles with one WCS
-        # evaluation. The rotation angle is that of the outer rectangle.
+        # Convert the outer rectangle. The inner sides keep their input
+        # ratios to the outer sides, which keeps the annulus valid for
+        # any WCS.
         sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
-            wcs, pixcoord, [self.w_out, self.w_in], [self.h_out, self.h_in],
-            self._theta_rad)
-        sky_angle = sky_angle[0]
+            wcs, pixcoord, self.w_out, self.h_out, self._theta_rad)
 
-        w_in = Angle(sky_w[1], 'arcsec')
-        w_out = Angle(sky_w[0], 'arcsec')
-        h_in = Angle(sky_h[1], 'arcsec')
-        h_out = Angle(sky_h[0], 'arcsec')
+        w_out = Angle(sky_w, 'arcsec')
+        h_out = Angle(sky_h, 'arcsec')
+        w_in = w_out * (self.w_in / self.w_out)
+        h_in = h_out * (self.h_in / self.h_out)
         return SkyRectangularAnnulus(positions=positions, w_in=w_in,
                                      w_out=w_out, h_out=h_out,
                                      h_in=h_in, theta=sky_angle)
@@ -736,10 +736,12 @@ class SkyRectangularAperture(_RotatableApertureMixin, SkyAperture):
         unit = self.w.unit
         # At theta=0, the width (w) is along +lat (North) and the height
         # (h) is along +lon, so the unrotated first axis uses the
-        # half-height and the second axis uses the half-width.
+        # half-height and the second axis uses the half-width. A
+        # counterclockwise rotation in the (lon, lat) plane moves North
+        # toward West, so the sign of the position angle is flipped.
         offsets = _rectangular_polygon_offsets(
             0.5 * self.h.to_value(unit), 0.5 * self.w.to_value(unit),
-            self.theta.to_value(u.radian)) * unit
+            -self.theta.to_value(u.radian)) * unit
         return SkyPolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
@@ -863,29 +865,33 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
 
-        The outer and inner rectangles are converted independently, so
-        an inner rectangle with a different aspect ratio keeps its own
-        converted sides. The annulus has a single rotation angle, which
-        is that of the converted outer rectangle. If the WCS is sheared
-        and the inner aspect ratio differs from the outer one, the
-        converted inner rectangle has a slightly different orientation,
-        so the inner shape of the returned annulus is approximate. The
-        inner sides always remain smaller than the outer sides, so the
-        result is always a valid annulus.
+        Only the outer rectangle is converted with the WCS. The inner
+        sides are the converted outer sides scaled by the input ratios
+        ``w_in / w_out`` and ``h_in / h_out``, so the inner sides always
+        remain smaller than the outer sides and the inner shape is
+        recovered exactly by the inverse conversion. The annulus has a
+        single rotation angle, which is that of the converted outer
+        rectangle. If the WCS is sheared and the inner aspect ratio
+        differs from the outer one, the inner rectangle of the returned
+        annulus is an approximation of the converted inner rectangle,
+        which would have a different orientation.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
-        # Convert the outer and inner rectangles with one WCS
-        # evaluation. The rotation angle is that of the outer rectangle.
-        _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
-            wcs, skypos,
-            [self.w_out.to_value(u.arcsec), self.w_in.to_value(u.arcsec)],
-            [self.h_out.to_value(u.arcsec), self.h_in.to_value(u.arcsec)],
-            self._theta_rad, pixcoord=first_pixcoord)
+        # Convert the outer rectangle. The inner sides keep their input
+        # ratios to the outer sides, which keeps the annulus valid for
+        # any WCS.
+        w_out_arcsec = self.w_out.to_value(u.arcsec)
+        h_out_arcsec = self.h_out.to_value(u.arcsec)
+        _, w_out, h_out, pix_angle = sky_shape_to_pixel_svd(
+            wcs, skypos, w_out_arcsec, h_out_arcsec, self._theta_rad,
+            pixcoord=first_pixcoord)
 
-        return RectangularAnnulus(positions=positions, w_in=pix_w[1],
-                                  w_out=pix_w[0], h_out=pix_h[0],
-                                  h_in=pix_h[1], theta=pix_angle[0])
+        w_in = w_out * (self.w_in.to_value(u.arcsec) / w_out_arcsec)
+        h_in = h_out * (self.h_in.to_value(u.arcsec) / h_out_arcsec)
+        return RectangularAnnulus(positions=positions, w_in=w_in,
+                                  w_out=w_out, h_out=h_out,
+                                  h_in=h_in, theta=pix_angle)

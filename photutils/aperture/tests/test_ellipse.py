@@ -300,6 +300,23 @@ class TestToPolygon:
                         rtol=1e-6)
 
     @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+    def test_sky_polygon_orientation(self, theta_deg, tan_wcs):
+        """
+        Test that the sky polygon covers the same pixels as the sky
+        ellipse, which requires the same rotation sense.
+        """
+        pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+        aper = SkyEllipticalAperture(pos, a=50.0 * u.arcsec,
+                                     b=20.0 * u.arcsec,
+                                     theta=theta_deg * u.deg)
+        shape = (101, 101)
+        mask_aper = aper.to_pixel(tan_wcs).to_mask(method='exact')
+        mask_poly = aper.to_polygon(n_vertices=400).to_pixel(
+            tan_wcs).to_mask(method='exact')
+        assert_allclose(mask_poly.to_image(shape), mask_aper.to_image(shape),
+                        atol=2e-3)
+
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
     def test_pixel_to_sky_round_trip(self, theta_deg, tan_wcs):
         """
         Test that converting an EllipticalAperture to a polygon and then to

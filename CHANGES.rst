@@ -610,6 +610,13 @@ Bug Fixes
     edge is tangent to the ellipse or a pixel corner lies exactly on
     it. [#2497]
 
+  - Fixed the ``to_sky`` and ``to_pixel`` methods of the elliptical and
+    rectangular annulus apertures raising a ``ValueError`` for a sheared
+    WCS when the inner and outer shapes have different aspect ratios.
+    The inner shape is now the converted outer shape scaled by the
+    input inner-to-outer size ratios, which is always a valid annulus
+    and is recovered exactly by the inverse conversion. [#2505]
+
 - ``photutils.background``
 
   - Fixed the ``exclude_percentile`` box-exclusion criterion in

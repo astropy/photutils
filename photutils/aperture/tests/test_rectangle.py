@@ -302,6 +302,23 @@ class TestToPolygon:
                         rtol=1e-6)
 
     @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+    def test_sky_polygon_orientation(self, theta_deg, tan_wcs):
+        """
+        Test that the sky polygon covers the same pixels as the sky
+        rectangle, which requires the same rotation sense.
+        """
+        pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+        aper = SkyRectangularAperture(pos, w=40.0 * u.arcsec,
+                                      h=10.0 * u.arcsec,
+                                      theta=theta_deg * u.deg)
+        shape = (101, 101)
+        mask_aper = aper.to_pixel(tan_wcs).to_mask(method='exact')
+        mask_poly = aper.to_polygon().to_pixel(tan_wcs).to_mask(
+            method='exact')
+        assert_allclose(mask_poly.to_image(shape), mask_aper.to_image(shape),
+                        atol=1e-4)
+
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
     def test_pixel_to_sky_round_trip(self, theta_deg, tan_wcs):
         """
         Test that converting a RectangularAperture to a polygon and then to

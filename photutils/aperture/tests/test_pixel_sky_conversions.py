@@ -883,35 +883,54 @@ _PIXEL_APERTURE_CASES = [
 ]
 
 
-class TestAnnulusIndependentInnerShape:
+@pytest.fixture
+def strongly_sheared_wcs():
     """
-    Tests that an annulus whose inner shape has a different aspect ratio
-    from the outer one converts each shape independently.
+    A TAN WCS with a strong shear, for which converting the inner and
+    outer shapes of an annulus separately can give an inner shape that
+    does not fit inside the outer one.
+    """
+    cdelt = 0.1 / 3600
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [CENTER.ra.deg, CENTER.dec.deg]
+    wcs.wcs.cd = [[-cdelt, 0.2 * cdelt],
+                  [0.0, cdelt]]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
-    The annuli convert both shapes in one WCS evaluation. Each size must
-    match the conversion of the matching simple aperture, and the angle
-    is that of the outer shape.
+    return wcs
+
+
+class TestAnnulusInnerShape:
+    """
+    Tests the conversion of an annulus whose inner shape has a different
+    aspect ratio from the outer one.
+
+    The outer shape must match the conversion of the matching simple
+    aperture. The inner shape keeps its input size ratios to the outer
+    shape, so the converted annulus is valid for any WCS and the inverse
+    conversion recovers the input.
     """
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
+                                          'strongly_sheared_wcs'])
     def test_elliptical_pixel_to_sky(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         theta = 45 * u.deg
         annulus = EllipticalAnnulus(PIX_CENTER, a_in=2, a_out=4, b_out=2,
                                     b_in=1.5, theta=theta)
         outer = EllipticalAperture(PIX_CENTER, a=4, b=2, theta=theta)
-        inner = EllipticalAperture(PIX_CENTER, a=2, b=1.5, theta=theta)
         sky = annulus.to_sky(wcs)
         sky_outer = outer.to_sky(wcs)
-        sky_inner = inner.to_sky(wcs)
         assert_quantity_allclose(sky.a_out, sky_outer.a, rtol=1e-12)
         assert_quantity_allclose(sky.b_out, sky_outer.b, rtol=1e-12)
-        assert_quantity_allclose(sky.a_in, sky_inner.a, rtol=1e-12)
-        assert_quantity_allclose(sky.b_in, sky_inner.b, rtol=1e-12)
+        assert_quantity_allclose(sky.a_in / sky.a_out, 2 / 4, rtol=1e-12)
+        assert_quantity_allclose(sky.b_in / sky.b_out, 1.5 / 2, rtol=1e-12)
         assert_quantity_allclose(sky.theta, sky_outer.theta,
                                  atol=1e-10 * u.deg)
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
+                                          'strongly_sheared_wcs'])
     def test_elliptical_sky_to_pixel(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         theta = 30 * u.deg
@@ -921,37 +940,34 @@ class TestAnnulusIndependentInnerShape:
                                        b_in=0.75 * u.arcsec, theta=theta)
         outer = SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
                                       b=1 * u.arcsec, theta=theta)
-        inner = SkyEllipticalAperture(CENTER, a=1 * u.arcsec,
-                                      b=0.75 * u.arcsec, theta=theta)
         pix = annulus.to_pixel(wcs)
         pix_outer = outer.to_pixel(wcs)
-        pix_inner = inner.to_pixel(wcs)
         assert_allclose(pix.a_out, pix_outer.a, rtol=1e-12)
         assert_allclose(pix.b_out, pix_outer.b, rtol=1e-12)
-        assert_allclose(pix.a_in, pix_inner.a, rtol=1e-12)
-        assert_allclose(pix.b_in, pix_inner.b, rtol=1e-12)
+        assert_allclose(pix.a_in / pix.a_out, 1 / 2, rtol=1e-12)
+        assert_allclose(pix.b_in / pix.b_out, 0.75 / 1, rtol=1e-12)
         assert_quantity_allclose(pix.theta, pix_outer.theta,
                                  atol=1e-10 * u.deg)
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
+                                          'strongly_sheared_wcs'])
     def test_rectangular_pixel_to_sky(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         theta = 45 * u.deg
         annulus = RectangularAnnulus(PIX_CENTER, w_in=2, w_out=4, h_out=2,
                                      h_in=1.5, theta=theta)
         outer = RectangularAperture(PIX_CENTER, w=4, h=2, theta=theta)
-        inner = RectangularAperture(PIX_CENTER, w=2, h=1.5, theta=theta)
         sky = annulus.to_sky(wcs)
         sky_outer = outer.to_sky(wcs)
-        sky_inner = inner.to_sky(wcs)
         assert_quantity_allclose(sky.w_out, sky_outer.w, rtol=1e-12)
         assert_quantity_allclose(sky.h_out, sky_outer.h, rtol=1e-12)
-        assert_quantity_allclose(sky.w_in, sky_inner.w, rtol=1e-12)
-        assert_quantity_allclose(sky.h_in, sky_inner.h, rtol=1e-12)
+        assert_quantity_allclose(sky.w_in / sky.w_out, 2 / 4, rtol=1e-12)
+        assert_quantity_allclose(sky.h_in / sky.h_out, 1.5 / 2, rtol=1e-12)
         assert_quantity_allclose(sky.theta, sky_outer.theta,
                                  atol=1e-10 * u.deg)
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
+                                          'strongly_sheared_wcs'])
     def test_rectangular_sky_to_pixel(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         theta = 30 * u.deg
@@ -961,17 +977,53 @@ class TestAnnulusIndependentInnerShape:
                                         h_in=0.75 * u.arcsec, theta=theta)
         outer = SkyRectangularAperture(CENTER, w=2 * u.arcsec,
                                        h=1 * u.arcsec, theta=theta)
-        inner = SkyRectangularAperture(CENTER, w=1 * u.arcsec,
-                                       h=0.75 * u.arcsec, theta=theta)
         pix = annulus.to_pixel(wcs)
         pix_outer = outer.to_pixel(wcs)
-        pix_inner = inner.to_pixel(wcs)
         assert_allclose(pix.w_out, pix_outer.w, rtol=1e-12)
         assert_allclose(pix.h_out, pix_outer.h, rtol=1e-12)
-        assert_allclose(pix.w_in, pix_inner.w, rtol=1e-12)
-        assert_allclose(pix.h_in, pix_inner.h, rtol=1e-12)
+        assert_allclose(pix.w_in / pix.w_out, 1 / 2, rtol=1e-12)
+        assert_allclose(pix.h_in / pix.h_out, 0.75 / 1, rtol=1e-12)
         assert_quantity_allclose(pix.theta, pix_outer.theta,
                                  atol=1e-10 * u.deg)
+
+    @pytest.mark.parametrize('annulus', [
+        EllipticalAnnulus(PIX_CENTER, a_in=2.951, a_out=4.887, b_out=4.604,
+                          b_in=4.414, theta=89.98 * u.deg),
+        RectangularAnnulus(PIX_CENTER, w_in=4.0, w_out=4.2, h_out=4.3,
+                           h_in=3.0, theta=0.0),
+    ])
+    def test_pixel_to_sky_nearly_equal_sizes(self, annulus,
+                                             strongly_sheared_wcs):
+        """
+        Test annuli for which the separately converted inner shape does
+        not fit inside the converted outer shape.
+        """
+        sky = annulus.to_sky(strongly_sheared_wcs)
+        pix = sky.to_pixel(strongly_sheared_wcs)
+        for name in annulus._params[1:-1]:
+            assert_allclose(getattr(pix, name), getattr(annulus, name),
+                            rtol=1e-8)
+
+    @pytest.mark.parametrize('annulus', [
+        SkyEllipticalAnnulus(CENTER, a_in=0.3104 * u.arcsec,
+                             a_out=0.4239 * u.arcsec, b_out=0.365 * u.arcsec,
+                             b_in=0.351 * u.arcsec, theta=66.49 * u.deg),
+        SkyRectangularAnnulus(CENTER, w_in=0.3523 * u.arcsec,
+                              w_out=0.5945 * u.arcsec,
+                              h_out=0.5219 * u.arcsec,
+                              h_in=0.5094 * u.arcsec, theta=175.32 * u.deg),
+    ])
+    def test_sky_to_pixel_nearly_equal_sizes(self, annulus,
+                                             strongly_sheared_wcs):
+        """
+        Test annuli for which the separately converted inner shape does
+        not fit inside the converted outer shape.
+        """
+        pix = annulus.to_pixel(strongly_sheared_wcs)
+        sky = pix.to_sky(strongly_sheared_wcs)
+        for name in annulus._params[1:-1]:
+            assert_quantity_allclose(getattr(sky, name),
+                                     getattr(annulus, name), rtol=1e-8)
 
 
 class TestSingleWCSEvaluation:
