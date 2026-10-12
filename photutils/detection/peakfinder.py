@@ -19,6 +19,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['find_peaks']
 
+# The radius in pixels below which the circular footprint filter is
+# faster than the box filters with circular verification
+_MIN_FAST_RADIUS = 4.0
+
 
 def _verify_ring_candidates(data, peak_mask, needs_verify, footprint_bool,
                             half, footprint_size):
@@ -85,29 +89,50 @@ def _verify_ring_candidates(data, peak_mask, needs_verify, footprint_bool,
             peak_mask[y, x] = True
 
 
+def _circular_footprint(radius):
+    """
+    Make a circular footprint centered on a pixel.
+
+    Parameters
+    ----------
+    radius : float
+        The radius of the circular region in pixels.
+
+    Returns
+    -------
+    footprint : 2D bool `~numpy.ndarray`
+        A square boolean array with an odd size along each axis. `True`
+        indicates a pixel whose center is within ``radius`` pixels of
+        the central pixel.
+    """
+    half = int(radius)
+    idx = np.arange(-half, half + 1)
+    xx, yy = np.meshgrid(idx, idx)
+    return (xx ** 2 + yy ** 2) <= radius ** 2
+
+
 def _fast_circular_peaks(data, radius):
     """
     Find pixels that are local maxima within circular regions.
 
     This is equivalent to::
 
-        idx = np.arange(-radius, radius + 1)
-        xx, yy = np.meshgrid(idx, idx)
-        footprint = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+        footprint = _circular_footprint(radius)
         data_max = maximum_filter(data, footprint=footprint,
                                   mode='constant', cval=0.0)
         peaks = (data == data_max)
 
-    but uses fast separable box filters with targeted circular
-    verification, which is typically ~10-400x faster (depending on the
-    radius).
+    For a radius of at least ``_MIN_FAST_RADIUS`` pixels, the result
+    is computed with fast separable box filters and targeted circular
+    verification, which is much faster for large radii. Smaller radii
+    use the footprint filter directly because it is faster for them.
 
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D image array. Must be NaN-free because
-        `~scipy.ndimage.maximum_filter` propagates NaNs, which would
-        corrupt the local-maximum comparisons.
+        The 2D image array. Must be NaN-free because comparisons with
+        NaN are always `False`, which would corrupt the local-maximum
+        comparisons.
 
     radius : float
         The radius of the circular region in pixels.
@@ -118,19 +143,14 @@ def _fast_circular_peaks(data, radius):
         Boolean mask where `True` indicates a local maximum within the
         circular region.
     """
-    # Build the circular footprint
-    idx = np.arange(-radius, radius + 1)
-    radius_sq = radius ** 2
-    footprint_size = len(idx)
+    footprint_bool = _circular_footprint(radius)
 
-    xx, yy = np.meshgrid(idx, idx)
-    footprint_bool = (xx ** 2 + yy ** 2) <= radius_sq
+    if radius < _MIN_FAST_RADIUS:
+        data_max = maximum_filter(data, footprint=footprint_bool,
+                                  mode='constant', cval=0.0)
+        return data == data_max
 
-    # For even-sized footprints (non-integer radius), scipy's
-    # maximum_filter places the center at index ``footprint_size // 2``
-    # (i.e., the origin is biased by +0.5 pixel). The same convention is
-    # used here so that the fast path is bit-identical to the reference
-    # maximum_filter(footprint=...) result.
+    footprint_size = footprint_bool.shape[0]
     half = footprint_size // 2
 
     # Circumscribed box (size = footprint_size): contains the footprint.
@@ -140,14 +160,10 @@ def _fast_circular_peaks(data, radius):
                                   cval=0.0)
     definite = (data == data_max_box)
 
-    # Inscribed box: fits inside the circle. For even-sized footprints,
-    # the circle center is shifted by 0.5 from the pixel center. We
-    # account for this so the inscribed box stays inside the circle.
-    if footprint_size % 2 == 0:
-        half_side = int(np.floor(radius / np.sqrt(2) - 0.5))
-    else:
-        half_side = int(np.floor(radius / np.sqrt(2)))
-    side_insc = max(2 * half_side + 1, 3)
+    # Inscribed box: the largest centered box that fits inside the
+    # circle
+    half_side = int(radius / np.sqrt(2))
+    side_insc = 2 * half_side + 1
 
     data_max_insc = maximum_filter(data, size=side_insc, mode='constant',
                                    cval=0.0)
@@ -263,12 +279,13 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         The minimum allowed separation (in pixels) between detected
         peaks, enforced using a circular region of this radius. Each
         detected peak must be the maximum value (or tied for the
-        maximum) within a circle of this radius. This is equivalent to
-        using a circular ``footprint`` of the given radius but uses a
-        fast algorithm that is typically ~10-400x faster (depending on
-        the radius). When set, ``box_size`` and ``footprint`` are not
-        used for peak detection. If `None` (default), the peak detection
-        uses ``box_size`` or ``footprint`` as specified.
+        maximum) of the pixels whose centers are within a circle of
+        this radius centered on the peak pixel. This is equivalent to
+        using a circular ``footprint`` of the given radius, but uses a
+        fast algorithm that is much faster for large radii. When set
+        to a positive value, ``box_size`` and ``footprint`` are not
+        used for peak detection. If `None` (default) or 0, the peak
+        detection uses ``box_size`` or ``footprint`` as specified.
 
     centroid_func : callable, optional
         A callable object (e.g., function or class) that is used to
@@ -311,13 +328,16 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     of the maximum pixel value within the input ``box_size`` or
     ``footprint`` (i.e., only the peak pixel is identified).
 
-    When ``min_separation`` is given, peaks are detected
-    using a fast algorithm that is mathematically equivalent
-    to a circular ``footprint`` of the given radius for
-    `~scipy.ndimage.maximum_filter`. The algorithm uses two fast O(N)
-    separable box filters (inscribed and circumscribed squares of
-    the circle) to classify most candidates, then verifies only the
-    remaining few against the exact circular region.
+    When ``min_separation`` is given, the detected peaks are the
+    same as those found with a circular ``footprint`` of the given
+    radius, centered on each pixel, for
+    `~scipy.ndimage.maximum_filter`. For a radius of at least 4 pixels,
+    the algorithm uses two fast O(N) separable box filters (inscribed
+    and circumscribed squares of the circle) to classify most
+    candidates, then verifies only the remaining few against the exact
+    circular region. This is about 15 times faster than the footprint
+    filter for a radius of 10 pixels, and the gain grows with the
+    radius. Smaller radii use the footprint filter directly.
 
     A centroiding function can be input via the ``centroid_func``
     keyword to compute centroid coordinates with subpixel precision

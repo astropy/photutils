@@ -6,7 +6,7 @@ Tests for the daofinder module.
 import astropy.units as u
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.detection.daofinder import DAOStarFinder
 from photutils.utils.exceptions import (NoDetectionsWarning,
@@ -32,7 +32,7 @@ class TestDAOStarFinder:
         tbl1 = finder1(data << units)
         assert_array_equal(tbl0, tbl1)
 
-        assert np.min(tbl0['flux']) > 150
+        assert np.min(tbl0['flux']) > 100
 
         # Test that sources are returned with threshold = 0
         finder = DAOStarFinder(0, fwhm)
@@ -141,6 +141,26 @@ class TestDAOStarFinder:
         tbl_bool = finder(data, mask=bool_mask)
         tbl_int = finder(data, mask=int_mask)
         assert_array_equal(tbl_bool, tbl_int)
+
+    def test_flux_kernel_footprint(self, data):
+        """
+        Test that the flux is the sum of the data values within the
+        kernel footprint, not the full kernel array.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=3.0)
+        mask = finder.kernel.mask.astype(bool)
+        assert not np.all(mask)
+
+        tbl = finder(data)
+        ysize, xsize = mask.shape
+        xypos = finder._get_raw_catalog(data).apply_all_filters().xypos
+        for row, (xpos, ypos) in zip(tbl, xypos, strict=True):
+            y0 = ypos - ysize // 2
+            x0 = xpos - xsize // 2
+            cutout = data[y0:y0 + ysize, x0:x0 + xsize]
+            assert_allclose(row['flux'], np.sum(cutout[mask]))
+            assert row['flux'] < np.sum(cutout)
+        assert_allclose(tbl['mag'], -2.5 * np.log10(tbl['flux']))
 
     def test_xycoords(self, data):
         """

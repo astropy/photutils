@@ -692,6 +692,22 @@ Bug Fixes
     offset when the input ``xycoords`` are not integers. The input
     positions are now rounded to the nearest pixel. [#2492]
 
+  - Fixed the ``find_peaks`` ``min_separation`` keyword (also used by
+    the star finder classes) so that the local region is a circle of
+    that radius centered on each pixel. Previously, the region was
+    larger than the circle for radii smaller than 2 pixels (e.g.,
+    diagonal neighbors were suppressed for ``min_separation=1``) and
+    was offset by half a pixel for most non-integer radii. Small radii
+    are also faster. [#2493]
+
+  - Fixed the ``DAOStarFinder`` ``flux`` to be the sum of the data
+    values within the kernel footprint, as documented. Previously, it
+    was the sum over the entire rectangular kernel array, which includes
+    pixels beyond the truncation radius of the Gaussian kernel. The
+    ``flux`` values are therefore smaller, the ``mag`` values are
+    larger, and the sources selected by ``n_brightest`` may differ.
+    [#2493]
+
   - Fixed ``find_peaks`` (and the star finder classes, which use it)
     so that masked pixels can no longer suppress nearby peaks within
     the local region. Masked pixels are now replaced by the minimum
