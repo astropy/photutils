@@ -1511,7 +1511,11 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
     input-masked, or non-finite are zero, and the first (row-major)
     maximum of that cutout is the peak pixel. The 3x3 box centered on
     the peak is returned together with the pixel variances of the box
-    (zero for masked pixels).
+    and the box pixels that enter the fit. A masked box pixel
+    (input-masked or non-finite data, inside or outside of the source
+    segment) is left out of the fit. An unmasked box pixel outside of
+    the source segment, including a pixel of a neighboring source,
+    enters the fit with its data value and variance.
 
     Parameters
     ----------
@@ -1523,8 +1527,9 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
         ``data``. Required (not `None`) if ``compute_err`` is nonzero.
 
     mask : 2D ndarray of uint8 (C-contiguous)
-        A mask array where nonzero values indicate masked (zeroed)
-        pixels. Must have the same shape as ``data``. Bit 1 (value 1)
+        A mask array where nonzero values indicate masked pixels,
+        which cannot be the peak pixel and are left out of the fit.
+        Must have the same shape as ``data``. Bit 1 (value 1)
         marks input-masked pixels and bit 2 (value 2) marks non-finite
         data pixels folded into the mask by the caller.
 
@@ -1558,14 +1563,19 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
         otherwise.
 
     boxes : 2D ndarray of float64
-        The zero-filled cutout values of the 3x3 box around the peak in
-        row-major order, with shape ``(n_sources, 9)``. Zero for
-        statuses other than 0.
+        The data values of the 3x3 box around the peak in row-major
+        order, with shape ``(n_sources, 9)``. Zero for the box pixels
+        that are masked and for statuses other than 0.
 
     box_var : 2D ndarray of float64
         The pixel variances of the box, zero for masked pixels, with
         shape ``(n_sources, 9)``. All zero unless ``compute_err`` is
         nonzero.
+
+    fitted : 2D ndarray of uint8
+        Whether each box pixel enters the fit, with shape
+        ``(n_sources, 9)``. Zero for the masked pixels of the box and
+        one otherwise. All one for statuses other than 0.
 
     Raises
     ------
@@ -1599,10 +1609,12 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
     peak_arr = np.full((n_src, 2), -1, dtype=np.intp)
     boxes_arr = np.zeros((n_src, 9))
     box_var_arr = np.zeros((n_src, 9))
+    fitted_arr = np.ones((n_src, 9), dtype=np.uint8)
     cdef Py_ssize_t[::1] status = status_arr
     cdef Py_ssize_t[:, ::1] peak = peak_arr
     cdef double[:, ::1] boxes = boxes_arr
     cdef double[:, ::1] box_var = box_var_arr
+    cdef unsigned char[:, ::1] fitted = fitted_arr
     cdef const real_t *err_ptr = NULL
     if has_error:
         err_ptr = &error[0, 0]
@@ -1610,7 +1622,7 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
     cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl, k
     cdef Py_ssize_t xpeak, ypeak, bx, by
     cdef double v, vmax, e
-    cdef bint found, masked
+    cdef bint found
     with nogil:
         for i in range(n_src):
             lbl = labels[i]
@@ -1652,14 +1664,15 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
             k = 0
             for by in range(ypeak - 1, ypeak + 2):
                 for bx in range(xpeak - 1, xpeak + 2):
-                    masked = (segm[by, bx] != lbl or mask[by, bx] != 0)
-                    if not masked:
+                    if mask[by, bx] != 0:
+                        fitted[i, k] = 0
+                    else:
                         boxes[i, k] = data[by, bx]
                         if compute_err:
                             e = err_ptr[by * nx_data + bx]
                             box_var[i, k] = e * e
                     k += 1
-    return status_arr, peak_arr, boxes_arr, box_var_arr
+    return status_arr, peak_arr, boxes_arr, box_var_arr, fitted_arr
 
 
 def batch_segment_gather(const real_t[:, ::1] values, *,

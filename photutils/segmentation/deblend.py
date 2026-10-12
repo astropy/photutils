@@ -333,17 +333,18 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         # version 4.0
         contrast_method = 'basin'
 
-    if contrast == 1:  # no deblending
-        segm_img = segmentation_image.copy()
-        if relabel:
-            segm_img.relabel_consecutive()
-        return segm_img
-
     if labels is None:
         labels = segmentation_image.labels
     else:
         labels = np.atleast_1d(labels)
         segmentation_image.check_labels(labels)
+
+    if contrast == 1:  # no deblending
+        segm_img = SegmentationImage._from_data(
+            segmentation_image.data.copy())
+        if relabel:
+            segm_img.relabel_consecutive()
+        return segm_img
 
     # Include only sources that have at least (2 * n_pixels).
     # This is required for a source to be deblended into multiple

@@ -386,6 +386,9 @@ def decode_flags(flags, registry, *, return_bit_values=False):
             msg = 'Flag value must be a non-negative integer'
             raise ValueError(msg)
 
+        # A NumPy integer cannot be compared with a bit value that is
+        # out of bounds for its dtype
+        flag_value = int(flag_value)
         active_flags = []
         for bit_value, name in flag_definitions.items():
             if flag_value & bit_value:

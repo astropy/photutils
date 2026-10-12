@@ -5,6 +5,7 @@ Tests for the core module.
 
 import sys
 import threading
+import warnings
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property, partial
@@ -19,6 +20,8 @@ from scipy.ndimage import find_objects
 import photutils.segmentation.core as segm_core
 from photutils.segmentation._label_stats import label_stats
 from photutils.segmentation.core import Segment, SegmentationImage
+from photutils.segmentation.deblend import deblend_sources
+from photutils.segmentation.detect import detect_sources
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
                                             HAS_REGIONS, HAS_SHAPELY)
@@ -996,6 +999,137 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             segm.remove_masked_labels(mask)
 
+    @pytest.mark.parametrize('as_list', [False, True])
+    @pytest.mark.parametrize('partial_overlap', [True, False])
+    def test_remove_masked_labels_non_bool_mask(self, as_list,
+                                                partial_overlap):
+        """
+        Test that a list mask and a 0/1 integer mask are used as a
+        boolean mask and not as a fancy index.
+        """
+        bool_mask = np.zeros(self.data.shape, dtype=bool)
+        bool_mask[2:, 3:] = True
+        ref = SegmentationImage(self.data.copy())
+        ref.remove_masked_labels(bool_mask, partial_overlap=partial_overlap)
+
+        mask = bool_mask.astype(int)
+        if as_list:
+            mask = mask.tolist()
+        segm = SegmentationImage(self.data.copy())
+        segm.remove_masked_labels(mask, partial_overlap=partial_overlap)
+        assert_equal(segm.data, ref.data)
+        expected = [1, 4, 7] if partial_overlap else [1, 3, 4, 7]
+        assert_equal(segm.labels, expected)
+
+    @pytest.mark.parametrize('method', ['reassign_labels', 'remove_labels',
+                                        'keep_label', 'keep_labels',
+                                        'remove_border_labels',
+                                        'remove_masked_labels'])
+    def test_relabel_nothing_removed(self, method):
+        """
+        Test that relabel=True relabels the image consecutively when
+        no label is reassigned or removed.
+        """
+        if method == 'keep_label':
+            data = self.data * (self.data == 7)
+        else:
+            data = np.zeros((8, 8), dtype=int)
+            data[1:7, 1:7] = self.data
+        segm = SegmentationImage(data)
+        labels = segm.labels
+        ref = segm.copy()
+        ref.relabel_consecutive()
+
+        if method == 'reassign_labels':
+            segm.reassign_labels([], 99, relabel=True)
+        elif method == 'remove_labels':
+            segm.remove_labels([], relabel=True)
+        elif method == 'keep_label':
+            segm.keep_label(7, relabel=True)
+        elif method == 'keep_labels':
+            segm.keep_labels(labels, relabel=True)
+        elif method == 'remove_border_labels':
+            segm.remove_border_labels(1, relabel=True)
+        else:
+            mask = np.zeros(data.shape, dtype=bool)
+            segm.remove_masked_labels(mask, relabel=True)
+
+        assert_equal(segm.labels, np.arange(len(labels)) + 1)
+        assert_equal(segm.data, ref.data)
+
+    @pytest.mark.parametrize('method', ['reassign_labels', 'remove_labels',
+                                        'keep_labels',
+                                        'remove_border_labels',
+                                        'remove_masked_labels'])
+    def test_relabel_no_labels(self, method):
+        """
+        Test that relabel=True on an image with no labels leaves it
+        unchanged without a warning.
+        """
+        segm = SegmentationImage(np.zeros((6, 6), dtype=int))
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            if method == 'reassign_labels':
+                segm.reassign_labels([], 99, relabel=True)
+            elif method == 'remove_labels':
+                segm.remove_labels([], relabel=True)
+            elif method == 'keep_labels':
+                segm.keep_labels([], relabel=True)
+            elif method == 'remove_border_labels':
+                segm.remove_border_labels(1, relabel=True)
+            else:
+                mask = np.ones(segm.shape, dtype=bool)
+                segm.remove_masked_labels(mask, relabel=True)
+        assert segm.n_labels == 0
+        assert_equal(segm.data, 0)
+
+    @pytest.mark.parametrize('new_label', [-1, 2.5, np.nan, 'a', [1, 2],
+                                           None])
+    def test_reassign_labels_invalid_new_label(self, new_label):
+        """
+        Test that a negative or non-integer new label raises an error
+        and leaves the image unchanged.
+        """
+        segm = SegmentationImage(self.data.copy())
+        match = 'new_label must be a non-negative integer'
+        with pytest.raises(ValueError, match=match):
+            segm.reassign_label(1, new_label)
+        with pytest.raises(ValueError, match=match):
+            segm.reassign_labels([1, 3], new_label, relabel=True)
+        assert_equal(segm.data, self.data)
+
+    @pytest.mark.parametrize(('dtype', 'new_label'),
+                             [(np.uint8, 256), (np.int16, 2**15),
+                              (np.int64, 2**63)])
+    def test_reassign_labels_new_label_dtype(self, dtype, new_label):
+        """
+        Test that a new label that the dtype of the segmentation array
+        cannot hold raises an error, and that the largest value it can
+        hold is accepted.
+        """
+        segm = SegmentationImage(self.data.astype(dtype))
+        match = 'cannot be represented'
+        with pytest.raises(ValueError, match=match):
+            segm.reassign_label(1, new_label)
+        with pytest.raises(ValueError, match=match):
+            segm.reassign_labels([1, 3], new_label)
+        assert_equal(segm.data, self.data)
+
+        segm.reassign_label(1, new_label - 1)
+        assert segm.data.dtype == dtype
+        assert segm.max_label == new_label - 1
+
+    def test_reassign_labels_integer_valued_new_label(self):
+        """
+        Test that zero, NumPy integers, and integer-valued floats are
+        valid new labels.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm.reassign_label(1, np.int16(9))
+        segm.reassign_label(3, 11.0)
+        segm.reassign_label(4, 0)
+        assert_equal(segm.labels, [5, 7, 9, 11])
+
     def test_make_source_mask(self):
         """
         Test make source mask.
@@ -1152,6 +1286,25 @@ class TestSegmentationImage:
         assert len(patches) == 2
         assert isinstance(patches, list)
         assert isinstance(patches[0], PathPatch)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    @pytest.mark.parametrize('labels', [None, 3, (4, 7)])
+    def test_plot_patches_returns_added_patches(self, labels):
+        """
+        Test that plot_patches returns the patches that were added to
+        the axes.
+        """
+        import matplotlib.pyplot as plt
+
+        _, ax = plt.subplots()
+        patches = self.segm.plot_patches(ax=ax, labels=labels)
+        assert isinstance(patches, list)
+        assert len(patches) == len(ax.patches)
+        for plotted, ax_patch in zip(patches, ax.patches, strict=True):
+            assert plotted is ax_patch
+        plt.close(ax.figure)
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
@@ -1320,6 +1473,123 @@ class TestSegmentationImage:
         assert_equal(segm5.deblended_labels, [3, 4, 5, 6])
         assert segm5.deblended_label_to_parent == {6: 2, 3: 2, 4: 3, 5: 3}
         assert_equal(segm5.parent_to_deblended_labels, deblend_map)
+
+
+@pytest.fixture
+def deblended_segm():
+    """
+    A deblended segmentation image of three blended Gaussian sources
+    and one isolated source.
+
+    The blend is label 1 in the detection image and labels 2, 3, and 4
+    in the deblended image. The isolated source is label 1 in the
+    deblended image.
+    """
+    yy, xx = np.mgrid[0:25, 0:60]
+    data = np.zeros(yy.shape)
+    for x0 in (10, 17, 24, 45):
+        data += 100.0 * np.exp(-((xx - x0)**2 + (yy - 12)**2) / 8.0)
+    segm = detect_sources(data, 1.0, n_pixels=5)
+    return deblend_sources(data, segm, n_pixels=5)
+
+
+class TestDeblendMapsAfterRelabel:
+    """
+    Tests for the deblended label maps after labels are removed or
+    merged.
+    """
+
+    def test_fixture(self, deblended_segm):
+        """
+        Test the deblended label maps of the fixture.
+        """
+        segm = deblended_segm
+        assert_equal(segm.labels, [1, 2, 3, 4])
+        assert_equal(segm.deblended_labels, [2, 3, 4])
+        assert segm.deblended_label_to_parent == {2: 1, 3: 1, 4: 1}
+        assert list(segm.parent_to_deblended_labels) == [1]
+        assert_equal(segm.parent_to_deblended_labels[1], [2, 3, 4])
+
+    @pytest.mark.parametrize('relabel', [False, True])
+    def test_remove_child(self, deblended_segm, relabel):
+        """
+        Test that a removed deblended label is dropped from the maps.
+        """
+        segm = deblended_segm
+        segm.remove_label(2, relabel=relabel)
+        children = [2, 3] if relabel else [3, 4]
+        assert_equal(segm.deblended_labels, children)
+        assert segm.deblended_label_to_parent == dict.fromkeys(children, 1)
+        assert list(segm.parent_to_deblended_labels) == [1]
+        assert_equal(segm.parent_to_deblended_labels[1], children)
+        assert np.all(np.isin(segm.deblended_labels, segm.labels))
+
+    def test_remove_all_children(self, deblended_segm):
+        """
+        Test that a parent with no deblended labels left is dropped
+        from the maps.
+        """
+        segm = deblended_segm
+        segm.remove_labels([2, 3, 4])
+        assert_equal(segm.labels, [1])
+        assert segm.deblended_labels.size == 0
+        assert segm.deblended_label_to_parent == {}
+        assert segm.parent_to_deblended_labels == {}
+
+    def test_merge_children_of_two_parents(self):
+        """
+        Test that a label merged from the deblended labels of two
+        parents is kept under both parents and is listed once in the
+        deblended labels.
+        """
+        yy, xx = np.mgrid[0:60, 0:40]
+        data = np.zeros(yy.shape)
+        for x0, y0 in ((10, 12), (17, 12), (10, 45), (17, 45)):
+            data += 100.0 * np.exp(-((xx - x0)**2 + (yy - y0)**2) / 8.0)
+        segm = detect_sources(data, 1.0, n_pixels=5)
+        segm = deblend_sources(data, segm, n_pixels=5)
+        assert_equal(segm.deblended_labels, [1, 2, 3, 4])
+        assert list(segm.parent_to_deblended_labels) == [1, 2]
+
+        segm.reassign_labels([2, 3], 2)
+        assert_equal(segm.labels, [1, 2, 4])
+        assert_equal(segm.deblended_labels, [1, 2, 4])
+        assert_equal(segm.parent_to_deblended_labels[1], [1, 2])
+        assert_equal(segm.parent_to_deblended_labels[2], [2, 4])
+        assert segm.deblended_label_to_parent == {1: 1, 2: 2, 4: 2}
+
+    def test_keep_non_deblended(self, deblended_segm):
+        """
+        Test that the maps are empty when only a label that was not
+        deblended is kept.
+        """
+        segm = deblended_segm
+        segm.keep_label(1, relabel=True)
+        assert segm.deblended_labels.size == 0
+        assert segm.deblended_label_to_parent == {}
+        assert segm.parent_to_deblended_labels == {}
+
+    def test_merge_children(self, deblended_segm):
+        """
+        Test that merged deblended labels appear once in the maps.
+        """
+        segm = deblended_segm
+        segm.reassign_labels([2, 3], 4)
+        assert_equal(segm.labels, [1, 4])
+        assert_equal(segm.deblended_labels, [4])
+        assert segm.deblended_label_to_parent == {4: 1}
+        assert_equal(segm.parent_to_deblended_labels[1], [4])
+
+    def test_merge_children_keeps_order(self, deblended_segm):
+        """
+        Test that the deblended labels of a parent keep their order
+        when two of them are merged.
+        """
+        segm = deblended_segm
+        segm.reassign_labels([2, 4], 9)
+        assert_equal(segm.parent_to_deblended_labels[1], [9, 3])
+        assert_equal(segm.deblended_labels, [3, 9])
+        assert segm.deblended_label_to_parent == {9: 1, 3: 1}
 
 
 class CustomSegm(SegmentationImage):
@@ -1526,6 +1796,40 @@ def test_imshow_map_too_many_labels():
 
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_imshow_map_max_labels_excludes_background(segm_data):
+    """
+    Test that the background value is not counted against max_labels.
+    """
+    segm = SegmentationImage(segm_data)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        _im, cbar_info = segm.imshow_map(max_labels=segm.n_labels)
+    assert cbar_info is not None
+    assert_equal(cbar_info[2], [0, 1, 3, 4, 5, 7])
+
+    match = 'The colorbar was not plotted'
+    with pytest.warns(AstropyUserWarning, match=match):
+        _im, cbar_info = segm.imshow_map(max_labels=segm.n_labels - 1)
+    assert cbar_info is None
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_imshow_map_no_labels():
+    """
+    Test that imshow_map displays an image with no labels and returns
+    no colorbar information.
+    """
+    from matplotlib.image import AxesImage
+
+    segm = SegmentationImage(np.zeros((4, 5), dtype=int))
+    im, cbar_info = segm.imshow_map()
+    assert isinstance(im, AxesImage)
+    assert cbar_info is None
+    assert_equal(np.asarray(im.get_array()), segm.data)
+    assert len(im.axes.figure.axes) == 1
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_imshow_map_cbar_labelsize(segm_data):
     """
     Test imshow_map with cbar_labelsize parameter.
@@ -1710,6 +2014,38 @@ class TestGetLabelMapping:
         child = SegmentationImage(child_data)
         mapping = self.parent.get_label_mapping(child)
         assert_equal(mapping[1], [0, 1])
+
+    @pytest.mark.parametrize(('dtype', 'offset'),
+                             [(np.int64, 2**32), (np.int64, 2**62),
+                              (np.uint64, 2**63)])
+    def test_large_labels(self, dtype, offset):
+        """
+        Test the mapping for label values of 2**31 or more, whose
+        packed (parent, child) keys do not fit in an int64.
+        """
+        parent_data = self.parent.data.astype(dtype)
+        parent_data[parent_data > 3] += dtype(offset)
+        child_data = self.child.data.astype(dtype)
+        child_data[child_data > 2] += dtype(offset + 100)
+        child_data[0, 0] = 0
+        parent = SegmentationImage(parent_data)
+        child = SegmentationImage(child_data)
+
+        expected = {}
+        for label in parent.labels:
+            expected[int(label)] = np.unique(child_data[parent_data == label])
+
+        mapping = parent.get_label_mapping(child)
+        assert list(mapping) == list(expected)
+        for label, children in mapping.items():
+            assert isinstance(label, int)
+            assert children.dtype == dtype
+            assert_equal(children, expected[label])
+
+        label = int(parent.labels[-1])
+        mapping = parent.get_label_mapping(child, labels=label)
+        assert list(mapping) == [label]
+        assert_equal(mapping[label], expected[label])
 
 
 class TestGetSegment:
@@ -2060,6 +2396,102 @@ class TestGetPatch:
         match = 'is invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.get_patches(99)
+
+
+@pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+class TestLabelAboveInt32:
+    """
+    Tests for the single-label polygon, patch, and region methods with
+    a label above the int32 range.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, segm_data):
+        self.label = 2**40
+        data = segm_data.astype(np.int64)
+        data[data == 7] = self.label
+        self.segm = SegmentationImage(data)
+        self.ref = SegmentationImage(segm_data)
+
+    def test_get_polygon(self):
+        """
+        Test that get_polygon and get_polygons return the polygon.
+        """
+        ref_poly = self.ref.get_polygon(7)
+        assert self.segm.get_polygon(self.label).equals(ref_poly)
+        polygons = self.segm.get_polygons([1, self.label])
+        assert polygons[0].equals(self.ref.get_polygon(1))
+        assert polygons[1].equals(ref_poly)
+
+    def test_get_segment(self):
+        """
+        Test that get_segment returns a segment with its polygon.
+        """
+        segment = self.segm.get_segment(self.label)
+        assert segment.polygon.equals(self.ref.get_polygon(7))
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_get_patch(self):
+        """
+        Test that get_patch and get_patches return the patch.
+        """
+        ref_verts = self.ref.get_patch(7).get_verts()
+        assert_allclose(self.segm.get_patch(self.label).get_verts(),
+                        ref_verts)
+        patches = self.segm.get_patches([1, self.label])
+        assert_allclose(patches[1].get_verts(), ref_verts)
+
+    @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+    def test_get_region(self):
+        """
+        Test that get_region and get_regions return the region.
+        """
+        ref_region = self.ref.get_region(7)
+        region = self.segm.get_region(self.label)
+        assert_allclose(region.vertices.xy, ref_region.vertices.xy)
+        assert region.meta['label'] == self.label
+        regions = self.segm.get_regions([1, self.label])
+        assert_allclose(regions[1].vertices.xy, ref_region.vertices.xy)
+
+
+@pytest.mark.parametrize('missing', ['HAS_RASTERIO', 'HAS_SHAPELY'])
+class TestMissingPolygonDependency:
+    """
+    Tests for the single-label patch and region methods when rasterio
+    or shapely is not installed.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, segm_data, monkeypatch, missing):
+        monkeypatch.setattr(segm_core, missing, False)
+        self.segm = SegmentationImage(segm_data)
+
+    def test_get_patch(self):
+        """
+        Test that get_patch returns None.
+        """
+        assert self.segm.get_patch(1) is None
+
+    def test_get_patches(self):
+        """
+        Test that get_patches returns a list of None.
+        """
+        assert self.segm.get_patches([1, 3]) == [None, None]
+        assert self.segm.get_patches(5) == [None]
+
+    def test_get_region(self):
+        """
+        Test that get_region returns None.
+        """
+        assert self.segm.get_region(1) is None
+
+    def test_get_regions(self):
+        """
+        Test that get_regions returns a list of None.
+        """
+        assert self.segm.get_regions([1, 3]) == [None, None]
+        assert self.segm.get_regions(5) == [None]
 
 
 @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
