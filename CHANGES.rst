@@ -1233,6 +1233,13 @@ Bug Fixes
     ``kron_undefined`` flag is set instead of ``kron_non_finite_data``.
     [#2503]
 
+  - Fixed the ``SegmentationImage`` ``deblended_labels``,
+    ``deblended_label_to_parent``, and ``parent_to_deblended_labels``
+    attributes keeping removed deblended labels as label 0 and listing
+    merged deblended labels more than once. A label merged from the
+    deblended labels of more than one parent is kept under each of its
+    parents. [#2503]
+
 - ``photutils.utils``
 
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the

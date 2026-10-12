@@ -236,6 +236,10 @@ def _remap_deblend_label_map(deblend_label_map, relabel_map):
     """
     Return a new deblend label map with remapped child labels.
 
+    Child labels that map to zero are dropped, as is a parent that has
+    no child labels left. Child labels of a parent that map to the same
+    new label are included once.
+
     Parameters
     ----------
     deblend_label_map : dict
@@ -249,11 +253,20 @@ def _remap_deblend_label_map(deblend_label_map, relabel_map):
     Returns
     -------
     result : dict
-        A new mapping with the same parent keys, where each array of
-        child labels has been translated through ``relabel_map``.
+        A new mapping of the parent labels to their arrays of child
+        labels translated through ``relabel_map``, in their original
+        order.
     """
-    return {parent_label: relabel_map[child_labels]
-            for parent_label, child_labels in deblend_label_map.items()}
+    new_map = {}
+    for parent_label, child_labels in deblend_label_map.items():
+        new_labels = relabel_map[child_labels]
+        # Keep the first occurrence of each new label
+        _, idx = np.unique(new_labels, return_index=True)
+        new_labels = new_labels[np.sort(idx)]
+        new_labels = new_labels[new_labels != 0]
+        if new_labels.size > 0:
+            new_map[parent_label] = new_labels
+    return new_map
 
 
 def _remap_flags_map(flags_map, relabel_map):
@@ -475,7 +488,10 @@ class SegmentationImage:
         """
         if len(self._deblend_label_map) == 0:
             return np.array([], dtype=self._data.dtype)
-        return np.sort(np.concatenate(list(self._deblend_label_map.values())))
+        # A label merged from the deblended labels of more than one
+        # parent is listed under each parent
+        return np.unique(
+            np.concatenate(list(self._deblend_label_map.values())))
 
     @cached_property
     def deblended_label_to_parent(self):
@@ -486,6 +502,12 @@ class SegmentationImage:
         The keys are the deblended label numbers and the values are the
         original parent label numbers. Only deblended sources are
         included in the dictionary.
+
+        A label that was merged from the deblended labels of more than
+        one parent (e.g., with :meth:`reassign_labels`) has only one of
+        its parents here, the last one in the order of
+        ``parent_to_deblended_labels``, which lists the label under
+        each of its parents.
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
@@ -505,6 +527,10 @@ class SegmentationImage:
         The keys are the original parent label numbers and the values
         are 1D arrays of the deblended label numbers. Only deblended
         sources are included in the dictionary.
+
+        A label that was merged from the deblended labels of more than
+        one parent (e.g., with :meth:`reassign_labels`) is listed under
+        each of its parents.
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
@@ -922,12 +948,13 @@ class SegmentationImage:
         x0 = slc[1].start
         transform = Affine(1.0, 0.0, x0 - 0.5, 0.0, 1.0, y0 - 0.5)
 
-        # Create a single-label array for the cutout
-        label_data = np.where(label_mask, label, 0).astype(np.int32)
+        # The raster of the label is one inside the label and zero
+        # elsewhere, so that it does not depend on the label value
+        label_data = label_mask.astype(np.uint8)
         raw_polys = list(shapes(label_data, connectivity=8,
                                 mask=label_mask, transform=transform))
 
-        geo_polys = [poly for poly, val in raw_polys if int(val) == label]
+        geo_polys = [poly for poly, _ in raw_polys]
 
         if len(geo_polys) == 0:
             return None
@@ -1239,7 +1266,9 @@ class SegmentationImage:
         Raises
         ------
         ValueError
-            If ``label`` is invalid.
+            If ``label`` is invalid, or if ``new_label`` is negative,
+            is not an integer, or cannot be represented in the dtype of
+            the segmentation array.
 
         Examples
         --------
@@ -1319,6 +1348,13 @@ class SegmentationImage:
             such that the labels are in consecutive order starting from
             1.
 
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid, or if ``new_label`` is
+            negative, is not an integer, or cannot be represented in
+            the dtype of the segmentation array.
+
         Examples
         --------
         >>> import numpy as np
@@ -1373,8 +1409,29 @@ class SegmentationImage:
         """
         self.check_labels(labels)
 
+        # The new label is zero or a label value that the dtype of the
+        # segmentation array can hold
+        valid = np.ndim(new_label) == 0
+        if valid:
+            try:
+                valid = int(new_label) == new_label
+            except (TypeError, ValueError, OverflowError):
+                valid = False
+        if not valid or new_label < 0:
+            msg = 'new_label must be a non-negative integer'
+            raise ValueError(msg)
+        new_label = int(new_label)
+        if new_label > np.iinfo(self.data.dtype).max:
+            msg = (f'new_label {new_label} cannot be represented in the '
+                   f'dtype of the segmentation array ({self.data.dtype})')
+            raise ValueError(msg)
+
         labels = np.atleast_1d(labels)
         if labels.size == 0:
+            # No label is reassigned, but the existing labels may not
+            # be consecutive
+            if relabel and self.n_labels > 0:
+                self.relabel_consecutive()
             return
 
         # The new value of every label, in the original dtype
@@ -1791,7 +1848,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        mask : 2D bool `~numpy.ndarray`
+        mask : array_like (bool)
             A boolean mask, with the same shape as the segmentation
             array, where `True` values indicate masked pixels.
 
@@ -1844,6 +1901,7 @@ class SegmentationImage:
                [7, 7, 0, 5, 5, 5],
                [7, 7, 0, 0, 5, 5]])
         """
+        mask = np.asarray(mask, dtype=bool)
         if mask.shape != self.shape:
             msg = 'mask must have the same shape as the segmentation array'
             raise ValueError(msg)
@@ -2285,7 +2343,8 @@ class SegmentationImage:
         -------
         patch : `~matplotlib.patches.PathPatch` or `None`
             A matplotlib patch for the source segment, or `None` if the
-            geometry is empty or rasterio and shapely are not available.
+            geometry is empty or if rasterio or shapely is not
+            available.
 
         Raises
         ------
@@ -2308,8 +2367,6 @@ class SegmentationImage:
         By default, the patches will have a white edge color and no face
         color.
 
-        This method requires the optional rasterio and shapely packages.
-
         Parameters
         ----------
         labels : int, array_like (1D, int)
@@ -2329,8 +2386,10 @@ class SegmentationImage:
 
         Returns
         -------
-        patches : list of `~matplotlib.patches.PathPatch`
-            A list of matplotlib patches for the source segments.
+        patches : list of `~matplotlib.patches.PathPatch` or `None`
+            A list of matplotlib patches for the source segments. An
+            element is `None` if the geometry is empty or if rasterio
+            or shapely is not available.
 
         Raises
         ------
@@ -2345,6 +2404,9 @@ class SegmentationImage:
         patches = []
         for label in labels:
             poly = self._make_polygon(label, self._get_slice(label))
+            if poly is None:
+                patches.append(None)
+                continue
             patches.append(self._convert_shapely_to_pathpatch(
                 poly, origin=origin, scale=scale, **patch_kwargs))
         return patches
@@ -2382,8 +2444,9 @@ class SegmentationImage:
         Returns
         -------
         patches : list of `~matplotlib.patches.PathPatch`
-            A list of matplotlib patches for the plotted polygons. The
-            patches can be used, for example, when adding a plot legend.
+            A list of the matplotlib patches that were added to the
+            axes. The patches can be used, for example, when adding a
+            plot legend.
 
         Examples
         --------
@@ -2416,14 +2479,13 @@ class SegmentationImage:
             if np.isscalar(labels):
                 patches = [patches]
 
+        plotted_patches = []
         for patch in patches:
             patch = copy(patch)
             ax.add_patch(patch)
+            plotted_patches.append(patch)
 
-        if labels is not None:
-            patches = list(patches)
-
-        return patches
+        return plotted_patches
 
     def to_regions(self, *, group=False, **kwargs):
         """
@@ -2515,8 +2577,7 @@ class SegmentationImage:
         source segment. Interior holes within the source segment are not
         included.
 
-        This method requires the optional regions, rasterio, and shapely
-        packages.
+        This method requires the optional regions package.
 
         Parameters
         ----------
@@ -2531,10 +2592,12 @@ class SegmentationImage:
 
         Returns
         -------
-        region : `~regions.PolygonPixelRegion` or `~regions.Regions`
+        region : `~regions.PolygonPixelRegion`, `~regions.Regions`, \
+                or `None`
             A `~regions.PolygonPixelRegion` object, or a
             `~regions.Regions` object if the segment is a MultiPolygon
-            (e.g., non-contiguous).
+            (e.g., non-contiguous). `None` is returned if no polygon
+            was found or if rasterio or shapely is not available.
 
         Raises
         ------
@@ -2559,8 +2622,7 @@ class SegmentationImage:
         source segments. Interior holes within the source segments are
         not included.
 
-        This method requires the optional regions, rasterio, and shapely
-        packages.
+        This method requires the optional regions package.
 
         Parameters
         ----------
@@ -2575,10 +2637,13 @@ class SegmentationImage:
 
         Returns
         -------
-        regions : list of `~regions.PolygonPixelRegion` or `~regions.Regions`
+        regions : list of `~regions.PolygonPixelRegion`, \
+                `~regions.Regions`, or `None`
             A list of `~regions.PolygonPixelRegion` objects, or
             `~regions.Regions` objects for labels with MultiPolygon
-            segments (e.g., non-contiguous).
+            segments (e.g., non-contiguous). An element is `None` if no
+            polygon was found or if rasterio or shapely is not
+            available.
 
         Raises
         ------
@@ -2591,6 +2656,9 @@ class SegmentationImage:
         regions = []
         for label in labels:
             poly = self._make_polygon(label, self._get_slice(label))
+            if poly is None:
+                regions.append(None)
+                continue
             regions.append(_shapely_polygon_to_region(
                 poly, label=int(label), visual_kwargs=visual_kwargs))
         return regions
@@ -2664,20 +2732,36 @@ class SegmentationImage:
             raise ValueError(msg)
 
         mask = self._data > 0
-        parents = self._data[mask].astype(np.int64)
-        children = other._data[mask].astype(np.int64)
+        parents = self._data[mask]
+        children = other._data[mask]
 
         if parents.size == 0:
             mapping = {}
         else:
             # Pack each (parent, child) label pair into a single
             # int64 key so that one sorting pass finds all unique
-            # pairs. This is safe from overflow for label values
-            # below 2**31.
-            mult = np.int64(other.max_label) + 1
-            pairs = np.unique(parents * mult + children)
+            # pairs. The label values are packed, unless the largest
+            # key would overflow. In that case the positions of the
+            # labels in the sorted labels are packed instead, which
+            # costs a search of the labels for every labeled pixel.
+            parent_values = None
+            mult = int(other.max_label) + 1
+            if (int(self.max_label) + 1) * mult > 2**63:
+                parent_values = self.labels
+                child_values = np.concatenate(
+                    (np.zeros(1, dtype=other.labels.dtype), other.labels))
+                parents = np.searchsorted(parent_values, parents)
+                children = np.searchsorted(child_values, children)
+                mult = len(child_values)
+            mult = np.int64(mult)
+            pairs = np.unique(parents.astype(np.int64) * mult
+                              + children.astype(np.int64))
             parents = pairs // mult
-            children = (pairs % mult).astype(other._data.dtype)
+            children = pairs % mult
+            if parent_values is not None:
+                parents = parent_values[parents]
+                children = child_values[children]
+            children = children.astype(other._data.dtype)
 
             unique_parents, starts = np.unique(parents,
                                                return_index=True)
@@ -2782,6 +2866,9 @@ class SegmentationImage:
         The segmentation image will be displayed with "nearest"
         interpolation and with the origin set to "lower".
 
+        A segmentation image with no labels is displayed as
+        :meth:`imshow` displays it, without a colorbar.
+
         Parameters
         ----------
         ax : `matplotlib.axes.Axes` or `None`, optional
@@ -2812,9 +2899,6 @@ class SegmentationImage:
             The maximum number of labels to display in the colorbar. If
             the number of labels is greater than ``max_labels``, then
             the colorbar will not be displayed and a warning is issued.
-            The number of labels counted is the number of unique values
-            in the segmentation array, which includes the background
-            value if present.
 
         cbar_labelsize : `None` or float, optional
             The font size of the colorbar tick labels.
@@ -2857,6 +2941,9 @@ class SegmentationImage:
         if ax is None:
             _, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
+        if self.n_labels == 0:
+            return self.imshow(ax=ax, cmap=cmap, alpha=alpha), None
+
         data, idx = np.unique(self.data, return_inverse=True)
         idx = idx.reshape(self.data.shape)
         vmin = -0.5
@@ -2873,7 +2960,7 @@ class SegmentationImage:
         # The unique data values are the colorbar tick labels. 0 is
         # included only if background pixels are present.
         cbar_labels = data
-        if len(cbar_labels) <= max_labels:
+        if self.n_labels <= max_labels:
             cbar_ticks = np.arange(len(cbar_labels))
             cbar = ax.figure.colorbar(im, ax=ax, ticks=cbar_ticks)
             cbar.ax.set_yticklabels(cbar_labels)
