@@ -954,26 +954,29 @@ def test_parameter_near_bound_flag_grouped():
     assert np.all(phot['flags'] & 32)
 
 
-def test_grouped_fit_fixed_positions():
+@pytest.mark.parametrize('flux_init', [[500.0, 700.0, 600.0],
+                                       [1000.0, 1000.0, 1000.0]])
+def test_grouped_fit_fixed_positions(flux_init):
     """
     Regression test that fixed parameters keep their values for grouped
-    sources.
+    sources, and that the fluxes are fit when the initial fluxes do or
+    do not match the true values.
     """
     model = CircularGaussianPRF(fwhm=3)
     model.x_0.fixed = True
     model.y_0.fixed = True
-    init = Table({'x': [20.0, 26.0, 60.0], 'y': [20.0, 22.0, 60.0],
-                  'flux': [500.0, 700.0, 600.0]})
-    data = make_model_image((80, 80), model,
-                            Table({'x_0': init['x'], 'y_0': init['y'],
-                                   'flux': init['flux']}),
-                            model_shape=(21, 21))
+    sources = Table({'x_0': [20.0, 26.0, 60.0], 'y_0': [20.0, 22.0, 60.0],
+                     'flux': [500.0, 700.0, 600.0]})
+    data = make_model_image((80, 80), model, sources, model_shape=(21, 21))
+    init = Table({'x': sources['x_0'], 'y': sources['y_0'],
+                  'flux': flux_init})
     psfphot = PSFPhotometry(model, (7, 7), grouper=SourceGrouper(10))
     phot = psfphot(data, init_params=init)
     assert_equal(phot['group_size'], [2, 2, 1])
-    assert_allclose(phot['x_fit'], init['x'])
-    assert_allclose(phot['y_fit'], init['y'])
-    assert_allclose(phot['flux_fit'], init['flux'], rtol=1e-4)
+    assert_allclose(phot['x_fit'], sources['x_0'])
+    assert_allclose(phot['y_fit'], sources['y_0'])
+    assert_allclose(phot['flux_init'], flux_init)
+    assert_allclose(phot['flux_fit'], sources['flux'], rtol=1e-4)
     assert_equal(phot['flags'], 0)
 
 
