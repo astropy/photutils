@@ -1160,16 +1160,11 @@ class PSFResultsAssembler:
 
     fit_shape : tuple of int
         The shape of the PSF fitting region as a (ny, nx) tuple.
-
-    xy_bounds : tuple of float or None, optional
-        Bounds for x and y position parameters as (x_bound, y_bound).
-        Used for flag calculations to detect sources near boundaries.
     """
 
-    def __init__(self, param_mapper, fit_shape, *, xy_bounds=None):
+    def __init__(self, param_mapper, fit_shape):
         self.param_mapper = param_mapper
         self.fit_shape = fit_shape
-        self.xy_bounds = xy_bounds
 
     def get_fit_error_indices(self, fit_info):
         """
@@ -1392,9 +1387,10 @@ class PSFResultsAssembler:
         fitted_models_table : `~astropy.table.Table`
             Table containing fitted model parameters with bounds info.
 
-        valid_mask : `~numpy.ndarray`
+        valid_mask : `~numpy.ndarray` or None
             Boolean array indicating valid sources. Only valid sources
-            are checked for parameters near a bound.
+            are checked for parameters near a bound. If `None`, all
+            sources are valid.
 
         invalid_reasons : list or None
             List of reasons why sources were invalid.
@@ -1447,7 +1443,11 @@ class PSFResultsAssembler:
         param_names = [col for col in fitted_models_table.colnames
                        if col != 'id'
                        and not col.endswith(('_fixed', '_bounds'))]
-        for index in np.where(valid_mask)[0]:
+        if valid_mask is None:
+            valid_indices = np.arange(len(results_tbl))
+        else:
+            valid_indices = np.flatnonzero(valid_mask)
+        for index in valid_indices:
             row = fitted_models_table[index]
             for param in param_names:
                 if row[f'{param}_fixed']:

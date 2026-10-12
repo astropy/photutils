@@ -825,9 +825,8 @@ class PSFPhotometry:
             fitter_maxiters=self.fitter_maxiters, xy_bounds=self.xy_bounds,
         )
 
-        self._results_assembler = PSFResultsAssembler(
-            self._param_mapper, self.fit_shape, xy_bounds=self.xy_bounds,
-        )
+        self._results_assembler = PSFResultsAssembler(self._param_mapper,
+                                                      self.fit_shape)
 
         # Callers that report non-convergence themselves set this to
         # False
