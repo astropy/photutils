@@ -31,11 +31,11 @@ class ShepardIDWInterpolator:
     coordinates : float, 1D array_like, or NxM array_like
         Coordinates of the known data points. In general, it is expected
         that these coordinates are in a form of an NxM-like array where
-        N is the number of points and M is dimension of the coordinate
-        space. When M=1 (1D space), then the ``coordinates`` parameter
-        may be entered as a 1D array or, if only one data point is
-        available, ``coordinates`` can be a scalar number representing
-        the 1D coordinate of the data point.
+        N is the number of points and M is the dimension of the
+        coordinate space. When M=1 (1D space), then the
+        ``coordinates`` parameter may be entered as a 1D array or, if
+        only one data point is available, ``coordinates`` can be a
+        scalar number representing the 1D coordinate of the data point.
 
         .. note::
             If the dimensionality of ``coordinates`` is larger than 2,
@@ -54,14 +54,14 @@ class ShepardIDWInterpolator:
             will be flattened.
 
     weights : float or 1D array_like, optional
-        Weights to be associated with each data value. These weights, if
-        provided, will be combined with inverse distance weights (see
-        the Notes section for details). When ``weights`` is `None`
+        Weights to be associated with each data value. These
+        non-negative weights, if provided, are multiplied by the inverse
+        distance weights. When ``weights`` is `None`
         (default), then only inverse distance weights will be used. When
         provided, this input parameter must have the same form as
         ``values``.
 
-    leafsize : float, optional
+    leafsize : int, optional
         The number of points at which the k-d tree algorithm switches
         over to brute-force. ``leafsize`` must be positive. See
         `scipy.spatial.cKDTree` for further information.
@@ -97,12 +97,14 @@ class ShepardIDWInterpolator:
     This interpolator uses a slightly modified version of `Shepard's
     method <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_.
     The essential difference is the introduction of a "regularization"
-    parameter (``reg``) that is used when computing the inverse distance
-    weights:
+    parameter (``regularization``) that is used when computing the
+    inverse distance weights:
 
     .. math::
 
         w_i = 1 / (d(x, x_i)^{power} + r)
+
+    where :math:`r` is the ``regularization`` parameter.
 
     By supplying a positive regularization parameter one can avoid
     singularities at the locations of the data points as well as control
@@ -210,17 +212,11 @@ class ShepardIDWInterpolator:
             Coordinates of the position(s) at which the interpolator
             should be evaluated. In general, it is expected that these
             coordinates are in a form of an NxM-like array where N is
-            the number of points and M is dimension of the coordinate
-            space. When M=1 (1D space), then the ``positions`` parameter
-            may be input as a 1D-like array or, if only one data
-            point is available, ``positions`` can be a scalar number
-            representing the 1D coordinate of the data point.
-
-            .. note::
-                If the dimensionality of the ``positions`` argument is
-                larger than 2, e.g., if it is of the form N1 x N2 x N3 x
-                ... x Nn x M, then it will be flattened to form an array
-                of size NxM where N = N1 * N2 * ... * Nn.
+            the number of points and M is the dimension of the
+            coordinate space. When M=1 (1D space), ``positions`` may be
+            a 1D array of N positions or a scalar for a single position.
+            When M>1, a 1D array of length M is interpreted as a single
+            position. ``positions`` may have at most 2 dimensions.
 
             .. warning::
                 The dimensionality of ``positions`` must match the
@@ -232,39 +228,48 @@ class ShepardIDWInterpolator:
             interpolation.
 
         eps : float, optional
-            Set to use approximate nearest neighbors. The kth neighbor
-            is guaranteed to be no further than (1 + ``eps``) times the
-            distance to the real *k*-th nearest neighbor. See
+            Set to use approximate nearest neighbors. The *k*-th
+            neighbor is guaranteed to be no further than (1 + ``eps``)
+            times the distance to the real *k*-th nearest neighbor. See
             `scipy.spatial.cKDTree.query` for further information.
 
         power : float, optional
             The power of the inverse distance used for the interpolation
-            weights. See the Notes section for more details.
+            weights. See the Notes section of the class docstring for
+            more details.
 
         regularization : float, optional
             The regularization parameter. It may be used to control the
-            smoothness of the interpolator. See the Notes section for
-            more details.
+            smoothness of the interpolator. See the Notes section of
+            the class docstring for more details.
+
+            .. deprecated:: 3.0
+                The ``reg`` keyword is deprecated. Use
+                ``regularization`` instead.
 
         conf_dist : float, optional
-            The confusion distance below which the interpolator should
-            use the value of the closest data point instead of
+            The confusion distance at or below which the interpolator
+            should use the value of the closest data point instead of
             attempting to interpolate. This is used to avoid
             singularities at the known data points, especially if
-            ``regularization`` is 0.0.
+            ``regularization`` is 0.0. If `None` or non-positive, the
+            check is disabled.
 
         dtype : data-type, optional
             The data type of the output interpolated values. If `None`
             then the type will be inferred from the type of the
             ``values`` parameter used during the initialization of the
-            interpolator.
+            interpolator. Ignored when ``n_neighbors=1``, in which
+            case the values of the nearest data points are returned
+            unchanged.
 
         Returns
         -------
         result : float or `~numpy.ndarray`
             The interpolated value(s). A scalar is returned when a
             single position is provided. Otherwise a 1D array is
-            returned.
+            returned. NaN is returned where the total weight of the
+            neighbors is zero.
         """
         n_neighbors = int(n_neighbors)
         if n_neighbors < 1:

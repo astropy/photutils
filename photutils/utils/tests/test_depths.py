@@ -232,6 +232,14 @@ class TestImageDepth:
         cls_repr = repr(depth)
         assert cls_repr.startswith(f'{depth.__class__.__name__}')
 
+    def test_overlap_maxiters_deprecation(self):
+        """
+        Test that the unused overlap_maxiters keyword is deprecated.
+        """
+        match = "'overlap_maxiters' was deprecated in version 3.1"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            ImageDepth(4, overlap_maxiters=10)
+
     def test_progress_bar(self):
         """
         Test running ImageDepth with progress_bar=True.

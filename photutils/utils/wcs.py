@@ -24,9 +24,10 @@ def compute_pixel_areas(wcs, x, y):
     Jacobian is evaluated by central finite differences half a pixel
     either side of each position, so the area is exact for a locally
     quadratic distortion in the small-angle limit. The finite pixel
-    size adds a relative error of about ``h**2 / 12`` for a pixel that
-    subtends an angle ``h`` in radians, which is 3e-7 at 0.1 deg per
-    pixel and negligible for imaging data. The area is well defined at
+    size adds a relative error of order ``h**2`` for a pixel that
+    subtends an angle ``h`` in radians. The size of the error depends
+    on the projection. It is below 1e-6 at 0.1 deg per pixel and
+    negligible for imaging data. The area is well defined at
     the celestial poles and across the longitude wraparound.
 
     Parameters
@@ -158,20 +159,20 @@ def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
 
     step : int or None, optional
         The spacing in pixels of the coarse grid on which the areas are
-        evaluated. The grid is padded by two steps beyond the image
-        edges, so the interpolation never extrapolates and the spline
-        is well defined for any image shape. Steps from about 32 to 128
-        give equivalent results, since smaller steps only add runtime
-        and larger steps lose accuracy on strongly distorted or very
-        wide fields. The largest allowed step is ``min(shape) // 8``
-        (and at least 1), so that the coarse grid always has at least
-        eight intervals across the image. If `None`, the step is 64
-        or the largest allowed step, whichever is smaller. A larger
-        step than allowed is reduced to the largest allowed step with a
-        warning. A step of 1 samples every pixel, so the area is then
-        evaluated directly at every pixel without interpolation, as
-        if ``interpolate`` were `False`. ``step`` must be `None` if
-        ``interpolate`` is `False`.
+        evaluated. The grid extends two steps before the first pixel
+        and at least one step beyond the last pixel, so the
+        interpolation never extrapolates and the spline is well defined
+        for any image shape. Steps from about 32 to 128 give equivalent
+        results. Smaller steps only add runtime and larger steps lose
+        accuracy on strongly distorted or very wide fields. The largest
+        allowed step is ``min(shape) // 8`` (and at least 1), so that
+        the coarse grid always has at least eight intervals across the
+        image. If `None`, the step is 64 or the largest allowed step,
+        whichever is smaller. A larger step than allowed is reduced to
+        the largest allowed step with a warning. A step of 1 samples
+        every pixel, so the area is then evaluated directly at every
+        pixel without interpolation, as if ``interpolate`` were `False`.
+        ``step`` must be `None` if ``interpolate`` is `False`.
 
     Returns
     -------

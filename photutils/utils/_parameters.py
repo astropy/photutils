@@ -68,7 +68,7 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
     lower_bound : tuple of 2 int, optional
         A tuple defining the allowed lower bound of the value. The first
         element is the bound. The second is 0 for exclusive or 1 for
-        inclusive (e.g. (0, 1) means value must be >= 0).
+        inclusive (e.g., ``(0, 1)`` means the value must be >= 0).
 
     upper_bound : tuple of 2 int, optional
         A tuple defining the allowed upper bounds of the value along

@@ -16,10 +16,10 @@ def _low_level_wcs(wcs):
     """
     Return the low-level WCS behind a high-level WCS object.
 
-    Objects that implement the astropy high-level WCS interface expose
-    their low-level counterpart as ``low_level_wcs`` (for
-    `astropy.wcs.WCS` and `gwcs.wcs.WCS` that is the object itself).
-    An object without the attribute is used as is.
+    Objects that implement the astropy high-level WCS interface
+    expose their low-level counterpart as ``low_level_wcs`` (for
+    `astropy.wcs.WCS` and `gwcs.wcs.WCS` that is the object itself). An
+    object without the attribute is used as is.
     """
     return getattr(wcs, 'low_level_wcs', wcs)
 
@@ -58,14 +58,15 @@ def _pixel_to_world_radians(wcs, x, y):
     Convert pixel coordinates to world longitude and latitude in
     radians, ignoring any gwcs bounding box.
 
-    The finite differences used here step half a pixel beyond the source
-    position. For a source in the outermost pixel of the array those
-    steps fall outside a gwcs bounding box, where gwcs returns NaN. The
-    forward transform is well defined there, so it is evaluated with
-    the bounding box disabled. The bypass applies only to a gwcs object
-    passed directly or through a high-level wrapper. A gwcs behind an
-    astropy `~astropy.wcs.wcsapi.SlicedLowLevelWCS` is evaluated through
-    the slice, which keeps the bounding box, so its edge pixels can give
+    The finite differences in `compute_pixel_to_sky_jacobians` step
+    half a pixel beyond the source position. For a source in the
+    outermost pixel of the array those steps fall outside a gwcs
+    bounding box, where gwcs returns NaN. The forward transform
+    is well defined there, so it is evaluated with the bounding
+    box disabled. The bypass applies only to a gwcs object passed
+    directly or through a high-level wrapper. A gwcs behind an astropy
+    `~astropy.wcs.wcsapi.SlicedLowLevelWCS` is evaluated through the
+    slice, which keeps the bounding box, so its edge pixels can give
     NaN.
 
     The low-level WCS interface is used because it returns plain arrays.
@@ -180,12 +181,12 @@ def _sky_to_pixel_jacobian(wcs, skycoord, *, pixcoord=None):
     Compute the pixel center and the local Jacobian for a sky-to-pixel
     conversion.
 
-    The pixel position of ``skycoord`` is found by inverting the WCS
-    unless it is given. The forward Jacobian ``F = d(sky_arcsec)/
-    d(pixel)`` is then evaluated there with
+    The pixel position of ``skycoord`` is found by inverting
+    the WCS unless it is given. The forward Jacobian ``F =
+    d(sky_arcsec)/ d(pixel)`` is then evaluated there with
     `compute_pixel_to_sky_jacobians`, by central differences half a
-    pixel either side of the position, and inverted to give ``J =
-    F^{-1} = d(pixel)/d(sky_arcsec)``.
+    pixel either side of the position, and inverted to give ``J = F^{-1}
+    = d(pixel)/d(sky_arcsec)``.
 
     Parameters
     ----------
@@ -201,7 +202,8 @@ def _sky_to_pixel_jacobian(wcs, skycoord, *, pixcoord=None):
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
         When given, the WCS is not inverted to find it and ``skycoord``
-        is not used.
+        is used only to name the position in an error message (it may be
+        `None`).
 
     Returns
     -------
@@ -390,12 +392,14 @@ def compute_pixel_to_sky_jacobians(wcs, x, y):
     projected onto the local East and North directions, so the formula
     is well-defined at the celestial poles and across the longitude
     wraparound (RA = 0 / 360). The differences use the chord between
-    the offset unit vectors rather than the arc, so each element has a
-    relative error of about ``h**2 / 24`` for a pixel that subtends an
+    the offset unit vectors rather than the arc, which lowers each
+    element by a relative ``h**2 / 24`` for a pixel that subtends an
     angle ``h`` in radians. That is 1e-7 at 0.1 deg per pixel and 1e-5
-    at 1 deg per pixel. All five positions per pixel are evaluated in a
-    single low-level WCS call, which returns plain arrays instead of a
-    `~astropy.coordinates.SkyCoord`.
+    at 1 deg per pixel. The truncation error of the half-pixel stencil
+    is of the same order and depends on the projection (``h**2 / 12``
+    for a TAN projection at the tangent point). All five positions per
+    pixel are evaluated in a single low-level WCS call, which returns
+    plain arrays instead of a `~astropy.coordinates.SkyCoord`.
 
     Parameters
     ----------
@@ -478,13 +482,13 @@ def sky_to_pixel_mean_scale(wcs, skycoord, *, pixcoord=None):
     absolute determinant, so a circle scaled by it has the same area as
     the ellipse that the mapping produces, and a conversion to pixels
     followed by the conversion back to the sky returns the original
-    radius exactly.
+    radius to within rounding.
 
-    For a WCS without distortion and with equal pixel scales in x and
-    y, the two singular values are equal at the tangent point and the
-    scale is exact. For distorted WCS, non-square pixels, or positions
-    far from the tangent point, the two singular values differ and the
-    geometric mean is the area-preserving compromise.
+    For a WCS without distortion or skew and with equal pixel scales
+    in x and y, the two singular values are equal at the tangent point
+    and the scale is exact. For distorted WCS, non-square pixels, or
+    positions far from the tangent point, the two singular values differ
+    and the geometric mean is the area-preserving compromise.
 
     Parameters
     ----------
@@ -500,7 +504,8 @@ def sky_to_pixel_mean_scale(wcs, skycoord, *, pixcoord=None):
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
         When given, the WCS is not inverted to find it and ``skycoord``
-        is not used.
+        is used only to name the position in an error message (it may be
+        `None`).
 
     Returns
     -------
@@ -681,7 +686,8 @@ def sky_shape_to_pixel_svd(wcs, skycoord, width_arcsec, height_arcsec,
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
         When given, the WCS is not inverted to find it and ``skycoord``
-        is not used.
+        is used only to name the position in an error message (it may be
+        `None`).
 
     Returns
     -------
@@ -750,8 +756,8 @@ def sky_to_pixel_svd_scales(wcs, skycoord, *, pixcoord=None):
 
     This is the appropriate method for converting a circular sky region
     to a pixel ellipse, as the resulting ellipse accurately represents
-    the true shape of the WCS mapping (i.e., the tightest-fitting pixel
-    ellipse that contains the sky circle).
+    the true shape of the WCS mapping (i.e., the image of the sky circle
+    under the local linear mapping).
 
     Parameters
     ----------
@@ -767,7 +773,8 @@ def sky_to_pixel_svd_scales(wcs, skycoord, *, pixcoord=None):
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
         When given, the WCS is not inverted to find it and ``skycoord``
-        is not used.
+        is used only to name the position in an error message (it may be
+        `None`).
 
     Returns
     -------
@@ -785,7 +792,8 @@ def sky_to_pixel_svd_scales(wcs, skycoord, *, pixcoord=None):
     pixel_angle : `~astropy.coordinates.Angle`
         The pixel rotation angle of the major axis, measured
         counterclockwise from the positive x-axis, wrapped to
-        [0, 360) degrees.
+        [0, 360) degrees. The axis direction is defined only modulo 180
+        degrees.
     """
     center, jacobian = _sky_to_pixel_jacobian(wcs, skycoord,
                                               pixcoord=pixcoord)
@@ -816,8 +824,8 @@ def pixel_to_sky_svd_scales(wcs, pixcoord):
 
     This is the appropriate method for converting a circular pixel
     region to a sky ellipse, as the resulting ellipse accurately
-    represents the true shape of the WCS mapping (i.e., the
-    tightest-fitting sky ellipse that contains the pixel circle).
+    represents the true shape of the WCS mapping (i.e., the image of
+    the pixel circle under the local linear mapping).
 
     Parameters
     ----------
@@ -843,7 +851,8 @@ def pixel_to_sky_svd_scales(wcs, pixcoord):
     sky_angle : `~astropy.coordinates.Angle`
         The sky position angle (PA) of the major axis, measured
         counterclockwise from North (the latitude/Dec axis), wrapped to
-        [0, 360) degrees.
+        [0, 360) degrees. The axis direction is defined only modulo 180
+        degrees.
     """
     forward = compute_pixel_to_sky_jacobians(wcs, pixcoord[0],
                                              pixcoord[1])[0]

@@ -110,8 +110,8 @@ def inertia_tensor_from_moments(moments_central):
     Returns
     -------
     tensor : `~numpy.ndarray`
-        The ``(N, 2, 2)`` inertia tensors. They are not normalized by
-        the total flux.
+        The ``(N, 2, 2)`` inertia tensors, with rows and columns
+        ordered ``(y, x)``. They are not normalized by the total flux.
     """
     mu_02 = moments_central[:, 0, 2]
     mu_11 = -moments_central[:, 1, 1]
@@ -273,10 +273,11 @@ def is_invalid_covariance(covariance, *, determinant):
     Returns
     -------
     mask : `~numpy.ndarray`
-        The ``(N,)`` boolean mask. Matrices with NaN elements are never
-        flagged. A matrix with an infinite element is flagged only if
-        its trace is negative or if its determinant is negative infinity
-        while its trace is finite.
+        The ``(N,)`` boolean mask. Matrices with a NaN diagonal element
+        are never flagged. A matrix with a NaN off-diagonal element is
+        flagged only if its trace is negative. A matrix with an infinite
+        element is flagged only if its trace is negative or if its
+        determinant is negative infinity while its trace is finite.
     """
     # Ignore floating-point errors from non-finite values in the
     # covariance and from the overflow of huge variances
@@ -511,9 +512,11 @@ def major_axis_angle(var_a, var_b, covar_ab):
         difference of the variances is undefined.
     """
     # Ignore floating-point errors from non-finite values (e.g., the
-    # difference of two infinite variances)
+    # difference of two infinite variances). Adding zero turns a
+    # negative-zero covariance into positive zero, which keeps the angle
+    # at 90 instead of -90 degrees when var_a < var_b.
     with np.errstate(over='ignore', invalid='ignore'):
-        angle = 0.5 * np.arctan2(2.0 * covar_ab, var_a - var_b)
+        angle = 0.5 * np.arctan2(2.0 * covar_ab + 0.0, var_a - var_b)
     return np.rad2deg(angle)
 
 
@@ -531,7 +534,7 @@ def orientation_from_covariance(covariance):
     -------
     orientation : `~numpy.ndarray`
         The ``(N,)`` orientation angles in degrees. The angle increases
-        in the counter-clockwise direction and is in the range (-90,
+        in the counterclockwise direction and is in the range (-90,
         90].
     """
     return major_axis_angle(covariance[:, 0, 0], covariance[:, 1, 1],

@@ -1208,6 +1208,11 @@ Bug Fixes
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the
     user's ``SigmaClip`` instance. [#2364]
 
+  - Fixed the ``orientation`` and ``sky_orientation`` properties of
+    ``SourceCatalog`` and ``ApertureStats`` returning -90 degrees,
+    outside of the documented (-90, 90] range, for a source with a
+    negative-zero covariance. [#2500]
+
   - Fixed ``ImageDepth`` so that repeated calls on the same instance
     no longer accumulate the ``fluxes`` attribute across calls. The
     result attributes now always reflect only the most recent call.
@@ -1239,6 +1244,10 @@ API Changes
   - The ``PixelAperture.do_photometry`` method is now deprecated and
     will be removed in version 4.0. Use the new ``AperturePhotometry``
     class instead. [#2324, #2328]
+
+  - The ``ApertureStats`` ``inertia_tensor`` property is deprecated and will
+    be removed in version 4.0. It carries no information beyond the
+    ``covariance`` matrix. [#2500]
 
   - The default ``ApertureStats.to_table()`` columns now include a
     ``'flags'`` column. [#2327, #2379]
@@ -1544,6 +1553,10 @@ API Changes
 
 - ``photutils.segmentation``
 
+  - The ``SourceCatalog`` ``inertia_tensor`` property is deprecated and will
+    be removed in version 4.0. It carries no information beyond the
+    ``covariance`` matrix. [#2500]
+
   - The deblending warning information stored by ``deblend_sources``
     in the returned ``SegmentationImage`` ``info`` dictionary has been
     restructured. The affected input labels are now stored as
@@ -1609,6 +1622,10 @@ API Changes
     regularized instead of having NaN shape properties. [#2437]
 
 - ``photutils.utils``
+
+  - The ``ImageDepth`` ``overlap_maxiters`` keyword is deprecated and
+    will be removed in version 4.0. The keyword was unused and had no
+    effect. [#2500]
 
   - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been
     renamed to ``n_coords``, consistent with the ``n_*`` naming used

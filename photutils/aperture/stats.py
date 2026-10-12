@@ -892,6 +892,8 @@ class ApertureStats:
             # id is not included in self.properties because it is not
             # a cached property
             allowed_columns = set(self.properties) | set(self.default_columns)
+            # The deprecated inertia_tensor is not a cached property
+            allowed_columns.add('inertia_tensor')
             # Remove 2D cutout images from the allowed columns
             allowed_columns = {col for col in allowed_columns
                                if '_cutout' not in col}
@@ -3140,11 +3142,24 @@ class ApertureStats:
         return self._finalize_value_stat(fast, biweight_midvariance,
                                          square_unit=True)
 
-    @cached_property
+    @property
+    @deprecated('3.1', until='4.0')
     def inertia_tensor(self):
         """
         The inertia tensor of the source for the rotation around its
         center of mass.
+
+        .. deprecated:: 3.1
+            The inertia tensor carries no information beyond the
+            `covariance` matrix. Use the `covariance` matrix and the
+            shape properties that are derived from it instead.
+
+        The rows and columns of the ``(2, 2)`` tensor are ordered ``(y,
+        x)``, the reverse of the `covariance` matrix. The diagonal
+        elements are the moments of inertia about the ``y`` and ``x``
+        axes and the off-diagonal elements are the negative of the
+        product of inertia. The tensor is not normalized by the total
+        flux.
         """
         moments = self._array('moments_central')
         return inertia_tensor_from_moments(moments) * u.pix**2

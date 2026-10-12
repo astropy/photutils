@@ -14,7 +14,9 @@ def apply_separation(xycoords, min_separation):
     """
     Apply a minimum separation to a set of (x, y) coordinates.
 
-    Coordinates that are closer than the minimum separation are removed.
+    For each group of coordinates separated by ``min_separation`` or
+    less, the coordinate that appears first in ``xycoords`` is kept and
+    its neighbors are removed.
 
     Parameters
     ----------
@@ -27,8 +29,9 @@ def apply_separation(xycoords, min_separation):
     Returns
     -------
     xycoords : `~numpy.ndarray`
-        The (x, y) coordinates with shape ``(N, 2)`` after excluding
-        points closer than the minimum separation.
+        The (x, y) coordinates with shape ``(M, 2)``, where ``M <= N``,
+        after removing the points within the minimum separation of a
+        kept point.
     """
     tree = KDTree(xycoords)
     pairs = tree.query_pairs(min_separation, output_type='ndarray')

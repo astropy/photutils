@@ -434,6 +434,31 @@ class TestSourceCatalog:
         with pytest.raises(ValueError, match=match):
             self.cat.to_table(columns=columns)
 
+    def test_deprecated_inertia_tensor(self):
+        """
+        Test that the ``inertia_tensor`` attribute is deprecated and
+        keeps its ``(y, x)`` order and its table column.
+        """
+        cat = self.cat
+        match = 'deprecated in version 3.1'
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            tensor = cat.inertia_tensor
+        assert 'inertia_tensor' not in cat.properties
+        mu = cat.moments_central
+        assert tensor.unit == u.pix**2
+        assert_allclose(tensor[:, 0, 0].value, mu[:, 0, 2])
+        assert_allclose(tensor[:, 1, 1].value, mu[:, 2, 0])
+        assert_allclose(tensor[:, 0, 1].value, -mu[:, 1, 1])
+        assert_allclose(tensor[:, 1, 0].value, -mu[:, 1, 1])
+
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            tbl = cat.to_table(columns=['inertia_tensor'])
+        assert_allclose(tbl['inertia_tensor'], tensor)
+
+        # A scalar instance returns a single (2, 2) tensor
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            assert cat[0].inertia_tensor.shape == (2, 2)
+
     def test_deprecated_column(self):
         """
         Regression test to ensure that deprecated column names are still

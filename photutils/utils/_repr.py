@@ -20,7 +20,8 @@ def make_repr(instance, params, *, brackets=False, overrides=None, long=False):
     brackets : bool, optional
         Whether to use angle brackets at the start and end of the
         string. Angle brackets are typically used for __repr__ strings
-        that are not valid executable Python expressions.
+        that are not valid executable Python expressions. Ignored if
+        ``long`` is `True`.
 
     overrides : `None` or dict, optional
         Dictionary of parameter names and values to override the
@@ -31,7 +32,9 @@ def make_repr(instance, params, *, brackets=False, overrides=None, long=False):
         parameters.
 
     long : bool, optional
-        Whether to use the "long" format typically used by __str__.
+        Whether to use the multi-line "long" format typically used by
+        __str__. It has the fully qualified class name in angle brackets
+        followed by one ``name: value`` line per parameter.
 
     Returns
     -------
@@ -54,10 +57,7 @@ def make_repr(instance, params, *, brackets=False, overrides=None, long=False):
         if overrides is not None and param in overrides:
             # Note that overrides may contain input parameters that are
             # not stored long-term in the instance (e.g., Background2D)
-            if param in instance.__dict__ and instance.__dict__[param] is None:
-                value = None
-            else:
-                value = overrides[param]
+            value = overrides[param]
         elif param in instance.__dict__:
             value = instance.__dict__[param]
         else:

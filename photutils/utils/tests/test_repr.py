@@ -73,7 +73,7 @@ def test_make_repr():
     overrides = {'x': '...'}
     obj = ExampleClass(None, 2)
     repr_str = make_repr(obj, params, overrides=overrides)
-    assert repr_str == 'ExampleClass(x=None, y=2, z=1)'
+    assert repr_str == "ExampleClass(x='...', y=2, z=1)"
 
 
 def test_make_repr_brackets():
