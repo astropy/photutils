@@ -6,13 +6,14 @@ Tests for the curve_of_growth module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import (CircularAperture, EllipticalAperture,
                                 RectangularAperture)
 from photutils.profiles import (CurveOfGrowth, EllipticalCurveOfGrowth,
-                                EnsquaredCurveOfGrowth, ProfileBase)
+                                EnsquaredCurveOfGrowth)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
@@ -151,43 +152,8 @@ class TestCurveOfGrowth:
         cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None,
                             method='center')
         ee_vals = cg1.calc_ee_at_radius(ee_radii)
-        match = 'The curve-of-growth profile is not monotonically increasing'
-        with pytest.raises(ValueError, match=match):
-            cg1.calc_radius_at_ee(ee_vals)
-
-    def test_interp_nonmonotonic_start(self, profile_data):
-        """
-        Test that `calc_radius_at_ee` raises ValueError when the profile
-        is non-monotonic at the very first point (covers the len(radius)
-        < 2 branch).
-        """
-        xycen, data, _, _ = profile_data
-        radii = np.arange(1, 36)
-        cg1 = CurveOfGrowth(data, xycen, radii, error=None, mask=None)
-
-        # Force non-monotonicity at the first point: diff[0] = 0
-        # (non-positive) so idx=0 and radius[0:0] has fewer than 2
-        # elements
-        profile = cg1.profile.copy()
-        profile[0] = profile[1]
-        cg1.__dict__['_raw_profile'] = profile
-
-        match = 'The curve-of-growth profile is not monotonically increasing'
-        with pytest.raises(ValueError, match=match):
-            cg1.calc_radius_at_ee(np.array([0.5]))
-
-    def test_trim_to_monotonic_nan(self):
-        """
-        Test that `_trim_to_monotonic` keeps only the leading finite
-        segment when NaN values are present (covers the NaN-trimming
-        branch in core.py).
-        """
-        xarr = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        profile = np.array([1.0, 3.0, np.nan, 5.0, 7.0])
-        xarr_out, profile_out = ProfileBase._trim_to_monotonic(
-            xarr, profile, 'test')
-        assert_equal(xarr_out, np.array([1.0, 2.0]))
-        assert_equal(profile_out, np.array([1.0, 3.0]))
+        rr = cg1.calc_radius_at_ee(ee_vals)
+        assert_allclose(cg1.calc_ee_at_radius(rr), ee_vals)
 
     def test_inputs(self, profile_data):
         """
@@ -460,28 +426,8 @@ class TestEnsquaredCurveOfGrowth:
         ecg1 = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
                                       mask=None, method='center')
         ee_vals = ecg1.calc_ee_at_half_size(ee_half_sizes)
-        match = 'The ensquared curve-of-growth profile is not monotonically'
-        with pytest.raises(ValueError, match=match):
-            ecg1.calc_half_size_at_ee(ee_vals)
-
-    def test_interp_nonmonotonic_start(self, profile_data):
-        """
-        Test that `calc_half_size_at_ee` raises ValueError when the
-        profile is non-monotonic at the very first point (covers the
-        len(half_size) < 2 branch).
-        """
-        xycen, data, _, _ = profile_data
-        half_sizes = np.arange(1, 36)
-        ecg1 = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
-                                      mask=None)
-        # Force non-monotonicity at the first point
-        profile = ecg1.profile.copy()
-        profile[0] = profile[1]
-        ecg1.__dict__['_raw_profile'] = profile
-
-        match = 'The ensquared curve-of-growth profile is not monotonically'
-        with pytest.raises(ValueError, match=match):
-            ecg1.calc_half_size_at_ee(np.array([0.5]))
+        half_sizes_back = ecg1.calc_half_size_at_ee(ee_vals)
+        assert_allclose(ecg1.calc_ee_at_half_size(half_sizes_back), ee_vals)
 
     def test_inputs(self, profile_data):
         """
@@ -748,28 +694,8 @@ class TestEllipticalCurveOfGrowth:
                                        error=None, mask=None,
                                        method='center')
         ee_vals = ecg1.calc_ee_at_radius(ee_radii)
-        match = 'The elliptical curve-of-growth profile is not monotonically'
-        with pytest.raises(ValueError, match=match):
-            ecg1.calc_radius_at_ee(ee_vals)
-
-    def test_interp_nonmonotonic_start(self, profile_data):
-        """
-        Test that `calc_radius_at_ee` raises ValueError when the
-        profile is non-monotonic at the very first point (covers the
-        len(radius) < 2 branch).
-        """
-        xycen, data, _, _ = profile_data
-        radii = np.arange(1, 36)
-        ecg1 = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                       error=None, mask=None)
-        # Force non-monotonicity at the first point
-        profile = ecg1.profile.copy()
-        profile[0] = profile[1]
-        ecg1.__dict__['_raw_profile'] = profile
-
-        match = 'The elliptical curve-of-growth profile is not monotonically'
-        with pytest.raises(ValueError, match=match):
-            ecg1.calc_radius_at_ee(np.array([0.5]))
+        radii_back = ecg1.calc_radius_at_ee(ee_vals)
+        assert_allclose(ecg1.calc_ee_at_radius(radii_back), ee_vals)
 
     def test_inputs(self, profile_data):
         """
@@ -888,3 +814,199 @@ class TestEllipticalCurveOfGrowth:
         assert 'axis_ratio=0.5' in r
         assert 'theta=0.7' in r
         assert 'normalized=False' in r
+
+
+INTERP_CASES = [
+    (CurveOfGrowth, {}, 'calc_ee_at_radius', 'calc_radius_at_ee'),
+    (EnsquaredCurveOfGrowth, {}, 'calc_ee_at_half_size',
+     'calc_half_size_at_ee'),
+    (EllipticalCurveOfGrowth, {'axis_ratio': 0.5}, 'calc_ee_at_radius',
+     'calc_radius_at_ee'),
+]
+
+
+@pytest.mark.parametrize(('cls', 'kwargs', 'ee_name', 'size_name'),
+                         INTERP_CASES)
+class TestNonMonotonicInterpolation:
+    """
+    Tests of the encircled energy interpolation methods for profiles
+    that are not monotonically increasing.
+    """
+
+    @staticmethod
+    def make_profile(profile_cls, kwargs, values, *, unit=None):
+        """
+        Make a curve of growth whose raw profile is set to ``values``.
+        """
+        sizes = np.arange(1, len(values) + 1, dtype=float)
+        data = np.ones((51, 51))
+        if unit is not None:
+            data = data << unit
+            values = values << unit
+        cog = profile_cls(data, (25, 25), sizes, **kwargs)
+        cog.__dict__['_raw_profile'] = values
+        return cog
+
+    def test_noisy_profile(self, cls, kwargs, ee_name, size_name):
+        """
+        Test that the two methods are consistent for a noisy profile.
+        """
+        # A compact source, so that the noise dominates the outer
+        # part of the profile
+        xycen = (50.0, 40.0)
+        yy, xx = np.mgrid[0:81, 0:101]
+        data = Gaussian2D(21.0, *xycen, 4.0, 4.0)(xx, yy)
+        rng = np.random.default_rng(0)
+        data += rng.normal(0.0, 1.0, data.shape)
+        sizes = np.arange(1, 36)
+        cog = cls(data, xycen, sizes, **kwargs)
+        cog.normalize()
+        assert np.any(np.diff(cog.profile) < 0)
+        calc_ee = getattr(cog, ee_name)
+        calc_size = getattr(cog, size_name)
+
+        # The interpolated curve passes through the measured profile,
+        # so it also decreases where the profile does
+        assert_allclose(calc_ee(sizes), cog.profile)
+        fine_sizes = np.linspace(1, 35, 1000)
+        assert np.any(np.diff(calc_ee(fine_sizes)) < 0)
+
+        # Every value in the profile range has a size, the size never
+        # decreases with the encircled energy, and the roundtrip is
+        # exact
+        ee = np.linspace(cog.profile[0], 1.0, 200)
+        result = calc_size(ee)
+        assert np.all(np.isfinite(result))
+        assert np.all(np.diff(result) >= 0)
+        assert_allclose(calc_ee(result), ee, atol=1e-12)
+
+        # The maximum is reached at the size of the profile maximum
+        assert_allclose(calc_size(1.0), sizes[np.argmax(cog.profile)])
+
+        # Values outside the profile range have no size
+        outside = calc_size([cog.profile[0] - 0.01, 1.01])
+        assert np.all(np.isnan(outside))
+
+    def test_dip(self, cls, kwargs, ee_name, size_name):
+        """
+        Test the values across a dip in the profile.
+        """
+        values = np.array([1.0, 2.0, 3.0, 2.5, 2.8, 4.0, 5.0])
+        cog = self.make_profile(cls, kwargs, values)
+        calc_ee = getattr(cog, ee_name)
+        calc_size = getattr(cog, size_name)
+
+        # The curve follows the profile through the dip
+        assert_allclose(calc_ee(np.arange(1, 8)), values)
+        assert 2.5 < calc_ee(3.5) < 3.0
+
+        # The smallest size that reaches the value is returned. The
+        # values 2.6 and 2.8 are also reached again after the dip.
+        assert_allclose(calc_size([1.0, 3.0, 4.0, 5.0]), [1, 3, 6, 7])
+        assert 2 < calc_size(2.6) < 3
+        assert 2 < calc_size(2.8) < 3
+        result = calc_size(3.5)
+        assert 5 < result < 6
+        assert_allclose(calc_ee(result), 3.5)
+
+    def test_decreasing_start(self, cls, kwargs, ee_name, size_name):
+        """
+        Test a profile that does not increase at its smallest sizes.
+        """
+        values = np.array([2.0, 2.0, 1.0, 3.0, 4.0])
+        cog = self.make_profile(cls, kwargs, values)
+        calc_ee = getattr(cog, ee_name)
+        calc_size = getattr(cog, size_name)
+        assert_allclose(calc_ee([1.0, 2.0, 3.0]), [2.0, 2.0, 1.0])
+        assert_allclose(calc_size([2.0, 1.0, 4.0]), [1, 3, 5])
+        # A value below the first profile value is first reached where
+        # the profile decreases
+        result = calc_size(1.5)
+        assert 2 < result < 3
+        assert_allclose(calc_ee(result), 1.5)
+        result = calc_size(2.5)
+        assert 3 < result < 4
+        assert_allclose(calc_ee(result), 2.5)
+        assert np.all(np.isnan(calc_size([0.5, 4.5])))
+
+    def test_nonfinite(self, cls, kwargs, ee_name, size_name):
+        """
+        Test that non-finite profile values are skipped.
+        """
+        values = np.array([1.0, 3.0, np.nan, 5.0, 7.0])
+        cog = self.make_profile(cls, kwargs, values)
+        calc_ee = getattr(cog, ee_name)
+        calc_size = getattr(cog, size_name)
+        assert_allclose(calc_ee([2.0, 4.0]), [3.0, 5.0])
+        assert 2 < calc_ee(3.0) < 5
+        assert_allclose(calc_size([3.0, 5.0, 7.0]), [2, 4, 5])
+        assert np.isnan(calc_size(np.nan))
+
+        values = np.array([np.nan, np.nan, 1.0, np.nan])
+        cog = self.make_profile(cls, kwargs, values)
+        match = 'must have at least two finite values'
+        with pytest.raises(ValueError, match=match):
+            getattr(cog, ee_name)(2.0)
+        with pytest.raises(ValueError, match=match):
+            getattr(cog, size_name)(1.0)
+
+    def test_shapes(self, cls, kwargs, ee_name, size_name):
+        """
+        Test that the output has the shape of the input.
+        """
+        values = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        cog = self.make_profile(cls, kwargs, values)
+        calc_ee = getattr(cog, ee_name)
+        calc_size = getattr(cog, size_name)
+        assert np.shape(calc_ee(2.5)) == ()
+        assert np.shape(calc_size(2.5)) == ()
+        ee = np.array([[1.5, 2.5], [3.5, 4.5]])
+        assert calc_size(ee).shape == (2, 2)
+        assert_allclose(calc_size(ee), ee)
+        assert_allclose(calc_ee(ee), ee)
+
+        # A dimensionless quantity is accepted for a profile without
+        # units
+        assert_allclose(calc_size(2.5 * u.dimensionless_unscaled), 2.5)
+
+    def test_units(self, cls, kwargs, ee_name, size_name):
+        """
+        Test the interpolation methods for a profile with units.
+        """
+        values = np.array([1.0, 2.0, 3.0, 2.5, 2.8, 4.0, 5.0])
+        unit = u.Jy
+        cog = self.make_profile(cls, kwargs, values, unit=unit)
+        calc_ee = getattr(cog, ee_name)
+        calc_size = getattr(cog, size_name)
+
+        ee = calc_ee([2.0, 4.0])
+        assert ee.unit == unit
+        assert_allclose(ee.value, [2.0, 2.5])
+
+        # The sizes are in pixels and have no units
+        result = calc_size([2.0, 4.0] * unit)
+        assert not isinstance(result, u.Quantity)
+        assert_allclose(result, [2, 6])
+        assert_allclose(calc_size([2000.0, 4000.0] * u.mJy), [2, 6])
+
+        # Values without units are in the profile units
+        assert_allclose(calc_size([2.0, 4.0]), [2, 6])
+
+        match = 'not convertible'
+        with pytest.raises(u.UnitConversionError, match=match):
+            calc_size(2.0 * u.m)
+
+        # The sizes are in pixels and cannot have units
+        match = 'must be in pixels and cannot be a Quantity'
+        with pytest.raises(TypeError, match=match):
+            calc_ee(2.0 * u.pix)
+
+        # A normalized profile is dimensionless
+        cog.normalize()
+        ee = calc_ee([2.0, 7.0])
+        assert ee.unit == u.dimensionless_unscaled
+        assert_allclose(ee.value, [0.4, 1.0])
+        assert_allclose(calc_size([0.4, 1.0]), [2, 7])
+        assert_allclose(calc_size([0.4, 1.0] * u.dimensionless_unscaled),
+                        [2, 7])
+        assert_allclose(calc_size([40.0, 100.0] * u.percent), [2, 7])

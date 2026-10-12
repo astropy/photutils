@@ -366,62 +366,6 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         self.normalization_value = 1.0
 
-    @staticmethod
-    def _trim_to_monotonic(xarr, profile, name):
-        """
-        Trim arrays to the leading finite, strictly increasing segment.
-
-        This is used by interpolation methods that require a
-        monotonically increasing profile.
-
-        Parameters
-        ----------
-        xarr : 1D `~numpy.ndarray`
-            The x-axis values (e.g., radius or half-size).
-
-        profile : 1D `~numpy.ndarray`
-            The profile values.
-
-        name : str
-            A descriptive name for the profile used in the error
-            message.
-
-        Returns
-        -------
-        xarr, profile : tuple of `~numpy.ndarray`
-            The trimmed arrays.
-        """
-        finite_mask = np.isfinite(profile)
-        if not np.all(finite_mask):
-            # Keep only the leading finite segment
-            first_nonfinite = np.argmin(finite_mask)
-            xarr = xarr[:first_nonfinite]
-            profile = profile[:first_nonfinite]
-
-        # np.diff produces an array of length n-1, where diff[i] represents
-        # the step from profile[i] to profile[i+1]. A value <= 0 means
-        # the profile stopped increasing at that step.
-        diff = np.diff(profile) <= 0
-        if np.any(diff):
-            # idx is an index into the *diff* array, not the profile
-            # array. diff[idx] <= 0 means the drop occurs between
-            # profile[idx] and profile[idx+1], so profile[idx] is
-            # the last good value. We therefore need profile[:idx+1]
-            # (inclusive) to retain it.
-            idx = np.argmax(diff)  # first non-monotonic step in diff-space
-            xarr = xarr[:idx + 1]
-            profile = profile[:idx + 1]
-
-        if len(xarr) < 2:
-            msg = (f'The {name} profile is not monotonically '
-                   'increasing even at the smallest values. Cannot '
-                   'interpolate. Try using different input values '
-                   '(especially the starting values) and/or using the '
-                   '"exact" aperture overlap method.')
-            raise ValueError(msg)
-
-        return xarr, profile
-
     def __repr__(self):
         cls_name = self.__class__.__name__
         n_radii = len(self.radii)

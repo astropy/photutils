@@ -235,9 +235,9 @@ to the given encircled energy (or energies). These methods are
 respectively. They are implemented as interpolation functions using
 the calculated curve-of-growth profile. The accuracy of these methods
 is dependent on the quality of the curve-of-growth profile (e.g., it's
-better to have a curve-of-growth profile with high signal-to-noise
-and more radial bins). Also, if the curve-of-growth profile is not
-monotonically increasing, the interpolation may fail.
+better to have a curve-of-growth profile with high signal-to-noise and
+more radial bins). See :ref:`noisy_curve_of_growth` for how these
+methods handle a profile that is not monotonically increasing.
 
 Let's compute the encircled energy values at a few radii for the curve
 of growth we created above::
@@ -296,6 +296,124 @@ Here we plot the encircled energy values.
 
     for ee_rad, ee_val in zip(ee_rads, ee_vals, strict=True):
         ax.text(ee_rad/2, ee_val, f'{ee_val:.2f}', ha='center', va='bottom')
+
+
+.. _noisy_curve_of_growth:
+
+Noisy Curves of Growth
+^^^^^^^^^^^^^^^^^^^^^^
+
+The true curve of growth of a source never decreases with radius, but
+a measured one can. Where the source flux has leveled off, the noise in
+each additional annulus can be larger than the flux it adds, so the
+profile moves up and down. The profile we created above decreases for
+the first time between radii of 17 and 18 pixels::
+
+    >>> bool(np.all(np.diff(cog.profile) > 0))
+    False
+    >>> print(cog.radius[:-1][np.diff(cog.profile) <= 0])
+    [17 19 22 24]
+
+:meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius`
+interpolates the measured profile, so the encircled energy it returns
+can also decrease with radius. The same encircled energy can then
+occur at more than one radius.
+:meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee` returns
+the smallest radius at which the interpolated curve reaches the given
+encircled energy. Every encircled energy between the smallest and the
+largest profile value has a radius, and converting that radius back
+gives the same encircled energy::
+
+    >>> ee_vals = np.array([0.5, 0.9, 0.99, 0.999, 1.0])
+    >>> ee_rads = cog.calc_radius_at_ee(ee_vals)
+    >>> print(ee_rads)  # doctest: +FLOAT_CMP
+    [ 5.58334451 10.20639775 14.38357656 21.89837891 24.        ]
+    >>> print(cog.calc_ee_at_radius(ee_rads))  # doctest: +FLOAT_CMP
+    [0.5   0.9   0.99  0.999 1.   ]
+
+The reverse is not true after the profile has decreased. The encircled
+energy at a radius of 19 pixels was already reached at a smaller
+radius, which is the one returned::
+
+    >>> ee_val = cog.calc_ee_at_radius(19.0)
+    >>> print(cog.calc_radius_at_ee(ee_val))  # doctest: +FLOAT_CMP
+    15.57818537
+
+.. note::
+
+    Where a noisy profile has leveled off, the radius of a given
+    encircled energy is poorly constrained by the data. In addition,
+    the maximum of a noisy profile is larger than the true total flux,
+    so a profile normalized with
+    :meth:`~photutils.profiles.CurveOfGrowth.normalize` reaches each
+    encircled energy at too large a radius. For the example above, the
+    radius at an encircled energy of 0.99 is typically overestimated
+    by about 1 pixel, with a scatter of about 2 pixels between noise
+    realizations.
+
+    If you need the radius at a large encircled energy (e.g., 0.95 or
+    more), use a profile with a high signal-to-noise ratio. If the
+    total flux of the source is known (e.g., from a model or a
+    catalog), divide the input ``data`` by that total flux instead
+    of calling :meth:`~photutils.profiles.CurveOfGrowth.normalize`.
+    The radii are then much less biased and less scattered, but
+    :meth:`~photutils.profiles.CurveOfGrowth.calc_radius_at_ee`
+    returns NaN for an encircled energy that the measured profile
+    never reaches.
+
+Here we plot the outer part of the normalized profile, the curve
+interpolated by
+:meth:`~photutils.profiles.CurveOfGrowth.calc_ee_at_radius`, and the
+radius returned for an encircled energy of 0.995.
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D
+    from photutils.centroids import centroid_2dg
+    from photutils.datasets import make_noise_image
+    from photutils.profiles import CurveOfGrowth
+
+    # Create an artificial single source
+    gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
+    yy, xx = np.mgrid[0:100, 0:100]
+    data = gmodel(xx, yy)
+    bkg_sig = 2.1
+    noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
+    data += noise
+
+    # Find the source centroid
+    xycen = centroid_2dg(data)
+
+    # Create the curve of growth
+    radii = np.arange(1, 26)
+    cog = CurveOfGrowth(data, xycen, radii)
+    cog.normalize(method='max')
+
+    # Evaluate the interpolated curve on a fine grid
+    fine_radii = np.linspace(12, 25, 500)
+    ee_vals = cog.calc_ee_at_radius(fine_radii)
+
+    # The radius at an encircled energy of 0.995
+    ee_val = 0.995
+    ee_rad = cog.calc_radius_at_ee(ee_val)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(cog.radius, cog.profile, 'o', label='Measured profile')
+    ax.plot(fine_radii, ee_vals, label='Interpolated curve')
+    ax.axhline(ee_val, color='C2', ls='dashed', label=f'EE = {ee_val}')
+    ax.plot(ee_rad, ee_val, 'o', color='C3', ms=10,
+            label=f'Returned radius = {ee_rad:.2f}')
+    ax.set_xlim(12, 25.5)
+    ax.set_ylim(0.97, 1.002)
+    ax.set_xlabel('Radius (pixels)')
+    ax.set_ylabel('Encircled Energy')
+    ax.legend(loc='lower right')
+
+The `~photutils.profiles.EnsquaredCurveOfGrowth` and
+`~photutils.profiles.EllipticalCurveOfGrowth` classes described below
+handle noisy profiles in the same way.
 
 
 Creating an Ensquared Curve of Growth
