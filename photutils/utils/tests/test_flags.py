@@ -362,6 +362,25 @@ class TestDecodeFlags:
         decoded = decode_flags(flags, registry)
         assert decoded == [[[], ['one']], [['two'], ['one', 'four']]]
 
+    @pytest.mark.parametrize('dtype', [np.uint8, np.int8, np.uint16])
+    def test_small_integer_dtype(self, dtype):
+        """
+        Test that flags with a small integer dtype are decoded against
+        a registry whose bit values do not fit in that dtype.
+        """
+
+        class _WideFlags(FlagRegistry):
+            FLAG_DEFINITIONS: ClassVar = [
+                FlagDefinition(1, 'one', 'first flag', 'The first flag.'),
+                FlagDefinition(65536, 'wide', 'wide flag',
+                               'The wide flag.'),
+            ]
+            domain: ClassVar = 'example'
+
+        flags = np.array([0, 1], dtype=dtype)
+        assert decode_flags(flags, _WideFlags()) == [[], ['one']]
+        assert decode_flags(flags[1], _WideFlags()) == ['one']
+
     def test_negative_flag(self, registry):
         """
         Test that a negative flag value raises ValueError.
