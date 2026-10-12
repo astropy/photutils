@@ -10,7 +10,8 @@ from astropy.coordinates import Angle, SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
 from numpy.testing import assert_allclose
 
-from photutils.aperture import PolygonAperture, SkyPolygonAperture
+from photutils.aperture import (PolygonAperture, SkyPolygonAperture,
+                                aperture_photometry)
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
                                         SkyEllipticalAperture)
@@ -39,6 +40,44 @@ class TestEllipticalAperture(BaseTestRotatedPixelAperture):
         match = "'b' must be a positive scalar"
         with pytest.raises(ValueError, match=match):
             EllipticalAperture(POSITIONS, a=10.0, b=radius, theta=np.pi / 2.0)
+
+
+@pytest.mark.parametrize(('position', 'a', 'b', 'theta'), [
+    ((10.5, 10), 1, 0.5, 0),
+    ((10.5, 10), 2, 0.5, 0),
+    ((10, 10.5), 0.5, 0.5, 0),
+    ((10, 10), 0.5, 0.5, np.pi / 4),
+    ((10.5, 10.5), 1, 1, np.pi / 2),
+    ((10, 10), 1.5, 0.5, np.pi / 2),
+    ((10.5, 10.5), 3, 2, 0),
+    ((10.3, 10.1), 1, 0.5, 0.3),
+])
+def test_exact_mask_degenerate(position, a, b, theta):
+    """
+    Test the exact mask when pixel edges are tangent to the ellipse or
+    pixel corners lie exactly on it.
+    """
+    aper = EllipticalAperture(position, a, b, theta=theta)
+    mask = aper.to_mask(method='exact').data
+    assert_allclose(mask.sum(), np.pi * a * b, rtol=1e-10)
+    assert mask.min() >= 0.0
+    assert mask.max() <= 1.0 + 1e-12
+
+    data = np.ones((21, 21))
+    phot = aperture_photometry(data, aper, method='exact')
+    assert_allclose(phot['aperture_sum'][0], np.pi * a * b, rtol=1e-10)
+
+
+def test_exact_mask_degenerate_annulus():
+    """
+    Test the exact annulus mask when pixel edges are tangent to both
+    ellipses.
+    """
+    aper = EllipticalAnnulus((10.5, 10), 1, 2, 1, theta=0)
+    mask = aper.to_mask(method='exact').data
+    assert_allclose(mask.sum(), 1.5 * np.pi, rtol=1e-10)
+    assert mask.min() >= 0.0
+    assert mask.max() <= 1.0 + 1e-12
 
 
 class TestEllipticalAnnulus(BaseTestAnnulusMutation,

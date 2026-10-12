@@ -66,6 +66,50 @@ def test_elliptical_overlap_exact_total_area(rx, ry, theta):
     assert_allclose(grid.sum() * pixel_area, np.pi * rx * ry, rtol=1e-10)
 
 
+def test_elliptical_overlap_exact_vertex_on_ellipse():
+    """
+    A pixel with one corner exactly on the ellipse and the other
+    corners outside can still overlap the ellipse.
+    """
+    grid = elliptical_overlap_grid(0.0, 3.0, -1.0, 2.0, 1, 1,
+                                   1.0, 1.0, 0.0, 1, 1)
+    assert_allclose(grid[0, 0] * 9.0, np.pi / 2.0, rtol=1e-12)
+
+
+@pytest.mark.parametrize(('xmin', 'ymin', 'rx', 'ry', 'theta'), [
+    (-1.0, -0.5, 1.0, 0.5, 0.0),
+    (-2.0, -0.5, 2.0, 0.5, 0.0),
+    (-0.5, -1.0, 0.5, 0.5, 0.0),
+    (-0.5, -0.5, 0.5, 0.5, np.pi / 4.0),
+    (-1.0, -1.0, 1.0, 1.0, np.pi / 2.0),
+    (-1.0, -1.0, 0.5, 0.5, np.pi / 3.0),
+    (-1.0, -1.0, 0.5, 1.5, np.pi / 2.0),
+    (-3.0, -2.0, 3.0, 2.0, 0.0),
+    (-2.0, -3.0, 3.0, 2.0, np.pi / 2.0),
+    (-0.5, -0.5, 0.5, 0.25, np.pi / 4.0),
+    (-1.5, -1.5, np.sqrt(2.0), 0.5, np.pi / 4.0),
+    (-1.5, -1.5, np.sqrt(2.0), 0.5, 3.0 * np.pi / 4.0),
+])
+def test_elliptical_overlap_exact_degenerate(xmin, ymin, rx, ry, theta):
+    """
+    The exact overlap is correct when pixel edges are tangent to the
+    ellipse or pixel corners lie exactly on it.
+    """
+    nx = round(-2.0 * xmin) + 2
+    ny = round(-2.0 * ymin) + 2
+    grid = elliptical_overlap_grid(xmin - 1.0, -xmin + 1.0, ymin - 1.0,
+                                   -ymin + 1.0, nx, ny, rx, ry, theta, 1, 1)
+    assert_allclose(grid.sum(), np.pi * rx * ry, rtol=1e-10)
+    assert grid.min() >= 0.0
+    assert grid.max() <= 1.0 + 1e-12
+
+    # The result agrees with the subpixel method to within its
+    # sampling error
+    sub = elliptical_overlap_grid(xmin - 1.0, -xmin + 1.0, ymin - 1.0,
+                                  -ymin + 1.0, nx, ny, rx, ry, theta, 0, 64)
+    assert np.abs(grid - sub).max() < 0.02
+
+
 def test_elliptical_overlap_exact_matches_high_subpixel():
     """
     The exact result should agree with a high subpixel approximation to
