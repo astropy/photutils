@@ -398,6 +398,42 @@ class TestRadialProfile:
         rp3.plot()
         rp3.plot_error()
 
+    @pytest.mark.parametrize('name', ['gaussian', 'moffat'])
+    def test_fit_units(self, profile_data, name):
+        """
+        Test the Gaussian and Moffat fits with ``Quantity`` data.
+
+        The model amplitude has the data unit and is dimensionless after
+        the profile is normalized.
+        """
+        xycen, data, error, _ = profile_data
+        edge_radii = np.arange(36)
+        unit = u.Jy
+        rp1 = RadialProfile(data, xycen, edge_radii, error=error)
+        rp2 = RadialProfile(data << unit, xycen, edge_radii,
+                            error=error << unit)
+
+        fit1 = getattr(rp1, f'{name}_fit')
+        fit2 = getattr(rp2, f'{name}_fit')
+        assert fit2.amplitude.unit == unit
+        assert_allclose(fit2.amplitude.value, fit1.amplitude.value)
+        profile = getattr(rp2, f'{name}_profile')
+        assert profile.unit == unit
+        assert_allclose(fit2(rp2.radius), profile)
+
+        rp1.normalize()
+        rp2.normalize()
+        fit1 = getattr(rp1, f'{name}_fit')
+        fit2 = getattr(rp2, f'{name}_fit')
+        assert fit2.amplitude.unit == u.dimensionless_unscaled
+        assert_allclose(fit2.amplitude.value, fit1.amplitude.value)
+        profile = getattr(rp2, f'{name}_profile')
+        assert profile.unit == u.dimensionless_unscaled
+        assert_allclose(fit2(rp2.radius), profile)
+
+        rp2.unnormalize()
+        assert getattr(rp2, f'{name}_fit').amplitude.unit == unit
+
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_ylabel_units(self, profile_data):
         """

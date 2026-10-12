@@ -756,6 +756,21 @@ Bug Fixes
     longer includes the data unit after the profile has been normalized
     (a normalized profile is dimensionless). [#2371]
 
+  - Fixed the ``RadialProfile`` ``gaussian_fit`` and ``moffat_fit``
+    attributes for ``Quantity`` input data. Previously, a ``UnitsError``
+    was raised for an unnormalized profile and the model amplitude had
+    inverse data units for a normalized profile. [#2494]
+
+  - The profile classes now raise a ``ValueError`` for an invalid
+    ``method`` or ``subpixels`` value, or for ``data`` that is not 2D,
+    when the class is created. Previously, the error was raised only
+    when the profile was first computed. [#2494]
+
+  - The profile ``normalize`` method now emits a warning and leaves
+    the profile unchanged when the maximum or sum of the profile is
+    negative. Previously, the profile was divided by the negative
+    value, which reversed its sign. [#2494]
+
   - A ``Quantity`` ``radii`` (or ``half_sizes``) input to the profile
     classes now raises a ``TypeError``. Previously, the units were
     silently dropped. [#2371]

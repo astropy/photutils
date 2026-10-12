@@ -371,6 +371,19 @@ class RadialProfile(ProfileBase):
     def _profile_nanmask(self):
         return np.isfinite(self._raw_profile)
 
+    def _normalize_fit(self, raw_fit):
+        """
+        Return a copy of a raw fit with its amplitude divided by the
+        current profile normalization.
+        """
+        fit = raw_fit.copy()
+        # The amplitude has units if the input data has units
+        amplitude = raw_fit.amplitude.quantity
+        if amplitude is None:
+            amplitude = raw_fit.amplitude.value
+        fit.amplitude = amplitude / self.normalization_value
+        return fit
+
     @cached_property
     def _raw_gaussian_fit(self):
         """
@@ -402,8 +415,9 @@ class RadialProfile(ProfileBase):
         gaussian_fit = fitter(g_init, radius, profile)
 
         if radius.min() > 0.3 * gaussian_fit.stddev.value:
-            msg = ('Gaussian fit may be unreliable because the input '
-                   'radii do not extend close to the source center.')
+            msg = ('Gaussian fit may be unreliable because the smallest '
+                   'radius with a finite profile value is larger than '
+                   '0.3 times the fitted standard deviation.')
             warnings.warn(msg, AstropyUserWarning)
 
         return gaussian_fit
@@ -425,9 +439,7 @@ class RadialProfile(ProfileBase):
         raw_fit = self._raw_gaussian_fit
         if raw_fit is None:
             return None
-        fit = raw_fit.copy()
-        fit.amplitude = raw_fit.amplitude.value / self.normalization_value
-        return fit
+        return self._normalize_fit(raw_fit)
 
     @property
     def gaussian_profile(self):
@@ -523,9 +535,7 @@ class RadialProfile(ProfileBase):
         raw_fit = self._raw_moffat_fit
         if raw_fit is None:
             return None
-        fit = raw_fit.copy()
-        fit.amplitude = raw_fit.amplitude.value / self.normalization_value
-        return fit
+        return self._normalize_fit(raw_fit)
 
     @property
     def moffat_profile(self):

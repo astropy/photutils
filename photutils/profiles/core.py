@@ -11,6 +11,7 @@ import astropy.units as u
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture._common import validate_mask_method
 from photutils.aperture.core import _update_method_subpixels_docstring
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.utils._deprecation import deprecated_positional_kwargs
@@ -70,6 +71,12 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
+
+        if np.ndim(data) != 2:
+            msg = 'data must be a 2D array'
+            raise ValueError(msg)
+
+        validate_mask_method(method, subpixels, method_name='method')
 
         if error is not None and error.shape != data.shape:
             msg = 'error must have the same shape as data'
@@ -295,9 +302,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
             warnings.simplefilter('ignore', RuntimeWarning)
             normalization = func(self._raw_profile)
 
-        if normalization == 0 or not np.isfinite(normalization):
+        if not (np.isfinite(normalization) and normalization > 0):
             msg = ('The profile cannot be normalized because the max or '
-                   'sum is zero or non-finite.')
+                   'sum is not positive or is non-finite.')
             warnings.warn(msg, AstropyUserWarning)
         else:
             # A single atomic attribute store. Concurrent readers see
