@@ -771,6 +771,11 @@ Bug Fixes
     negative. Previously, the profile was divided by the negative
     value, which reversed its sign. [#2494]
 
+  - The ``RadialProfile`` ``data_radius`` and ``data_profile``
+    attributes now exclude pixels whose centers lie inside the minimum
+    input radius, consistent with the binned profile. Previously, only
+    the maximum input radius was applied. [#2494]
+
   - A ``Quantity`` ``radii`` (or ``half_sizes``) input to the profile
     classes now raises a ``TypeError``. Previously, the units were
     silently dropped. [#2371]

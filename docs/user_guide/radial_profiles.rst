@@ -118,8 +118,8 @@ The `~photutils.profiles.RadialProfile` class also includes
 :attr:`~photutils.profiles.RadialProfile.data_radius` and
 :attr:`~photutils.profiles.RadialProfile.data_profile` attributes that
 can be used to plot the raw data profile. These attributes provide the
-radii and values of the unmasked data points within the maximum radius
-defined by the input radii.
+radii and values of the unmasked data points between the minimum and
+maximum radii defined by the input radii.
 
 Let's plot the raw data profile along with the radial profile and its
 error bars:

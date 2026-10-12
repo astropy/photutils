@@ -121,6 +121,24 @@ class TestRadialProfile:
         n_boundary = np.sum(rp.data_radius == max_radius)
         assert n_boundary == np.sum(dist == max_radius)
 
+    def test_data_min_radius(self):
+        """
+        Test that pixels whose centers lie inside the minimum radius are
+        excluded from the data profile.
+        """
+        data = np.ones((101, 101))
+        xycen = (50.0, 50.0)
+        min_radius = 5
+        max_radius = 25
+        rp = RadialProfile(data, xycen, np.arange(min_radius, max_radius + 1))
+
+        yy, xx = np.mgrid[0:101, 0:101]
+        dist = np.hypot(xx - xycen[0], yy - xycen[1])
+        within = (dist >= min_radius) & (dist <= max_radius)
+        assert np.min(rp.data_radius) == min_radius
+        assert len(rp.data_radius) == np.sum(within)
+        assert rp.data_radius.shape == rp.data_profile.shape
+
     def test_data_profile_access_after_normalize(self, profile_data):
         """
         Test that data_profile is consistent with the profile

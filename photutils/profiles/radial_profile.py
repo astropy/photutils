@@ -631,12 +631,13 @@ class RadialProfile(ProfileBase):
         of radii (`~numpy.ndarray`) and data values (`~numpy.ndarray`,
         or `~astropy.units.Quantity` if the input ``data`` has units).
 
-        Returns the radii and values of the unmasked data points within
-        the maximum radius defined by the input radii. Pixels flagged
-        in ``self.mask`` (including auto-masked non-finite values) are
-        excluded.
+        Returns the radii and values of the unmasked data points between
+        the minimum and maximum radii defined by the input radii. Pixels
+        flagged in ``self.mask`` (including auto-masked non-finite
+        values) are excluded.
         """
         shape = self.data.shape
+        min_radius = np.min(self.radii)
         max_radius = np.max(self.radii)
         # The bounding box must include the pixels whose centers lie
         # exactly at max_radius, so the (exclusive) upper slice bounds
@@ -650,9 +651,10 @@ class RadialProfile(ProfileBase):
         yidx += y_min
 
         # Calculate the radii of the pixels from the center and select
-        # those within the maximum radius defined by the input radii
+        # those between the minimum and maximum radii defined by the
+        # input radii
         radii = np.hypot(xidx - self.xycen[0], yidx - self.xycen[1])
-        within = radii <= max_radius
+        within = (radii >= min_radius) & (radii <= max_radius)
         radii = radii[within]
         yidx_sub = yidx[within]
         xidx_sub = xidx[within]
@@ -673,9 +675,8 @@ class RadialProfile(ProfileBase):
         The radial distances in pixels of the raw data points from the
         source center as a 1D `~numpy.ndarray`.
 
-        All unmasked pixels whose centers lie within the maximum of the
-        input ``radii`` are included, even those inside the minimum of
-        ``radii``.
+        All unmasked pixels whose centers lie between the minimum and
+        maximum of the input ``radii``, inclusive, are included.
         """
         return self._data_profile[0]
 
