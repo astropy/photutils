@@ -53,7 +53,7 @@ from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
 from photutils.utils._deprecation import (_get_future_column_names,
                                           create_empty_deprecated_qtable,
-                                          deprecated_getattr,
+                                          deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._flags import update_flag_docstring
@@ -1817,6 +1817,8 @@ class SourceCatalog:
         else:
             allowed_columns = (set(self.properties)
                                | set(self.custom_properties))
+            # The deprecated inertia_tensor is not a cached property
+            allowed_columns.add('inertia_tensor')
             # Remove 2D cutout images from the allowed columns
             allowed_columns = {col for col in allowed_columns
                                if '_cutout' not in col}
@@ -4006,12 +4008,24 @@ class SourceCatalog:
         perimeter[self._all_masked] = np.nan
         return np.array(perimeter) * u.pix
 
-    @cached_property
-    @use_detcat
+    @property
+    @deprecated('3.1', until='4.0')
     def inertia_tensor(self):
         """
         The inertia tensor of the source for the rotation around its
         center of mass.
+
+        .. deprecated:: 3.1
+            The inertia tensor carries no information beyond the
+            `covariance` matrix. Use the `covariance` matrix and the
+            shape properties that are derived from it instead.
+
+        The rows and columns of the ``(2, 2)`` tensor are ordered ``(y,
+        x)``, the reverse of the `covariance` matrix. The diagonal
+        elements are the moments of inertia about the ``y`` and ``x``
+        axes and the off-diagonal elements are the negative of the
+        product of inertia. The tensor is not normalized by the total
+        flux.
         """
         moments = self._array('moments_central')
         return inertia_tensor_from_moments(moments) * u.pix**2

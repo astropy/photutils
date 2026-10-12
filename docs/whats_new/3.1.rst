@@ -1243,6 +1243,19 @@ because its process startup and data-pickling overheads made it slower
 than the serial implementation. Use the new ``n_threads`` keyword for
 multithreaded deblending instead.
 
+``inertia_tensor`` Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``inertia_tensor`` property of
+`~photutils.segmentation.SourceCatalog` and
+`~photutils.aperture.ApertureStats` is deprecated and will be removed
+in version 4.0. The inertia tensor carries no information beyond the
+``covariance`` matrix. It has the same eigenvectors, and it is equal to
+the total flux times the difference between the trace of the covariance
+matrix times the identity matrix and the covariance matrix, with its
+rows and columns in the reverse ``(y, x)`` order. Use the ``covariance``
+property and the shape properties that are derived from it instead.
+
 ``make_psf_model`` Deprecated
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

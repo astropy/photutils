@@ -110,8 +110,8 @@ def inertia_tensor_from_moments(moments_central):
     Returns
     -------
     tensor : `~numpy.ndarray`
-        The ``(N, 2, 2)`` inertia tensors. They are not normalized by
-        the total flux.
+        The ``(N, 2, 2)`` inertia tensors, with rows and columns
+        ordered ``(y, x)``. They are not normalized by the total flux.
     """
     mu_02 = moments_central[:, 0, 2]
     mu_11 = -moments_central[:, 1, 1]

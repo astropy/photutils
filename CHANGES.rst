@@ -1245,6 +1245,10 @@ API Changes
     will be removed in version 4.0. Use the new ``AperturePhotometry``
     class instead. [#2324, #2328]
 
+  - The ``ApertureStats`` ``inertia_tensor`` property is deprecated and will
+    be removed in version 4.0. It carries no information beyond the
+    ``covariance`` matrix. [#2500]
+
   - The default ``ApertureStats.to_table()`` columns now include a
     ``'flags'`` column. [#2327, #2379]
 
@@ -1548,6 +1552,10 @@ API Changes
     names. [#2450]
 
 - ``photutils.segmentation``
+
+  - The ``SourceCatalog`` ``inertia_tensor`` property is deprecated and will
+    be removed in version 4.0. It carries no information beyond the
+    ``covariance`` matrix. [#2500]
 
   - The deblending warning information stored by ``deblend_sources``
     in the returned ``SegmentationImage`` ``info`` dictionary has been

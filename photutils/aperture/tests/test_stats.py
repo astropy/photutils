@@ -657,6 +657,31 @@ class TestDeprecations(BaseApertureStatsData):
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             assert scalar.ids == scalar.id
 
+    def test_deprecated_inertia_tensor(self):
+        """
+        Test that the ``inertia_tensor`` attribute is deprecated and
+        keeps its ``(y, x)`` order and its table column.
+        """
+        apstats = ApertureStats(self.data, self.aperture)
+        match = 'deprecated in version 3.1'
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            tensor = apstats.inertia_tensor
+        assert 'inertia_tensor' not in apstats.properties
+        mu = apstats.moments_central
+        assert tensor.unit == u.pix**2
+        assert_allclose(tensor[:, 0, 0].value, mu[:, 0, 2])
+        assert_allclose(tensor[:, 1, 1].value, mu[:, 2, 0])
+        assert_allclose(tensor[:, 0, 1].value, -mu[:, 1, 1])
+        assert_allclose(tensor[:, 1, 0].value, -mu[:, 1, 1])
+
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            tbl = apstats.to_table(columns=['inertia_tensor'])
+        assert_allclose(tbl['inertia_tensor'], tensor)
+
+        # A scalar instance returns a single (2, 2) tensor
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            assert apstats[0].inertia_tensor.shape == (2, 2)
+
     def test_deprecated_n_apertures(self):
         """
         Test that the ``n_apertures`` attribute is deprecated and
@@ -2448,12 +2473,12 @@ class TestSourceCatalogAgreement:
 
     # The image moments are excluded because each class measures them
     # from the origin of its own cutout.
-    PROPERTIES = ('centroid', 'inertia_tensor', 'covariance',
-                  'covariance_eigvals', 'semimajor_axis', 'semiminor_axis',
-                  'fwhm', 'orientation', 'sky_orientation', 'eccentricity',
-                  'elongation', 'ellipticity', 'covariance_xx',
-                  'covariance_yy', 'covariance_xy', 'ellipse_cxx',
-                  'ellipse_cyy', 'ellipse_cxy')
+    PROPERTIES = ('centroid', 'covariance', 'covariance_eigvals',
+                  'semimajor_axis', 'semiminor_axis', 'fwhm', 'orientation',
+                  'sky_orientation', 'eccentricity', 'elongation',
+                  'ellipticity', 'covariance_xx', 'covariance_yy',
+                  'covariance_xy', 'ellipse_cxx', 'ellipse_cyy',
+                  'ellipse_cxy')
 
     def _compare(self, aperture_data, catalog_data):
         """
