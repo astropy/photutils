@@ -265,6 +265,8 @@ exclude = [
     # PR02: subclasses without __init__
     'Background$',
     'BackgroundRMS$',
+    'BackgroundBase$',
+    'BackgroundRMSBase$',
     'RadialProfile$',
 
     # GL08: docstrings defined by a decorator
