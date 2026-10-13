@@ -205,6 +205,11 @@ New Features
     The ``columns`` keyword now accepts a single string in addition to a
     list of column names. [#2329]
 
+  - Added a ``min_n_pixels`` keyword to ``IRAFStarFinder`` to set the
+    minimum number of positive sky-subtracted pixels within the kernel
+    footprint that a source must have. It is equivalent to the
+    ``npixmin`` parameter in IRAF's starfind. [#2510]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by
@@ -767,9 +772,10 @@ Bug Fixes
     returned for peaks in the pixels at the image edges. [#2510]
 
   - ``IRAFStarFinder`` now rejects sources with fewer than 5 positive
-    sky-subtracted pixels within the kernel footprint, as in IRAF's
-    starfind (``npixmin``). Previously, only 2 such pixels were
-    required, so fewer faint sources may be returned. [#2510]
+    sky-subtracted pixels within the kernel footprint by default, as
+    in IRAF's starfind. Previously, only 2 such pixels were required,
+    so fewer faint sources may be returned. Set ``min_n_pixels=2`` to
+    recover the previous behavior. [#2510]
 
   - ``IRAFStarFinder`` now rejects sources whose centroid is outside
     of the image, as in IRAF's starfind. [#2510]
