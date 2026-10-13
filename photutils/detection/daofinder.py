@@ -202,6 +202,17 @@ class DAOStarFinder(StarFinderBase):
     of the image and the star is rejected. Set ``exclude_border=True``
     to exclude the sources near the image borders.
 
+    As in DAOFIND, the centroid is computed using the major-axis
+    standard deviation of the Gaussian kernel for the x-axis fit and
+    the minor-axis standard deviation for the y-axis fit, whatever the
+    kernel ``theta``. The centroids are therefore biased for an
+    elliptical kernel (``ratio < 1``) whose major axis is not along
+    the x-axis. The largest bias occurs for a ``theta`` of 90 or 270
+    degrees, where the x offset of the centroid from the peak pixel is
+    too large by a factor of ``1 / ratio**2`` and the y offset is too
+    small by the same factor. Circular kernels and elliptical kernels
+    with a ``theta`` of 0 or 180 degrees are not affected.
+
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
 
