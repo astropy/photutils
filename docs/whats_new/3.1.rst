@@ -1625,3 +1625,15 @@ Note that the star finders apply ``min_separation`` to the integer
 peak-pixel positions. The subpixel centroids computed afterwards may
 shift sources slightly, so the centroid-based separations in the output
 tables can be slightly smaller than ``min_separation``.
+
+``IRAFStarFinder`` Minimum Number of Pixels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+:class:`~photutils.detection.IRAFStarFinder` now rejects sources with
+fewer than 5 positive sky-subtracted pixels within the kernel footprint
+by default. This matches the default (and minimum) value of the
+``npixmin`` parameter in IRAF's starfind. Previously, only 2 such pixels
+were required, so fewer faint sources may now be returned.
+
+The threshold is set by the new ``min_n_pixels`` keyword. Set
+``min_n_pixels=2`` to recover the previous behavior.
