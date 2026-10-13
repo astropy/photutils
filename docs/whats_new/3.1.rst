@@ -140,7 +140,7 @@ neighbor masking (see below). The flux columns use the names
 
 The class is immutable after construction (aside from the internal
 lazy-attribute cache), so a single instance is safe to share across
-threads, and independent frames can be processed concurrently (see
+threads, and independent images can be processed concurrently (see
 :ref:`the thread-safety section <whatsnew-3.1-thread-safe-photometry>`
 below).
 
@@ -306,20 +306,20 @@ large catalog is several times faster with several threads::
     >>> table = cat.to_table()
 
 For more advanced workflows, independent images can also be processed
-concurrently with a thread pool, one instance per frame::
+concurrently with a thread pool, one instance per image::
 
     >>> from concurrent.futures import ThreadPoolExecutor
-    >>> frames = [rng.random((1024, 1024)) for _ in range(8)]
+    >>> images = [rng.random((1024, 1024)) for _ in range(8)]
     >>> aperture = CircularAperture(rng.uniform(0, 1024, (1000, 2)),
     ...                             r=5.0)
     >>> with ThreadPoolExecutor(max_workers=8) as executor:
     ...     results = list(executor.map(
-    ...         lambda frame: AperturePhotometry(frame, aperture),
-    ...         frames))
+    ...         lambda image: AperturePhotometry(image, aperture),
+    ...         images))
     >>> tables = [result.to_table() for result in results]
 
 Because ``executor.map`` returns results in input order, the tables are
-in the same order as the input ``frames``.
+in the same order as the input ``images``.
 
 
 Multithreaded 2D Background Estimation
