@@ -20,13 +20,13 @@ What's New
 The "What's New" pages highlight major new features and improvements
 in recent releases.
 
-Current Release
----------------
+Development Version
+-------------------
 
 .. toctree::
     :maxdepth: 1
 
-    ../whats_new/3.1.rst
+    ../whats_new/3.2.rst
 
 
 Past Releases
@@ -40,6 +40,7 @@ functionality highlighted in these pages.
 .. toctree::
     :maxdepth: 1
 
+    ../whats_new/3.1.rst
     ../whats_new/3.0.rst
     ../whats_new/2.3.rst
     ../whats_new/2.2.rst
