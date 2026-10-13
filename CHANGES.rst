@@ -762,6 +762,10 @@ Bug Fixes
     ``roundness_range`` may therefore differ for such kernels. Square
     kernels are not affected. [#2510]
 
+  - ``DAOStarFinder`` now rejects sources whose centroid is outside
+    of the image, as in DAOFIND. Such sources could previously be
+    returned for peaks in the pixels at the image edges. [#2510]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``_ellipse_model.pyx`` to fix a

@@ -1084,9 +1084,16 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         if newcat is None:
             return None
 
+        # As in DAOFIND, reject sources with a centroid outside the image
+        ny, nx = newcat.data.shape
+        mask = ((newcat.x_centroid >= -0.5)
+                & (newcat.x_centroid <= nx - 0.5)
+                & (newcat.y_centroid >= -0.5)
+                & (newcat.y_centroid <= ny - 0.5))
+
         bounds = [
             ('sharpness', self.sharpness_range),
             ('roundness1', self.roundness_range),
             ('roundness2', self.roundness_range),
         ]
-        return newcat._filter_bounds(bounds)
+        return newcat._filter_bounds(bounds, initial_mask=mask)

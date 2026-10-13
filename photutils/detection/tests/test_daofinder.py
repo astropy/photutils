@@ -346,6 +346,22 @@ class TestDAOStarFinder:
 
         assert_allclose(tbl['roundness1'], expected, rtol=1e-12)
 
+    def test_centroid_outside_image(self):
+        """
+        Test that sources with a centroid outside the image are
+        rejected, as in DAOFIND.
+        """
+        rng = np.random.default_rng(1)
+        shape = (80, 90)
+        data = rng.normal(0.0, 1.0, shape)
+        finder = DAOStarFinder(threshold=1.0, fwhm=2.0, min_separation=0,
+                               sharpness_range=None, roundness_range=None)
+        tbl = finder(data)
+        assert np.all(tbl['x_centroid'] >= -0.5)
+        assert np.all(tbl['x_centroid'] <= shape[1] - 0.5)
+        assert np.all(tbl['y_centroid'] >= -0.5)
+        assert np.all(tbl['y_centroid'] <= shape[0] - 0.5)
+
     @pytest.mark.parametrize('roundness_range', [0.5, (0.5,), (1, 2, 3)])
     def test_invalid_roundness_range(self, roundness_range):
         match = 'roundness_range must be a 2-element .* tuple'
