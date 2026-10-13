@@ -581,14 +581,26 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         A circular source will have a zero roundness. A source
         extended in x or y will have a negative or positive roundness,
         respectively.
-        """
-        # Set the central (peak) pixel to zero for the sum4 calculation
-        cutout_conv = self.cutout_convdata.copy()
-        cutout_conv[:, self.cutout_center[0], self.cutout_center[1]] = 0.0
 
-        # Calculate the four roundness quadrants.
-        # The cutout size always matches the kernel size, which has odd
-        # dimensions.
+        As in DAOFIND, the symmetry is measured over the central square
+        of the convolved-data cutout. For a non-square kernel, the
+        pixels beyond the smaller kernel half-width are not used.
+        """
+        # DAOFIND computes the sums over the central square of the
+        # cutout, with a half-width equal to the smaller of the two
+        # cutout half-widths. This is the full cutout for a square
+        # kernel.
+        ycen, xcen = self.cutout_center
+        center = min(ycen, xcen)
+        cutout_conv = self.cutout_convdata[
+            :, ycen - center:ycen + center + 1,
+            xcen - center:xcen + center + 1].copy()
+
+        # Set the central (peak) pixel to zero for the sum4 calculation
+        cutout_conv[:, center, center] = 0.0
+
+        # Calculate the four roundness quadrants of the central square,
+        # which has odd dimensions.
         # quad1 = bottom right
         # quad2 = bottom left
         # quad3 = top left
@@ -598,14 +610,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         # 3 3 x 1 1
         # 2 2 2 1 1
         # 2 2 2 1 1
-        quad1 = cutout_conv[:, 0:self.cutout_center[0] + 1,
-                            self.cutout_center[1] + 1:]
-        quad2 = cutout_conv[:, 0:self.cutout_center[0],
-                            0:self.cutout_center[1] + 1]
-        quad3 = cutout_conv[:, self.cutout_center[0]:,
-                            0:self.cutout_center[1]]
-        quad4 = cutout_conv[:, self.cutout_center[0] + 1:,
-                            self.cutout_center[1]:]
+        quad1 = cutout_conv[:, 0:center + 1, center + 1:]
+        quad2 = cutout_conv[:, 0:center, 0:center + 1]
+        quad3 = cutout_conv[:, center:, 0:center]
+        quad4 = cutout_conv[:, center + 1:, center:]
 
         axis = (1, 2)
         sum2 = (-quad1.sum(axis=axis) + quad2.sum(axis=axis)

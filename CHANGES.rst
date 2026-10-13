@@ -754,6 +754,14 @@ Bug Fixes
     kernel must contain only finite values and have a positive
     maximum. [#2377]
 
+  - Fixed the ``DAOStarFinder`` ``roundness1`` values for a non-square
+    kernel, which can occur for an elliptical kernel (``ratio < 1``).
+    As in DAOFIND, ``roundness1`` is now computed over the central
+    square of the kernel array. Previously, it was computed over the
+    entire rectangular kernel array. The sources selected by
+    ``roundness_range`` may therefore differ for such kernels. Square
+    kernels are not affected. [#2510]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``_ellipse_model.pyx`` to fix a
