@@ -609,8 +609,17 @@ m) WFC3/IR (0.13 arcsec per pixel) at 1.1 microns, :math:`\nu_c = (2.4
         cycle per pixel. In tests 0.7 lowered the residuals in the core
         by 10 to 40 percent and converged in fewer iterations.
 
-Try 0.85 with more iterations for a strongly undersampled detector whose
-cutoff frequency is well above one cycle per pixel::
+For a strongly undersampled detector, first check whether the stars
+were observed in several dithered exposures. If they were, link
+the stars across the exposures and keep the default passband (see
+:ref:`epsf-linked-stars`). The peak of a strongly undersampled ePSF is
+low mainly because the fitted centers and fluxes of the individual stars
+are inaccurate, and averaging them over the exposures corrects that more
+effectively than a wider passband does.
+
+If only one exposure is available, try 0.85 with more iterations for a
+strongly undersampled detector whose cutoff frequency is well above one
+cycle per pixel::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4, alias_passband=0.85,
     ...                            maxiters=20,
@@ -713,6 +722,44 @@ they do not, set ``constrain_fluxes=False``::
     >>> epsf_builder = EPSFBuilder(oversampling=4,
     ...                            constrain_fluxes=False,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
+Linked stars are the recommended way to build the ePSF of an
+undersampled detector. The center and the flux of a single undersampled
+star are poorly constrained, and their errors bias the ePSF, most
+visibly by lowering its peak. In tests with simulated HST, JWST, and
+Roman star fields (about 450 stars, an oversampling factor of 4, and the
+default builder settings), linking the stars of four dithered exposures
+recovered the peak of every ePSF to within 0.4 percent, including the
+HST WFC3/IR F110W ePSF, whose peak was about 3 percent low when built
+from one exposure. The residuals in the core of the ePSFs were about
+one third of those from one exposure, the errors of the fitted star
+positions were about half, and the builds converged in about half as
+many iterations. Two linked exposures recovered the peaks to within 0.7
+percent. With ``constrain_fluxes=False`` the peaks were recovered only
+to within about 1 percent.
+
+The improvement comes from the constraints and not from the additional
+star cutouts. In the same tests, the cutouts of the four exposures used
+as unlinked stars gave strongly undersampled ePSFs that were no more
+accurate than those from one exposure. The stars of dithered exposures
+should therefore always be linked.
+
+In those tests the WCS of each exposure was exact and the exposures had
+the same PSF and flux scale. The constraints are only as accurate as
+the relative alignment of the images, so align the WCS of the exposures
+before linking the stars. When the tests with four exposures were
+repeated with random shifts added to the WCS of each exposure, the
+residuals in the core of the ePSFs were about 0.4, 0.6, and 0.9 times
+those from one exposure for shifts with a standard deviation of 0.005,
+0.01, and 0.02 pixel along each axis. With shifts of 0.05 pixel the
+residuals were nearly twice those from one exposure. Rotation and
+scale errors of the WCS, which displace the stars by an amount that
+varies across the image, increased the residuals about half as much as
+shifts that displace the stars by the same amount on average. The
+exposures should therefore be aligned to about 0.01 pixel or better
+over the whole image. The fitted
+position of each star is also shifted by the alignment error of its
+exposure.
 
 To link stars across images, provide a single catalog with sky
 coordinates and multiple `~astropy.nddata.NDData` objects, each with a
@@ -878,12 +925,14 @@ A few hundred stars is a good target, and the number that is needed
 does not depend on the oversampling factor.
 
 The subpixel phases of the star centers must still be spread over the
-whole pixel, because structure in the ePSF that is finer than a
-pixel is constrained only by stars at different phases. A set of
-exposures dithered by fractions of a pixel that uniformly cover the
-subpixel phases is far more effective than random placement and also
-allows the star fluxes and positions to be constrained across images
-(see :ref:`epsf-linked-stars`).
+whole pixel, because structure in the ePSF that is finer than a pixel
+is constrained only by stars at different phases. A set of exposures
+dithered by fractions of a pixel that uniformly cover the subpixel
+phases is far more effective than random placement and also allows
+the star fluxes and positions to be constrained across images (see
+:ref:`epsf-linked-stars`). For an undersampled detector, linking the
+stars of dithered exposures improves the ePSF more than any builder
+setting does.
 
 The stars should be bright but unsaturated, isolated (no neighbors
 within the cutout), free of cosmic rays and detector artifacts, and have
