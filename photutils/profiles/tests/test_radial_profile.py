@@ -94,11 +94,11 @@ class TestRadialProfile:
         assert len(rp2.data_radius) < len(rp1.data_radius)
         assert rp2.data_radius.shape == rp2.data_profile.shape
 
-        # Auto-masked non-finite pixels should also be excluded
+        # Auto-masked nonfinite pixels should also be excluded
         xcen, ycen = xycen
         data2 = data.copy()
         data2[int(ycen), int(xcen)] = np.nan
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             rp3 = RadialProfile(data2, xycen, edge_radii, mask=None)
         assert np.all(np.isfinite(rp3.data_profile))
@@ -286,7 +286,7 @@ class TestRadialProfile:
         edge_radii = np.arange(36)
         radii_orig = edge_radii.copy()
 
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             RadialProfile(data2, xycen, edge_radii, error=error, mask=mask2)
 
@@ -349,7 +349,7 @@ class TestRadialProfile:
 
     def test_nonfinite(self, profile_data):
         """
-        Test RadialProfile handling of non-finite data values.
+        Test RadialProfile handling of nonfinite data values.
         """
         xycen, data, error, _ = profile_data
         data2 = data.copy()
@@ -362,7 +362,7 @@ class TestRadialProfile:
         rp2 = RadialProfile(data2, xycen, edge_radii, error=error, mask=mask)
         assert_allclose(rp1.profile, rp2.profile)
 
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             rp3 = RadialProfile(data2, xycen, edge_radii, error=error,
                                 mask=None)
@@ -561,7 +561,7 @@ class TestRadialProfile:
         mask = np.ones(data.shape, dtype=bool)
         edge_radii = np.arange(36)
         rp = RadialProfile(data, xycen, edge_radii, mask=mask)
-        match = 'The radial profile is entirely non-finite or masked'
+        match = 'The radial profile is entirely nonfinite or masked'
         with pytest.warns(AstropyUserWarning, match=match):
             result = rp.gaussian_fit
         assert result is None
@@ -655,7 +655,7 @@ class TestRadialProfile:
         mask = np.ones(data.shape, dtype=bool)
         edge_radii = np.arange(36)
         rp = RadialProfile(data, xycen, edge_radii, mask=mask)
-        match = 'The radial profile is entirely non-finite or masked'
+        match = 'The radial profile is entirely nonfinite or masked'
         with pytest.warns(AstropyUserWarning, match=match):
             result = rp.moffat_fit
         assert result is None
@@ -753,14 +753,14 @@ class TestRadialProfile:
 
     def test_moffat_nonfinite_data(self, profile_data):
         """
-        Test Moffat fit with non-finite data values.
+        Test Moffat fit with nonfinite data values.
         """
         xycen, data, error, _ = profile_data
 
         data2 = data.copy()
         data2[40, 40] = np.nan
         edge_radii = np.arange(36)
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             rp = RadialProfile(data2, xycen, edge_radii, error=error)
 

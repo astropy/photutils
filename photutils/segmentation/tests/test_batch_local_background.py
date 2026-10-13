@@ -26,7 +26,7 @@ def _annulus_values(cat):
     loop that the batch kernel replaces, with the cutout data mask
     inlined and the aperture weights applied to the usable pixels only
     (the previous in-place multiplication of the whole cutout raised a
-    warning for non-finite data within the aperture).
+    warning for nonfinite data within the aperture).
     """
     values = []
     for aperture in cat.local_background_aperture:
@@ -128,7 +128,7 @@ def scene():
 @pytest.mark.parametrize('with_mask', [True, False])
 def test_matches_reference(scene, width, with_mask):
     # The scene has sources touching every image edge, close pairs,
-    # masked pixels, and non-finite data values
+    # masked pixels, and nonfinite data values
     cat = SourceCatalog(scene['data'], scene['segm'], error=scene['error'],
                         mask=scene['mask'] if with_mask else None,
                         local_bkg_width=width)

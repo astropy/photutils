@@ -49,7 +49,7 @@ This is especially true if one only has a small number of sources to
 deblend. The benefits of multiprocessing require ~1000 or more sources
 to deblend, with larger gains as the number of sources increases.
 
-Also, a new ``sinh`` multi-thresholding mode was added to
+Also, a new ``sinh`` multithresholding mode was added to
 `~photutils.segmentation.deblend_sources` (also available in
 the new `~photutils.segmentation.SourceFinder`).
 

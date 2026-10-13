@@ -54,9 +54,9 @@ def test_apply_poisson_noise_negative():
 
 def test_apply_poisson_noise_nonfinite():
     """
-    Test if non-finite image values raise ValueError.
+    Test if nonfinite image values raise ValueError.
     """
-    match = 'data must not contain any non-finite values'
+    match = 'data must not contain any nonfinite values'
     for value in (np.nan, np.inf, -np.inf):
         data = np.array([[1.0, value], [2.0, 3.0]])
         with pytest.raises(ValueError, match=match):

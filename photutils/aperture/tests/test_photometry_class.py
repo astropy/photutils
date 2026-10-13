@@ -269,7 +269,7 @@ class TestSegmentationMasking:
         a manually mirror-corrected image.
 
         The scene is constructed so that the mirror of every neighbor
-        pixel is an unmasked non-neighbor pixel, so every neighbor pixel
+        pixel is an unmasked nonneighbor pixel, so every neighbor pixel
         is corrected (none are excluded).
         """
         data, segm = make_scene()
@@ -559,7 +559,7 @@ class TestScalarBehavior:
 
 class TestNonFiniteData:
     """
-    Non-finite ``data`` values (NaN and inf) must be automatically
+    Nonfinite ``data`` values (NaN and inf) must be automatically
     masked (excluded from flux, flux_err, and area) and reported via the
     ``non_finite_data`` flag, mirroring ``ApertureStats``.
     """
@@ -570,7 +570,7 @@ class TestNonFiniteData:
         data[11, 11] = np.inf
         aper = CircularAperture((12, 12), r=5)
         phot = AperturePhotometry(data, aper)
-        # The two non-finite interior pixels (each of weight 1) are
+        # The two nonfinite interior pixels (each of weight 1) are
         # excluded from the flux and area (all other pixels are 1.0).
         assert np.isfinite(phot.flux)
         assert_allclose(phot.flux, aper.area_overlap(data) - 2)
@@ -635,7 +635,7 @@ class TestNonFiniteData:
                                                'non_finite_data'}
 
     def test_nonfinite_at_masked_pixel_counts_as_masked(self):
-        # A non-finite pixel that is also input-masked is reported as
+        # A nonfinite pixel that is also input-masked is reported as
         # masked_pixels, not non_finite_data (matching ApertureStats).
         data = np.ones((25, 25))
         data[12, 12] = np.nan
@@ -650,7 +650,7 @@ class TestNonFiniteData:
     def test_legacy_function_still_corrupts_nonfinite(self):
         """
         Test that the legacy aperture_photometry function still returns
-        NaN for the aperture sum when there are non-finite values in the
+        NaN for the aperture sum when there are nonfinite values in the
         aperture, even though the new AperturePhotometry class masks
         them and returns a finite sum.
 
@@ -799,7 +799,7 @@ class TestInputValidation:
 
 class TestReadOnlyInputs:
     """
-    End-to-end tests that both classes accept read-only (non-writeable)
+    End-to-end tests that both classes accept read-only (nonwritable)
     input arrays on both the batch and mask-based code paths, and that
     the inputs are never modified.
     """
@@ -808,7 +808,7 @@ class TestReadOnlyInputs:
     def _make_readonly_inputs():
         """
         Build a full set of read-only input arrays, including a masked
-        pixel and a non-finite data value.
+        pixel and a nonfinite data value.
         """
         data, segm = make_scene()
         rng = np.random.default_rng(7)
@@ -1064,7 +1064,7 @@ class TestNThreads:
     @staticmethod
     def make_inputs():
         """
-        Build a deterministic image (with non-finite values), error,
+        Build a deterministic image (with nonfinite values), error,
         mask, and positions (including off-edge positions).
         """
         rng = np.random.default_rng(0)
@@ -1084,7 +1084,7 @@ class TestNThreads:
         """
         Test that multithreaded photometry gives results identical to
         the single-threaded computation, including for off-edge
-        positions, masked pixels, and non-finite data values.
+        positions, masked pixels, and nonfinite data values.
         """
         data, error, mask, positions = self.make_inputs()
         aper = CircularAperture(positions, r=7.0)

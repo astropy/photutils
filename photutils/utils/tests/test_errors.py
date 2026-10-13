@@ -44,7 +44,7 @@ def test_gain_negative(effective_gain):
     """
     Test that negative effective_gain raises ValueError.
     """
-    match = 'effective_gain must be non-negative everywhere'
+    match = 'effective_gain must be nonnegative everywhere'
     with pytest.raises(ValueError, match=match):
         calc_total_error(DATA, BKG_ERROR, effective_gain)
 

@@ -64,9 +64,9 @@ class TestBatchApertureSums:
     @pytest.mark.parametrize('use_exact', [1, 0])
     def test_readonly_arrays(self, use_exact):
         """
-        Test that the batch driver accepts read-only (non-writeable) data,
+        Test that the batch driver accepts read-only (nonwritable) data,
         error, positions, and params arrays and returns results identical to
-        writeable arrays.
+        writable arrays.
 
         The data, error, positions, and params arguments are declared as
         ``const`` typed memoryviews so that read-only arrays do not raise a
@@ -277,7 +277,7 @@ _OUTSIDE_WEIGHT_APERTURES = [
     lambda pos: RectangularAperture(pos, w=12.0, h=5.0, theta=0.5),
     lambda pos: RectangularAnnulus(pos, w_in=5.0, w_out=12.0, h_out=5.0,
                                    theta=0.5),
-    # A non-convex (L-shaped) polygon
+    # A nonconvex (L-shaped) polygon
     lambda pos: PolygonAperture(pos, [(-6, -6), (6, -6), (6, -1),
                                       (-1, -1), (-1, 6), (-6, 6)]),
 ]
@@ -426,7 +426,7 @@ class TestBatchMaskPlane:
 
     def test_noncontiguous_mask_is_copied(self):
         """
-        Test that a non-contiguous boolean mask is copied into a
+        Test that a noncontiguous boolean mask is copied into a
         C-contiguous plane with the same values.
         """
         mask = np.zeros((40, 60), dtype=bool)

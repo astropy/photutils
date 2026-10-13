@@ -42,7 +42,7 @@ __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 
 # Canonical descriptions of the ``method`` and ``subpixels`` parameters
 # shared by many aperture and profile docstrings. The text is stored
-# without leading indentation and is re-indented to match the
+# without leading indentation and is reindented to match the
 # placeholder by ``_update_method_subpixels_docstring``.
 _METHOD_INTRO = """\
 method : {'exact', 'center', 'subpixel'}, optional
@@ -334,7 +334,7 @@ class Aperture(metaclass=abc.ABCMeta):
             raise TypeError(msg)
 
         # Transplant the already-validated shape parameters directly
-        # into the new instance instead of re-validating them through
+        # into the new instance instead of revalidating them through
         # __init__ (e.g., the polygon simple-polygon check is O(n^2) in
         # the number of vertices). Only the sliced positions are set
         # through their descriptor.
@@ -685,7 +685,7 @@ class PixelAperture(Aperture):
         data pixels (``mask`` keyword), and partial/no overlap of the
         aperture with the data. In other words, it returns the area
         that is used to compute the aperture sum for the same inputs,
-        provided that no non-finite data values are masked and no
+        provided that no nonfinite data values are masked and no
         segmentation masking is applied. This method takes neither into
         account.
 
@@ -819,11 +819,11 @@ class PixelAperture(Aperture):
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
 
         mask_nonfinite : bool, optional
-            Whether to mask non-finite ``data`` values (matching
+            Whether to mask nonfinite ``data`` values (matching
             `ApertureStats`) instead of leaving them in the computation,
             where they corrupt the sum (the 3.0.0 behavior, used by the
             legacy `aperture_photometry` function). In both cases, the
-            non-finite pixels are flagged as ``non_finite_data``.
+            nonfinite pixels are flagged as ``non_finite_data``.
 
         Returns
         -------
@@ -836,7 +836,7 @@ class PixelAperture(Aperture):
             constants in `photutils.aperture._batch_photometry`,
             with semantics identical to the batch driver (the
             ``FLAG_COL_BBOX_CLIPPED`` column is a candidate indicator
-            resolved by the caller, and the non-finite columns are 0/1
+            resolved by the caller, and the nonfinite columns are 0/1
             indicators).
 
         overlap : `~numpy.ndarray` (bool)
@@ -855,7 +855,7 @@ class PixelAperture(Aperture):
         flag_counts = np.zeros((n_src, N_FLAG_COLS), dtype=np.intp)
         overlap = np.zeros(n_src, dtype=bool)
         with warnings.catch_warnings():
-            # Ignore multiplication with non-finite data values
+            # Ignore multiplication with nonfinite data values
             warnings.simplefilter('ignore', RuntimeWarning)
 
             for idx, apermask in enumerate(apermasks):
@@ -884,14 +884,14 @@ class PixelAperture(Aperture):
                 data_cutout = data[slc_large]
                 error_cutout = None if error is None else error[slc_large]
 
-                # Non-finite ``data`` masking (used by the class
-                # path). Flag the contributing non-finite pixels, then
+                # Nonfinite ``data`` masking (used by the class
+                # path). Flag the contributing nonfinite pixels, then
                 # exclude them *before* the segmentation handling so
                 # the segmentation counts and the 'correct' mirror
-                # replacement never use non-finite pixels, matching the
+                # replacement never use nonfinite pixels, matching the
                 # batch kernels (``mask_nonfinite``) and `ApertureStats`.
                 # When ``mask_nonfinite`` is `False` (the legacy
-                # function), the non-finite pixels are left in the
+                # function), the nonfinite pixels are left in the
                 # computation so they corrupt the sum.
                 nonfinite_data = ~np.isfinite(data_cutout)
                 if mask_nonfinite:
@@ -903,8 +903,8 @@ class PixelAperture(Aperture):
                     segm_cutout = segmentation[slc_large]
                     base_mask = None if mask is None else mask[slc_large]
                     if mask_nonfinite:
-                        # Fold the non-finite pixels into the base mask
-                        # so that non-finite mirror pixels are treated
+                        # Fold the nonfinite pixels into the base mask
+                        # so that nonfinite mirror pixels are treated
                         # as uncorrectable by the 'correct' method.
                         base_mask = (nonfinite_data if base_mask is None
                                      else base_mask | nonfinite_data)
@@ -1000,11 +1000,11 @@ class PixelAperture(Aperture):
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
 
         mask_nonfinite : bool, optional
-            Whether to mask non-finite ``data`` values (matching
+            Whether to mask nonfinite ``data`` values (matching
             `ApertureStats`) instead of leaving them in the computation,
             where they corrupt the sum (the 3.0.0 behavior, used by the
             legacy `aperture_photometry` function). In both cases, the
-            non-finite pixels are flagged as ``non_finite_data``.
+            nonfinite pixels are flagged as ``non_finite_data``.
 
         n_threads : int, optional
             The number of threads to use to compute the aperture sums.
@@ -1117,11 +1117,11 @@ class PixelAperture(Aperture):
         <segmentation_descriptions>
 
         mask_nonfinite : bool, optional
-            Whether to mask non-finite ``data`` values (matching
+            Whether to mask nonfinite ``data`` values (matching
             `ApertureStats`) instead of leaving them in the computation,
             where they corrupt the sum (the 3.0.0 behavior, used by the
             legacy `aperture_photometry` function). In both cases, the
-            non-finite pixels are flagged as ``non_finite_data``.
+            nonfinite pixels are flagged as ``non_finite_data``.
 
         n_threads : int, optional
             The number of threads to use to compute the aperture sums
@@ -1150,7 +1150,7 @@ class PixelAperture(Aperture):
               overlap of the aperture with the data. This is equivalent
               to `area_overlap` computed with the same inputs when
               no segmentation masking is applied and there are no
-              non-finite data values (`area_overlap` takes neither into
+              nonfinite data values (`area_overlap` takes neither into
               account). The value is ``NaN`` where the aperture does not
               overlap the data.
 

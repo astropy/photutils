@@ -78,7 +78,7 @@ where pixels touch along their edges or corners. One can also use
 The result is a :class:`~photutils.segmentation.SegmentationImage`
 object with the same shape as the data, where detected sources are
 labeled by different positive integer values. Background pixels
-(non-sources) always have a value of zero. Because the segmentation
+(nonsources) always have a value of zero. Because the segmentation
 image is generated using image thresholding, the source segments
 represent the isophotal footprints of each source.
 
@@ -134,17 +134,17 @@ Source Deblending
 
 In the example above, overlapping sources are detected as
 single sources. Separating those sources requires a deblending
-procedure, such as a multi-thresholding technique. Photutils
+procedure, such as a multithresholding technique. Photutils
 provides a :func:`~photutils.segmentation.deblend_sources`
 function that deblends sources using a combination
-of multi-thresholding and `watershed segmentation
+of multithresholding and `watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. Note
 that in order to deblend sources, they must be separated enough that
 there is a saddle point between them.
 
 The amount of deblending can be controlled with the two
 :func:`~photutils.segmentation.deblend_sources` keywords ``n_levels``
-and ``contrast``. ``n_levels`` is the number of multi-thresholding
+and ``contrast``. ``n_levels`` is the number of multithresholding
 levels to use. ``contrast`` is the fraction of the total source flux
 that a local peak must have to be considered as a separate object.
 
@@ -153,7 +153,7 @@ The ``contrast_method`` keyword selects the flux to which the
 total flux in the source's watershed basin, i.e., everything the
 watershed assigns to the source, including its share of any surrounding
 envelope. Basins below the contrast are removed iteratively and their
-territory is re-flooded. With the ``'saddle'`` method, it is only the
+territory is reflooded. With the ``'saddle'`` method, it is only the
 flux the source holds above the saddle level where it separates from its
 neighbors. This is the significance criterion that `SourceExtractor`_
 applies with its ``DEBLEND_MINCONT`` parameter, although the two codes
@@ -808,7 +808,7 @@ Pixels can be completely ignored/excluded (e.g., bad pixels) when
 measuring the source properties by providing a boolean mask image
 via the ``mask`` keyword (`True` pixel values are masked) to the
 :class:`~photutils.segmentation.SourceCatalog` class. Note that
-non-finite ``data`` values (NaN and inf) are automatically masked.
+nonfinite ``data`` values (NaN and inf) are automatically masked.
 
 
 Filtering
@@ -867,7 +867,7 @@ table columns). The flags combine deblending provenance recorded by
 :func:`~photutils.segmentation.deblend_sources` (e.g., whether a source
 was produced by deblending, or whether its deblending mode fell back
 to another mode) with measurement-time conditions: the source touches
-an image boundary, masked or non-finite pixels within the segment,
+an image boundary, masked or nonfinite pixels within the segment,
 undefined or degenerate shape properties, too few local background
 pixels, and Kron-aperture issues (``kron_``-prefixed flags). Accessing
 ``flags`` computes the flagged quantities (moments, covariance, local

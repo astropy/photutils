@@ -40,7 +40,7 @@ class TestStarFinderKernel:
 
     def test_fwhm_nonscalar(self):
         """
-        Test that a non-scalar fwhm raises a TypeError.
+        Test that a nonscalar fwhm raises a TypeError.
         """
         match = 'fwhm must be a scalar value'
         with pytest.raises(TypeError, match=match):
@@ -123,7 +123,7 @@ class TestStarFinderKernel:
     @pytest.mark.parametrize('sigma_radius', [0, -1])
     def test_invalid_sigma_radius(self, sigma_radius):
         """
-        Test that non-positive sigma_radius raises ValueError.
+        Test that nonpositive sigma_radius raises ValueError.
         """
         match = 'sigma_radius must be positive'
         with pytest.raises(ValueError, match=match):
@@ -155,7 +155,7 @@ class TestValidateNBrightest:
     @pytest.mark.parametrize('n_brightest', [3.1, 2.5, 1.9])
     def test_n_brightest_not_integer(self, n_brightest):
         """
-        Test that non-integer n_brightest values raise ValueError.
+        Test that noninteger n_brightest values raise ValueError.
         """
         match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
@@ -558,7 +558,7 @@ class TestStarFinderCatalogBase:
         skip_attrs.
         """
         cat = make_catalog(n_sources=3)
-        # Inject a cached flux with a non-finite value
+        # Inject a cached flux with a nonfinite value
         cat.__dict__['flux'] = np.array([1.0, np.nan, 2.0])
         result = cat._filter_finite(('flux',), skip_attrs=('flux',))
         assert len(result) == 3
@@ -579,7 +579,7 @@ class TestStarFinderCatalogBase:
         Test _filter_bounds with an initial_mask.
         """
         cat = make_catalog(n_sources=3)
-        # Pre-exclude the first source
+        # Exclude the first source with the initial mask
         initial_mask = np.array([False, True, True])
         result = cat._filter_bounds([], initial_mask=initial_mask)
         assert len(result) == 2

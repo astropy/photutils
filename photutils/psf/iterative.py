@@ -273,7 +273,7 @@ class IterativePSFPhotometry:
     the fit. Again, the process is repeated until no new sources are
     detected or a maximum number of iterations is reached.
 
-    In the 'all' mode, sources whose fitted parameters are non-finite in
+    In the 'all' mode, sources whose fitted parameters are nonfinite in
     one iteration are excluded from subsequent iterations. Such sources
     therefore appear in the final ``results`` table (as NaN rows) only
     if they became invalid in the last iteration. In the 'new' mode,
@@ -587,7 +587,7 @@ class IterativePSFPhotometry:
             self.fit_results.append(deepcopy(self._psfphot))
 
         # This needs to be run outside the context manager to be able
-        # to reemit any warnings
+        # to emit any warnings again
         if phot_tbl is None:
             self._emit_warnings(rwarn0)
             return None
@@ -697,7 +697,7 @@ class IterativePSFPhotometry:
         Parameters
         ----------
         remove_invalid : bool, optional
-            If `True`, rows that contain non-finite fitted values are
+            If `True`, rows that contain nonfinite fitted values are
             removed.
 
         reset_ids : bool, optional
@@ -726,7 +726,7 @@ class IterativePSFPhotometry:
         Parameters
         ----------
         remove_invalid : bool, optional
-            If `True`, rows that contain non-finite fitted values are
+            If `True`, rows that contain nonfinite fitted values are
             removed.
 
         reset_ids : bool, optional

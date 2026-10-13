@@ -545,7 +545,7 @@ that can be applied at one or more positions::
     >>> aper = PolygonAperture(positions, offsets)
 
 The polygon must be simple (non-self-intersecting), but it does not need
-to be convex. Non-convex shapes such as L-shapes or stars are fully
+to be convex. Nonconvex shapes such as L-shapes or stars are fully
 supported.
 
 Regular polygons can be constructed by specifying a center,
@@ -556,7 +556,7 @@ rotation angle via the ``from_regular_polygon`` classmethod. The
 ``outer_radius``, ``inner_radius``, ``side_length``, ``interior_angle``,
 ``exterior_angle``, and ``theta`` properties expose the geometric
 parameters of regular polygons (they raise ``ValueError`` for
-non-regular polygons)::
+nonregular polygons)::
 
     >>> hexagon = PolygonAperture.from_regular_polygon((10.0, 20.0),
     ...                                                n_vertices=6,
@@ -676,11 +676,11 @@ as:
 * the aperture contains no pixels with nonzero weight
   (``'no_pixels'``)
 * input-masked pixels within the aperture (``'masked_pixels'``)
-* non-finite data or error values within the aperture
+* nonfinite data or error values within the aperture
   (``'non_finite_data'``, ``'non_finite_error'``)
 * pixels excluded or corrected due to neighboring sources in a
   segmentation image (``'neighbor_pixels'``, ``'uncorrected_pixels'``)
-* no valid pixels at all, because every pixel is masked, non-finite,
+* no valid pixels at all, because every pixel is masked, nonfinite,
   or excluded (``'all_masked'``)
 * sigma-clipped pixels within the aperture (``'sigma_clipped'``,
   ``'all_clipped'``) and too few pixels to compute a statistic
@@ -818,7 +818,7 @@ The segmentation package now provides bitwise quality flags.
 attribute and default table column that records, per source,
 deblending provenance (``deblended``, deblending-mode fallbacks) and
 measurement conditions (source touches an image boundary, masked
-or non-finite pixels within the segment, undefined or degenerate
+or nonfinite pixels within the segment, undefined or degenerate
 shape properties, Kron-aperture issues, and a local background with too
 few usable annulus pixels).
 
@@ -1028,7 +1028,7 @@ user guide).
 On clean data, the ePSF is at least as accurate as before and is often
 better. Star centers are recovered more accurately, and the build
 converges in fewer iterations. A warning is now emitted if the fitted
-star centers have strongly non-uniform subpixel phases at the end of the
+star centers have strongly nonuniform subpixel phases at the end of the
 build. This indicates that the star centers may be biased.
 
 The ePSF building user guide now includes guidelines for choosing the
@@ -1156,7 +1156,7 @@ existing results are unchanged::
     >>> wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
     >>> wcs.wcs.crval = [150.0, 20.0]
     >>> wcs.wcs.crpix = [50.0, 50.0]
-    >>> wcs.wcs.cdelt = [-0.05 / 3600, 0.03 / 3600]  # non-square pixels
+    >>> wcs.wcs.cdelt = [-0.05 / 3600, 0.03 / 3600]  # nonsquare pixels
     >>> aperture = SkyCircularAperture(SkyCoord(150.0, 20.0, unit='deg'),
     ...                                r=1 * u.arcsec)
     >>> ellipse = aperture.to_pixel(wcs, as_ellipse=True)
@@ -1366,11 +1366,11 @@ repository and can be loaded directly with
 Breaking Changes
 ----------------
 
-Deblending Fallback for Non-Positive Minima Changed to sinh
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Deblending Fallback for Nonpositive Minima Changed to sinh
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When deblending with ``mode='exponential'`` (the default), sources with
-non-positive minimum data values cannot use the exponential threshold
+nonpositive minimum data values cannot use the exponential threshold
 spacing and fall back to another mode. The fallback mode has changed
 from "linear" to "sinh". Like the linear spacing, the sinh spacing is
 well defined for any data values, but it keeps the threshold levels
@@ -1462,7 +1462,7 @@ Windowed Centroid Fallback Conditions
 The conditions for the `~photutils.segmentation.SourceCatalog`
 ``centroid_win`` fallback to the isophotal centroid have been expanded.
 The windowed centroid is now also reset when the total weighted flux is
-non-positive, the windowed second-order moments are negative, or the
+nonpositive, the windowed second-order moments are negative, or the
 windowed covariance determinant is negative. Previously, it was reset
 only when it had diverged far from the isophotal centroid and was
 outside the 1-sigma ellipse.

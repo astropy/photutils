@@ -68,7 +68,7 @@ dependencies, you can instead run::
 
     python -m pip install "photutils[all]"
 
-In most cases, this will install a pre-compiled version (called a wheel)
+In most cases, this will install a precompiled version (called a wheel)
 of Photutils, but if you are using a very recent version of Python
 or if you are installing Photutils on a platform that is not common,
 Photutils will be installed from a source file. In this case you will

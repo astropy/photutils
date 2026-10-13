@@ -198,7 +198,7 @@ cdef double circle_overlap_single_exact(double xmin, double ymin,
     Exact area of overlap between a circle centered on the origin and a
     single pixel.
 
-    The pixel is split at the x and y axes as needed so that
+    The pixel is split at the x- and y-axes as needed so that
     ``circle_overlap_core`` can be applied to a quadrant-aligned
     rectangle, and the partial areas are summed.
 

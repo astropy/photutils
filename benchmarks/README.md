@@ -86,7 +86,7 @@ analogue (`'none'` and `'mask'`), the script:
 The script also compares the two packages on a small scene of
 unresolved and thin sources (`--which degenerate`), which the Gaussian
 scene does not contain. The centroids, the floored minor axis, and
-every property of the non-singular sources are checked strictly. The
+every property of the nonsingular sources are checked strictly. The
 shape properties and centroid errors of singular sources differ by
 design, because `SourceCatalog` floors each covariance eigenvalue at
 `1/12` while SEP adds `1/12` to both variances, so they are only
@@ -145,7 +145,7 @@ Benchmarks for the `photutils.geometry` subpackage:
   overlap method (exact, center, and subpixel)
 - the scaling of the exact mode with grid size
 - the scaling of `polygon_overlap_grid` with the number of vertices,
-  for convex and non-convex (star-shaped) polygons
+  for convex and nonconvex (star-shaped) polygons
 
 ```bash
 python benchmarks/bench_geometry.py
@@ -464,7 +464,7 @@ python benchmarks/mc_catalog_err.py --which end-to-end --radius 8 --amplitude 40
 Benchmarks for the `photutils.utils` subpackage:
 
 - `ImageDepth` versus the number of apertures, in the overlapping
-  and non-overlapping modes
+  and nonoverlapping modes
 - concurrent `ImageDepth` calls on a shared instance across thread
   counts (with speedups relative to the first thread count)
 - `ShepardIDWInterpolator` construction and evaluation versus the

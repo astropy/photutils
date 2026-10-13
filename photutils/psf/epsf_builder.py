@@ -274,7 +274,7 @@ def _profile_fwhm(profile):
     width : float or `None`
         The width in samples, or `None` if the peak is not finite and
         positive, if the profile does not cross the half maximum on both
-        sides of the peak within the array, or if a non-finite sample
+        sides of the peak within the array, or if a nonfinite sample
         lies between the peak and a crossing.
     """
     if not np.any(np.isfinite(profile)):
@@ -322,7 +322,7 @@ def _measure_fwhm(data):
     -------
     fwhm : tuple of float or `None`
         The (y, x) FWHM in grid points, or `None` if the FWHM could not
-        be measured (e.g., a non-positive peak or a profile that does
+        be measured (e.g., a nonpositive peak or a profile that does
         not fall below half of the peak within the array).
     """
     data = np.asarray(data, dtype=float)
@@ -1379,7 +1379,7 @@ class EPSFBuildResults:
         iterations = np.atleast_1d(iterations)
         if (iterations.ndim != 1 or iterations.size == 0
                 or not np.issubdtype(iterations.dtype, np.integer)):
-            msg = ('iterations must be an integer or a non-empty 1D array '
+            msg = ('iterations must be an integer or a nonempty 1D array '
                    'of integers')
             raise ValueError(msg)
         if np.any(iterations < 1) or np.any(iterations > n_total):
@@ -1612,9 +1612,9 @@ class EPSFFitter:
         xx = xx + x0 - star.cutout_center[0]
         yy = yy + y0 - star.cutout_center[1]
 
-        # Fit only the unmasked pixels. Masked pixels (non-finite data
-        # or non-positive weights) are dropped from the fit because the
-        # fitter objective function raises on non-finite data values
+        # Fit only the unmasked pixels. Masked pixels (nonfinite data
+        # or nonpositive weights) are dropped from the fit because the
+        # fitter objective function raises on nonfinite data values
         # even where the weight is zero.
         good = ~mask
         if not np.any(good):
@@ -2025,7 +2025,7 @@ class EPSFBuilder:
     heterogeneous or contaminated stars can bias the fitted star centers
     toward particular subpixel phases and grow into a checkerboard
     pattern in the ePSF. A warning is emitted if the subpixel phases of
-    the fitted star centers are strongly non-uniform at the end of the
+    the fitted star centers are strongly nonuniform at the end of the
     build.
 
     The default ``smoothing_kernel='auto'`` and ``fit_shape='auto'``
@@ -2250,7 +2250,7 @@ class EPSFBuilder:
         _EPSFValidator.validate_maxiters(maxiters)
         self.maxiters = maxiters
 
-        msg = 'refinement_iters must be a non-negative integer'
+        msg = 'refinement_iters must be a nonnegative integer'
         if (isinstance(refinement_iters, bool)
                 or not isinstance(refinement_iters, numbers.Integral)):
             raise TypeError(msg)
@@ -2522,7 +2522,7 @@ class EPSFBuilder:
         good_stars = stars.all_good_stars
         n_good_stars = len(good_stars)
 
-        # Pre-allocate with NaN (default for missing data)
+        # Preallocate with NaN (default for missing data)
         epsf_resid = np.full((n_good_stars, ny, nx), np.nan)
 
         for start in range(0, n_good_stars, chunk_size):
@@ -2621,7 +2621,7 @@ class EPSFBuilder:
 
         # Deposit each pixel residual on these grid points through a
         # flat index into the stack, which needs only two masked copies
-        # per grid offset. The masks along the x axis are the same for
+        # per grid offset. The masks along the x-axis are the same for
         # every row offset, so they are computed once.
         epsf_resid_flat = epsf_resid.reshape(-1)
         star_offset = star_index * (ny * nx)
@@ -2687,12 +2687,12 @@ class EPSFBuilder:
         -------
         result : 2D `~numpy.ndarray`
             The ePSF image with smoothed wings. ``epsf_data`` is
-            returned if it has non-finite values, if the FWHM of the
+            returned if it has nonfinite values, if the FWHM of the
             ePSF could not be measured, or if no part of the image is
             in the wings.
         """
         # The box fits use an FFT convolution, which would spread a
-        # non-finite value over the whole image
+        # nonfinite value over the whole image
         if not np.all(np.isfinite(epsf_data)):
             return epsf_data
 
@@ -2768,7 +2768,7 @@ class EPSFBuilder:
                    'is not finite and positive. This usually indicates '
                    'a problem in the recentering or smoothing steps, '
                    'e.g., a recentering function that returned '
-                   'non-finite centroids.')
+                   'nonfinite centroids.')
             raise ValueError(msg)
 
         return epsf_data * (oversampling_product / current_sum)
@@ -2795,7 +2795,7 @@ class EPSFBuilder:
             The cutout of the ePSF data.
 
         mask : 2D bool `~numpy.ndarray`
-            The mask of the non-finite values of ``cutout``.
+            The mask of the nonfinite values of ``cutout``.
 
         Returns
         -------
@@ -2825,7 +2825,7 @@ class EPSFBuilder:
         Find the center of the ePSF and shift it to the array center.
 
         This method uses iterative centroiding to find the center of the
-        ePSF and applies sub-pixel shifts using spline interpolation via
+        ePSF and applies subpixel shifts using spline interpolation via
         the ImagePSF ``evaluate`` method.
 
         Parameters
@@ -3299,9 +3299,9 @@ class EPSFBuilder:
         xx = xx + x0 - star.cutout_center[0]
         yy = yy + y0 - star.cutout_center[1]
 
-        # Fit only the unmasked pixels. Masked pixels (non-finite data
-        # or non-positive weights) are dropped from the fit because the
-        # fitter objective function raises on non-finite data values
+        # Fit only the unmasked pixels. Masked pixels (nonfinite data
+        # or nonpositive weights) are dropped from the fit because the
+        # fitter objective function raises on nonfinite data values
         # even where the weight is zero.
         good = ~mask
         if not np.any(good):
@@ -3446,10 +3446,10 @@ class EPSFBuilder:
     def _warn_nonuniform_phases(stars, *, min_stars=32, pvalue=1.0e-6):
         """
         Warn if the subpixel phases of the fitted star centers are
-        strongly non-uniform.
+        strongly nonuniform.
 
         Unbiased star centers have uniformly distributed subpixel
-        phases. A strongly non-uniform distribution indicates that
+        phases. A strongly nonuniform distribution indicates that
         the fitted centers are biased toward particular phases, which
         happens when the ePSF grid is noisy (e.g., for heterogeneous,
         contaminated, or low signal-to-noise stars).
@@ -3474,7 +3474,7 @@ class EPSFBuilder:
 
         if _phase_uniformity_pvalue(np.array(centers)) < pvalue:
             msg = ('The subpixel phases of the fitted star centers are '
-                   'strongly non-uniform, which indicates that the star '
+                   'strongly nonuniform, which indicates that the star '
                    'centers are biased. The ePSF and the fitted star '
                    'centers may be unreliable. This can be caused by '
                    'stars with different PSFs, contaminated or saturated '
@@ -3532,7 +3532,7 @@ class EPSFBuilder:
                                  in enumerate(stars.all_stars)
                                  if star._excluded_from_fit]
 
-        # Warn if the fitted star centers have strongly non-uniform
+        # Warn if the fitted star centers have strongly nonuniform
         # subpixel phases.
         self._warn_nonuniform_phases(stars)
 

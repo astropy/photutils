@@ -122,7 +122,7 @@ class TestShepardIDWInterpolator:
         """
         Test that negative weights raises ValueError.
         """
-        match = 'All weight values must be non-negative numbers'
+        match = 'All weight values must be nonnegative numbers'
         with pytest.raises(ValueError, match=match):
             IDWInterp(self.x, self.y, weights=-self.y)
 
@@ -231,7 +231,7 @@ class TestShepardIDWInterpolator:
 
     def test_no_valid_distances(self):
         """
-        Test that NaN is returned when all distances are non-finite
+        Test that NaN is returned when all distances are nonfinite
         (dk.shape[0] == 0 after filtering).
         """
         coords = np.array([0.0, 1.0, 2.0])

@@ -199,8 +199,8 @@ class TestPixelAperture:
 
     def test_bbox_multi_position(self):
         """
-        Test that the bbox property returns a list for a multi-position
-        aperture (exercises the non-scalar branch).
+        Test that the bbox property returns a list for a multiposition
+        aperture (exercises the nonscalar branch).
         """
         aper = CircularAperture(POSITIONS, r=3)
         bbox = aper.bbox
@@ -294,7 +294,7 @@ class TestPixelAperturePhotometry:
     def test_photometry_area_matches_area_overlap(self):
         """
         Test that the result area matches area_overlap for a simple
-        non-masked, fully-overlapping aperture.
+        nonmasked, fully-overlapping aperture.
         """
         result = self.aper._photometry(self.data)
         expected = self.aper.area_overlap(self.data)
@@ -457,7 +457,7 @@ class TestApertureReprStr:
 
     def test_repr_multi(self):
         """
-        Test __repr__ for a multi-position CircularAperture.
+        Test __repr__ for a multiposition CircularAperture.
         """
         aper = CircularAperture(POSITIONS, r=3)
         result = repr(aper)
@@ -474,7 +474,7 @@ class TestApertureReprStr:
 
     def test_str_multi(self):
         """
-        Test __str__ for a multi-position CircularAperture.
+        Test __str__ for a multiposition CircularAperture.
         """
         aper = CircularAperture(POSITIONS, r=3)
         result = str(aper)
@@ -497,7 +497,7 @@ class TestApertureIteration:
 
     def test_iter(self):
         """
-        Test that iterating over a multi-position aperture yields
+        Test that iterating over a multiposition aperture yields
         scalar apertures.
         """
         aper = CircularAperture(POSITIONS, r=3)

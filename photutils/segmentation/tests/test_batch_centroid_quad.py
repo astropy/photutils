@@ -49,7 +49,7 @@ def _reference_centroid_quad_results(cat):
     ``_centroid_quad_results`` that the batch path replaces, with
     a final column that is 1.0 where the centroid is not a quadratic
     fit maximum. The pixels of the 3x3 box that are input-masked or
-    have a non-finite data value are left out of the fit. The other
+    have a nonfinite data value are left out of the fit. The other
     pixels of the box are fit with their data values, inside or outside
     of the source segment. It is the numerical reference for the batch
     path.
@@ -177,7 +177,7 @@ def _edge_case_catalog():
     # Sources exercising every status of the box gather: a cutout
     # smaller than 3x3, a fully masked source, a peak on the cutout
     # edge, a negative source whose peak is a masked (zero) pixel, a
-    # rejected (non-maximum) fit, a normal source, and a corner peak
+    # rejected (nonmaximum) fit, a normal source, and a corner peak
     data = np.zeros((60, 60))
     yy, xx = np.mgrid[0:60, 0:60]
     segm_data = np.zeros(data.shape, dtype=int)

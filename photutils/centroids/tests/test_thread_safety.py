@@ -5,7 +5,7 @@ results when run concurrently from multiple threads.
 
 The centroid functions hold no shared mutable state. There are no
 module-level caches, each call creates its own fitter instance,
-and fit non-convergence is detected from the fitter's ``fit_info``
+and fit nonconvergence is detected from the fitter's ``fit_info``
 rather than by capturing warnings (``warnings.catch_warnings``
 mutates process-global state). The convergence-warning test turns
 warnings into errors itself (rather than relying on the pytest
@@ -104,15 +104,15 @@ def test_mixed_concurrent_centroid_calls(source_data):
 def test_concurrent_convergence_warning_isolation():
     """
     Test that converging centroid_2dg fits stay warning-free while
-    non-converging fits warn concurrently in other threads.
+    nonconverging fits warn concurrently in other threads.
 
     With the previous warning-capture convergence detection, a
-    non-converging fit in one thread could inject its warning into
+    nonconverging fit in one thread could inject its warning into
     a converging fit in another thread (or have its own warning
     suppressed). Warnings are turned into errors for the duration of
     the thread pool (in the main thread, so that all worker threads see
     the same filter), so an injected warning would fail the converging
-    futures below and a missing warning would fail the non-converging
+    futures below and a missing warning would fail the nonconverging
     futures.
     """
     good_data = make_gaussian_source((51, 51), 10.0, 24.7, 25.2, 3.0,

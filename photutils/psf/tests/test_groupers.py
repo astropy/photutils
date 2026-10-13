@@ -27,7 +27,7 @@ class TestSourceGrouper:
     @pytest.mark.parametrize('min_separation', [0, -1, -10.0, np.nan, np.inf])
     def test_invalid_min_separation(self, min_separation):
         """
-        Test that a non-positive or non-finite min_separation raises
+        Test that a nonpositive or nonfinite min_separation raises
         ValueError.
         """
         match = 'min_separation must be a positive finite value'
@@ -119,7 +119,7 @@ class TestSourceGrouper:
 
     def test_non_finite_x(self):
         """
-        Test that non-finite x values raise ValueError.
+        Test that nonfinite x values raise ValueError.
         """
         xx = np.array([1, 2, np.nan])
         yy = np.array([1, 2, 3])
@@ -141,7 +141,7 @@ class TestSourceGrouper:
 
     def test_non_finite_y(self):
         """
-        Test that non-finite y values raise ValueError.
+        Test that nonfinite y values raise ValueError.
         """
         xx = np.array([1, 2, 3])
         yy = np.array([1, np.nan, 3])
@@ -659,7 +659,7 @@ class TestSourceGroups:
 
     def test_non_finite_input(self):
         """
-        Test that non-finite coordinates raise ValueError.
+        Test that nonfinite coordinates raise ValueError.
         """
         groups = np.array([1, 1, 2])
         match = 'x coordinates must be finite'

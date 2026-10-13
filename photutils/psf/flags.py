@@ -31,7 +31,7 @@ class _PSFFlags(FlagRegistry):
     >>> flags.get_name(1)
     'n_pixels_fit_partial'
     >>> flags.get_description(8)
-    'possible non-convergence'
+    'possible nonconvergence'
     """
 
     # Define all PSF flags with their properties
@@ -56,14 +56,14 @@ class _PSFFlags(FlagRegistry):
         FlagDefinition(
             bit_value=4,
             name='non_positive_flux',
-            description='non-positive flux',
+            description='nonpositive flux',
             detailed_description=('The fitted flux value is negative or zero, '
-                                  'which is non-physical.'),
+                                  'which is nonphysical.'),
         ),
         FlagDefinition(
             bit_value=8,
             name='no_convergence',
-            description='possible non-convergence',
+            description='possible nonconvergence',
             detailed_description=('The PSF fitting algorithm may not have '
                                   'converged to a stable solution.'),
         ),
@@ -105,21 +105,21 @@ class _PSFFlags(FlagRegistry):
         FlagDefinition(
             bit_value=512,
             name='non_finite_position',
-            description='non-finite fitted position',
+            description='nonfinite fitted position',
             detailed_description=('The fitted x or y position is NaN or inf, '
                                   'indicating an invalid or failed fit.'),
         ),
         FlagDefinition(
             bit_value=1024,
             name='non_finite_flux',
-            description='non-finite fitted flux',
+            description='nonfinite fitted flux',
             detailed_description=('The fitted flux value is NaN or inf, '
                                   'indicating an invalid or failed fit.'),
         ),
         FlagDefinition(
             bit_value=2048,
             name='non_finite_local_bkg',
-            description='non-finite local background',
+            description='nonfinite local background',
             detailed_description=('The local background value is NaN or '
                                   'inf, so it was not subtracted before '
                                   'fitting.'),

@@ -30,7 +30,7 @@ class IRAFStarFinder(StarFinderBase):
 
     `IRAFStarFinder` searches images for local density maxima that
     have a peak amplitude greater than ``threshold`` above the local
-    background and have a PSF full-width at half-maximum similar to the
+    background and have a PSF full width at half maximum similar to the
     input ``fwhm``. The objects' centroid, roundness (ellipticity), and
     sharpness are calculated using image moments.
 
@@ -44,8 +44,8 @@ class IRAFStarFinder(StarFinderBase):
         the same units.
 
     fwhm : float
-        The full-width half-maximum (FWHM) of the 2D circular Gaussian
-        kernel in units of pixels.
+        The full width at half maximum (FWHM) of the 2D circular
+        Gaussian kernel in units of pixels.
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
@@ -382,8 +382,8 @@ class IRAFStarFinder(StarFinderBase):
             * ``fwhm``: object FWHM.
             * ``sharpness``: object sharpness.
             * ``roundness``: object roundness.
-            * ``orientation``: the angle between the ``x`` axis and the
-              major axis of the source, measured counter-clockwise, in
+            * ``orientation``: the angle between the x-axis and the
+              major axis of the source, measured counterclockwise, in
               the range (-90, 90] degrees.
             * ``n_pixels``: the total number of (positive) unmasked
               pixels.

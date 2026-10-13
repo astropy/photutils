@@ -597,7 +597,7 @@ def test_oversampling_forms_accepted(stem):
 @pytest.mark.parametrize('stem', list(OTHER_OVERSAMPLING_FORMS))
 def test_float_oversampling_rejected(stem):
     """
-    Test that a non-integer ``oversampling`` array fails schema
+    Test that a noninteger ``oversampling`` array fails schema
     validation when read.
 
     The oversampling factors must be integers, so rejecting floats in

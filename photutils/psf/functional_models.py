@@ -44,7 +44,7 @@ def _dimensionless_value(value):
 
 def _rotated_gaussian_moments(x_sigma, y_sigma, theta):
     """
-    Calculate the moments along the x and y axes of a rotated 2D
+    Calculate the moments along the x- and y-axes of a rotated 2D
     Gaussian.
 
     Parameters
@@ -63,7 +63,7 @@ def _rotated_gaussian_moments(x_sigma, y_sigma, theta):
         The cosine and sine of the rotation angle.
 
     x_std, y_std : float or `~numpy.ndarray`
-        The standard deviations along the x and y axes.
+        The standard deviations along the x- and y-axes.
 
     rho : float or `~numpy.ndarray`
         The correlation coefficient.
@@ -141,7 +141,7 @@ def _bivariate_normal_corner_term(h, k, rho, sqrt_one_minus_rho2):
 def _is_separable(rho):
     """
     Return whether a 2D Gaussian with the input correlation coefficient
-    is separable along the x and y axes.
+    is separable along the x- and y-axes.
     """
     return np.all(np.abs(rho) < 1.0e-12)
 
@@ -203,7 +203,7 @@ def _gaussian_pixel_fraction(dx, dy, x_std, y_std, rho, sqrt_one_minus_rho2):
         The x and y pixel centers relative to the Gaussian center.
 
     x_std, y_std : float or `~numpy.ndarray`
-        The standard deviations of the Gaussian along the x and y axes.
+        The standard deviations of the Gaussian along the x- and y-axes.
 
     rho : float or `~numpy.ndarray`
         The correlation coefficient of the Gaussian.
@@ -305,7 +305,7 @@ def _gaussian_edge_integrals(edge, lo, hi, std, rho, sqrt_one_minus_rho2):
 def _separable_axis_terms(lo, hi, std):
     """
     Calculate the terms along one axis of the derivatives of the pixel
-    fraction of a 2D Gaussian that is separable along the x and y axes.
+    fraction of a 2D Gaussian that is separable along the x- and y-axes.
 
     Parameters
     ----------
@@ -352,10 +352,10 @@ def _gaussian_pixel_fraction_derivs(x_lo, x_hi, y_lo, y_hi, x_std, y_std,
     ----------
     x_lo, x_hi, y_lo, y_hi : float or `~numpy.ndarray`
         The pixel edges relative to the Gaussian center, in units of the
-        standard deviations of the Gaussian along the x and y axes.
+        standard deviations of the Gaussian along the x- and y-axes.
 
     x_std, y_std : float or `~numpy.ndarray`
-        The standard deviations of the Gaussian along the x and y axes.
+        The standard deviations of the Gaussian along the x- and y-axes.
 
     rho : float or `~numpy.ndarray`
         The correlation coefficient of the Gaussian.
@@ -368,7 +368,7 @@ def _gaussian_pixel_fraction_derivs(x_lo, x_hi, y_lo, y_hi, x_std, y_std,
     d_x_0, d_y_0, d_var_x, d_var_y, d_cov_xy : `~numpy.ndarray`
         The partial derivatives of the pixel fraction with respect to
         the x and y positions of the Gaussian center, the variances
-        along the x and y axes, and the covariance.
+        along the x- and y-axes, and the covariance.
     """
     if _is_separable(rho):
         # Each derivative is a product of terms along the two axes,
@@ -420,7 +420,7 @@ def _circular_gaussian_prf_derivs(x, y, flux, x_0, y_0, sigma):
         Total integrated flux over the entire PSF.
 
     x_0, y_0 : float
-        Position of the peak along the x and y axes.
+        Position of the peak along the x- and y-axes.
 
     sigma : float
         The standard deviation of the Gaussian.
@@ -495,7 +495,7 @@ def _integrate_over_pixels(func, x, y, params, n_nodes):
     func : callable
         The function to integrate. It is called as ``func(x, y)`` with
         arrays that broadcast to two leading axes for the quadrature
-        nodes along the y and x axes. It must return an array, or a
+        nodes along the y- and x-axes. It must return an array, or a
         list of arrays, with those leading axes.
 
     x, y : float or array_like
@@ -617,17 +617,17 @@ class GaussianPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     x_fwhm : float or `~astropy.units.Quantity`, optional
         The full width at half maximum (FWHM) of the Gaussian along its
-        x axis before the rotation by ``theta``.
+        x-axis before the rotation by ``theta``.
 
     y_fwhm : float or `~astropy.units.Quantity`, optional
-        FWHM of the Gaussian along its y axis before the rotation by
+        FWHM of the Gaussian along its y-axis before the rotation by
         ``theta``.
 
     theta : float or `~astropy.units.Quantity`, optional
@@ -661,7 +661,7 @@ class GaussianPSF(Fittable2DModel):
     where :math:`F` denotes the total integrated flux, :math:`(x_{0},
     y_{0})` denotes the position of the peak, and :math:`\sigma_{x}`
     and :math:`\sigma_{y}` denote the standard deviations along the
-    principal axes of the Gaussian, which are the x and y axes when
+    principal axes of the Gaussian, which are the x- and y-axes when
     :math:`\theta = 0`.
 
     .. math::
@@ -703,7 +703,7 @@ class GaussianPSF(Fittable2DModel):
 
     By default, the ``x_fwhm`` and ``y_fwhm`` parameters are bounded
     to be strictly positive. These bounds apply only during fitting.
-    Directly setting a non-positive width produces unphysical model
+    Directly setting a nonpositive width produces unphysical model
     values.
 
     This model is evaluated at the input coordinates and is not
@@ -746,19 +746,19 @@ class GaussianPSF(Fittable2DModel):
     flux = Parameter(
         default=1, description='Total integrated flux over the entire PSF.')
     x_0 = Parameter(
-        default=0, description='Position of the peak along the x axis')
+        default=0, description='Position of the peak along the x-axis')
     y_0 = Parameter(
-        default=0, description='Position of the peak along the y axis')
+        default=0, description='Position of the peak along the y-axis')
     x_fwhm = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
         fixed=True,
-        description='FWHM of the Gaussian along its x axis')
+        description='FWHM of the Gaussian along its x-axis')
     y_fwhm = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
         fixed=True,
-        description='FWHM of the Gaussian along its y axis')
+        description='FWHM of the Gaussian along its y-axis')
     theta = Parameter(
         default=0.0, description=('CCW rotation angle either as a float (in '
                                   'degrees) or a Quantity angle'),
@@ -781,7 +781,7 @@ class GaussianPSF(Fittable2DModel):
     @property
     def x_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the x axis before
+        Gaussian sigma (standard deviation) along the x-axis before
         the rotation by ``theta``.
         """
         return self.x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
@@ -789,7 +789,7 @@ class GaussianPSF(Fittable2DModel):
     @property
     def y_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the y axis before
+        Gaussian sigma (standard deviation) along the y-axis before
         the rotation by ``theta``.
         """
         return self.y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
@@ -867,10 +867,10 @@ class GaussianPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         x_fwhm, y_fwhm : float
-            FWHM of the Gaussian along its x and y axes before the
+            FWHM of the Gaussian along its x- and y-axes before the
             rotation by ``theta``.
 
         theta : float or `~astropy.units.Quantity`
@@ -921,10 +921,10 @@ class GaussianPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         x_fwhm, y_fwhm : float
-            FWHM of the Gaussian along its x and y axes before the
+            FWHM of the Gaussian along its x- and y-axes before the
             rotation by ``theta``.
 
         theta : float or `~astropy.units.Quantity`
@@ -1051,10 +1051,10 @@ class CircularGaussianPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     fwhm : float or `~astropy.units.Quantity`, optional
         The full width at half maximum (FWHM) of the Gaussian.
@@ -1107,7 +1107,7 @@ class CircularGaussianPSF(Fittable2DModel):
 
     By default, the ``fwhm`` parameter is bounded to be strictly
     positive. This bound applies only during fitting. Directly setting a
-    non-positive width produces unphysical model values.
+    nonpositive width produces unphysical model values.
 
     This model is evaluated at the input coordinates and is not
     integrated over the detector pixels. Its values on a grid of
@@ -1149,9 +1149,9 @@ class CircularGaussianPSF(Fittable2DModel):
     flux = Parameter(
         default=1, description='Total integrated flux over the entire PSF.')
     x_0 = Parameter(
-        default=0, description='Position of the peak along the x axis')
+        default=0, description='Position of the peak along the x-axis')
     y_0 = Parameter(
-        default=0, description='Position of the peak along the y axis')
+        default=0, description='Position of the peak along the y-axis')
     fwhm = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
@@ -1242,7 +1242,7 @@ class CircularGaussianPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         fwhm : float
             FWHM of the Gaussian.
@@ -1278,7 +1278,7 @@ class CircularGaussianPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         fwhm : float
             FWHM of the Gaussian.
@@ -1329,7 +1329,7 @@ class GaussianPRF(Fittable2DModel):
 
     This model is evaluated by integrating the 2D Gaussian over the
     area of a pixel centered at each input position (see Notes), and is
-    equivalent to assuming the PSF is a 2D Gaussian at a *sub-pixel*
+    equivalent to assuming the PSF is a 2D Gaussian at a *subpixel*
     level. The integral is exact for any rotation angle. Because it is
     integrated over pixels, this model is considered a PRF instead of a
     PSF.
@@ -1343,17 +1343,17 @@ class GaussianPRF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     x_fwhm : float or `~astropy.units.Quantity`, optional
         The full width at half maximum (FWHM) of the Gaussian along its
-        x axis before the rotation by ``theta``.
+        x-axis before the rotation by ``theta``.
 
     y_fwhm : float or `~astropy.units.Quantity`, optional
-        FWHM of the Gaussian along its y axis before the rotation by
+        FWHM of the Gaussian along its y-axis before the rotation by
         ``theta``.
 
     theta : float or `~astropy.units.Quantity`, optional
@@ -1377,7 +1377,7 @@ class GaussianPRF(Fittable2DModel):
     Notes
     -----
     The model is the integral of a 2D Gaussian over a pixel of unit area
-    that is aligned with the x and y axes and centered at :math:`(x,
+    that is aligned with the x- and y-axes and centered at :math:`(x,
     y)`:
 
     .. math::
@@ -1423,7 +1423,7 @@ class GaussianPRF(Fittable2DModel):
                     \frac{y - y_0 - 0.5}{\sqrt{2} \sigma_{y}} \right)
             \right]
 
-    A rotated Gaussian is not separable along the x and y axes.
+    A rotated Gaussian is not separable along the x- and y-axes.
     Its integral over the pixel is the probability of a rectangle
     for a bivariate normal distribution with a nonzero correlation
     coefficient, which is evaluated with Owen's T function [2]_. That
@@ -1475,7 +1475,7 @@ class GaussianPRF(Fittable2DModel):
 
     By default, the ``x_fwhm`` and ``y_fwhm`` parameters are bounded
     to be strictly positive. These bounds apply only during fitting.
-    Directly setting a non-positive width produces unphysical model
+    Directly setting a nonpositive width produces unphysical model
     values.
 
     References
@@ -1504,19 +1504,19 @@ class GaussianPRF(Fittable2DModel):
     flux = Parameter(
         default=1, description='Total integrated flux over the entire PSF.')
     x_0 = Parameter(
-        default=0, description='Position of the peak along the x axis')
+        default=0, description='Position of the peak along the x-axis')
     y_0 = Parameter(
-        default=0, description='Position of the peak along the y axis')
+        default=0, description='Position of the peak along the y-axis')
     x_fwhm = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
         fixed=True,
-        description='FWHM of the Gaussian along its x axis')
+        description='FWHM of the Gaussian along its x-axis')
     y_fwhm = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
         fixed=True,
-        description='FWHM of the Gaussian along its y axis')
+        description='FWHM of the Gaussian along its y-axis')
     theta = Parameter(
         default=0.0, description=('CCW rotation angle either as a float (in '
                                   'degrees) or a Quantity angle'),
@@ -1540,7 +1540,7 @@ class GaussianPRF(Fittable2DModel):
     @property
     def x_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the x axis before
+        Gaussian sigma (standard deviation) along the x-axis before
         the rotation by ``theta``.
         """
         return self.x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
@@ -1548,7 +1548,7 @@ class GaussianPRF(Fittable2DModel):
     @property
     def y_sigma(self):
         """
-        Gaussian sigma (standard deviation) along the y axis before
+        Gaussian sigma (standard deviation) along the y-axis before
         the rotation by ``theta``.
         """
         return self.y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
@@ -1626,10 +1626,10 @@ class GaussianPRF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         x_fwhm, y_fwhm : float
-            FWHM of the Gaussian along its x and y axes before the
+            FWHM of the Gaussian along its x- and y-axes before the
             rotation by ``theta``.
 
         theta : float or `~astropy.units.Quantity`
@@ -1682,10 +1682,10 @@ class GaussianPRF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         x_fwhm, y_fwhm : float
-            FWHM of the Gaussian along its x and y axes before the
+            FWHM of the Gaussian along its x- and y-axes before the
             rotation by ``theta``.
 
         theta : float or `~astropy.units.Quantity`
@@ -1773,7 +1773,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     This model is evaluated by integrating the 2D Gaussian over the
     input coordinate pixels, and is equivalent to assuming the PSF is a
-    2D Gaussian at a *sub-pixel* level. Because it is integrated over
+    2D Gaussian at a *subpixel* level. Because it is integrated over
     pixels, this model is considered a PRF instead of a PSF.
 
     The Gaussian is normalized such that the analytical integral over
@@ -1785,10 +1785,10 @@ class CircularGaussianPRF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     fwhm : float or `~astropy.units.Quantity`, optional
         The full width at half maximum (FWHM) of the Gaussian.
@@ -1865,7 +1865,7 @@ class CircularGaussianPRF(Fittable2DModel):
 
     By default, the ``fwhm`` parameter is bounded to be strictly
     positive. This bound applies only during fitting. Directly setting a
-    non-positive width produces unphysical model values.
+    nonpositive width produces unphysical model values.
 
     References
     ----------
@@ -1890,9 +1890,9 @@ class CircularGaussianPRF(Fittable2DModel):
     flux = Parameter(
         default=1, description='Total integrated flux over the entire PSF.')
     x_0 = Parameter(
-        default=0, description='Position of the peak along the x axis')
+        default=0, description='Position of the peak along the x-axis')
     y_0 = Parameter(
-        default=0, description='Position of the peak along the y axis')
+        default=0, description='Position of the peak along the y-axis')
     fwhm = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
@@ -1984,7 +1984,7 @@ class CircularGaussianPRF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         fwhm : float
             FWHM of the Gaussian.
@@ -2023,7 +2023,7 @@ class CircularGaussianPRF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         fwhm : float
             FWHM of the Gaussian.
@@ -2070,7 +2070,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
 
     This model is evaluated by integrating the 2D Gaussian over the
     input coordinate pixels, and is equivalent to assuming the PSF is a
-    2D Gaussian at a *sub-pixel* level. Because it is integrated over
+    2D Gaussian at a *subpixel* level. Because it is integrated over
     pixels, this model is considered a PRF instead of a PSF.
 
     The Gaussian is normalized such that the analytical integral over
@@ -2086,10 +2086,10 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     sigma : float or `~astropy.units.Quantity`, optional
         The standard deviation of the Gaussian.
@@ -2159,7 +2159,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
 
     By default, the ``sigma`` parameter is bounded to be strictly
     positive. This bound applies only during fitting. Directly setting a
-    non-positive width produces unphysical model values.
+    nonpositive width produces unphysical model values.
 
     References
     ----------
@@ -2185,9 +2185,9 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
     flux = Parameter(
         default=1, description='Total integrated flux over the entire PSF.')
     x_0 = Parameter(
-        default=0, description='Position of the peak along the x axis')
+        default=0, description='Position of the peak along the x-axis')
     y_0 = Parameter(
-        default=0, description='Position of the peak along the y axis')
+        default=0, description='Position of the peak along the y-axis')
     sigma = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
@@ -2279,7 +2279,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         sigma : float
             The standard deviation of the Gaussian.
@@ -2317,7 +2317,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         sigma : float
             The standard deviation of the Gaussian.
@@ -2369,10 +2369,10 @@ class MoffatPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     alpha : float or `~astropy.units.Quantity`, optional
         The characteristic radius of the Moffat profile.
@@ -2481,9 +2481,9 @@ class MoffatPSF(Fittable2DModel):
     flux = Parameter(
         default=1, description='Total integrated flux over the entire PSF.')
     x_0 = Parameter(
-        default=0, description='Position of the peak along the x axis')
+        default=0, description='Position of the peak along the x-axis')
     y_0 = Parameter(
-        default=0, description='Position of the peak along the y axis')
+        default=0, description='Position of the peak along the y-axis')
     alpha = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
@@ -2573,7 +2573,7 @@ class MoffatPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         alpha : float
             The characteristic radius of the Moffat profile.
@@ -2617,7 +2617,7 @@ class MoffatPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         alpha : float
             The characteristic radius of the Moffat profile.
@@ -2688,10 +2688,10 @@ class MoffatPRF(_PixelQuadratureMixin, MoffatPSF):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     alpha : float or `~astropy.units.Quantity`, optional
         The characteristic radius of the Moffat profile.
@@ -2834,7 +2834,7 @@ class MoffatPRF(_PixelQuadratureMixin, MoffatPSF):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         alpha : float
             The characteristic radius of the Moffat profile.
@@ -2867,7 +2867,7 @@ class MoffatPRF(_PixelQuadratureMixin, MoffatPSF):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         alpha : float
             The characteristic radius of the Moffat profile.
@@ -2903,10 +2903,10 @@ class AiryDiskPSF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     radius : float or `~astropy.units.Quantity`, optional
         The radius of the Airy disk at the first zero.
@@ -3019,9 +3019,9 @@ class AiryDiskPSF(Fittable2DModel):
     flux = Parameter(
         default=1, description='Total integrated flux over the entire PSF.')
     x_0 = Parameter(
-        default=0, description='Position of the peak along the x axis')
+        default=0, description='Position of the peak along the x-axis')
     y_0 = Parameter(
-        default=0, description='Position of the peak along the y axis')
+        default=0, description='Position of the peak along the y-axis')
     radius = Parameter(
         default=1,
         bounds=(_FLOAT_TINY, None),
@@ -3112,7 +3112,7 @@ class AiryDiskPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         radius : float
             The radius of the Airy disk at the first zero.
@@ -3167,7 +3167,7 @@ class AiryDiskPSF(Fittable2DModel):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         radius : float
             The radius of the Airy disk at the first zero.
@@ -3262,10 +3262,10 @@ class AiryDiskPRF(_PixelQuadratureMixin, AiryDiskPSF):
         Total integrated flux over the entire PSF.
 
     x_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the x axis.
+        Position of the peak along the x-axis.
 
     y_0 : float or `~astropy.units.Quantity`, optional
-        Position of the peak along the y axis.
+        Position of the peak along the y-axis.
 
     radius : float or `~astropy.units.Quantity`, optional
         The radius of the Airy disk at the first zero.
@@ -3414,7 +3414,7 @@ class AiryDiskPRF(_PixelQuadratureMixin, AiryDiskPSF):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         radius : float
             The radius of the Airy disk at the first zero.
@@ -3443,7 +3443,7 @@ class AiryDiskPRF(_PixelQuadratureMixin, AiryDiskPSF):
             Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            Position of the peak along the x and y axes.
+            Position of the peak along the x- and y-axes.
 
         radius : float
             The radius of the Airy disk at the first zero.

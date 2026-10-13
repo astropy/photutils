@@ -115,7 +115,7 @@ The `~photutils.detection.DAOStarFinder`,
 with units. This requires inputting a ``threshold`` value that also has
 units compatible with the input data array.
 
-Sources that have non-finite properties (e.g., centroid,
+Sources that have nonfinite properties (e.g., centroid,
 roundness, sharpness, etc.) are now automatically excluded
 from the output table in `~photutils.detection.DAOStarFinder`,
 `~photutils.detection.IRAFStarFinder`, and

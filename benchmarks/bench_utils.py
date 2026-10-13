@@ -4,7 +4,7 @@
 Benchmarks for the photutils.utils subpackage.
 
 The benchmarks cover the scaling of ``ImageDepth`` with the number
-of apertures (including the non-overlapping mode and concurrent
+of apertures (including the nonoverlapping mode and concurrent
 calls from multiple threads), ``ShepardIDWInterpolator`` construction
 and evaluation, cutout generation, ``calc_total_error``, the
 NaN-ignoring statistics functions, and random-coordinate generation
@@ -113,7 +113,7 @@ def run_image_depth(depth, data, mask, n_iter):
         The number of calls.
     """
     with warnings.catch_warnings():
-        # The non-overlapping mode may warn when fewer apertures than
+        # The nonoverlapping mode may warn when fewer apertures than
         # requested can be placed; that is irrelevant for timing
         warnings.simplefilter('ignore', AstropyUserWarning)
         for _ in range(n_iter):

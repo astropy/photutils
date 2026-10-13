@@ -93,15 +93,15 @@ def _segments_intersect(p1, p2, p3, p4):
 def _polygon_is_simple(verts):
     """
     Return `True` if the closed polygon defined by ``verts`` is simple
-    (no two non-adjacent edges intersect).
+    (no two nonadjacent edges intersect).
 
-    Every pair of non-adjacent polygon edges is tested for intersection
+    Every pair of nonadjacent polygon edges is tested for intersection
     using orientation predicates, including the case where an endpoint
     of one edge lies on another edge. Adjacent edges (which share a
     vertex by construction) are not compared with each other. A polygon
     that folds straight back onto an adjacent edge is still rejected,
-    because a later non-adjacent edge then touches the folded edge.
-    For a triangle, which has no non-adjacent edges, such a fold has
+    because a later nonadjacent edge then touches the folded edge.
+    For a triangle, which has no nonadjacent edges, such a fold has
     zero area and is excluded by the zero-area check in
     `_validate_simple_polygon`.
 
@@ -123,7 +123,7 @@ def _polygon_is_simple(verts):
     for i in range(n):
         a1 = verts[i]
         a2 = verts[(i + 1) % n]
-        # Compare edge i only with later, non-adjacent edges. Edges i
+        # Compare edge i only with later, nonadjacent edges. Edges i
         # and i+1 share a vertex, and (for i == 0) edges 0 and n-1 share
         # a vertex, so those pairs are skipped.
         for j in range(i + 2, n):
@@ -139,7 +139,7 @@ def _polygon_is_simple(verts):
 def _validate_simple_polygon(verts, *, name='vertex_offsets',
                              check_simple=True):
     """
-    Verify that ``verts`` defines a simple, non-degenerate polygon.
+    Verify that ``verts`` defines a simple, nondegenerate polygon.
 
     The polygon is required to be simple (i.e., non-self-intersecting),
     but it is not required to be convex. Self-intersection is checked
@@ -180,7 +180,7 @@ def _validate_simple_polygon(verts, *, name='vertex_offsets',
         raise ValueError(msg)
 
     if not np.all(np.isfinite(verts)):
-        msg = f'{name!r} must not contain any non-finite values'
+        msg = f'{name!r} must not contain any nonfinite values'
         raise ValueError(msg)
 
     signed_area = _signed_polygon_area(verts)
@@ -423,7 +423,7 @@ class PolygonAperture(PixelAperture):
         Shape ``(n_vertices, 2)``. The pixel-space offsets ``(dx, dy)``
         of each polygon vertex relative to ``positions``. The polygon
         must be simple (non-self-intersecting) with at least 3 vertices.
-        The polygon may be convex or non-convex. Either clockwise or
+        The polygon may be convex or nonconvex. Either clockwise or
         counterclockwise vertex orderings are accepted. The input is
         normalized to counterclockwise internally.
 
@@ -435,8 +435,8 @@ class PolygonAperture(PixelAperture):
 
     ValueError : `ValueError`
         If ``vertex_offsets`` does not have shape ``(n_vertices, 2)``,
-        contains non-finite values, or does not define a simple polygon
-        of non-zero area with at least 3 vertices.
+        contains nonfinite values, or does not define a simple polygon
+        of nonzero area with at least 3 vertices.
 
     Examples
     --------
@@ -514,7 +514,7 @@ class PolygonAperture(PixelAperture):
         ------
         ValueError : `ValueError`
             If ``vertices`` does not have shape ``(n_vertices, 2)`` or
-            does not define a simple polygon of non-zero area with at
+            does not define a simple polygon of nonzero area with at
             least 3 finite vertices.
         """
         verts = np.asarray(vertices, dtype=float)
@@ -561,7 +561,7 @@ class PolygonAperture(PixelAperture):
 
         theta : float or `~astropy.units.Quantity`, optional
             The rotation angle of the polygon, measured
-            counterclockwise from the ``+y`` axis. A scalar float is
+            counterclockwise from the positive y-axis. A scalar float is
             interpreted in radians. The default is 0.
 
         Returns
@@ -595,7 +595,7 @@ class PolygonAperture(PixelAperture):
         """
         Construct a star-shaped `PolygonAperture`.
 
-        This private constructor exists to generate non-convex simple
+        This private constructor exists to generate nonconvex simple
         polygons for internal testing. It is not part of the public API.
 
         The star has ``n_spikes`` spikes, with vertices alternating
@@ -626,8 +626,8 @@ class PolygonAperture(PixelAperture):
 
         theta : float or `~astropy.units.Quantity`, optional
             The rotation angle of the star, measured counterclockwise
-            from the ``+y`` axis to the first (outer) vertex. A scalar
-            float is interpreted in radians.
+            from the positive y-axis to the first (outer) vertex. A
+            scalar float is interpreted in radians.
 
         optimal_shape : bool, optional
             If `True`, compute ``inner_radius`` automatically to
@@ -865,7 +865,7 @@ class PolygonAperture(PixelAperture):
         <https://mathworld.wolfram.com/Circumradius.html>`_.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('outer_radius')
         return self._regular_geometry.outer_radius
@@ -881,7 +881,7 @@ class PolygonAperture(PixelAperture):
         <https://mathworld.wolfram.com/Inradius.html>`_.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('inner_radius')
         return self._regular_geometry.inner_radius
@@ -892,7 +892,7 @@ class PolygonAperture(PixelAperture):
         The side length of the regular polygon, in pixels.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('side_length')
         return self._regular_geometry.side_length
@@ -904,7 +904,7 @@ class PolygonAperture(PixelAperture):
         `~astropy.units.Quantity` in degrees.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('interior_angle')
         return self._regular_geometry.interior_angle
@@ -916,7 +916,7 @@ class PolygonAperture(PixelAperture):
         `~astropy.units.Quantity` in degrees.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('exterior_angle')
         return self._regular_geometry.exterior_angle
@@ -927,8 +927,8 @@ class PolygonAperture(PixelAperture):
         The rotation angle of the regular polygon as an angular
         `~astropy.units.Quantity` in degrees.
 
-        The angle is measured counterclockwise from the ``+y``
-        axis to the first stored vertex, in the range ``[0, 360)
+        The angle is measured counterclockwise from the positive
+        y-axis to the first stored vertex, in the range ``[0, 360)
         deg``. This convention matches the ``theta`` parameter of
         `~PolygonAperture.from_regular_polygon`.
 
@@ -943,7 +943,7 @@ class PolygonAperture(PixelAperture):
         square specified counterclockwise reports ``0 deg``.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('theta')
         return self._regular_geometry.theta
@@ -1057,7 +1057,7 @@ class SkyPolygonAperture(SkyAperture):
         offsets ``(d_lon, d_lat)`` relative to ``positions``, applied
         as spherical offsets from each position. The polygon must be
         simple (non-self-intersecting) with at least 3 vertices. The
-        polygon may be convex or non-convex. Either vertex ordering
+        polygon may be convex or nonconvex. Either vertex ordering
         is accepted. The input is normalized internally to
         counterclockwise order in the ``(d_lon, d_lat)`` plane.
 
@@ -1071,8 +1071,8 @@ class SkyPolygonAperture(SkyAperture):
 
     ValueError : `ValueError`
         If ``vertex_offsets`` does not have shape ``(n_vertices, 2)``,
-        contains non-finite values, or does not define a simple polygon
-        of non-zero area with at least 3 vertices.
+        contains nonfinite values, or does not define a simple polygon
+        of nonzero area with at least 3 vertices.
 
     Examples
     --------
@@ -1168,8 +1168,8 @@ class SkyPolygonAperture(SkyAperture):
             `~astropy.coordinates.SkyCoord`.
 
         ValueError : `ValueError`
-            If ``vertices`` contains non-finite values or does not
-            define a simple polygon of non-zero area with at least 3
+            If ``vertices`` contains nonfinite values or does not
+            define a simple polygon of nonzero area with at least 3
             vertices.
         """
         if not isinstance(vertices, SkyCoord) or vertices.ndim != 1:
@@ -1314,7 +1314,7 @@ class SkyPolygonAperture(SkyAperture):
         <https://mathworld.wolfram.com/Circumradius.html>`_.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('outer_radius')
         return self._regular_geometry.outer_radius * u.arcsec
@@ -1330,7 +1330,7 @@ class SkyPolygonAperture(SkyAperture):
         <https://mathworld.wolfram.com/Inradius.html>`_.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('inner_radius')
         return self._regular_geometry.inner_radius * u.arcsec
@@ -1342,7 +1342,7 @@ class SkyPolygonAperture(SkyAperture):
         `~astropy.units.Quantity` in arcseconds.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('side_length')
         return self._regular_geometry.side_length * u.arcsec
@@ -1354,7 +1354,7 @@ class SkyPolygonAperture(SkyAperture):
         `~astropy.units.Quantity` in degrees.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('interior_angle')
         return self._regular_geometry.interior_angle
@@ -1366,7 +1366,7 @@ class SkyPolygonAperture(SkyAperture):
         `~astropy.units.Quantity` in degrees.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('exterior_angle')
         return self._regular_geometry.exterior_angle
@@ -1392,7 +1392,7 @@ class SkyPolygonAperture(SkyAperture):
         normalized to counterclockwise order.
 
         This attribute is only defined for regular polygons. Accessing
-        it for a non-regular polygon raises `ValueError`.
+        it for a nonregular polygon raises `ValueError`.
         """
         self._check_regular('theta')
         # The geometry angle is counterclockwise in the (d_lon, d_lat)

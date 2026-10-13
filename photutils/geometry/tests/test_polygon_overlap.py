@@ -13,7 +13,7 @@ from photutils.geometry._polygon_overlap import polygon_overlap_grid
 def test_polygon_overlap_clockwise_input():
     """
     Clockwise-ordered vertices should give the same result as
-    counter-clockwise ones.
+    counterclockwise ones.
     """
     vx_ccw = np.array([-1.0, 1.0, 1.0, -1.0])
     vy_ccw = np.array([-1.0, -1.0, 1.0, 1.0])
@@ -29,8 +29,8 @@ def test_polygon_overlap_clockwise_input():
 @pytest.mark.parametrize('use_exact', [1, 0])
 def test_polygon_overlap_readonly_vertices(use_exact):
     """
-    Regression test that read-only (non-writeable) vertex arrays are
-    accepted and give results identical to writeable arrays.
+    Regression test that read-only (nonwritable) vertex arrays are
+    accepted and give results identical to writable arrays.
 
     The vertex arrays are buffered into ``const`` typed memoryviews so
     that read-only arrays do not raise a ``ValueError``.
@@ -111,7 +111,7 @@ def test_polygon_overlap_subpixel_convex_fast_path(subpix):
     mode returns results identical to sampling every pixel.
 
     The same hexagon with a duplicated vertex is geometrically
-    identical but is reported as non-convex (the zero-length edge fails
+    identical but is reported as nonconvex (the zero-length edge fails
     ``convex_edge_normals``), which disables the fast path and forces
     the full scanline sampling for every pixel.
     """
@@ -141,7 +141,7 @@ def test_polygon_overlap_no_intersection():
 
 def test_polygon_overlap_nonconvex_l_shape():
     """
-    The exact-mode kernel handles non-convex (L-shaped) polygons.
+    The exact-mode kernel handles nonconvex (L-shaped) polygons.
     The L-shape used here has area 12 (4x4 square minus 2x2 corner).
     """
     vx = np.array([0.0, 4.0, 4.0, 2.0, 2.0, 0.0])
@@ -153,7 +153,7 @@ def test_polygon_overlap_nonconvex_l_shape():
 
 def test_polygon_overlap_nonconvex_star():
     """
-    The exact-mode kernel handles a 5-pointed star (non-convex,
+    The exact-mode kernel handles a 5-pointed star (nonconvex,
     non-self-intersecting). The total area should match the shoelace
     area of the polygon.
     """
@@ -177,8 +177,8 @@ def test_polygon_overlap_nonconvex_star():
     (2.0, 2.0),  # square
     (4.0, 1.0),  # wide rectangle
     (1.0, 4.0),  # tall rectangle
-    (0.5, 0.5),  # sub-pixel rectangle
-    (3.0, 2.5),  # non-integer dimensions
+    (0.5, 0.5),  # subpixel rectangle
+    (3.0, 2.5),  # noninteger dimensions
 ])
 def test_polygon_overlap_rectangle_area(width, height):
     """

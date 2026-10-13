@@ -143,7 +143,7 @@ def test_asymmetric_shape():
 def test_nonsquare_shape():
     """
     Test that the window radii scale with the size of each axis for a
-    non-square shape.
+    nonsquare shape.
     """
     alpha = 0.4
     ny, nx = 51, 101

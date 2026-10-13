@@ -50,7 +50,7 @@ class Isophote:
         The fitting stop code:
 
            *  0: Normal.
-           *  1: Fewer than the pre-specified fraction of the extracted
+           *  1: Fewer than the prespecified fraction of the extracted
               data points are valid.
            *  2: Exceeded maximum number of iterations.
            *  3: Singular matrix in harmonic fit, results may not be
@@ -142,7 +142,7 @@ class Isophote:
                 # No valid sampled points (e.g., a trial geometry that
                 # fell entirely outside the image). Operating on the
                 # empty sample arrays would emit numpy warnings (e.g.,
-                # "Mean of empty slice"), so set non-meaningful values
+                # "Mean of empty slice"), so set nonmeaningful values
                 # directly and skip the harmonic computations. Such a
                 # degenerate isophote is transient. It is either
                 # discarded or replaced by `_fix_last_isophote`.
@@ -1032,7 +1032,7 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     elif table_columns == ['main']:
         properties = _rename_properties(_MAIN_PROPERTIES)
     else:
-        # Use the canonical (non-deprecated) column name so that
+        # Use the canonical (nondeprecated) column name so that
         # assigning into ``isotable`` does not trigger a second,
         # redundant deprecation warning (the deprecated attribute access
         # below already warns once).

@@ -52,7 +52,7 @@ def _bbox_clipped_candidates(aper, shape):
 
 def _bruteforce_outside_weights(aper, shape, *, method, subpixels, candidates):
     """
-    Reference (non-gated) per-source outside-weight test, built from
+    Reference (nongated) per-source outside-weight test, built from
     explicit aperture masks. This replicates the mask-based branch of
     ``_resolve_outside_weights``, including its restriction to the
     candidate (bbox-clipped) sources.
@@ -224,7 +224,7 @@ class TestPolygonOverlapFlags:
 
 class TestMaskedAndNonFiniteFlags:
     """
-    Tests for the masked_pixels, all_masked, and non-finite flags.
+    Tests for the masked_pixels, all_masked, and nonfinite flags.
     """
 
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
@@ -261,12 +261,12 @@ class TestMaskedAndNonFiniteFlags:
         """
         Test the non_finite_data flag.
 
-        In photometry, unmasked non-finite values contribute to the sum
+        In photometry, unmasked nonfinite values contribute to the sum
         (making it NaN). They do not set all_masked.
 
-        This tests the legacy (non-class) engine call directly
+        This tests the legacy (nonclass) engine call directly
         (``mask_nonfinite=False``, the default), which corrupts the sum
-        with the non-finite value instead of masking it out, unlike
+        with the nonfinite value instead of masking it out, unlike
         `AperturePhotometry`.
         """
         data = np.ones(UNIT_SHAPE)
@@ -282,7 +282,7 @@ class TestMaskedAndNonFiniteFlags:
         result = aper._photometry(data)
         assert result.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
 
-        # A masked non-finite pixel counts only as masked
+        # A masked nonfinite pixel counts only as masked
         data = np.ones(UNIT_SHAPE)
         data[12, 12] = np.nan
         mask = unit_mask
@@ -439,11 +439,11 @@ class TestMaskPathParity:
                              ids=['nan_neighbor', 'nan_mirror'])
     def test_nonfinite_segmentation(self, unit_data, mask_method, nan_pixel):
         """
-        Test batch/mask-path parity when non-finite masking (the
+        Test batch/mask-path parity when nonfinite masking (the
         AperturePhotometry path) combines with segmentation masking.
 
-        Non-finite pixels must be masked before the segmentation handling,
-        so a NaN neighbor pixel is excluded as non-finite (not counted as
+        Nonfinite pixels must be masked before the segmentation handling,
+        so a NaN neighbor pixel is excluded as nonfinite (not counted as
         a neighbor pixel or mirror-corrected) and a NaN mirror pixel makes
         its neighbor uncorrectable with mask_method='correct', matching the
         batch kernel and ApertureStats.
@@ -485,12 +485,12 @@ class TestMaskPathParity:
                              ids=['nan_source', 'nan_background'])
     def test_nonfinite_background_only(self, unit_data, nan_pixel):
         """
-        Test batch/mask-path parity when non-finite masking combines
+        Test batch/mask-path parity when nonfinite masking combines
         with mask_method='background_only'.
 
-        A NaN source pixel is excluded as non-finite (not counted as a
+        A NaN source pixel is excluded as nonfinite (not counted as a
         neighbor pixel) and a NaN background pixel is excluded as
-        non-finite, matching the batch kernel and ApertureStats.
+        nonfinite, matching the batch kernel and ApertureStats.
         """
         data = unit_data
         data[nan_pixel] = np.nan
@@ -547,7 +547,7 @@ class TestFlagsAPI:
                     APERTURE_FLAGS.PARTIAL_OVERLAP]
         assert_array_equal(phot.flags, expected)
 
-        # The flags are multi-dimensional for multiple apertures
+        # The flags are multidimensional for multiple apertures
         aper2 = CircularAperture(xy, r=4.0)
         phot = AperturePhotometry(data, [aper, aper2])
         assert_array_equal(phot.flags[:, 0], expected)

@@ -28,13 +28,13 @@ The following functions calculate the centroid of a single source:
 
 Masks can be input into each of these functions to mask bad
 pixels. Error arrays can be input into the two Gaussian fitting
-methods to weight the fits. Non-finite values (e.g., NaN or
+methods to weight the fits. Nonfinite values (e.g., NaN or
 inf) in the data or error arrays are automatically masked. Note
 that because :func:`~photutils.centroids.centroid_1dg` fits the
 marginal distributions of the data, a partially masked row or
 column near the source peak can bias its result. Consider using
 :func:`~photutils.centroids.centroid_2dg`, which excludes individual
-masked pixels from the fit, when isolated masked or non-finite pixels
+masked pixels from the fit, when isolated masked or nonfinite pixels
 fall near the source peak.
 
 To calculate the centroids of many sources in an image, use the
@@ -174,7 +174,7 @@ with any of the above centroiding functions or a custom user-defined
 centroiding function.
 
 For each source, a cutout image of size ``box_size`` is made centered at
-each initial position. Optionally, a non-rectangular local ``footprint``
+each initial position. Optionally, a nonrectangular local ``footprint``
 mask can be input instead of ``box_size``. The centroids for each source
 are then calculated within their cutout images::
 

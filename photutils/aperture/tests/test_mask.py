@@ -203,7 +203,7 @@ class TestMultiply:
 
     def test_nonfinite_in_bbox(self):
         """
-        Regression test that non-finite data values outside the mask but
+        Regression test that nonfinite data values outside the mask but
         within the bounding box are set to zero.
         """
         data = np.ones((101, 101))

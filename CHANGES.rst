@@ -649,7 +649,7 @@ Bug Fixes
 
   - ``Background2D`` now raises a clear ``TypeError`` if the input
     ``mask`` or ``coverage_mask`` is not a boolean array. Previously,
-    a non-boolean ``coverage_mask`` raised a cryptic ``IndexError``
+    a nonboolean ``coverage_mask`` raised a cryptic ``IndexError``
     (or could silently select the wrong pixels) when the background
     map was computed. [#2363]
 
@@ -658,9 +658,9 @@ Bug Fixes
     input, either for a Python scalar with ``axis=None`` or for any
     scalar with a positive integer ``axis``. [#2492]
 
-  - Fixed ``LocalBackground`` so that non-finite data values in the
+  - Fixed ``LocalBackground`` so that nonfinite data values in the
     annulus are always excluded. Previously, they were kept (giving
-    a non-finite or NaN result) for a custom ``bkg_estimator`` or one
+    a nonfinite or NaN result) for a custom ``bkg_estimator`` or one
     with ``sigma_clip=None``, depending on the estimator type. [#2492]
 
 - ``photutils.centroids``
@@ -675,7 +675,7 @@ Bug Fixes
 
   - Fixed ``centroid_2dg`` to raise a ``ValueError`` if the unmasked
     data are constant. Previously, constant data with a masked or
-    non-finite pixel was fit and a meaningless position was returned.
+    nonfinite pixel was fit and a meaningless position was returned.
     [#2491]
 
   - ``centroid_quadratic`` and ``CentroidQuadratic`` now emit a warning
@@ -731,7 +731,7 @@ Bug Fixes
     that radius centered on each pixel. Previously, the region was
     larger than the circle for radii smaller than 2 pixels (e.g.,
     diagonal neighbors were suppressed for ``min_separation=1``) and
-    was offset by half a pixel for most non-integer radii. Small radii
+    was offset by half a pixel for most noninteger radii. Small radii
     are also faster. [#2493]
 
   - Fixed the ``DAOStarFinder`` ``flux`` to be the sum of the data
@@ -849,7 +849,7 @@ Bug Fixes
     table containing a ``group_id`` column permanently disabled the
     grouper for all subsequent calls on the same instance. [#2383]
 
-  - Fixed a bug where non-finite data values were not merged into a
+  - Fixed a bug where nonfinite data values were not merged into a
     user-provided mask, causing fit failures in ``fit_2dgaussian``,
     ``fit_fwhm``, and ``PSFPhotometry``. [#2383]
 
@@ -885,7 +885,7 @@ Bug Fixes
     available. [#2385]
 
   - Fixed a bug where the ``EPSFStar`` ``slices`` and ``bbox``
-    attributes were transposed for non-square cutouts. [#2386]
+    attributes were transposed for nonsquare cutouts. [#2386]
 
   - Fixed a bug where the ePSF building flux renormalization used
     stale cached values, so every iteration normalized the star data
@@ -924,7 +924,7 @@ Bug Fixes
 
   - Fixed a bug where ``IterativePSFPhotometry`` with ``mode='all'``
     raised an error when an earlier iteration produced a source with
-    non-finite fit results. Such sources are now dropped from later
+    nonfinite fit results. Such sources are now dropped from later
     iterations. [#2387]
 
   - Fixed a bug where ``IterativePSFPhotometry`` with ``mode='all'``
@@ -944,7 +944,7 @@ Bug Fixes
   - The ``IterativePSFPhotometry`` ``sub_shape`` keyword is now
     validated at initialization to have odd, positive values,
     matching the documented requirement. The ``maxiters`` keyword
-    validation now also rejects non-numeric and boolean inputs.
+    validation now also rejects nonnumeric and boolean inputs.
     [#2387]
 
   - Fixed a bug where the ``GaussianPSF`` and ``GaussianPRF`` bounding
@@ -1118,10 +1118,10 @@ Bug Fixes
     that repeats with a period of about one input pixel or shorter is
     removed from the ePSF in each iteration. A warning is now emitted
     if the subpixel phases of the fitted star centers are strongly
-    non-uniform, which indicates biased star centers. [#2419, #2465]
+    nonuniform, which indicates biased star centers. [#2419, #2465]
 
   - Fixed a bug where ``EPSFBuilder`` raised ``NonFiniteValueError``
-    when a star cutout contained a non-finite (e.g., NaN) pixel inside
+    when a star cutout contained a nonfinite (e.g., NaN) pixel inside
     the fitting region. A star whose fitting region is fully masked is
     now treated as a fit failure instead of raising an error. [#2423]
 
@@ -1194,19 +1194,19 @@ Bug Fixes
     values, and not be all zeros. [#2372]
 
   - ``make_kernel`` and ``make_wiener_kernel`` now raise a
-    ``ValueError`` if the computed kernel contains non-finite values,
+    ``ValueError`` if the computed kernel contains nonfinite values,
     which can occur when the Fourier-space denominator is zero at
     frequencies where the numerator is also zero. [#2372]
 
   - ``make_wiener_kernel`` now raises a ``ValueError`` stating that
     ``regularization`` must be positive when it is NaN. Previously, an
-    unrelated error about a non-finite kernel was raised. [#2494]
+    unrelated error about a nonfinite kernel was raised. [#2494]
 
-  - Fixed the window classes for non-square shapes. The window radii
+  - Fixed the window classes for nonsquare shapes. The window radii
     are now defined relative to the size of the array along each axis,
     so the window is elliptical instead of circular. Previously, a
     window passed to ``make_kernel`` or ``make_wiener_kernel`` with
-    non-square PSFs cut off lower spatial frequencies along the longer
+    nonsquare PSFs cut off lower spatial frequencies along the longer
     axis, which made the matching kernel too narrow along that axis.
     Windows for square shapes are unchanged. [#2495]
 
@@ -1231,7 +1231,7 @@ Bug Fixes
     ``ApertureStats.orientation``. [#2317]
 
   - ``SegmentationImage.remove_border_labels`` now raises a
-    ``ValueError`` for non-positive ``border_width`` values. Previously,
+    ``ValueError`` for nonpositive ``border_width`` values. Previously,
     ``border_width=0`` (and negative widths) silently removed every
     label because the entire array was treated as the border region.
     [#2378]
@@ -1247,7 +1247,7 @@ Bug Fixes
     ``area``, oversubtracting the background. [#2378]
 
   - ``deblend_sources`` with ``contrast=1`` (no deblending) now
-    honors ``relabel=True``, relabeling non-consecutive input labels
+    honors ``relabel=True``, relabeling nonconsecutive input labels
     like every other code path. [#2378]
 
   - ``SourceCatalog.add_property`` now raises a ``ValueError`` for
@@ -1434,7 +1434,7 @@ API Changes
     [#2476]
 
   - ``make_model_image`` now also skips sources that have a
-    non-finite ``'local_bkg'`` value. Previously, a non-finite local
+    nonfinite ``'local_bkg'`` value. Previously, a nonfinite local
     background was added to the source region, propagating NaN or
     inf values into the output image. [#2374]
 
@@ -1644,7 +1644,7 @@ API Changes
     ``NDData`` input is now also documented in the ``__call__``
     docstrings. [#2395]
 
-  - The error message raised for non-positive or non-finite ``error``
+  - The error message raised for nonpositive or nonfinite ``error``
     values within a fit region now includes the location of the fit
     region. [#2395]
 
@@ -1706,7 +1706,7 @@ API Changes
     to the isophotal centroid have been expanded. The windowed centroid
     is reset when it has diverged far from the isophotal centroid and
     lies outside the 1-sigma ellipse, the total weighted flux is
-    non-positive, the windowed second-order moments are negative, or the
+    nonpositive, the windowed second-order moments are negative, or the
     windowed covariance determinant is negative. Previously, only the
     ellipse condition was applied. [#2397]
 
@@ -1725,7 +1725,7 @@ API Changes
     [#2408]
 
   - The ``deblend_sources`` and ``SourceFinder`` deblending-mode
-    fallback for sources with non-positive minimum data values (used
+    fallback for sources with nonpositive minimum data values (used
     with ``mode='exponential'``, for which such sources are
     undefined) was changed from "linear" to "sinh". The sinh
     spacing keeps the threshold levels concentrated near the source
@@ -1808,7 +1808,7 @@ New Features
   - The ``to_sky`` and ``to_pixel`` methods for all pixel and sky
     aperture types now use the local WCS Jacobian to accurately compute
     pixel scale factors and rotation angles. This correctly handles WCS
-    with distortions (e.g., SIP polynomial corrections) and non-square
+    with distortions (e.g., SIP polynomial corrections) and nonsquare
     pixels. [#2240]
 
 - ``photutils.background``
@@ -2004,16 +2004,16 @@ Bug Fixes
 
 - ``photutils.profiles``
 
-  - Fixed an issue where the mask (input and non-finite values) was
+  - Fixed an issue where the mask (input and nonfinite values) was
     not applied to the raw data profile. [#2184]
 
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now handle
-    non-finite (NaN or inf) local background values instead of raising
+    nonfinite (NaN or inf) local background values instead of raising
     an error. Three new flags have been added to identify sources with
-    non-finite values: flag 512 for non-finite fitted positions, flag
-    1024 for non-finite fitted flux, and flag 2048 for non-finite local
+    nonfinite values: flag 512 for nonfinite fitted positions, flag
+    1024 for nonfinite fitted flux, and flag 2048 for nonfinite local
     background. [#2131]
 
   - Fixed a bug in ``EPSFBuilder`` where the ``recentering_boxsize`` was
@@ -2431,7 +2431,7 @@ New Features
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise an error
-    if the input ``error`` array contains non-finite or zero values.
+    if the input ``error`` array contains nonfinite or zero values.
     [#2022]
 
   - ``GriddedPSFModel`` can now be used with a single input ePSF model,
@@ -2504,7 +2504,7 @@ Bug Fixes
     of the models overlapped the image shape. [#2082]
 
   - Fixed a bug in ``make_model_image`` where an error would be raised
-    if any row in the input parameters table contained non-finite model
+    if any row in the input parameters table contained nonfinite model
     parameters. Such sources are now silently ignored. [#2083]
 
 - ``photutils.psf``
@@ -2530,7 +2530,7 @@ Bug Fixes
     the boundary conditions where flag=2 would be set. [#2080]
 
   - Fixed a bug in ``EPSFBuilder`` where the output PSF would have the
-    wrong shape if the input ``stars`` were non-square cutouts. [#2089,
+    wrong shape if the input ``stars`` were nonsquare cutouts. [#2089,
     #2092]
 
   - Fixed a bug in the calculation of the ``PSFPhotometry`` and
@@ -2544,7 +2544,7 @@ Bug Fixes
     the ``extra_properties`` attribute. [#2039]
 
   - Fixed an issue where the ``SegmentationImage`` ``segments``
-    attribute would fail if any source segment was non-contiguous.
+    attribute would fail if any source segment was noncontiguous.
     [#2060]
 
 API Changes
@@ -2553,7 +2553,7 @@ API Changes
 - ``photutils.background``
 
   - An explicit ``ValueError`` is now raised if the input ``data`` to
-    ``Background2D`` contains all non-finite values. [#2062]
+    ``Background2D`` contains all nonfinite values. [#2062]
 
 - ``photutils.psf``
 
@@ -2569,7 +2569,7 @@ API Changes
 - ``photutils.segmentation``
 
   - The ``SegmentationImage`` ``polygons`` list may now include either
-    Shapely ``Polygon`` or ``MultiPolygon`` (non-contiguous) objects.
+    Shapely ``Polygon`` or ``MultiPolygon`` (noncontiguous) objects.
     [#2060]
 
   - The ``SegmentationImage`` ``to_patches`` and ``plot_patches``
@@ -2900,7 +2900,7 @@ Bug Fixes
 
   - Fixed an issue where ``DAOStarFinder`` would not return any sources
     if the input ``threshold`` was set to zero due to the ``flux`` being
-    non-finite. [#1882]
+    nonfinite. [#1882]
 
 - ``photutils.isophote``
 
@@ -3155,7 +3155,7 @@ Bug Fixes
     ``IterativePSFPhotometry``. [#1765]
 
   - Fixed an issue where ``IterativePSFPhotometry`` could sometimes
-    raise an error about non-overlapping data. [#1778]
+    raise an error about nonoverlapping data. [#1778]
 
   - Fixed an issue with unit handling in ``PSFPhotometry`` and
     ``IterativePSFPhotometry``. [#1792]
@@ -3213,7 +3213,7 @@ API Changes
   - The ``sky`` keyword in ``DAOStarFinder`` and ``IRAFStarFinder`` is
     now deprecated and will be removed in a future version. [#1747]
 
-  - Sources that have non-finite properties (e.g., centroid, roundness,
+  - Sources that have nonfinite properties (e.g., centroid, roundness,
     sharpness, etc.) are automatically excluded from the output table in
     ``DAOStarFinder``, ``IRAFStarFinder``, and ``StarFinder``. [#1750]
 
@@ -3451,7 +3451,7 @@ New Features
     labels are plotted with unique colors. [#1649]
 
   - Added a ``imshow_map`` method to ``SegmentationImage`` for plotting
-    segmentation images with a small number of non-consecutive labels.
+    segmentation images with a small number of nonconsecutive labels.
     [#1649]
 
   - Added a ``reset_cmap`` method to ``SegmentationImage`` for resetting
@@ -3610,7 +3610,7 @@ New Features
 - ``photutils.profiles``
 
   - The ``RadialProfile`` and ``CurveOfGrowth`` radial bins can now be
-    directly input, which also allows for non-uniform radial spacing.
+    directly input, which also allows for nonuniform radial spacing.
     [#1540]
 
 Bug Fixes
@@ -3967,7 +3967,7 @@ New Features
   - Added a ``'sinh'`` mode to ``deblend_sources``. [#1368]
 
   - Improved the resetting of cached ``SegmentationImage`` properties so
-    that custom (non-cached) attributes can be kept. [#1368]
+    that custom (noncached) attributes can be kept. [#1368]
 
   - Added a ``nproc`` keyword to enable multiprocessing in
     ``deblend_sources`` and ``SourceFinder``. [#1372]
@@ -4176,7 +4176,7 @@ API Changes
 
 - ``photutils.aperture``
 
-  - A ``ValueError`` is now raised if non-positive sizes are input to
+  - A ``ValueError`` is now raised if nonpositive sizes are input to
     sky-based apertures. [#1295]
 
   - The ``BoundingBox.plot()`` method now returns a
@@ -4599,10 +4599,10 @@ Bug Fixes
     aperture bounding box. [#1158]
 
   - Fixed an issue where ``ApertureMask.cutout`` would raise an error
-    if ``fill_value`` was non-finite and the input array was integer
+    if ``fill_value`` was nonfinite and the input array was integer
     type. [#1158]
 
-  - Fixed an issue where ``RectangularAnnulus`` with a non-default
+  - Fixed an issue where ``RectangularAnnulus`` with a nondefault
     ``h_in`` would give an incorrect ``ApertureMask``. [#1160]
 
 - ``photutils.isophote``
@@ -4931,7 +4931,7 @@ Bug Fixes
     ``None`` if no sources were found. [#986]
 
   - Fix to ``centroid_epsf`` where the wrong oversampling factor was
-    used along the y axis. [#1002]
+    used along the y-axis. [#1002]
 
 
 0.7.1 (2019-10-09)
@@ -5058,7 +5058,7 @@ Bug Fixes
     the data units when ``copy=True``. [#842]
 
   - Fixed a corner-case issue where aperture photometry would return
-    NaN for non-finite data values outside the aperture but within the
+    NaN for nonfinite data values outside the aperture but within the
     aperture bounding box. [#843]
 
   - Fixed an issue where the ``celestial_center`` column (for sky
@@ -5137,7 +5137,7 @@ API Changes
     1D) are now considered scalar objects, which can be checked with
     the new ``isscalar`` Aperture property. [#852]
 
-  - Non-scalar Aperture objects can now be indexed, sliced, and
+  - Nonscalar Aperture objects can now be indexed, sliced, and
     iterated. [#852]
 
   - Scalar Aperture objects now return scalar ``positions`` and
@@ -5238,7 +5238,7 @@ API Changes
     Also, for this case a ``NoDetectionsWarning`` is issued. [#836]
 
   - The ``SegmentationImage`` input ``data`` array must contain at
-    least one non-zero pixel and must not contain any non-finite values.
+    least one nonzero pixel and must not contain any nonfinite values.
     [#836]
 
   - A ``ValueError`` is raised if an empty list is input into

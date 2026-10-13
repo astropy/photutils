@@ -97,7 +97,7 @@ class TestEllipse:
         At small semimajor axes, nearest-neighbor sampling can extract
         identical pixel sets at two nearby radii, making the local
         gradient exactly zero. The harmonic correctors would then
-        divide by zero, producing a non-finite geometry that crashed
+        divide by zero, producing a nonfinite geometry that crashed
         the integrator with "ValueError: cannot convert float NaN to
         integer".
         """

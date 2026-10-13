@@ -119,7 +119,7 @@ class TestSkyCircularAnnulus(BaseTestAnnulusMutation, BaseTestAperture):
     @staticmethod
     def test_non_angle_quantity():
         """
-        Test that a ValueError is raised when r_in has non-angular
+        Test that a ValueError is raised when r_in has nonangular
         units.
         """
         match = "'r_in' must have angular units"

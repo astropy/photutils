@@ -144,7 +144,7 @@ class TestBackground2D:
 
     def test_background_rect(self):
         """
-        Regression test for interpolators with non-square input data.
+        Regression test for interpolators with nonsquare input data.
         """
         data = np.arange(12).reshape(3, 4)
         rms = np.zeros((3, 4))
@@ -158,7 +158,7 @@ class TestBackground2D:
 
     def test_background_nonconstant_data(self, test_data, bkg_mesh):
         """
-        Test on non-constant data to ensure that the background mesh
+        Test on nonconstant data to ensure that the background mesh
         is computed correctly and that the background is properly
         interpolated.
         """
@@ -440,7 +440,7 @@ class TestBackground2D:
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
         # Test that combined mask and coverage_mask gives the same
-        # results. The input masks cover all of the non-finite values,
+        # results. The input masks cover all of the nonfinite values,
         # so no warning should be issued.
         mask = np.zeros(test_data.shape, dtype=bool)
         coverage_mask = np.zeros(test_data.shape, dtype=bool)
@@ -454,18 +454,18 @@ class TestBackground2D:
 
     def test_mask_nonfinite(self, test_data):
         """
-        Test that non-finite values in the input data are masked and a
+        Test that nonfinite values in the input data are masked and a
         warning is issued.
         """
         data = test_data.copy()
         data[0, 0:50] = np.nan
-        match = r'Input data contains non-finite \(NaN or infinity\) values'
+        match = r'Input data contains nonfinite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background, test_data, rtol=1e-5)
 
         # A warning is also issued when an input mask is given that
-        # does not cover the non-finite values
+        # does not cover the nonfinite values
         mask = np.zeros(test_data.shape, dtype=bool)
         mask[60:70, 60:70] = True
         with pytest.warns(AstropyUserWarning, match=match):
@@ -536,7 +536,7 @@ class TestBackground2D:
 
         data = test_data.copy()
         data[:] = np.nan
-        match = r'Input data contains all non-finite \(NaN or infinity\)'
+        match = r'Input data contains all nonfinite \(NaN or infinity\)'
         with pytest.raises(ValueError, match=match):
             Background2D(data, (25, 25))
 
@@ -563,7 +563,7 @@ class TestBackground2D:
         """
         data = np.copy(test_data)
         data[0:50, 0:50] = np.nan
-        match = r'Input data contains non-finite \(NaN or infinity\) values'
+        match = r'Input data contains nonfinite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
@@ -576,7 +576,7 @@ class TestBackground2D:
 
         data[:] = np.nan
         data[0, 0] = 1.0
-        match1 = r'Input data contains non-finite \(NaN or infinity\) values'
+        match1 = r'Input data contains nonfinite \(NaN or infinity\) values'
         match2 = r'All boxes contain .* unmasked or finite pixels'
         ctx1 = pytest.warns(AstropyUserWarning, match=match1)
         ctx2 = pytest.raises(ValueError, match=match2)
@@ -815,7 +815,7 @@ class TestBackground2D:
     def test_masks(self):
         """
         Test that the input data is not modified when a mask is applied
-        and that the same background is computed whether the non-finite
+        and that the same background is computed whether the nonfinite
         values are masked or set to NaN.
         """
         arr = np.arange(25.0).reshape(5, 5)
@@ -840,7 +840,7 @@ class TestBackground2D:
         arr2 = arr.copy()
         arr2[mask] = np.nan
         arr3 = arr2.copy()
-        match = r'Input data contains non-finite \(NaN or infinity\) values'
+        match = r'Input data contains nonfinite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg2 = Background2D(arr2, box_size, mask=None,
                                 exclude_percentile=exclude_percentile,
@@ -1094,7 +1094,7 @@ def _make_sigma_clip_biweight(cenfunc='biweight', stdfunc='biweight',
 
 def _make_generic_background2d(monkeypatch, *args, **kwargs):
     """
-    Create a Background2D instance that uses the generic (non-fused)
+    Create a Background2D instance that uses the generic (nonfused)
     box-statistics path.
     """
     monkeypatch.setattr(Background2D, '_make_box_stats_spec',
@@ -1173,7 +1173,7 @@ class TestFastBoxStatistics:
     def test_biweight_variants_match_generic(self, bkg_estimator,
                                              rms_estimator, monkeypatch):
         """
-        Test that the biweight estimators with non-default tuning
+        Test that the biweight estimators with nondefault tuning
         constants and scalar location anchors match the generic path.
 
         The test data include constant boxes, for which the biweight
@@ -1241,7 +1241,7 @@ class TestFastBoxStatistics:
 
     def test_biweight_nonfinite_m_falls_back(self, test_data):
         """
-        Test that a non-finite biweight location anchor (M) falls back
+        Test that a nonfinite biweight location anchor (M) falls back
         to the generic path, where the all-NaN result raises an error,
         rather than silently computing median-anchored values.
         """
@@ -1454,8 +1454,8 @@ class TestFastBoxStatistics:
                            BiweightScaleBackgroundRMS())])
 def test_read_only_inputs(dtype, bkg_estimator, bkg_rms_estimator):
     """
-    Regression test that read-only (non-writeable) input arrays are
-    accepted, are not modified, and give results identical to writeable
+    Regression test that read-only (nonwritable) input arrays are
+    accepted, are not modified, and give results identical to writable
     arrays.
     """
     rng = np.random.default_rng(0)

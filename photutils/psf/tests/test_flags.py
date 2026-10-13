@@ -182,7 +182,7 @@ def test_decode_psf_flags_edge_cases():
                     'non_finite_local_bkg', 'position_outside_fit_region']
     assert set(decoded) == set(expected_all)
 
-    match = 'Flag value must be a non-negative integer'
+    match = 'Flag value must be a nonnegative integer'
     with pytest.raises(ValueError, match=match):
         decode_psf_flags(-2)
 
@@ -311,7 +311,7 @@ def test_psf_flags_get_methods():
     assert 'fit_shape' in desc1
 
     desc8 = PSF_FLAGS.get_description(8)
-    assert 'possible non-convergence' in desc8
+    assert 'possible nonconvergence' in desc8
 
     # Test get_detailed_description
     detailed1 = PSF_FLAGS.get_detailed_description(1)
@@ -503,7 +503,7 @@ def test_psf_classes_docstrings():
         dynamic_flags = [
             'indicating partial PSF fitting',
             'outside the bounds of the input image',
-            'negative or zero, which is non-physical',
+            'negative or zero, which is nonphysical',
             'may not have converged to a stable solution',
             'covariance matrix is not available',
             'very close to their imposed bounds',
@@ -549,7 +549,7 @@ def test_decode_psf_flags_docstring():
     expected_descriptions = [
         'indicating partial PSF fitting',
         'outside the bounds of the input image',
-        'negative or zero, which is non-physical',
+        'negative or zero, which is nonphysical',
         'may not have converged to a stable solution',
         'covariance matrix is not available',
         'very close to their imposed bounds',

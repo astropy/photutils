@@ -192,7 +192,7 @@ class TestDeprecatedColumn:
 
     def test_non_string_access_no_warning(self, raw_data, recwarn):
         """
-        Test that non-string access does not trigger warnings.
+        Test that nonstring access does not trigger warnings.
 
         This ensures that row access via integers or slices does not
         incorrectly engage the name translation logic.
@@ -219,7 +219,7 @@ class TestDeprecatedColumn:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             assert 'old' in table
 
-        # Non-deprecated column: no warning
+        # Nondeprecated column: no warning
         assert 'stable' in table
 
         # Missing column: no warning
@@ -366,7 +366,7 @@ class TestDeprecatedColumn:
 
     def test_translate_names_non_string(self, raw_data, recwarn):
         """
-        Test that _translate_names passes through non-string/non-sequence
+        Test that _translate_names passes through nonstring/nonsequence
         values unchanged (e.g., a Table used as group_by keys).
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)

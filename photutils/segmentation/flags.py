@@ -54,19 +54,19 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=2,
             name='non_finite_data',
-            description=('non-finite data values within the source '
+            description=('nonfinite data values within the source '
                          'segment'),
             detailed_description=('One or more data values within '
-                                  'the source segment are non-finite '
+                                  'the source segment are nonfinite '
                                   '(NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=4,
             name='non_finite_error',
-            description=('non-finite error values within the source '
+            description=('nonfinite error values within the source '
                          'segment'),
             detailed_description=('One or more error values within '
-                                  'the source segment are non-finite '
+                                  'the source segment are nonfinite '
                                   '(NaN or inf).'),
         ),
         FlagDefinition(
@@ -74,7 +74,7 @@ class _SegmentationFlags(FlagRegistry):
             name='all_masked',
             description='no valid pixels within the source segment',
             detailed_description=('Every pixel within the source '
-                                  'segment is masked or non-finite, '
+                                  'segment is masked or nonfinite, '
                                   'so the measured source properties '
                                   'are undefined.'),
         ),
@@ -101,13 +101,13 @@ class _SegmentationFlags(FlagRegistry):
             bit_value=64,
             name='deblend_non_positive_min',
             description=('deblending mode changed to sinh: '
-                         'non-positive minimum'),
+                         'nonpositive minimum'),
             detailed_description=('The deblending mode for the '
                                   'input source (the parent source, '
                                   'or the source itself if it was '
                                   'not deblended) was changed to '
                                   '"sinh" because of a '
-                                  'non-positive minimum data value '
+                                  'nonpositive minimum data value '
                                   'within the input source '
                                   'segment.'),
         ),
@@ -127,7 +127,7 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=256,
             name='undefined_shape',
-            description=('non-positive net flux or invalid covariance '
+            description=('nonpositive net flux or invalid covariance '
                          '(shape properties undefined)'),
             detailed_description=('The net source flux (the zeroth '
                                   'image moment over the source '
@@ -197,7 +197,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'was at or below the minimum '
                                   'unscaled Kron radius '
                                   '(``kron_params[1]``) or could not '
-                                  'be measured (non-positive Kron '
+                                  'be measured (nonpositive Kron '
                                   'numerator or denominator), so the '
                                   'minimum was used, or the '
                                   'minimum circular aperture '
@@ -234,21 +234,21 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=32768,
             name='kron_non_finite_data',
-            description=('non-finite data values within the Kron '
+            description=('nonfinite data values within the Kron '
                          'aperture'),
             detailed_description=('One or more unmasked data values '
                                   'with nonzero aperture weight within '
-                                  'the Kron aperture are non-finite '
+                                  'the Kron aperture are nonfinite '
                                   '(NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=65536,
             name='kron_non_finite_error',
-            description=('non-finite error values within the Kron '
+            description=('nonfinite error values within the Kron '
                          'aperture'),
             detailed_description=('One or more unmasked error values '
                                   'with nonzero aperture weight within '
-                                  'the Kron aperture are non-finite '
+                                  'the Kron aperture are nonfinite '
                                   '(NaN or inf), so the Kron flux '
                                   'error is NaN.'),
         ),

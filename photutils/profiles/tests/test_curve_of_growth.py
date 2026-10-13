@@ -204,7 +204,7 @@ class TestCurveOfGrowth:
         radii = np.arange(1, 36)
         radii_orig = radii.copy()
 
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             CurveOfGrowth(data2, xycen, radii, error=error, mask=mask2)
 
@@ -485,7 +485,7 @@ class TestEnsquaredCurveOfGrowth:
         half_sizes = np.arange(1, 36)
         half_sizes_orig = half_sizes.copy()
 
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             EnsquaredCurveOfGrowth(data2, xycen, half_sizes, error=error,
                                    mask=mask2)
@@ -758,7 +758,7 @@ class TestEllipticalCurveOfGrowth:
         radii = np.arange(1, 36)
         radii_orig = radii.copy()
 
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             EllipticalCurveOfGrowth(data2, xycen, radii, axis_ratio=0.5,
                                     error=error, mask=mask2)
@@ -872,7 +872,7 @@ class TestNonMonotonicInterpolation:
         assert np.any(np.diff(calc_ee(fine_sizes)) < 0)
 
         # Every value in the profile range has a size, the size never
-        # decreases with the encircled energy, and the roundtrip is
+        # decreases with the encircled energy, and the round-trip is
         # exact
         ee = np.linspace(cog.profile[0], 1.0, 200)
         result = calc_size(ee)
@@ -931,7 +931,7 @@ class TestNonMonotonicInterpolation:
 
     def test_nonfinite(self, cls, kwargs, ee_name, size_name):
         """
-        Test that non-finite profile values are skipped.
+        Test that nonfinite profile values are skipped.
         """
         values = np.array([1.0, 3.0, np.nan, 5.0, 7.0])
         cog = self.make_profile(cls, kwargs, values)

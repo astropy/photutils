@@ -110,7 +110,7 @@ class TestDecodeApertureFlags:
         with pytest.raises(TypeError, match=match):
             decode_aperture_flags([1, 2.5, 3])
 
-        match = 'Flag value must be a non-negative integer'
+        match = 'Flag value must be a nonnegative integer'
         with pytest.raises(ValueError, match=match):
             decode_aperture_flags(-2)
 

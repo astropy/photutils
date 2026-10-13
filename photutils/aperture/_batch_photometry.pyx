@@ -164,7 +164,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
     `photutils.geometry` grid functions, so the resulting sums match the
     mask-based photometry code path.
 
-    Pixels with a non-positive overlap fraction or that are masked are
+    Pixels with a nonpositive overlap fraction or that are masked are
     excluded from the sums.
 
     Parameters
@@ -181,7 +181,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         pixels. Must have the same shape as ``data``. For the flag
         counts, bit 1 (value 1) marks input-masked pixels. A caller
         that does not use ``mask_nonfinite`` can set bit 2 (value 2)
-        to mark the non-finite data pixels itself. Any nonzero value
+        to mark the nonfinite data pixels itself. Any nonzero value
         excludes the pixel.
 
     positions : 2D ndarray of float64 (C-contiguous)
@@ -253,7 +253,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
           across the (rounded) aperture center (the symmetric
           ``'correct'`` method). A neighbor pixel whose mirror falls
           outside the aperture bounding box clipped to the data, is
-          itself a neighbor, is masked, or is non-finite (with
+          itself a neighbor, is masked, or is nonfinite (with
           ``mask_nonfinite``) is excluded instead of replaced.
 
     local_bkg : 1D ndarray of float64 (C-contiguous) or `None`, optional
@@ -278,12 +278,12 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         the ``ext_x`` and ``ext_y`` inputs are ignored.
 
     mask_nonfinite : int, optional
-        If nonzero, non-finite ``data`` pixels are excluded (in addition
+        If nonzero, nonfinite ``data`` pixels are excluded (in addition
         to the ``mask`` pixels) before the segmentation masking is
         applied, and they are counted in the ``FLAG_COL_NONFINITE_DATA``
         column. A method-4 neighbor pixel whose mirror pixel is
-        non-finite is then left uncorrected. When zero (default),
-        non-finite data values are left in the computation, where they
+        nonfinite is then left uncorrected. When zero (default),
+        nonfinite data values are left in the computation, where they
         corrupt the sum.
 
     Returns
@@ -340,11 +340,11 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked
         * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels
-          excluded as non-finite data (by ``mask_nonfinite`` or by mask
+          excluded as nonfinite data (by ``mask_nonfinite`` or by mask
           bit 2) that are not input-masked, plus 1 if the accumulated
-          sum is non-finite (see below)
+          sum is nonfinite (see below)
         * ``FLAG_COL_NONFINITE_ERROR``: a 0/1 indicator of whether a
-          contributing pixel has a non-finite error (detected from the
+          contributing pixel has a nonfinite error (detected from the
           accumulated variance, always 0 if ``error`` is `None`)
         * ``FLAG_COL_SEG``: the number of those unmasked pixels that
           lie on a neighboring source (for method 3, on any labeled
@@ -371,10 +371,10 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         recover the full neighbor-pixel counts.
 
         The ``FLAG_COL_NONFINITE_DATA`` and ``FLAG_COL_NONFINITE_ERROR``
-        columns are nonzero when non-finite data or error values
-        contribute to the aperture. Non-finite data pixels excluded by
+        columns are nonzero when nonfinite data or error values
+        contribute to the aperture. Nonfinite data pixels excluded by
         ``mask_nonfinite`` or by mask bit 2 are counted exactly, while
-        unmasked non-finite contributions are detected from the
+        unmasked nonfinite contributions are detected from the
         accumulated sums as a 0/1 indicator. Rows are all zero where the
         aperture bounding box does not overlap the data.
 
@@ -440,7 +440,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
     cdef double poly_y_out[4]
 
     # Scratch buffers for the polygon clipping (rectangular apertures).
-    # These are local to this call, so this function is thread safe.
+    # These are local to this call, so this function is thread-safe.
     cdef double buf_a_x[32]
     cdef double buf_a_y[32]
     cdef double buf_b_x[32]
@@ -449,7 +449,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
     # Working buffers for arbitrary-polygon apertures. The vertex count
     # is variable, so these are allocated as a single numpy block (kept
     # alive by ``poly_work``) and accessed through raw pointers. They
-    # are local to this call, so this function is thread safe.
+    # are local to this call, so this function is thread-safe.
     cdef int n_poly = 0, poly_buf_size = 0
     cdef int is_poly_convex = 0
     cdef Py_ssize_t pk
@@ -750,7 +750,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
 
                     n_pix += 1
 
-                    # With ``mask_nonfinite``, an unmasked non-finite
+                    # With ``mask_nonfinite``, an unmasked nonfinite
                     # data pixel is treated as mask bit 2. Only the
                     # aperture pixels are tested, so no full-image pass
                     # is needed.
@@ -796,7 +796,7 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
                     # A corrected neighbor pixel is the only pixel
                     # read from a different (mirror) pixel. A pixel
                     # that mirrors onto itself is a neighbor, so it is
-                    # never corrected. A non-finite mirror pixel leaves
+                    # never corrected. A nonfinite mirror pixel leaves
                     # the neighbor pixel uncorrected.
                     if (mask_nonfinite and (six != ix or siy != iy)
                             and not isfinite(data[siy, six])):
@@ -817,9 +817,9 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
                         sum_errsq[spos] = errsq if has_error else 0.0
                         spos += 1
 
-            # Non-finite error values, and non-finite data values when
+            # Nonfinite error values, and nonfinite data values when
             # ``mask_nonfinite`` is 0, corrupt the accumulated sums, so
-            # their presence is detected from the final sums. Non-finite
+            # their presence is detected from the final sums. Nonfinite
             # data pixels excluded by ``mask_nonfinite`` are counted
             # exactly in the masked branch above.
             if not isfinite(sum_val):

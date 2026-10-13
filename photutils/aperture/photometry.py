@@ -71,7 +71,7 @@ class AperturePhotometry:
         The 2D array on which to perform photometry. ``data`` should be
         background-subtracted. If ``data`` is a `~astropy.units.Quantity`
         array, then ``error`` (if input) must also be a
-        `~astropy.units.Quantity` array with the same units. Non-finite
+        `~astropy.units.Quantity` array with the same units. Nonfinite
         ``data`` values (NaN and inf) are automatically masked. See the
         Notes section below for more information about
         `~astropy.nddata.NDData` input.
@@ -99,7 +99,7 @@ class AperturePhotometry:
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from all calculations. Non-finite
+        Masked data are excluded from all calculations. Nonfinite
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
@@ -159,7 +159,7 @@ class AperturePhotometry:
     aperture axis, giving shape ``(n_apertures,)`` for a single scalar
     position and ``(n_positions, n_apertures)`` otherwise.
 
-    Non-finite ``data`` values (NaN and inf) are automatically masked.
+    Nonfinite ``data`` values (NaN and inf) are automatically masked.
     Such pixels are excluded from the `flux`, `flux_err`, and `area`
     calculations and are indicated by the ``non_finite_data`` quality
     flag (see `~photutils.aperture.decode_aperture_flags`).
@@ -601,8 +601,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         should be background-subtracted. If ``data`` is a
         `~astropy.units.Quantity` array, then ``error`` (if input)
         must also be a `~astropy.units.Quantity` array with the same
-        units. Non-finite ``data`` values (NaN and inf) are not masked
-        automatically. An aperture that contains one has a non-finite
+        units. Nonfinite ``data`` values (NaN and inf) are not masked
+        automatically. An aperture that contains one has a nonfinite
         sum. See the Notes section below for more information about
         `~astropy.nddata.NDData` input.
 

@@ -11,13 +11,13 @@ __all__ = ['first_and_second_harmonic_function',
 
 
 def _least_squares_fit(optimize_func, parameters):
-    # call the least squares fitting
+    # call the least-squares fitting
     # function and handle the result.
 
     solution = leastsq(optimize_func, parameters, full_output=True)
 
     if solution[4] > 4:
-        msg = f'Error in least squares fit: {solution[3]}'
+        msg = f'Error in least-squares fit: {solution[3]}'
         raise RuntimeError(msg)
 
     # return coefficients and covariance matrix
@@ -41,7 +41,7 @@ def first_and_second_harmonic_function(phi, c):
     ----------
     phi : float or `~numpy.ndarray`
         The angle(s) along the elliptical path, going towards the positive
-        y axis, starting coincident with the position angle. That is, the
+        y-axis, starting coincident with the position angle. That is, the
         angles are defined from the semimajor axis that lies in
         the positive x quadrant.
     c : `~numpy.ndarray` of shape (5,)
@@ -72,7 +72,7 @@ def fit_first_and_second_harmonics(phi, intensities):
     ----------
     phi : float or `~numpy.ndarray`
         The angle(s) along the elliptical path, going towards the positive
-        y axis, starting coincident with the position angle. That is, the
+        y-axis, starting coincident with the position angle. That is, the
         angles are defined from the semimajor axis that lies in
         the positive x quadrant.
     intensities : `~numpy.ndarray`
@@ -112,7 +112,7 @@ def fit_upper_harmonic(phi, intensities, order):
     ----------
     phi : float or `~numpy.ndarray`
         The angle(s) along the elliptical path, going towards the positive
-        y axis, starting coincident with the position angle. That is, the
+        y-axis, starting coincident with the position angle. That is, the
         angles are defined from the semimajor axis that lies in
         the positive x quadrant.
     intensities : `~numpy.ndarray`

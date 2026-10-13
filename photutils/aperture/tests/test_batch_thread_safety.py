@@ -108,7 +108,7 @@ class TestFreeThreadingSupport:
 
         On a free-threaded build, importing a module that was not compiled
         with ``freethreading_compatible=True`` emits a ``RuntimeWarning``
-        and reenables the GIL. This import check is the entry point for the
+        and re-enables the GIL. This import check is the entry point for the
         free-threading verification below.
         """
         module = importlib.import_module(f'photutils.aperture.{modname}')
@@ -119,12 +119,12 @@ class TestFreeThreadingSupport:
     def test_gil_not_reenabled(self):
         """
         Test that importing the aperture Cython batch modules does not
-        reenable the GIL on a free-threaded build.
+        re-enable the GIL on a free-threaded build.
 
         Each module is compiled with the ``freethreading_compatible=True``
         directive, which marks it as free-threading compatible
         (``Py_MOD_GIL_NOT_USED``). A module lacking that directive would
-        force the runtime to reenable the GIL on import, which this test
+        force the runtime to re-enable the GIL on import, which this test
         detects.
         """
         for modname in APERTURE_MODULES:
@@ -283,7 +283,7 @@ class TestApertureStatsThreadSafety:
 
         Each thread starts with a different property, so the threads
         fill the shared block-reduction cache concurrently, in both the
-        single-block and the multi-block mode.
+        single-block and the multiblock mode.
         """
         if block_max_pixels is not None:
             monkeypatch.setattr('photutils.aperture.stats._BLOCK_MAX_PIXELS',

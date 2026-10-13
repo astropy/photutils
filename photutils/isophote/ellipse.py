@@ -100,7 +100,7 @@ class Ellipse:
     iterations stop because of reasons 2 or 3 above, then those ellipse
     parameters that generated the lowest absolute values for harmonic
     amplitudes will be used. At this point, the image data sample coming
-    from the best fit ellipse is fitted by the following function:
+    from the best-fit ellipse is fitted by the following function:
 
     .. math::
 
@@ -114,7 +114,7 @@ class Ellipse:
     `~photutils.isophote.Isophote` instance).
 
     The algorithm then measures the integrated intensity and the number
-    of non-flagged pixels inside the elliptical isophote, and also
+    of nonflagged pixels inside the elliptical isophote, and also
     inside the corresponding circle with same center and radius equal
     to the semimajor axis length. These parameters, their errors, other
     associated parameters, and auxiliary information, are stored in the
@@ -147,7 +147,7 @@ class Ellipse:
 
     The fit algorithm provides a k-sigma clipping algorithm for cleaning
     deviant sample points at each isophote, thus improving convergence
-    stability against any non-elliptical structure such as stars, spiral
+    stability against any nonelliptical structure such as stars, spiral
     arms, HII regions, defects, etc.
 
     The fit algorithm has no way of finding where, in the input image
@@ -320,13 +320,13 @@ class Ellipse:
             contamination such as stars and HII regions.
 
             A number of actions may happen when the gradient error
-            exceeds ``maxgerr`` (or becomes non-significant and is
+            exceeds ``maxgerr`` (or becomes nonsignificant and is
             set to `None`). If the maximum semimajor axis specified
             by ``maxsma`` is set to `None`, semimajor axis growth is
             stopped and the algorithm proceeds inwards to the galaxy
             center. If ``maxsma`` is set to some finite value, and this
             value is larger than the current semimajor axis length, the
-            algorithm enters non-iterative mode and proceeds outwards
+            algorithm enters noniterative mode and proceeds outwards
             until reaching ``maxsma``. The default is 0.5.
 
         sclip : float, optional
@@ -364,11 +364,11 @@ class Ellipse:
             The maximum value of semimajor axis to perform an actual
             fit. Whenever the current semimajor axis length is larger
             than ``maxrit``, the isophotes will be extracted using the
-            current geometry, without being fitted. This non-iterative
+            current geometry, without being fitted. This noniterative
             mode may be useful for sampling regions of very low surface
             brightness, where the algorithm may become unstable
             and unable to recover reliable geometry information.
-            Non-iterative mode can also be entered automatically
+            Noniterative mode can also be entered automatically
             whenever the ellipticity exceeds 1.0 or the ellipse center
             crosses the image boundaries. If `None` (default), then no
             maximum value is used.
@@ -378,7 +378,7 @@ class Ellipse:
             False.
 
         fix_pa : bool, optional
-            Keep position angle of semi-major axis of ellipse fixed
+            Keep position angle of semimajor axis of ellipse fixed
             during fit? The default is False.
 
         fix_eps : bool, optional
@@ -461,7 +461,7 @@ class Ellipse:
                     if maxsma and maxsma > isophote.sma:
                         # if a maximum sma value was provided by
                         # user, and the current sma is smaller than
-                        # maxsma, keep growing sma in non-iterative
+                        # maxsma, keep growing sma in noniterative
                         # mode until reaching it.
                         noiter = True
                     else:
@@ -613,11 +613,11 @@ class Ellipse:
             The maximum value of semimajor axis to perform an actual
             fit. Whenever the current semimajor axis length is larger
             than ``maxrit``, the isophotes will be extracted using the
-            current geometry, without being fitted. This non-iterative
+            current geometry, without being fitted. This noniterative
             mode may be useful for sampling regions of very low surface
             brightness, where the algorithm may become unstable
             and unable to recover reliable geometry information.
-            Non-iterative mode can also be entered automatically
+            Noniterative mode can also be entered automatically
             whenever the ellipticity exceeds 1.0 or the ellipse center
             crosses the image boundaries. If `None` (default), then no
             maximum value is used.
@@ -629,7 +629,7 @@ class Ellipse:
             instance stored in the ``isophote_list`` parameter. This
             parameter is mainly used when running the method in a loop
             over different values of semimajor axis length, and we want
-            to change from iterative to non-iterative mode somewhere
+            to change from iterative to noniterative mode somewhere
             along the sequence of isophotes. When set to `True`, this
             parameter overrides the behavior associated with parameter
             ``maxrit``. The default is `False`.

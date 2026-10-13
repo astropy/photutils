@@ -94,18 +94,18 @@ class TestImageDepth:
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
         mask[:, 100:] = True
-        match = r'Unable to generate .* non-overlapping apertures'
+        match = r'Unable to generate .* nonoverlapping apertures'
         with pytest.warns(AstropyUserWarning, match=match):
             depth(self.data, mask)
 
-        # Test for zero non-overlapping apertures before slow loop
+        # Test for zero nonoverlapping apertures before slow loop
         radius = 5
         depth = ImageDepth(radius, n_sigma=5.0, n_apertures=100, n_iters=2,
                            overlap=False, seed=123, zeropoint=23.9,
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
         mask[:, 40:] = True
-        match = r'Unable to generate .* non-overlapping apertures'
+        match = r'Unable to generate .* nonoverlapping apertures'
         with pytest.warns(AstropyUserWarning, match=match):
             depth(self.data, mask)
 

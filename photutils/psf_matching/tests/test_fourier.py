@@ -37,7 +37,7 @@ class TestMakeKernel:
     def test_window_nonsquare(self):
         """
         Test that a window gives a kernel with the same width along both
-        axes for non-square circular Gaussian PSFs.
+        axes for nonsquare circular Gaussian PSFs.
         """
         shape = (51, 101)
         yy, xx = np.mgrid[:shape[0], :shape[1]]
@@ -97,7 +97,7 @@ class TestMakeKernel:
 
     def test_non_callable_window(self, psf1, psf2):
         """
-        Test that non-callable window raises TypeError.
+        Test that noncallable window raises TypeError.
         """
         match = 'window must be a callable'
         with pytest.raises(TypeError, match=match):
@@ -303,7 +303,7 @@ class TestMakeKernelWiener:
 
     def test_non_callable_window(self, psf1, psf2):
         """
-        Test that non-callable window raises TypeError.
+        Test that noncallable window raises TypeError.
         """
         match = 'window must be a callable'
         with pytest.raises(TypeError, match=match):
@@ -434,7 +434,7 @@ class TestMakeKernelWiener:
     def test_non_finite_kernel_raises(self):
         """
         Test that a degenerate Fourier-space denominator raises
-        ValueError instead of silently returning a non-finite kernel.
+        ValueError instead of silently returning a nonfinite kernel.
 
         A uniform source PSF and a uniform penalty operator both have
         OTFs that are zero away from the DC frequency, so the Wiener
@@ -443,7 +443,7 @@ class TestMakeKernelWiener:
         source_psf = np.ones((3, 3)) / 9.0
         target_psf = _make_gaussian_psf(3, 1.0)
         penalty = np.ones((3, 3))
-        match = 'The computed kernel contains non-finite values'
+        match = 'The computed kernel contains nonfinite values'
         with pytest.raises(ValueError, match=match):
             make_wiener_kernel(source_psf, target_psf, penalty=penalty)
 

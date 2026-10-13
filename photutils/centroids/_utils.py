@@ -55,7 +55,7 @@ def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
     """
     Process the input data and mask.
 
-    This function validates the input data and mask, handles non-finite
+    This function validates the input data and mask, handles nonfinite
     values, and returns the processed data. The input ``mask`` is never
     mutated. A new array is created if the mask needs to be combined
     with a `~numpy.ma.MaskedArray` mask. Copies of ``data`` are made
@@ -74,12 +74,12 @@ def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
         dimensionality check is performed.
 
     fill_value : float, optional
-        The value used to replace masked or non-finite data values.
+        The value used to replace masked or nonfinite data values.
 
     Returns
     -------
     data : `~numpy.ndarray`
-        Processed data with masked and non-finite values replaced by
+        Processed data with masked and nonfinite values replaced by
         ``fill_value``. A `~numpy.ma.MaskedArray` input is returned as
         a plain `~numpy.ndarray`.
     """
@@ -106,7 +106,7 @@ def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
         badmask &= ~mask
 
     if np.any(badmask):
-        msg = ('Input data contains non-finite values (e.g., NaN or inf) '
+        msg = ('Input data contains nonfinite values (e.g., NaN or inf) '
                'that were automatically masked.')
         warnings.warn(msg, AstropyUserWarning)
         if not is_copied:
@@ -139,7 +139,7 @@ def _validate_gaussian_inputs(data, mask, error):
     -------
     data : 2D `~numpy.ndarray`
         Processed data with all invalid pixels (from the mask,
-        non-finite data, and non-finite error) set to zero.
+        nonfinite data, and nonfinite error) set to zero.
 
     combined_mask : 2D bool `~numpy.ndarray`
         Boolean mask of all invalid pixels.

@@ -33,7 +33,7 @@ cdef inline void ellipse_quadratic_coeffs(double rx, double ry,
                                           double *f_out) noexcept nogil:
     """
     Compute the quadratic-form coefficients and interior/exterior
-    fast-path thresholds of an ellipse with semi-axes ``rx``/``ry`` and
+    fast-path thresholds of an ellipse with semiaxes ``rx``/``ry`` and
     orientation ``cos_theta``/``sin_theta``, for a pixel grid of spacing
     ``dx``/``dy``.
 
@@ -41,7 +41,7 @@ cdef inline void ellipse_quadratic_coeffs(double rx, double ry,
     + cxy*x*y < 1``. A pixel is wholly inside when its center value
     is ``<= f_in`` and wholly outside when it is ``>= f_out`` (see
     ``ellipse_frac_from_rpix2``). When half the pixel diagonal is at
-    least the smaller semi-axis, the center test cannot establish that
+    least the smaller semiaxis, the center test cannot establish that
     a pixel is wholly inside, and ``f_in`` is set to -1 so the interior
     fast path never triggers (the center value is always >= 0). The
     results are returned through the output pointers

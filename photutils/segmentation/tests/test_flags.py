@@ -113,7 +113,7 @@ def test_decode_invalid():
     match = 'must be an integer'
     with pytest.raises(TypeError, match=match):
         decode_segmentation_flags(1.5)
-    match = 'must be a non-negative integer'
+    match = 'must be a nonnegative integer'
     with pytest.raises(ValueError, match=match):
         decode_segmentation_flags(-1)
 

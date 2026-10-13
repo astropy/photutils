@@ -483,7 +483,7 @@ def _get_metadata(filename, detector_id):
         msg = f'Unknown detector {detector}'
         raise ValueError(msg) from exc
 
-    # The detector name within a multi-detector file depends on
+    # The detector name within a multidetector file depends on
     # detector_id
     if detector_id is not None:
         if inst_det[1] == 'WFPC2':
@@ -665,7 +665,7 @@ def webbpsf_reader(filename):
     header.pop('COMMENT', None)
     header.pop('', None)
     meta = dict(header)
-    meta = {key.lower(): meta[key] for key in meta}  # use lower-case keys
+    meta = {key.lower(): meta[key] for key in meta}  # use lowercase keys
 
     # Define grid_xypos from the DET_YX{i} FITS header keywords. The
     # keywords are sorted by their numeric index so that the positions

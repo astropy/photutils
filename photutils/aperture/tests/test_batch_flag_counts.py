@@ -115,13 +115,13 @@ class TestPixelCounts:
 
     def test_mask_plane_bits(self, unit_data):
         """
-        Test that mask-plane bit 1 counts as masked and bit 2 as non-finite
+        Test that mask-plane bit 1 counts as masked and bit 2 as nonfinite
         data, with bit 1 taking precedence.
         """
         data = unit_data
         mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 12] = 1  # input-masked
-        mask[12, 13] = 2  # non-finite data
+        mask[12, 13] = 2  # nonfinite data
         mask[13, 12] = 3  # both, masked wins
         for func in (_sums_fcounts, _gather_fcounts):
             fc = func(data, (12.0, 12.0), 3.0, mask=mask)[0]
@@ -142,7 +142,7 @@ class TestPixelCounts:
 
         xy = np.array([(12.0, 12.0), (0.5, 3.0), (24.0, 24.0)])
 
-        # 2-bit plane: bit 1 = user mask, bit 2 = non-finite data
+        # 2-bit plane: bit 1 = user mask, bit 2 = nonfinite data
         plane = user_mask.astype(np.uint8)
         plane |= (~np.isfinite(data) & ~user_mask) * np.uint8(2)
 
@@ -158,15 +158,15 @@ class TestPixelCounts:
 
 class TestNonFiniteCounts:
     """
-    Tests for the non-finite data and error indicator counts.
+    Tests for the nonfinite data and error indicator counts.
     """
 
     def test_nonfinite_data_unmasked(self, unit_data):
         """
-        Test that unmasked non-finite data values are detected (and still
+        Test that unmasked nonfinite data values are detected (and still
         contribute) in the photometry kernel.
 
-        Unmasked non-finite contributions are detected from the accumulated
+        Unmasked nonfinite contributions are detected from the accumulated
         sums as a 0/1 indicator.
         """
         data = unit_data
@@ -178,7 +178,7 @@ class TestNonFiniteCounts:
 
     def test_nonfinite_error(self, unit_data):
         """
-        Test that non-finite error values among contributing pixels are
+        Test that nonfinite error values among contributing pixels are
         counted.
         """
         data = unit_data
@@ -187,7 +187,7 @@ class TestNonFiniteCounts:
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, error=error)[0]
         assert fc[FLAG_COL_NONFINITE_ERROR] == 1
 
-        # A masked pixel with non-finite error is not counted
+        # A masked pixel with nonfinite error is not counted
         mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 12] = 1
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, error=error, mask=mask)[0]
@@ -196,7 +196,7 @@ class TestNonFiniteCounts:
 
 class TestMaskNonfinite:
     """
-    Tests for the per-pixel non-finite data handling of the batch
+    Tests for the per-pixel nonfinite data handling of the batch
     drivers (``mask_nonfinite``).
     """
 
@@ -204,7 +204,7 @@ class TestMaskNonfinite:
     def _inputs():
         """
         Return the data, segmentation, and labels of a source with one
-        neighbor-segment pixel whose mirror pixel is non-finite.
+        neighbor-segment pixel whose mirror pixel is nonfinite.
         """
         data = np.ones((11, 11))
         data[5, 2] = np.nan  # mirror of (5, 8) across the center
@@ -218,8 +218,8 @@ class TestMaskNonfinite:
     def test_matches_mask_plane_bit(self, func):
         """
         Test that the per-pixel test gives the same counts as marking
-        the non-finite pixels in the mask plane (bit 2), with an
-        input-masked non-finite pixel counted only as masked.
+        the nonfinite pixels in the mask plane (bit 2), with an
+        input-masked nonfinite pixel counted only as masked.
         """
         data = np.ones(UNIT_SHAPE)
         data[12, 13] = np.nan
@@ -241,7 +241,7 @@ class TestMaskNonfinite:
     @pytest.mark.parametrize('func', [_sums_fcounts, _gather_fcounts])
     def test_nonfinite_mirror(self, func):
         """
-        Test that a neighbor pixel whose mirror pixel is non-finite is
+        Test that a neighbor pixel whose mirror pixel is nonfinite is
         counted as uncorrected by the 'correct' method.
         """
         data, segm, labels = self._inputs()
@@ -263,7 +263,7 @@ class TestMaskNonfinite:
     def test_nonfinite_mirror_masked_neighbor(self, func):
         """
         Test that an input-masked neighbor pixel whose mirror pixel is
-        non-finite is counted in the masked uncorrected column.
+        nonfinite is counted in the masked uncorrected column.
         """
         data, segm, labels = self._inputs()
         mask = np.zeros((11, 11), dtype=np.uint8)

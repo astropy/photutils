@@ -178,7 +178,7 @@ class TestDAOStarFinder:
 
     def test_xycoords_non_integer(self, data):
         """
-        Test that non-integer xycoords are rounded to the nearest pixel.
+        Test that noninteger xycoords are rounded to the nearest pixel.
         """
         finder0 = DAOStarFinder(threshold=8.0, fwhm=2)
         tbl0 = finder0(data)

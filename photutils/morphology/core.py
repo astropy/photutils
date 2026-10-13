@@ -19,7 +19,7 @@ def data_properties(data, mask=None, background=None, wcs=None):
     Parameters
     ----------
     data : array_like or `~astropy.units.Quantity`
-        The 2D array of the image. Non-finite values (NaN and inf) are
+        The 2D array of the image. Nonfinite values (NaN and inf) are
         automatically masked. If ``data`` is a
         `~numpy.ma.MaskedArray`, its mask is combined with the input
         ``mask``.

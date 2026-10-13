@@ -119,7 +119,7 @@ New models were added to the ``photutils.psf`` module. These include:
 
 - `~photutils.psf.GaussianPSF`: a general 2D Gaussian PSF model
   parameterized in terms of the position, total flux, and full width
-  at half maximum (FWHM) along the x and y axes. Rotation can also be
+  at half maximum (FWHM) along the x- and y-axes. Rotation can also be
   included.
 
 - `~photutils.psf.CircularGaussianPSF`: a circular 2D Gaussian PSF model
@@ -127,7 +127,7 @@ New models were added to the ``photutils.psf`` module. These include:
 
 - `~photutils.psf.GaussianPRF`: a general 2D Gaussian PRF model
   parameterized in terms of the position, total flux, and FWHM
-  along the x and y axes. Rotation can also be included.
+  along the x- and y-axes. Rotation can also be included.
 
 - `~photutils.psf.CircularGaussianPRF`: a circular 2D Gaussian PRF model
   parameterized in terms of the position, total flux, and FWHM.
@@ -182,7 +182,7 @@ was also changed from ``LevMarLSQFitter`` to ``TRFLSQFitter``.
 The fitter used in ``centroid_1dg`` and ``centroid_2dg`` was also
 changed from ``LevMarLSQFitter`` to ``TRFLSQFitter``.
 
-For more information about Astropy's non-linear fitters, see
+For more information about Astropy's nonlinear fitters, see
 :ref:`astropy:modeling-getting-started-nonlinear-notes`.
 
 

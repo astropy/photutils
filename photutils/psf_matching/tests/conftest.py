@@ -21,7 +21,7 @@ def _make_gaussian_psf(size, std):
 
 def _make_gaussian_psf_noncentered(shape, std, xcen, ycen):
     """
-    Make a non-centered, normalized 2D Gaussian PSF.
+    Make a noncentered, normalized 2D Gaussian PSF.
     """
     yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
     model = Gaussian2D(1.0, xcen, ycen, std, std)

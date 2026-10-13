@@ -94,7 +94,7 @@ class TestSegmentationImage:
         assert segm.max_label == 0
         assert not segm.is_consecutive
         assert segm.cmap is None
-        match = 'Cannot relabel a segmentation image with no non-zero labels'
+        match = 'Cannot relabel a segmentation image with no nonzero labels'
         with pytest.warns(AstropyUserWarning, match=match):
             segm.relabel_consecutive()
 
@@ -939,7 +939,7 @@ class TestSegmentationImage:
     def test_remove_border_labels_nonpositive_border_width(self,
                                                            border_width):
         """
-        Test that remove_border_labels raises for non-positive border
+        Test that remove_border_labels raises for nonpositive border
         widths instead of removing every label.
         """
         segm = SegmentationImage(self.data.copy())
@@ -1087,11 +1087,11 @@ class TestSegmentationImage:
                                            None])
     def test_reassign_labels_invalid_new_label(self, new_label):
         """
-        Test that a negative or non-integer new label raises an error
+        Test that a negative or noninteger new label raises an error
         and leaves the image unchanged.
         """
         segm = SegmentationImage(self.data.copy())
-        match = 'new_label must be a non-negative integer'
+        match = 'new_label must be a nonnegative integer'
         with pytest.raises(ValueError, match=match):
             segm.reassign_label(1, new_label)
         with pytest.raises(ValueError, match=match):
@@ -1335,7 +1335,7 @@ class TestSegmentationImage:
     def test_polygons_complex(self):
         """
         Test polygons, patches, and regions for segments that have holes
-        and/or are non-contiguous.
+        and/or are noncontiguous.
         """
         from matplotlib.patches import PathPatch
         from regions import PolygonPixelRegion, Regions
@@ -1876,7 +1876,7 @@ class TestGetLabelMapping:
     def setup(self, segm_data):
         self.parent = SegmentationImage(segm_data)
         # A deblend-like version of segm_data with the identical
-        # non-zero footprint. Label 5 is split into labels 8 and 9,
+        # nonzero footprint. Label 5 is split into labels 8 and 9,
         # and label 7 is split into labels 10 and 11.
         child_data = np.array([[1, 1, 0, 0, 4, 4],
                                [0, 0, 0, 0, 0, 4],
@@ -2109,7 +2109,7 @@ class TestGetSegment:
     def test_get_segment_polygon_multipolygon(self):
         """
         Test that get_segment returns a MultiPolygon for a
-        non-contiguous segment.
+        noncontiguous segment.
         """
         from shapely import MultiPolygon
 
@@ -2254,7 +2254,7 @@ class TestGetPolygon:
 
     def test_get_polygon_multiple_labels(self):
         """
-        Test that get_polygon raises TypeError for non-scalar input.
+        Test that get_polygon raises TypeError for nonscalar input.
         """
         match = 'label must be a scalar value'
         with pytest.raises(TypeError, match=match):
@@ -2360,7 +2360,7 @@ class TestGetPatch:
 
     def test_get_patch_multiple_labels(self):
         """
-        Test that get_patch raises TypeError for non-scalar input.
+        Test that get_patch raises TypeError for nonscalar input.
         """
         match = 'label must be a scalar value'
         with pytest.raises(TypeError, match=match):
@@ -2544,7 +2544,7 @@ class TestGetRegion:
 
     def test_get_region_multiple_labels(self):
         """
-        Test that get_region raises TypeError for non-scalar input.
+        Test that get_region raises TypeError for nonscalar input.
         """
         match = 'label must be a scalar value'
         with pytest.raises(TypeError, match=match):
@@ -2553,7 +2553,7 @@ class TestGetRegion:
     def test_get_region_multipolygon(self):
         """
         Test that get_region returns a Regions object for a
-        non-contiguous (MultiPolygon) segment.
+        noncontiguous (MultiPolygon) segment.
         """
         from regions import Regions
 
@@ -2698,7 +2698,7 @@ def test_segment_deprecations(segm_data):
 
 def _make_label_array():
     """
-    Make a segmentation array with non-consecutive labels, labels that
+    Make a segmentation array with nonconsecutive labels, labels that
     touch every edge, a label split into two regions, and a label that
     surrounds another.
     """
@@ -2721,7 +2721,7 @@ def test_label_stats_matches_numpy(dtype, layout):
     Test that the labels, areas, and slices of a segmentation image
     are identical to those of numpy.unique and scipy find_objects for
     every integer dtype and memory layout, both for a validated and a
-    pre-validated array.
+    prevalidated array.
     """
     data = _make_label_array().astype(dtype)
     if layout == 'F':

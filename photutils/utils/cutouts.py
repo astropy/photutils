@@ -46,7 +46,7 @@ class CutoutImage:
         sufficient. For the ``'strict'`` mode, the cutout array
         has to be fully contained within the ``data`` array,
         otherwise an `~astropy.nddata.utils.PartialOverlapError`
-        is raised. In all modes, non-overlapping arrays will raise
+        is raised. In all modes, nonoverlapping arrays will raise
         a `~astropy.nddata.utils.NoOverlapError`. In ``'partial'``
         mode, positions in the cutout array that do not overlap with
         the ``data`` array will be filled with ``fill_value``. In
@@ -172,7 +172,7 @@ class CutoutImage:
         box of the cutout with respect to the original array.
 
         For ``mode='partial'``, the slices are for the valid
-        (non-filled) cutout values.
+        (nonfilled) cutout values.
         """
         return self._overlap_slices[0]
 
@@ -183,7 +183,7 @@ class CutoutImage:
         box of the cutout with respect to the cutout array.
 
         For ``mode='partial'``, the slices are for the valid
-        (non-filled) cutout values.
+        (nonfilled) cutout values.
         """
         return self._overlap_slices[1]
 
@@ -210,7 +210,7 @@ class CutoutImage:
         region of the cutout array with respect to the original array.
 
         For ``mode='partial'``, the bounding box indices are for the
-        valid (non-filled) cutout values.
+        valid (nonfilled) cutout values.
         """
         return self._calc_bbox(self.slices_original)
 
@@ -221,7 +221,7 @@ class CutoutImage:
         region of the cutout array with respect to the cutout array.
 
         For ``mode='partial'``, the bounding box indices are for the
-        valid (non-filled) cutout values.
+        valid (nonfilled) cutout values.
         """
         return self._calc_bbox(self.slices_cutout)
 

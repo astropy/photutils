@@ -37,7 +37,7 @@ class EPSFStar:
     weights : `~numpy.ndarray` or `None`, optional
         A 2D array of the weights associated with the input ``data``.
         Pixels where ``weights`` is not positive are treated as
-        masked. Non-finite weights are set to zero, and a warning is
+        masked. Nonfinite weights are set to zero, and a warning is
         issued. Pixels where ``data`` is not finite are also masked, and
         a warning is issued.
 
@@ -109,7 +109,7 @@ class EPSFStar:
 
             # Check for valid weight values
             if not np.all(np.isfinite(weights)):
-                msg = ('Non-finite weight values detected. These will '
+                msg = ('Nonfinite weight values detected. These will '
                        'be set to zero.')
                 warnings.warn(msg, AstropyUserWarning)
                 weights = np.where(np.isfinite(weights), weights, 0.0)
@@ -470,7 +470,7 @@ class EPSFStars:
         ``center``, ``flux``) directly on the EPSFStars container,
         returning an array of values from all contained stars. If
         the per-star values have inconsistent shapes (e.g., for a
-        mix of `EPSFStar` and multi-star `LinkedEPSFStar` objects),
+        mix of `EPSFStar` and multistar `LinkedEPSFStar` objects),
         an object array is returned. Private attributes (other than
         ``_excluded_from_fit``) are not delegated, and empty containers
         raise `AttributeError`.
@@ -489,7 +489,7 @@ class EPSFStars:
                 result = np.array(result)
             except ValueError:
                 # Ragged per-star values (e.g., a mix of EPSFStar and
-                # multi-star LinkedEPSFStar objects)
+                # multistar LinkedEPSFStar objects)
                 arr = np.empty(len(result), dtype=object)
                 arr[:] = result
                 result = arr
@@ -583,7 +583,7 @@ class EPSFStars:
         stars within `LinkedEPSFStar`, that have not been excluded from
         fitting.
 
-        Each non-excluded linked star is included in the count.
+        Each nonexcluded linked star is included in the count.
         """
         return len(self.all_good_stars)
 
@@ -754,7 +754,7 @@ class LinkedEPSFStar:
         The single sky coordinate is calculated as the mean of sky
         coordinates of the linked stars.
 
-        The ``cutout_center`` of each non-excluded star is updated in
+        The ``cutout_center`` of each nonexcluded star is updated in
         place. Excluded stars are left unchanged. If all of the stars
         have been excluded, a warning is issued and no centers are
         changed. Nothing is done for a linked star with fewer than two
@@ -805,7 +805,7 @@ class LinkedEPSFStar:
         otherwise be absorbed into the ePSF (Anderson and King 2000,
         Godden and Blundell 2026).
 
-        The ``flux`` of each non-excluded star is updated in place.
+        The ``flux`` of each nonexcluded star is updated in place.
         Excluded stars are left unchanged. If all of the stars have been
         excluded, a warning is issued and no fluxes are changed. Nothing
         is done for a linked star with fewer than two stars.
@@ -1112,7 +1112,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         `~astropy.nddata.NDData` creates for a plain array) is assumed
         to be a standard deviation. An uncertainty object whose
         ``uncertainty_type`` is ``'weights'`` is used directly as the
-        weights. Non-finite weights (e.g., from a zero uncertainty)
+        weights. Nonfinite weights (e.g., from a zero uncertainty)
         are set to zero, and a warning is issued. Pixels that are
         masked in the ``mask`` attribute are given zero weight.
 
@@ -1172,8 +1172,8 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     Warns
     -----
     AstropyUserWarning
-        If any star is not extracted, if a cutout has non-finite weights
-        or non-finite data values, if all unmasked values in a cutout
+        If any star is not extracted, if a cutout has nonfinite weights
+        or nonfinite data values, if all unmasked values in a cutout
         are zero, or if an input catalog is empty.
     """
     data = _normalize_data_input(data)
@@ -1443,29 +1443,29 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             flux_failures.append((xcenter, ycenter, exc))
             stars.append(None)
 
-    # Emit consolidated warning for non-finite positions
+    # Emit consolidated warning for nonfinite positions
     if n_nonfinite_positions > 0:
         msg = (f'{n_nonfinite_positions} star(s) were not extracted '
                'because their (x, y) positions were not finite.')
         warnings.warn(msg, AstropyUserWarning)
 
-    # Emit consolidated warning for non-finite catalog fluxes
+    # Emit consolidated warning for nonfinite catalog fluxes
     if n_nonfinite_fluxes > 0:
         msg = (f'{n_nonfinite_fluxes} star(s) were not extracted '
                'because their catalog flux values were not finite.')
         warnings.warn(msg, AstropyUserWarning)
 
-    # Emit consolidated warning for non-finite weights
+    # Emit consolidated warning for nonfinite weights
     if n_nonfinite_weights > 0:
         msg = (f'{n_nonfinite_weights} star cutout(s) had '
-               'non-finite weight values which were set to zero. '
+               'nonfinite weight values which were set to zero. '
                'Please check the input uncertainty values in the '
                'NDData object.')
         warnings.warn(msg, AstropyUserWarning)
 
     # Emit individual flux estimation failure warnings. These may be a
-    # consequence of having all non-finite weights (data then becomes
-    # completely masked), so we emit them after the non-finite weights
+    # consequence of having all nonfinite weights (data then becomes
+    # completely masked), so we emit them after the nonfinite weights
     # warning.
     for xcenter, ycenter, exc in flux_failures:
         msg = (f'Failed to create EPSFStar for object at '
@@ -1556,7 +1556,7 @@ def _create_weights_cutout(uncertainty_info, data_mask, slices):
         The weights array for the cutout region.
 
     has_nonfinite : bool
-        True if non-finite weights were found and set to zero.
+        True if nonfinite weights were found and set to zero.
     """
     cutout_shape = (slices[0].stop - slices[0].start,
                     slices[1].stop - slices[1].start)
@@ -1573,10 +1573,10 @@ def _create_weights_cutout(uncertainty_info, data_mask, slices):
         with np.errstate(divide='ignore', invalid='ignore'):
             weights_cutout = 1.0 / uncertainty_info['array'][slices]
 
-    # Check for non-finite weights and track if found
+    # Check for nonfinite weights and track if found
     has_nonfinite = not np.all(np.isfinite(weights_cutout))
     if has_nonfinite:
-        # Set non-finite weights to 0
+        # Set nonfinite weights to 0
         weights_cutout = np.where(np.isfinite(weights_cutout),
                                   weights_cutout, 0.0)
 

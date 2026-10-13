@@ -19,7 +19,7 @@ def make_batch_scene(*, seed=0):
     The scene contains isolated sources, close/overlapping pairs
     (neighbor-segment handling), sources touching every image edge (bbox
     clipping), masked pixels inside sources and spanning a close pair
-    (mirror-correction rejection), and non-finite data values inside a
+    (mirror-correction rejection), and nonfinite data values inside a
     source.
 
     Parameters
@@ -48,11 +48,11 @@ def make_batch_scene(*, seed=0):
                              / (2 * sig ** 2))
     error = np.full((ny, nx), 0.1)
     error[::17, ::13] = 0.3
-    error[100, 102] = np.nan  # non-finite error inside a source
+    error[100, 102] = np.nan  # nonfinite error inside a source
     mask = np.zeros((ny, nx), dtype=bool)
     mask[18:20, 22:24] = True  # inside a source of a close pair
     mask[73:75, 72:84] = True  # spans a close pair
-    data[77, 78] = np.nan  # non-finite inside a source
+    data[77, 78] = np.nan  # nonfinite inside a source
     data[75, 83] = np.inf
     segm = detect_sources(data, 1.0, n_pixels=5)
     return {'data': data, 'error': error, 'mask': mask, 'segm': segm}

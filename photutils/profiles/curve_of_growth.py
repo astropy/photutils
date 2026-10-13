@@ -169,7 +169,7 @@ class CurveOfGrowth(_CurveOfGrowthBase):
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
-        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
@@ -188,7 +188,7 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         the sources (see `~photutils.utils.calc_total_error`). ``error``
         must have the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity`, then ``error`` must have the same
-        units. Non-finite values (e.g., NaN or inf) in the ``data`` or
+        units. Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
@@ -214,7 +214,7 @@ class CurveOfGrowth(_CurveOfGrowthBase):
     Warns
     -----
     `~astropy.utils.exceptions.AstropyUserWarning`
-        If the ``data`` or ``error`` array contains non-finite values
+        If the ``data`` or ``error`` array contains nonfinite values
         that are not already masked by ``mask``.
 
     See Also
@@ -512,7 +512,7 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
-        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
@@ -532,7 +532,7 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         the sources (see `~photutils.utils.calc_total_error`). ``error``
         must have the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity`, then ``error`` must have the same
-        units. Non-finite values (e.g., NaN or inf) in the ``data`` or
+        units. Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
@@ -558,7 +558,7 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
     Warns
     -----
     `~astropy.utils.exceptions.AstropyUserWarning`
-        If the ``data`` or ``error`` array contains non-finite values
+        If the ``data`` or ``error`` array contains nonfinite values
         that are not already masked by ``mask``.
 
     See Also
@@ -856,7 +856,7 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
-        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
@@ -876,7 +876,7 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
     theta : float or `~astropy.units.Quantity`, optional
         The rotation angle as an angular quantity
         (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
-        value in radians (as a float) from the positive ``x`` axis. The
+        value in radians (as a float) from the positive x-axis. The
         rotation angle increases counterclockwise. The default is 0.
 
     error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
@@ -885,7 +885,7 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         the sources (see `~photutils.utils.calc_total_error`). ``error``
         must have the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity`, then ``error`` must have the same
-        units. Non-finite values (e.g., NaN or inf) in the ``data`` or
+        units. Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
@@ -912,7 +912,7 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
     Warns
     -----
     `~astropy.utils.exceptions.AstropyUserWarning`
-        If the ``data`` or ``error`` array contains non-finite values
+        If the ``data`` or ``error`` array contains nonfinite values
         that are not already masked by ``mask``.
 
     See Also

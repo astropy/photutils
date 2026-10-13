@@ -173,7 +173,7 @@ class ImageDepth:
     A `ValueError` is raised if no unmasked pixels remain after dilating
     the mask and masking the border, or if ``n_apertures`` exceeds the
     number of unmasked pixels. A warning is issued if fewer than
-    ``n_apertures`` non-overlapping apertures could be placed, or if any
+    ``n_apertures`` nonoverlapping apertures could be placed, or if any
     flux limit is zero.
 
     Examples
@@ -394,7 +394,7 @@ class ImageDepth:
         n_apertures_used = np.array([len(apers) for apers in apertures])
         if np.any(n_apertures_used < self.n_apertures):
             msg = (f'Unable to generate {self.n_apertures} '
-                   'non-overlapping apertures in unmasked regions. '
+                   'nonoverlapping apertures in unmasked regions. '
                    'The number of apertures used was less than '
                    f'{self.n_apertures} (see the '
                    '"n_apertures_used" ImageDepth object attribute). '

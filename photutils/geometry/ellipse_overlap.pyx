@@ -61,17 +61,17 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         direction, respectively.
 
     rx : float
-        The length of the semi-axis of the ellipse along the direction
+        The length of the semiaxis of the ellipse along the direction
         given by ``theta``. This is the semimajor axis when ``rx >=
         ry``.
 
     ry : float
-        The length of the semi-axis of the ellipse perpendicular to the
+        The length of the semiaxis of the ellipse perpendicular to the
         direction given by ``theta``.
 
     theta : float
         The rotation angle of the ``rx`` axis in radians, measured
-        counterclockwise from the positive x axis.
+        counterclockwise from the positive x-axis.
 
     use_exact : 0 or 1
         Set to ``1`` to use an exact method to calculate the overlap

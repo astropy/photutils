@@ -138,7 +138,7 @@ class TestOverlapFlags:
 
 class TestMaskedAndNonFiniteFlags:
     """
-    Tests for the masked_pixels, all_masked, and non-finite flags.
+    Tests for the masked_pixels, all_masked, and nonfinite flags.
     """
 
     @pytest.mark.usefixtures('maybe_mask_path')
@@ -189,7 +189,7 @@ class TestMaskedAndNonFiniteFlags:
         """
         Test the non_finite_data flag.
 
-        In ApertureStats, non-finite data values are automatically masked,
+        In ApertureStats, nonfinite data values are automatically masked,
         so they contribute to all_masked (but not to masked_pixels, which
         reflects only the input mask).
         """
@@ -204,7 +204,7 @@ class TestMaskedAndNonFiniteFlags:
                                             | APERTURE_FLAGS.ALL_MASKED
                                             | APERTURE_FLAGS.UNDEFINED_SHAPE)
 
-        # A pixel that is both input-masked and non-finite counts only as
+        # A pixel that is both input-masked and nonfinite counts only as
         # masked
         data = np.ones(UNIT_SHAPE)
         data[12, 12] = np.nan
@@ -454,7 +454,7 @@ class TestFlagsAPI:
         and includes the shape bits without prior shape access.
         """
         data = unit_data.copy()
-        data[12, 12] = -100.0  # non-positive net flux for source 1
+        data[12, 12] = -100.0  # nonpositive net flux for source 1
         mask = unit_mask
         mask[18, 18] = True
         aper = CircularAperture([(12.0, 12.0), (18.0, 18.0)], r=3.0)
@@ -569,7 +569,7 @@ class TestSingularCovariance:
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_extended_source_not_flagged(self):
         """
-        Test that a well-resolved source with a non-singular covariance
+        Test that a well-resolved source with a nonsingular covariance
         matrix is not flagged as singular.
         """
         yy, xx = np.mgrid[0:25, 0:25]

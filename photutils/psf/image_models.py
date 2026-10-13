@@ -201,10 +201,10 @@ class ImagePSF(Fittable2DModel):
                      description='Intensity scaling factor of the image.')
     x_0 = Parameter(default=0,
                     description=('Position of a feature in the image along '
-                                 'the x axis'))
+                                 'the x-axis'))
     y_0 = Parameter(default=0,
                     description=('Position of a feature in the image along '
-                                 'the y axis'))
+                                 'the y-axis'))
 
     def __init__(self, data, *, flux=flux.default, x_0=x_0.default,
                  y_0=y_0.default, origin=None, oversampling=1,
@@ -253,7 +253,7 @@ class ImagePSF(Fittable2DModel):
         # points along each axis for cubic spline interpolation (kx=3,
         # ky=3).
         if np.any(np.array(data.shape) < 4):
-            msg = 'The length of the x and y axes must both be at least 4'
+            msg = 'The length of the x- and y-axes must both be at least 4'
             raise ValueError(msg)
 
     def __str__(self):

@@ -203,7 +203,7 @@ class TestMeanScale:
 
     def test_nonsquare_mean_scale(self, nonsquare_wcs):
         """
-        For non-square pixels the mean scale should be the geometric
+        For nonsquare pixels the mean scale should be the geometric
         mean of the two singular values (1/cdelt_x and 1/cdelt_y in
         pix/arcsec).
         """
@@ -216,7 +216,7 @@ class TestMeanScale:
     def test_nonsquare_same_for_sip(self, nonsquare_wcs):
         """
         The scale formula must not depend on whether the WCS carries
-        distortion terms. A SIP WCS with the same non-square pixel
+        distortion terms. A SIP WCS with the same nonsquare pixel
         scales and negligible coefficients gives the same scale.
         """
         header = nonsquare_wcs.to_header()
@@ -395,7 +395,7 @@ class TestSVDShapeConversions:
 
     def test_sip_wcs_roundtrip(self, sip_wcs):
         """
-        Roundtrip with SIP WCS should recover the original ellipse.
+        Round-trip with SIP WCS should recover the original ellipse.
         """
         sky_w, sky_h, sky_a = 0.36, 0.18, 0.7
         center_pix, pw, ph, pa = sky_shape_to_pixel_svd(
@@ -419,7 +419,7 @@ class TestSVDShapeConversions:
         """
         For a circular input shape (width == height), the SVD principal
         axis is arbitrary, so the helper falls back to the mapped width
-        semi-axis to preserve the input rotation angle.
+        semiaxis to preserve the input rotation angle.
 
         The angle must round-trip through pixel -> sky -> pixel.
         """
@@ -484,7 +484,7 @@ def _ellipse_implicit_residual(x, y, center, width, height, angle_rad):
 
     Returns ``(u / a)**2 + (v / b)**2`` where ``(u, v)`` are the point
     offsets from ``center`` rotated into the ellipse frame and ``a``,
-    ``b`` are the semi-axes. Points exactly on the ellipse boundary
+    ``b`` are the semiaxes. Points exactly on the ellipse boundary
     yield 1.
     """
     cx, cy = center
@@ -568,9 +568,9 @@ class TestFlippedParityWCS:
 
 def _make_sheared_wcs():
     """
-    Build an anisotropic, sheared (non-orthogonal CD matrix) TAN WCS.
+    Build an anisotropic, sheared (nonorthogonal CD matrix) TAN WCS.
 
-    The unequal, non-orthogonal CD terms make the local Jacobian both
+    The unequal, nonorthogonal CD terms make the local Jacobian both
     anisotropic and rotated, so the SVD principal axes have a nontrivial
     orientation. This exercises the angle convention of the scale
     helpers.
@@ -652,7 +652,7 @@ class TestSVDScales:
 
     def test_sky_to_pixel_simple_isotropic(self, simple_wcs):
         """
-        For a non-distorted, square-pixel WCS the two scale factors are
+        For a nondistorted, square-pixel WCS the two scale factors are
         equal and match 1 / WCS_CDELT_ARCSEC (pixels per arcsec).
         """
         _, smaj, smin, angle = sky_to_pixel_svd_scales(
@@ -664,7 +664,7 @@ class TestSVDScales:
 
     def test_pixel_to_sky_simple_isotropic(self, simple_wcs, center_xy_coord):
         """
-        For a non-distorted, square-pixel WCS the two scale factors are
+        For a nondistorted, square-pixel WCS the two scale factors are
         equal and match WCS_CDELT_ARCSEC (arcsec per pixel).
         """
         smaj, smin, angle = pixel_to_sky_svd_scales(
@@ -675,7 +675,7 @@ class TestSVDScales:
 
     def test_sky_to_pixel_nonsquare_anisotropic(self, nonsquare_wcs):
         """
-        For non-square pixels the major scale exceeds the minor scale,
+        For nonsquare pixels the major scale exceeds the minor scale,
         and both match the inverse of the corresponding pixel scales.
         """
         _, smaj, smin, _ = sky_to_pixel_svd_scales(nonsquare_wcs, WCS_CENTER)
@@ -686,7 +686,7 @@ class TestSVDScales:
 
     def test_pixel_to_sky_nonsquare_anisotropic(self, nonsquare_wcs):
         """
-        For non-square pixels the major scale exceeds the minor scale,
+        For nonsquare pixels the major scale exceeds the minor scale,
         and both match the corresponding pixel scales (arcsec/pixel).
         """
         smaj, smin, _ = pixel_to_sky_svd_scales(nonsquare_wcs, (9.5, 9.5))

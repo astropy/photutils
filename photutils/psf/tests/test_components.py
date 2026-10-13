@@ -267,9 +267,9 @@ class TestPSFDataProcessor:
 
     def test_validate_init_params_nonfinite_local_bkg(self, param_mapper):
         """
-        Test validate_init_params allows non-finite local_bkg values.
+        Test validate_init_params allows nonfinite local_bkg values.
 
-        Non-finite local_bkg values should be allowed and will be
+        Nonfinite local_bkg values should be allowed and will be
         flagged later during processing.
         """
         processor = PSFDataProcessor(param_mapper, (7, 7))
@@ -281,7 +281,7 @@ class TestPSFDataProcessor:
             'local_bkg': [np.nan],
         })
 
-        # Should not raise an error - non-finite local_bkg is allowed
+        # Should not raise an error - nonfinite local_bkg is allowed
         result = processor.validate_init_params(init_params)
         assert result is not None
         assert 'local_bkg' in result.colnames
@@ -753,7 +753,7 @@ class TestModelImageMaker:
 
     def test_local_bkg_nonfinite(self, psf_model):
         """
-        Test that non-finite local background values are treated as
+        Test that nonfinite local background values are treated as
         zero.
         """
         params = QTable({'x_0': [8.0, 17.0], 'y_0': [8.0, 17.0],

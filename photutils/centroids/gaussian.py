@@ -22,12 +22,12 @@ def centroid_1dg(data, error=None, mask=None):
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
     marginal ``x`` and ``y`` distributions of the array.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    Nonfinite values (e.g., NaN or inf) in the ``data`` or ``error``
     arrays are automatically masked. An
     `~astropy.utils.exceptions.AstropyUserWarning` is emitted if any
-    non-finite ``data`` value is not already masked. The final mask is
+    nonfinite ``data`` value is not already masked. The final mask is
     a logical OR combination of the input ``mask``, the automatically
-    generated mask for non-finite values, and the mask of the input
+    generated mask for nonfinite values, and the mask of the input
     ``data`` if it is a `~numpy.ma.MaskedArray`.
 
     Masked pixels are excluded by substituting zero into the
@@ -36,7 +36,7 @@ def centroid_1dg(data, error=None, mask=None):
     near the source peak therefore distorts the corresponding
     marginal distribution and can bias the centroid. Consider using
     `~photutils.centroids.centroid_2dg`, which excludes individual
-    masked pixels from the fit, when isolated masked or non-finite
+    masked pixels from the fit, when isolated masked or nonfinite
     pixels fall near the source peak.
 
     A `ValueError` is raised if either marginal distribution sums to
@@ -116,7 +116,7 @@ def centroid_1dg(data, error=None, mask=None):
     # moment estimates (0/0) and cannot be fit with a 1D Gaussian.
     for data_i in xy_data:
         if np.sum(data_i) == 0 or np.ptp(data_i) == 0:
-            msg = ('Input data must have a nonzero sum and non-constant '
+            msg = ('Input data must have a nonzero sum and nonconstant '
                    'values to fit 1D Gaussians.')
             raise ValueError(msg)
 
@@ -140,12 +140,12 @@ def centroid_2dg(data, error=None, mask=None):
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
     array.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    Nonfinite values (e.g., NaN or inf) in the ``data`` or ``error``
     arrays are automatically masked. An
     `~astropy.utils.exceptions.AstropyUserWarning` is emitted if any
-    non-finite ``data`` value is not already masked. The final mask is
+    nonfinite ``data`` value is not already masked. The final mask is
     a logical OR combination of the input ``mask``, the automatically
-    generated mask for non-finite values, and the mask of the input
+    generated mask for nonfinite values, and the mask of the input
     ``data`` if it is a `~numpy.ma.MaskedArray`. The centroid is
     calculated using only the unmasked data values.
 
@@ -217,12 +217,12 @@ def centroid_2dg(data, error=None, mask=None):
     # The masked pixels are zero in data, so only the unmasked values
     # are tested
     if np.ptp(data[~mask]) == 0:
-        msg = ('Input data must have non-constant values to fit a '
+        msg = ('Input data must have nonconstant values to fit a '
                '2D Gaussian.')
         raise ValueError(msg)
 
     # Subtract the minimum of the unmasked data to make the data values
-    # non-negative. Moments from negative data values can yield
+    # nonnegative. Moments from negative data values can yield
     # undefined Gaussian parameters, e.g., x_stddev and y_stddev. The
     # masked pixels are kept at zero so that they do not contribute to
     # the moments.

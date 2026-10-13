@@ -34,7 +34,7 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
         The surface brightness over the reference elliptical isophote.
 
     sma : float, optional
-        The semi-major axis length of the reference elliptical isophote.
+        The semimajor axis length of the reference elliptical isophote.
 
     eps : float, optional
         The ellipticity of the reference isophote.
@@ -109,7 +109,7 @@ def make_fits_test_image(name, *, nx=512, ny=512, x0=None, y0=None,
         The surface brightness over the reference elliptical isophote.
 
     sma : float, optional
-        The semi-major axis length of the reference elliptical isophote.
+        The semimajor axis length of the reference elliptical isophote.
 
     eps : float, optional
         The ellipticity of the reference isophote.

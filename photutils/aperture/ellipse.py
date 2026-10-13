@@ -210,7 +210,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     theta : float or `~astropy.units.Quantity`, optional
         The rotation angle as an angular quantity
         (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
-        value in radians (as a float) from the positive ``x`` axis. The
+        value in radians (as a float) from the positive x-axis. The
         rotation angle increases counterclockwise.
 
     Raises
@@ -240,7 +240,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     b = PositiveScalar('The semiminor axis in pixels.')
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or value in radians from '
-                               'the positive x axis.')
+                               'the positive x-axis.')
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a, b, theta=0.0):
@@ -414,7 +414,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     theta : float or `~astropy.units.Quantity`, optional
         The rotation angle as an angular quantity
         (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
-        value in radians (as a float) from the positive ``x`` axis. The
+        value in radians (as a float) from the positive x-axis. The
         rotation angle increases counterclockwise.
 
     Raises
@@ -455,7 +455,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     b_out = PositiveScalar('The outer semiminor axis in pixels.')
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or value in radians from '
-                               'the positive x axis.')
+                               'the positive x-axis.')
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.0):

@@ -385,14 +385,14 @@ class TestDecodeFlags:
         """
         Test that a negative flag value raises ValueError.
         """
-        match = 'Flag value must be a non-negative integer'
+        match = 'Flag value must be a nonnegative integer'
         with pytest.raises(ValueError, match=match):
             decode_flags(-1, registry)
 
     @pytest.mark.parametrize('flag_value', [1.5, True, np.True_])
     def test_invalid_type(self, registry, flag_value):
         """
-        Test that non-integer flag values (including bools) raise
+        Test that noninteger flag values (including bools) raise
         TypeError.
         """
         match = 'Flag value must be an integer'

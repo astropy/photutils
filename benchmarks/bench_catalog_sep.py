@@ -550,7 +550,7 @@ def window_sigma(half_light_radius):
     Returns
     -------
     result : `~numpy.ndarray`
-        The window sigma (non-finite radii use the minimum radius).
+        The window sigma (nonfinite radii use the minimum radius).
     """
     radius = np.where(np.isfinite(half_light_radius), half_light_radius,
                       MIN_HALF_LIGHT_RADIUS)

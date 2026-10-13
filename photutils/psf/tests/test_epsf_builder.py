@@ -408,7 +408,7 @@ class TestEPSFValidator:
 
     def test_validate_stars_non_finite_data(self):
         """
-        Test validate_stars with non-finite data.
+        Test validate_stars with nonfinite data.
         """
         # Create star with all NaN data - need to provide explicit flux
         # since flux estimation would fail with all NaN data
@@ -551,7 +551,7 @@ class TestEPSFValidator:
 
     def test_validate_center_accuracy_non_positive(self):
         """
-        Test validate_center_accuracy with non-positive values.
+        Test validate_center_accuracy with nonpositive values.
         """
         match = 'center_accuracy must be positive'
         with pytest.raises(ValueError, match=match):
@@ -590,7 +590,7 @@ class TestEPSFValidator:
 
     def test_validate_maxiters_non_positive(self):
         """
-        Test validate_maxiters with non-positive values.
+        Test validate_maxiters with nonpositive values.
         """
         match = 'maxiters must be a positive number'
         with pytest.raises(ValueError, match=match):
@@ -2504,14 +2504,14 @@ class TestEPSFBuilder:
         with pytest.raises(ValueError, match=match):
             builder._normalize_epsf(epsf_data)
 
-        # Non-finite sums are also rejected
+        # Nonfinite sums are also rejected
         epsf_data = np.full((5, 5), np.nan)
         with pytest.raises(ValueError, match=match):
             builder._normalize_epsf(epsf_data)
 
     def test_normalize_epsf_nonfinite_recentering(self, epsf_test_data):
         """
-        Test that a recentering function returning non-finite centroids
+        Test that a recentering function returning nonfinite centroids
         produces a clear error during building.
         """
         stars = extract_stars(epsf_test_data['nddata'],
@@ -3076,7 +3076,7 @@ def test_invalid_recentering_maxiters(value, error):
 
 def _make_heterogeneous_stars(seed=0, n_side=14):
     """
-    Make a star sample that mimics non-ideal data.
+    Make a star sample that mimics nonideal data.
 
     The stars have a range of FWHMs and ellipticities, a wide range of
     fluxes, initial center errors, and about 30 percent of the cutouts
@@ -3135,7 +3135,7 @@ def _alias_power_fraction(data, oversampling):
 @pytest.mark.parametrize('oversampling', [2, 4])
 def test_build_heterogeneous_stars_no_checkerboard(oversampling):
     """
-    Regression test for a checkerboard ePSF built from non-ideal
+    Regression test for a checkerboard ePSF built from nonideal
     stars with oversampling > 1.
 
     Star-to-star heterogeneity produces pixel-to-pixel noise in the
@@ -3348,7 +3348,7 @@ def test_alias_passband_changes_epsf():
                           (True, TypeError), ('auto', TypeError),
                           (None, TypeError)])
 def test_invalid_refinement_iters(value, error):
-    match = 'refinement_iters must be a non-negative integer'
+    match = 'refinement_iters must be a nonnegative integer'
     with pytest.raises(error, match=match):
         EPSFBuilder(refinement_iters=value)
 
@@ -3858,7 +3858,7 @@ class TestIterationHistory:
             with pytest.raises(ValueError, match=match):
                 result.plot_iterations(iterations=value)
 
-        match = 'iterations must be an integer or a non-empty 1D array'
+        match = 'iterations must be an integer or a nonempty 1D array'
         for value in ([], 1.5, [1.0, 2.0], True, [[1, 2]], 'all'):
             with pytest.raises(ValueError, match=match):
                 result.plot_iterations(iterations=value)
@@ -3991,7 +3991,7 @@ def test_smooth_wings_no_change():
     """
     The ePSF is returned unchanged if its FWHM cannot be measured, if
     the whole image is within 3.5 FWHM of the center, or if it has
-    non-finite values.
+    nonfinite values.
     """
     data = _noisy_gaussian_epsf(fwhm=6.0)[1]
     builder = EPSFBuilder(oversampling=4, progress_bar=False)
@@ -4117,7 +4117,7 @@ def test_wing_smoothing_plot_iterations(epsf_test_data):
 def test_nonuniform_phase_warning():
     """
     A warning is emitted when the fitted star centers have strongly
-    non-uniform subpixel phases.
+    nonuniform subpixel phases.
     """
     data = _make_gaussian_star_data()
     # All stars at integer pixel phase and a fitter that does not move
@@ -4230,7 +4230,7 @@ class TestMeasureFWHM:
         assert_allclose(fwhm, (8.0, 8.0), rtol=0.02)
 
     def test_unmeasurable(self):
-        # Non-positive peak
+        # Nonpositive peak
         assert _measure_fwhm(np.zeros((11, 11))) is None
         assert _measure_fwhm(-self._gaussian(5.0, 5.0)) is None
         # No finite values
@@ -4240,17 +4240,17 @@ class TestMeasureFWHM:
         # Peak at the edge of the array
         data = self._gaussian(5.0, 5.0)[30:, :]
         assert _measure_fwhm(data) is None
-        # Non-finite value next to the peak
+        # Nonfinite value next to the peak
         data = self._gaussian(5.0, 5.0)
         data[30, 31] = np.nan
         assert _measure_fwhm(data) is None
-        # Non-finite row next to the peak, so the averaged row profile
+        # Nonfinite row next to the peak, so the averaged row profile
         # has no finite values
         data = self._gaussian(5.0, 5.0)
         data[29, :] = np.nan
         assert _measure_fwhm(data) is None
         # Negative row next to the peak, so the averaged row profile
-        # has a non-positive peak
+        # has a nonpositive peak
         data = np.zeros((11, 11))
         data[5, 5] = 1.0
         data[4, :] = -3.0

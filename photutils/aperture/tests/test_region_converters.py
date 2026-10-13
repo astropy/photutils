@@ -83,7 +83,7 @@ class TestRegionApertureRoundTrip:
         assert aperture_sky.positions == region_sky.center  # SkyCoord
         assert_quantity_allclose(aperture_sky.r, region_sky.radius)
 
-        # Check that non-scalar center and radius raise ValueError
+        # Check that nonscalar center and radius raise ValueError
         match = 'must be a scalar PixCoord'
         with pytest.raises(ValueError, match=match):
             CirclePixelRegion(center=PixCoord(x=[0, 42], y=[1, 43]),
@@ -116,7 +116,7 @@ class TestRegionApertureRoundTrip:
         assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                                  region_sky.angle)
 
-        # Check that non-scalar center, width, height, and angle raise
+        # Check that nonscalar center, width, height, and angle raise
         # ValueError
         match = 'must be a scalar PixCoord'
         with pytest.raises(ValueError, match=match):
@@ -174,7 +174,7 @@ class TestRegionApertureRoundTrip:
         assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                                  region_sky.angle)
 
-        # Check that non-scalar center, width, height, and angle raise
+        # Check that nonscalar center, width, height, and angle raise
         # ValueError
         match = 'must be a scalar PixCoord'
         with pytest.raises(ValueError, match=match):
@@ -229,7 +229,7 @@ class TestRegionApertureRoundTrip:
         assert_quantity_allclose(aperture_sky.r_in, region_sky.inner_radius)
         assert_quantity_allclose(aperture_sky.r_out, region_sky.outer_radius)
 
-        # Check that non-scalar center, inner_radius, and outer_radius raise
+        # Check that nonscalar center, inner_radius, and outer_radius raise
         # ValueError
         match = 'must be a scalar PixCoord'
         with pytest.raises(ValueError, match=match):
@@ -284,7 +284,7 @@ class TestRegionApertureRoundTrip:
         assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                                  region_sky.angle)
 
-        # Check that non-scalar center, inner_width, inner_height,
+        # Check that nonscalar center, inner_width, inner_height,
         # outer_width, outer_height, and angle raise ValueError
         match = 'must be a scalar PixCoord'
         with pytest.raises(ValueError, match=match):
@@ -377,7 +377,7 @@ class TestRegionApertureRoundTrip:
         assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                                  region_sky.angle)
 
-        # Check that non-scalar center, inner_width, inner_height,
+        # Check that nonscalar center, inner_width, inner_height,
         # outer_width, outer_height, and angle raise ValueError
         match = 'must be a scalar PixCoord'
         with pytest.raises(ValueError, match=match):
@@ -443,7 +443,7 @@ class TestRegionApertureRoundTrip:
     def test_polygon(self, image_2d_wcs):
         from regions import PixCoord, PolygonPixelRegion
 
-        # Counter-clockwise simple (non-self-intersecting) quadrilateral.
+        # Counterclockwise simple (non-self-intersecting) quadrilateral.
         x = [42, 50, 47, 40]
         y = [43, 45, 52, 50]
         region_shape = PolygonPixelRegion(vertices=PixCoord(x=x, y=y))
@@ -457,7 +457,7 @@ class TestRegionApertureRoundTrip:
         aperture_sky = region_to_aperture(region_sky)
         assert isinstance(aperture_sky, SkyPolygonAperture)
         # The inverted RA axis flips the polygon orientation, so the
-        # counter-clockwise normalization reverses the vertex order. Compare
+        # counterclockwise normalization reverses the vertex order. Compare
         # the vertices independently of their ordering.
         ap_verts = np.column_stack((aperture_sky.vertices.ra.deg,
                                     aperture_sky.vertices.dec.deg))

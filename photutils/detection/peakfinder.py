@@ -462,7 +462,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         ``data``. If ``border_width`` is a scalar then ``border_width``
         will be applied to all sides. If ``border_width`` has two
         elements, they must be in ``(ny, nx)`` order. If `None`, then no
-        border is excluded. The border width values must be non-negative
+        border is excluded. The border width values must be nonnegative
         integers.
 
     n_peaks : int or `numpy.inf`, optional

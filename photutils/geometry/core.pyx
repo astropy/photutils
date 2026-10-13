@@ -259,7 +259,7 @@ cdef point chord_end(double x1, double y1, double x2,
     of the line with the circle has a closed form that needs no square
     root. It therefore stays well defined when the line is tangent to
     the circle, where the general line intersection can lose its
-    solutions to floating-point round-off.
+    solutions to floating-point roundoff.
 
     Parameters
     ----------

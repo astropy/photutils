@@ -191,7 +191,7 @@ cdef void _centroid_win_source(const real_t *data, const real_t *error,
     cdef double sumw, sumwx, sumwy
     # State of the last completed accumulation, for the final
     # moment/error pass (the window may go empty on a later iteration,
-    # in which case the last non-empty window is reused)
+    # in which case the last nonempty window is reused)
     cdef bint have_window = False
     cdef double xc_last = 0.0, yc_last = 0.0
     cdef double dxm_last = 0.0, dym_last = 0.0
@@ -342,7 +342,7 @@ def batch_centroid_win(const real_t[:, ::1] data, *,
     For each source, an iterative Gaussian-weighted centroid is computed
     within a binary circular window of radius ``4 * sigma`` centered
     on the current centroid estimate. The final windowed second-order
-    moments and raw error sums are computed over the last non-empty
+    moments and raw error sums are computed over the last nonempty
     window. The pixel sums are accumulated sequentially rather than
     pairwise.
 
@@ -358,7 +358,7 @@ def batch_centroid_win(const real_t[:, ::1] data, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where nonzero values indicate masked (excluded)
         pixels. Must have the same shape as ``data``. Bit 1 (value 1)
-        marks input-masked pixels and bit 2 (value 2) marks non-finite
+        marks input-masked pixels and bit 2 (value 2) marks nonfinite
         data pixels folded into the mask by the caller. Any nonzero
         value excludes the pixel and prevents it from being used as a
         mirror pixel.
@@ -381,7 +381,7 @@ def batch_centroid_win(const real_t[:, ::1] data, *,
 
     skip : 1D ndarray of uint8 (C-contiguous)
         Nonzero for sources that cannot have a meaningful windowed
-        centroid (e.g., a non-finite half-light radius or a non-finite
+        centroid (e.g., a nonfinite half-light radius or a nonfinite
         initial centroid), with shape ``(n_sources,)``.
 
     seg_method : int
@@ -615,7 +615,7 @@ def batch_kron_radius(const real_t[:, ::1] data, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where nonzero values indicate masked (excluded)
         pixels. Must have the same shape as ``data``. Bit 1 (value 1)
-        marks input-masked pixels and bit 2 (value 2) marks non-finite
+        marks input-masked pixels and bit 2 (value 2) marks nonfinite
         data pixels folded into the mask by the caller. Any nonzero
         value excludes the pixel and prevents it from being used as a
         mirror pixel.
@@ -646,7 +646,7 @@ def batch_kron_radius(const real_t[:, ::1] data, *,
 
     skip : 1D ndarray of uint8 (C-contiguous)
         Nonzero for sources that cannot have a measured Kron radius
-        (e.g., a completely masked source or a non-finite centroid or
+        (e.g., a completely masked source or a nonfinite centroid or
         shape), with shape ``(n_sources,)``.
 
     seg_method : int
@@ -745,7 +745,7 @@ cdef void _flux_radius_cutout(const real_t *data,
     Pixels with a nonzero ``mask`` value are zero, neighbor-source
     pixels are zeroed or mirror-corrected per ``seg_method`` (an
     uncorrectable neighbor pixel is zero), and every other pixel is
-    ``data - local_bkg``. Non-finite pixels are zero only where the
+    ``data - local_bkg``. Nonfinite pixels are zero only where the
     caller has folded them into ``mask``.
     Writes the ``(y1 - y0, x1 - x0)`` cutout in row-major order into
     ``out``.
@@ -800,7 +800,7 @@ def batch_flux_radius_prepare(const real_t[:, ::1] data, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where nonzero values indicate masked (zeroed)
         pixels. Must have the same shape as ``data``. Bit 1 (value 1)
-        marks input-masked pixels and bit 2 (value 2) marks non-finite
+        marks input-masked pixels and bit 2 (value 2) marks nonfinite
         data pixels folded into the mask by the caller. Any nonzero
         value zeroes the pixel and prevents it from being used as a
         mirror pixel.
@@ -829,7 +829,7 @@ def batch_flux_radius_prepare(const real_t[:, ::1] data, *,
 
     skip : 1D ndarray of uint8 (C-contiguous)
         Nonzero for sources that cannot have a solution (e.g., a
-        non-finite centroid, Kron flux, or maximum radius, or a zero
+        nonfinite centroid, Kron flux, or maximum radius, or a zero
         Kron flux), with shape ``(n_sources,)``.
 
     seg_method : int
@@ -1260,7 +1260,7 @@ def batch_flux_radius_solve(const double[::1] values, *,
 
     # Size the scratch buffers of the radial binning for the largest
     # cutout and bin count (local to this call, so the function is
-    # thread safe). The bin count uses the same arithmetic as the
+    # thread-safe). The bin count uses the same arithmetic as the
     # source loop below.
     with nogil:
         for i in range(n_src):
@@ -1343,8 +1343,8 @@ def batch_flux_radius_solve(const double[::1] values, *,
                     # root_scalar
                     rmax -= delta
                 else:
-                    # Success or non-convergence: root_scalar does
-                    # not raise on non-convergence, so accept the
+                    # Success or nonconvergence: root_scalar does
+                    # not raise on nonconvergence, so accept the
                     # root either way
                     found = True
             if not found:
@@ -1418,7 +1418,7 @@ def batch_perimeter(const unsigned char[:, ::1] mask, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where nonzero values indicate masked (excluded)
         pixels. Bit 1 (value 1) marks input-masked pixels and bit 2
-        (value 2) marks non-finite data pixels folded into the mask by
+        (value 2) marks nonfinite data pixels folded into the mask by
         the caller.
 
     segm : 2D ndarray of int32 or intp (C-contiguous)
@@ -1508,11 +1508,11 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
 
     For each source, the data within its segment bounding box is
     treated as a cutout whose pixels outside the source segment,
-    input-masked, or non-finite are zero, and the first (row-major)
+    input-masked, or nonfinite are zero, and the first (row-major)
     maximum of that cutout is the peak pixel. The 3x3 box centered on
     the peak is returned together with the pixel variances of the box
     and the box pixels that enter the fit. A masked box pixel
-    (input-masked or non-finite data, inside or outside of the source
+    (input-masked or nonfinite data, inside or outside of the source
     segment) is left out of the fit. An unmasked box pixel outside of
     the source segment, including a pixel of a neighboring source,
     enters the fit with its data value and variance.
@@ -1530,7 +1530,7 @@ def batch_quad_boxes(const real_t[:, ::1] data, *,
         A mask array where nonzero values indicate masked pixels,
         which cannot be the peak pixel and are left out of the fit.
         Must have the same shape as ``data``. Bit 1 (value 1)
-        marks input-masked pixels and bit 2 (value 2) marks non-finite
+        marks input-masked pixels and bit 2 (value 2) marks nonfinite
         data pixels folded into the mask by the caller.
 
     segm : 2D ndarray of int32 or intp (C-contiguous)
@@ -1702,7 +1702,7 @@ def batch_segment_gather(const real_t[:, ::1] values, *,
         A mask array where nonzero values indicate masked (excluded)
         pixels. Must have the same shape as ``values``. Bit 1 (value
         1) marks input-masked pixels and bit 2 (value 2) marks
-        non-finite data pixels folded into the mask by the caller.
+        nonfinite data pixels folded into the mask by the caller.
 
     segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
@@ -1825,7 +1825,7 @@ def batch_minmax_index(const real_t[:, ::1] values, *,
         A mask array where nonzero values indicate masked (excluded)
         pixels. Must have the same shape as ``values``. Bit 1 (value
         1) marks input-masked pixels and bit 2 (value 2) marks
-        non-finite data pixels folded into the mask by the caller.
+        nonfinite data pixels folded into the mask by the caller.
 
     segm : 2D ndarray of int32 or intp (C-contiguous)
         The segmentation array where background pixels are zero and
@@ -1923,7 +1923,7 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
     The moments are computed up to 3rd order along each axis over the
     segment bounding box of each source, using coordinates relative
     to the bounding-box origin (i.e., the cutout frame). Pixels
-    outside the source segment, input-masked pixels, non-finite
+    outside the source segment, input-masked pixels, nonfinite
     values, and negative values contribute zero.
 
     Parameters
@@ -1934,9 +1934,9 @@ def batch_raw_moments(const real_t[:, ::1] convdata, *,
 
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
-        and bit 2 (value 2) marks non-finite data pixels folded into
+        and bit 2 (value 2) marks nonfinite data pixels folded into
         the mask by the caller. Only bit 1 excludes a pixel here.
-        Non-finite convolved values are excluded by their own test.
+        Nonfinite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
     segm : 2D ndarray of int32 or intp (C-contiguous)
@@ -2049,9 +2049,9 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
 
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
-        and bit 2 (value 2) marks non-finite data pixels folded into
+        and bit 2 (value 2) marks nonfinite data pixels folded into
         the mask by the caller. Only bit 1 excludes a pixel here.
-        Non-finite convolved values are excluded by their own test.
+        Nonfinite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
     segm : 2D ndarray of int32 or intp (C-contiguous)
@@ -2145,7 +2145,7 @@ def batch_central_moments(const real_t[:, ::1] convdata, *,
                                                 * xpow[q])
 
             if not (isfinite(xcen[i]) and isfinite(ycen[i])):
-                # A non-finite centroid poisons every coordinate
+                # A nonfinite centroid poisons every coordinate
                 # power, so all elements except [0, 0] (the plain
                 # flux sum) are NaN. The sums above are NaN only where
                 # a source has at least one included pixel, so set
@@ -2174,7 +2174,7 @@ def batch_moment_err(const real_t[:, ::1] error, *,
     These are the unnormalized sums that the isophotal centroid error
     covariance is built from. A pixel contributes its error variance
     only if it is inside the source segment, is unmasked (neither
-    input-masked nor non-finite data), and contributes nonzero flux
+    input-masked nor nonfinite data), and contributes nonzero flux
     weight to the moments (a finite, strictly positive convolved
     value). Every other pixel contributes zero error variance.
 
@@ -2190,7 +2190,7 @@ def batch_moment_err(const real_t[:, ::1] error, *,
 
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
-        and bit 2 (value 2) marks non-finite data pixels folded into
+        and bit 2 (value 2) marks nonfinite data pixels folded into
         the mask by the caller. Any nonzero value excludes the pixel.
         Must have the same shape as ``convdata``.
 

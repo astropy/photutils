@@ -122,7 +122,7 @@ class _ModelGridPlotter:
         data = self.model.data.astype(float)
         if deltas:
             # Compute mean ignoring any blank (all zeros) ePSFs.
-            # This is the case for MIRI with its non-square FOV.
+            # This is the case for MIRI with its nonsquare FOV.
             mask = np.zeros(data.shape[0], dtype=bool)
             for i, arr in enumerate(data):
                 if np.count_nonzero(arr) == 0:

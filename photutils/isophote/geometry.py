@@ -116,7 +116,7 @@ class EllipseGeometry:
     fix_center : bool, optional
         Keep center of ellipse fixed during fit? The default is False.
     fix_pa : bool, optional
-        Keep position angle of semi-major axis of ellipse fixed during fit?
+        Keep position angle of semimajor axis of ellipse fixed during fit?
         The default is False.
     fix_eps : bool, optional
         Keep ellipticity of ellipse fixed during fit? The default is False.

@@ -547,11 +547,11 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @cached_property
     def orientation(self):
         """
-        The angle between the ``x`` axis and the major axis of the 2D
+        The angle between the x-axis and the major axis of the 2D
         Gaussian function that has the same second-order moments as the
         source.
 
-        The angle increases in the counter-clockwise direction and is
+        The angle increases in the counterclockwise direction and is
         in the range (-90, 90] degrees.
         """
         angle = 0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
@@ -620,7 +620,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     def _filter_finite(self, attrs, *, initial_mask=None,
                        skip_attrs=()):
         """
-        Filter the catalog by removing sources with non-finite values.
+        Filter the catalog by removing sources with nonfinite values.
 
         Parameters
         ----------
@@ -628,7 +628,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             Attribute names to check for finiteness.
 
         initial_mask : 1D `~numpy.ndarray` of bool or `None`, optional
-            A pre-existing boolean mask to combine with. If `None`,
+            An existing boolean mask to combine with. If `None`,
             starts with all `True`.
 
         skip_attrs : tuple of str, optional
@@ -670,7 +670,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             skip filtering for that attribute.
 
         initial_mask : 1D `~numpy.ndarray` of bool or `None`, optional
-            A pre-existing boolean mask to combine with. If `None`,
+            An existing boolean mask to combine with. If `None`,
             starts with all `True`.
 
         peakattr : str, optional
@@ -789,7 +789,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         for column in table_columns:
             values = getattr(self, column)
 
-            # Use the canonical (non-deprecated) column name so that
+            # Use the canonical (nondeprecated) column name so that
             # assigning into ``table`` does not trigger a second,
             # redundant deprecation warning (the deprecated attribute
             # access above already warned once).
@@ -808,7 +808,7 @@ class _StarFinderKernel:
     Parameters
     ----------
     fwhm : float
-        The full-width half-maximum (FWHM) of the major axis of the
+        The full width at half maximum (FWHM) of the major axis of the
         Gaussian kernel in units of pixels.
 
     ratio : float, optional
@@ -819,8 +819,8 @@ class _StarFinderKernel:
 
     theta : float, optional
         The position angle (in degrees) of the major axis of the
-        Gaussian kernel, measured counter-clockwise from the positive x
-        axis.
+        Gaussian kernel, measured counterclockwise from the positive
+        x-axis.
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units

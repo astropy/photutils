@@ -557,7 +557,7 @@ def _sanitize(arr):
     Returns
     -------
     result : `~numpy.ndarray`
-        The float array with non-finite values replaced by 0.
+        The float array with nonfinite values replaced by 0.
     """
     return np.nan_to_num(np.asarray(arr, dtype=float), nan=0.0,
                          posinf=0.0, neginf=0.0)

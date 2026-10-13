@@ -208,7 +208,7 @@ class TestDeprecatedMaskMixin:
         """
         Test that the deprecated RectangularMaskMixin.to_mask method works
         with the current _translate_mask_method signature and matches the
-        non-deprecated to_mask result.
+        nondeprecated to_mask result.
         """
         aper = RectangularAperture((10.0, 10.0), w=4.0, h=2.0, theta=0.5)
         mask = RectangularMaskMixin.to_mask(aper, method=method,

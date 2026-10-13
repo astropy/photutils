@@ -39,7 +39,7 @@ def batch_segmentation_image(segmentation):
     result : `~numpy.ndarray`
         The C-contiguous array. The drivers read 32-bit (C ``int``) and
         `numpy.intp` arrays directly, so those are returned without a
-        copy if they are already C-contiguous. Non-native byte-order
+        copy if they are already C-contiguous. Nonnative byte-order
         arrays of those dtypes (e.g., big-endian int32 data read from a
         FITS file) are converted to native byte order. Any other dtype
         is converted to `numpy.intp`.
@@ -226,7 +226,7 @@ def make_segmentation_exclusion(mask_method, segmentation_cutout,
 
     base_mask : 2D bool `~numpy.ndarray`, optional
         Pixels that are already masked (e.g., the global ``mask`` or
-        non-finite values). Used by the ``'correct'`` method to avoid
+        nonfinite values). Used by the ``'correct'`` method to avoid
         mirroring from masked pixels.
 
     cutout_xycen : tuple of float, optional

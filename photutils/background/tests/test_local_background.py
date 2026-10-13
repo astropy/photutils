@@ -71,7 +71,7 @@ def test_local_background():
     bkg3 = local_bkg(data, -100, -100)
     assert np.isnan(bkg3)
 
-    match = "'positions' must not contain any non-finite"
+    match = "'positions' must not contain any nonfinite"
     with pytest.raises(ValueError, match=match):
         _ = local_bkg(data, x[2], np.inf)
 
@@ -218,7 +218,7 @@ class TestFastLocalBackground:
         """
         Test that all supported estimator classes match the per-aperture
         loop, including for edge-clipped, fully-masked, and
-        non-overlapping apertures (NaN).
+        nonoverlapping apertures (NaN).
         """
         local_bkg = LocalBackground(5, 10, bkg_estimator=estimator)
         fast, slow = self._run_both_paths(local_bkg, monkeypatch)
@@ -247,7 +247,7 @@ class TestFastLocalBackground:
     def test_nonfinite_data_matches_slow_path(self, value, sigma_clip,
                                               monkeypatch):
         """
-        Test that non-finite data values are excluded in both the fast
+        Test that nonfinite data values are excluded in both the fast
         path and the per-aperture loop, with or without sigma clipping.
         """
         data = self.data.copy()
@@ -318,8 +318,8 @@ class TestFastLocalBackground:
                                            BiweightLocationBackground()])
 def test_read_only_inputs(dtype, bkg_estimator):
     """
-    Regression test that read-only (non-writeable) input arrays are
-    accepted, are not modified, and give results identical to writeable
+    Regression test that read-only (nonwritable) input arrays are
+    accepted, are not modified, and give results identical to writable
     arrays.
     """
     rng = np.random.default_rng(0)

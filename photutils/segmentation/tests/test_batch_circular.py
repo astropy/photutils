@@ -119,7 +119,7 @@ def test_local_background(scene):
 
 def test_all_masked_and_nonfinite_centroid(scene):
     # A fully masked source has no centroid and a NaN flux. A source
-    # whose centroid is non-finite is also NaN
+    # whose centroid is nonfinite is also NaN
     data = scene['data'].copy()
     mask = scene['mask'].copy()
     segm = scene['segm']

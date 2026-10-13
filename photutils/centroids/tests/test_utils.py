@@ -81,7 +81,7 @@ class TestProcessDataMask:
 
     def test_nan_fills_and_warns(self):
         data = np.array([[1.0, np.nan], [3.0, 4.0]])
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             result = _process_data_mask(data, None)
         assert np.isnan(result[0, 1])
@@ -208,7 +208,7 @@ class TestValidateGaussianInputs:
     def test_nan_in_data_sets_combined_mask(self, gauss_data):
         gauss_data = gauss_data.copy()
         gauss_data[3, 3] = np.nan
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         with pytest.warns(AstropyUserWarning, match=match):
             data, combined_mask, _ = _validate_gaussian_inputs(
                 gauss_data, None, None)

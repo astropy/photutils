@@ -233,7 +233,7 @@ between detected peaks, since only one peak can be found within each box
 of that size. Specifically, two peaks must be separated by at least
 ``box_size // 2 + 1`` pixels along at least one axis. For example, with
 a ``box_size`` of 11, two peaks must be at least 6 pixels apart along
-the x or y axis.
+the x- or y-axis.
 
 As a simple example, let's find the local peaks in the image above that
 are 5 sigma above the background using a box size of 11 pixels::

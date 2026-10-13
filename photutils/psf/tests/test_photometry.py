@@ -155,8 +155,8 @@ def test_invalid_inputs():
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data)
 
-    # data has unmasked non-finite value
-    match = 'Input data contains unmasked non-finite values'
+    # data has unmasked nonfinite value
+    match = 'Input data contains unmasked nonfinite values'
     psfphot2 = PSFPhotometry(model, (3, 3), aperture_radius=3)
     init_params = Table()
     init_params['x_init'] = [1, 2]
@@ -166,8 +166,8 @@ def test_invalid_inputs():
     with pytest.warns(AstropyUserWarning, match=match):
         _ = psfphot2(data, init_params=init_params)
 
-    # mask is input, but data has unmasked non-finite value
-    match = 'Input data contains unmasked non-finite values'
+    # mask is input, but data has unmasked nonfinite value
+    match = 'Input data contains unmasked nonfinite values'
     data = np.ones((11, 11))
     data[5, 5] = np.nan
     mask = np.zeros(data.shape, dtype=bool)
@@ -355,7 +355,7 @@ def test_psf_photometry_finite_weights(test_data):
     finder = DAOStarFinder(6.0, 2.0)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
-    match = 'Error array contains non-positive or non-finite values'
+    match = 'Error array contains nonpositive or nonfinite values'
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, error=error)
 
@@ -399,11 +399,11 @@ def test_model_residual_image(test_data):
 
 def test_model_residual_image_nonfinite_localbkg(test_data):
     """
-    Test that make_model_image and make_residual_image handle non-finite
+    Test that make_model_image and make_residual_image handle nonfinite
     local background values correctly.
 
-    When include_local_bkg=True and the local_bkg is non-finite (NaN or
-    inf), the non-finite value should be treated as 0 and not included
+    When include_local_bkg=True and the local_bkg is nonfinite (NaN or
+    inf), the nonfinite value should be treated as 0 and not included
     in the model or residual images.
     """
     data, error, _ = test_data
@@ -412,7 +412,7 @@ def test_model_residual_image_nonfinite_localbkg(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(10.0, 2.0)
 
-    # Find sources and manually set some local_bkg values to non-finite
+    # Find sources and manually set some local_bkg values to nonfinite
     sources = finder(data)
     sources['local_bkg'] = np.zeros(len(sources))
     sources['local_bkg'][0] = np.nan
@@ -420,7 +420,7 @@ def test_model_residual_image_nonfinite_localbkg(test_data):
     if len(sources) > 2:
         sources['local_bkg'][2] = -np.inf
 
-    # Perform PSF photometry with non-finite local_bkg
+    # Perform PSF photometry with nonfinite local_bkg
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
     phot = psfphot(data, error=error, init_params=sources)
@@ -436,8 +436,8 @@ def test_model_residual_image_nonfinite_localbkg(test_data):
     assert np.all(np.isfinite(model_with_bkg))
     assert np.all(np.isfinite(model_without_bkg))
 
-    # For sources with non-finite local_bkg, the model with and without
-    # local_bkg should be identical (since non-finite is treated as 0).
+    # For sources with nonfinite local_bkg, the model with and without
+    # local_bkg should be identical (since nonfinite is treated as 0).
     # Check this by comparing the models at source positions.
     for i in range(min(3, len(phot))):
         if not np.isfinite(phot['local_bkg'][i]):
@@ -450,7 +450,7 @@ def test_model_residual_image_nonfinite_localbkg(test_data):
 
 def test_residual_image_localbkg_invalid_sources(test_data):
     """
-    Test that make_residual_image handles sources with non-finite
+    Test that make_residual_image handles sources with nonfinite
     local_bkg values and sources outside the image (invalid sources)
     correctly.
     """
@@ -462,7 +462,7 @@ def test_residual_image_localbkg_invalid_sources(test_data):
 
     sources = finder(data)
 
-    # Add non-finite local_bkg values to init_params
+    # Add nonfinite local_bkg values to init_params
     sources['local_bkg'] = np.zeros(len(sources))
     sources['local_bkg'][0] = np.nan
     sources['local_bkg'][1] = np.inf
@@ -471,7 +471,7 @@ def test_residual_image_localbkg_invalid_sources(test_data):
     sources['x_centroid'][-3] = 1000
     sources['y_centroid'][-3] = 1000
 
-    # Perform PSF photometry with init_params containing non-finite
+    # Perform PSF photometry with init_params containing nonfinite
     # local_bkg
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
@@ -578,7 +578,7 @@ def test_psf_photometry_mask(test_data):
     data = data.copy()
     data[55, 60:70] = np.nan
 
-    match = 'Input data contains unmasked non-finite values'
+    match = 'Input data contains unmasked nonfinite values'
     with pytest.warns(AstropyUserWarning, match=match):
         phot1 = psfphot(data, error=error, mask=None)
     assert len(phot1) == len(sources)
@@ -588,7 +588,7 @@ def test_psf_photometry_mask(test_data):
     assert np.all(phot1 == phot2)
 
     # Unmasked NaN with mask not None
-    match = 'Input data contains unmasked non-finite values'
+    match = 'Input data contains unmasked nonfinite values'
     mask = ~np.isfinite(data)
     mask[55, 65] = False
     with pytest.warns(AstropyUserWarning, match=match):
@@ -628,7 +628,7 @@ def test_psf_photometry_mask(test_data):
     assert len(phot) == 1
     assert np.isnan(phot['cfit'][0])
 
-    # This should not raise a warning because the non-finite pixel was
+    # This should not raise a warning because the nonfinite pixel was
     # explicitly masked
     psfphot = PSFPhotometry(psf_model, (3, 3), aperture_radius=3)
     data = np.ones((11, 11))
@@ -1149,12 +1149,12 @@ def test_local_bkg_init_flux():
 
 def test_local_bkg_nonfinite(test_data):
     """
-    Test that non-finite local background values are handled correctly.
+    Test that nonfinite local background values are handled correctly.
 
     When local_bkg is NaN or inf, the code should:
     1. Report the actual local_bkg value in the output table
     2. Not subtract it from the data before fitting
-    3. Set a flag indicating non-finite local background
+    3. Set a flag indicating nonfinite local background
     """
     data, error, _ = test_data
 
@@ -1165,23 +1165,23 @@ def test_local_bkg_nonfinite(test_data):
     # Find sources using the finder
     sources = finder(data)
 
-    # Add non-finite local_bkg values to init_params
+    # Add nonfinite local_bkg values to init_params
     sources['local_bkg'] = np.zeros(len(sources))
     sources['local_bkg'][0] = np.nan
     sources['local_bkg'][1] = np.inf
     sources['local_bkg'][2] = -np.inf
 
-    # Perform PSF photometry with init_params containing non-finite local_bkg
+    # Perform PSF photometry with init_params containing nonfinite local_bkg
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
     phot = psfphot(data, error=error, init_params=sources)
 
-    # Check that non-finite local_bkg values are preserved in output
+    # Check that nonfinite local_bkg values are preserved in output
     assert np.isnan(phot['local_bkg'][0])
     assert np.isinf(phot['local_bkg'][1])
     assert np.isinf(phot['local_bkg'][2])
 
-    # Check that flags are set correctly (bit 2048 for non-finite local_bkg)
+    # Check that flags are set correctly (bit 2048 for nonfinite local_bkg)
     assert phot['flags'][0] & 2048
     assert phot['flags'][1] & 2048
     assert phot['flags'][2] & 2048
@@ -1193,14 +1193,14 @@ def test_local_bkg_nonfinite(test_data):
 
 def test_local_bkg_nonfinite_measured(test_data):
     """
-    Test that non-finite local background values measured from the image
+    Test that nonfinite local background values measured from the image
     are handled correctly.
 
     When the LocalBackground estimator returns NaN (e.g., due to a fully
     masked region), the code should:
     1. Report the NaN local_bkg value in the output table
     2. Not subtract it from the data before fitting
-    3. Set a flag (bit 2048) indicating non-finite local background
+    3. Set a flag (bit 2048) indicating nonfinite local background
     """
     data, error, _ = test_data
 
@@ -1775,7 +1775,7 @@ def test_flag16_missing_covariance():
 @pytest.mark.parametrize('fitter', [TRFLSQFitter, LevMarLSQFitter])
 def test_flag16_degenerate_covariance(fitter):
     """
-    Test that non-finite parameter errors from a degenerate fit are
+    Test that nonfinite parameter errors from a degenerate fit are
     always flagged as missing covariance (flag=16).
 
     Two grouped sources at the same position have degenerate fluxes,
@@ -1821,16 +1821,16 @@ def test_flag32_parameter_at_bounds():
 
 def test_flag512_non_finite_position():
     """
-    Test flag=512 for non-finite fitted position.
+    Test flag=512 for nonfinite fitted position.
 
-    When a source has non-finite initial position or when the fit fails
-    to converge properly, the fitted x or y position can be non-finite.
+    When a source has nonfinite initial position or when the fit fails
+    to converge properly, the fitted x or y position can be nonfinite.
     """
     shape = (25, 25)
     psf_model = CircularGaussianPRF(fwhm=3.0)
     data = np.zeros(shape)
 
-    # Create init_params with non-finite initial position
+    # Create init_params with nonfinite initial position
     init_params = QTable()
     init_params['x_init'] = [12.0, np.nan, 12.0]
     init_params['y_init'] = [12.0, 12.0, np.inf]
@@ -1847,27 +1847,27 @@ def test_flag512_non_finite_position():
     assert np.isfinite(phot['y_fit'][0])
     assert (phot['flags'][0] & 512) == 0
 
-    # Second source should have non-finite x_fit (flag 512 set)
+    # Second source should have nonfinite x_fit (flag 512 set)
     assert not np.isfinite(phot['x_fit'][1])
     assert (phot['flags'][1] & 512) == 512
 
-    # Third source should have non-finite y_fit (flag 512 set)
+    # Third source should have nonfinite y_fit (flag 512 set)
     assert not np.isfinite(phot['y_fit'][2])
     assert (phot['flags'][2] & 512) == 512
 
 
 def test_flag1024_non_finite_flux():
     """
-    Test flag=1024 for non-finite flux in init_params.
+    Test flag=1024 for nonfinite flux in init_params.
 
-    When a source has non-finite initial flux (NaN or inf), the code
+    When a source has nonfinite initial flux (NaN or inf), the code
     should handle it gracefully and set flag 1024.
     """
     shape = (25, 25)
     psf_model = CircularGaussianPRF(fwhm=3.0)
     data = np.zeros(shape)
 
-    # Create init_params with non-finite initial flux
+    # Create init_params with nonfinite initial flux
     init_params = QTable()
     init_params['x_init'] = [12.0, 12.0, 12.0]
     init_params['y_init'] = [12.0, 12.0, 12.0]
@@ -1883,11 +1883,11 @@ def test_flag1024_non_finite_flux():
     assert np.isfinite(phot['flux_fit'][0])
     assert (phot['flags'][0] & 1024) == 0
 
-    # Second source should have non-finite flux_fit (flag 1024 set)
+    # Second source should have nonfinite flux_fit (flag 1024 set)
     assert not np.isfinite(phot['flux_fit'][1])
     assert (phot['flags'][1] & 1024) == 1024
 
-    # Third source should have non-finite flux_fit (flag 1024 set)
+    # Third source should have nonfinite flux_fit (flag 1024 set)
     assert not np.isfinite(phot['flux_fit'][2])
     assert (phot['flags'][2] & 1024) == 1024
 
@@ -1971,7 +1971,7 @@ def test_flag4096_position_outside_fit_region_fit():
 
 def test_flag4096_non_finite_position():
     """
-    Test that flag=4096 is not set for a non-finite fitted position.
+    Test that flag=4096 is not set for a nonfinite fitted position.
     """
     psf_model = CircularGaussianPRF(fwhm=3.0)
     data = np.zeros((25, 25))
@@ -2193,7 +2193,7 @@ def test_row_index_not_leaked_on_failure():
     init = Table({'x': params['x_0'], 'y': params['y_0'],
                   'flux': [500.0, 500.0, 500.0]})
     psfphot = PSFPhotometry(model, (5, 5))
-    match = 'Error array contains non-positive'
+    match = 'Error array contains nonpositive'
     with pytest.raises(ValueError, match=match):
         psfphot(data, error=error, init_params=init)
     assert '_row_index' not in psfphot.init_params.colnames
@@ -2387,7 +2387,7 @@ def test_should_skip_source_coverage():
     assert should_skip is True
     assert reason == 'no_overlap'
 
-    # Test non-finite coordinates - NaN (this will bypass bounds check)
+    # Test nonfinite coordinates - NaN (this will bypass bounds check)
     row_data = {
         psfphot._param_mapper.init_colnames['x']: np.nan,
         psfphot._param_mapper.init_colnames['y']: 25.0,
@@ -2398,7 +2398,7 @@ def test_should_skip_source_coverage():
     assert should_skip is True
     assert reason == 'invalid_position'
 
-    # Test non-finite coordinates - NaN in y coordinate
+    # Test nonfinite coordinates - NaN in y coordinate
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: np.nan,
@@ -2409,7 +2409,7 @@ def test_should_skip_source_coverage():
     assert should_skip is True
     assert reason == 'invalid_position'
 
-    # Test non-finite flux
+    # Test nonfinite flux
     row_data = {
         psfphot._param_mapper.init_colnames['x']: 25.0,
         psfphot._param_mapper.init_colnames['y']: 25.0,
@@ -2474,10 +2474,10 @@ def test_get_source_cutout_data_no_overlap():
 
 def test_flags_with_invalid_and_nonfinite_sources():
     """
-    Test flag computation with invalid and non-finite sources.
+    Test flag computation with invalid and nonfinite sources.
 
     This test creates scenarios with invalid sources and sources that
-    end up with non-finite fitted positions, triggering the continue
+    end up with nonfinite fitted positions, triggering the continue
     statements in the flag computation.
     """
     shape = (30, 30)
@@ -2608,7 +2608,7 @@ def test_init_params_id_order(test_data, reorder, with_groups,
     # Reorder init_params
     init_params2 = init_params.copy()
     if nonconsec_ids:
-        # Non-consecutive random ids, monotonically increasing so final
+        # Nonconsecutive random ids, monotonically increasing so final
         # results order should be same
         steps = rng.integers(1, 51, size=n_sources - 1)
         init_params2['id'] = np.concatenate(([1], 1 + np.cumsum(steps)))
@@ -2774,7 +2774,7 @@ def test_decode_flags():
     direct_decoded = decode_psf_flags(results['flags'])
     assert list(decoded_flags.values()) == direct_decoded
 
-    # Custom, non-sequential ids key the decoded dictionary
+    # Custom, nonsequential ids key the decoded dictionary
     init_params['id'] = [7, 3, 11]
     results2 = psfphot(data, init_params=init_params)
     decoded2 = psfphot.decode_flags()
@@ -2816,7 +2816,7 @@ def _init_params_with_groups_and_invalid_sources(sources):
     """
     Initial parameters from the true sources, with two sources fitted
     as a group and three invalid sources (a NaN position, a position
-    far outside the image, and a non-finite flux).
+    far outside the image, and a nonfinite flux).
     """
     init_params = QTable()
     init_params['x_init'] = [*sources['x_0'], np.nan, 500.0, 40.0]
@@ -2927,7 +2927,7 @@ def test_n_threads_fit_error(test_data):
     error[int(sources['y_0'][3]), int(sources['x_0'][3])] = 0.0
     psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4,
                             n_threads=2)
-    match = 'Error array contains non-positive or non-finite values'
+    match = 'Error array contains nonpositive or nonfinite values'
     with pytest.raises(ValueError, match=match):
         psfphot(data, error=error, init_params=init_params)
 
@@ -3184,8 +3184,8 @@ def test_error_weights_message_has_source_context():
 @pytest.mark.parametrize('grouped', [False, True])
 def test_read_only_inputs(dtype, grouped):
     """
-    Regression test that read-only (non-writeable) input arrays are
-    accepted, are not modified, and give results identical to writeable
+    Regression test that read-only (nonwritable) input arrays are
+    accepted, are not modified, and give results identical to writable
     arrays.
     """
     yy, xx = np.mgrid[-12:13, -12:13]

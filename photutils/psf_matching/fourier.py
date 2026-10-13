@@ -176,7 +176,7 @@ def make_kernel(source_psf, target_psf, *, regularization=1e-4, window=None):
         if ``regularization`` is not in the range [0, 1), if the window
         function output is invalid (not a 2D array, wrong shape, or
         values outside [0, 1]), or if the computed kernel is degenerate
-        (non-finite or sums to zero).
+        (nonfinite or sums to zero).
 
     TypeError
         If the input ``window`` is not callable.
@@ -403,7 +403,7 @@ array_like, optional
         is not positive, if ``penalty`` is not a valid value (see
         above), if the window function output is invalid (not a 2D
         array, wrong shape, or values outside [0, 1]), or if the
-        computed kernel is degenerate (non-finite or sums to zero).
+        computed kernel is degenerate (nonfinite or sums to zero).
 
     TypeError
         If the input ``window`` is not callable.
@@ -479,7 +479,7 @@ array_like, optional
 
     # Compute the Wiener-regularized kernel in Fourier space. The
     # denominator can be zero at frequencies where both the source OTF
-    # and the penalty OTF are zero. Any resulting non-finite values are
+    # and the penalty OTF are zero. Any resulting nonfinite values are
     # caught by the kernel normalization below.
     with np.errstate(invalid='ignore', divide='ignore'):
         kernel_otf = (target_otf * np.conj(source_otf)

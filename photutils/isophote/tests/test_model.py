@@ -172,7 +172,7 @@ def test_model_integration():
 
 def test_build_ellipse_model_c_threadsafe():
     """
-    Test that build_ellipse_model_c is thread safe by running it in
+    Test that build_ellipse_model_c is thread-safe by running it in
     multiple threads and checking that the results are consistent.
     """
     n = 64
@@ -201,8 +201,8 @@ def test_build_ellipse_model_c_threadsafe():
 
 def test_build_ellipse_model_c_readonly_arrays():
     """
-    Test that read-only (non-writeable) input arrays are accepted by
-    build_ellipse_model_c and give results identical to writeable
+    Test that read-only (nonwritable) input arrays are accepted by
+    build_ellipse_model_c and give results identical to writable
     arrays.
     """
     n = 16
@@ -228,11 +228,11 @@ def test_build_ellipse_model_c_readonly_arrays():
 
 def test_build_ellipse_model_c_noncontiguous_arrays():
     """
-    Test that non-contiguous (strided) input arrays are accepted by
+    Test that noncontiguous (strided) input arrays are accepted by
     build_ellipse_model_c and give results identical to contiguous
     arrays.
 
-    The input arguments are declared as non-contiguous ``double[:]``
+    The input arguments are declared as noncontiguous ``double[:]``
     typed memoryviews. This test guards against a regression if they
     were ever changed to C-contiguous ``double[::1]`` memoryviews, which
     would reject strided arrays.
@@ -247,7 +247,7 @@ def test_build_ellipse_model_c_noncontiguous_arrays():
     arrays = (sma, intens, eps, pa, x0, y0)
     expected = build_ellipse_model_c(100, 100, *arrays)
 
-    # Build strided (non-contiguous) views by interleaving and slicing
+    # Build strided (noncontiguous) views by interleaving and slicing
     arrays_strided = []
     for arr in arrays:
         strided = np.repeat(arr, 2)[::2]

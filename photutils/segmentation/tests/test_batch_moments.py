@@ -201,10 +201,10 @@ def _edge_catalog():
     segmdata[7:11, 6:11] = 2
     convdata = data.copy()
     convdata[3, 3] = -1.5  # negative convolved value in a segment
-    convdata[4, 4] = np.nan  # non-finite convolved value
+    convdata[4, 4] = np.nan  # nonfinite convolved value
     convdata[8, 8] = np.inf
     convdata[9, 9] = 0.0  # zero flux weight, excluded from the errors
-    # Non-finite data with a finite convolved value is included in
+    # Nonfinite data with a finite convolved value is included in
     # the moments and excluded from the errors
     data[5, 5] = np.nan
     data[9, 7] = np.nan
@@ -269,7 +269,7 @@ def test_edge_case_inclusion_rules():
         bbox_ixmin=inp['bbox_ixmin'], bbox_ixmax=inp['bbox_ixmax'],
         xcen=xcen, ycen=ycen)
     reference_err = _reference_moment_err(cat, xcen, ycen)
-    # The non-finite data pixel is excluded from the errors but not
+    # The nonfinite data pixel is excluded from the errors but not
     # from the moments, so the error sums use fewer pixels
     n_moment = np.array([np.count_nonzero(_moment_cutout(cat, i))
                          for i in range(cat.n_labels)])

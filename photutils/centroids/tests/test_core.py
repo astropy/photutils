@@ -94,7 +94,7 @@ def test_centroid_com_nan_withmask(nan_data, use_mask):
         ctx = nullcontext()
     else:
         mask = None
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         ctx = pytest.warns(AstropyUserWarning, match=match)
 
     with ctx as warnlist:
@@ -521,7 +521,7 @@ def test_centroid_symmetry_hot_pixel():
 
 def test_centroid_symmetry_nan():
     """
-    Test that a non-finite value gives the same result as a mask.
+    Test that a nonfinite value gives the same result as a mask.
     """
     data = make_gaussian_source((21, 21), 1.0, 10.3, 9.6, 2.0, 2.0, 0)
     mask = np.zeros(data.shape, dtype=bool)
@@ -529,7 +529,7 @@ def test_centroid_symmetry_nan():
     xycen = centroid_symmetry(data, mask=mask)
 
     data[9, 12] = np.nan
-    match = 'Input data contains non-finite values'
+    match = 'Input data contains nonfinite values'
     with pytest.warns(AstropyUserWarning, match=match):
         xycen2 = centroid_symmetry(data)
     assert_allclose(xycen2, xycen)
@@ -753,7 +753,7 @@ def test_centroid_quadratic_nan_withmask(nan_data, use_mask):
         ctx = nullcontext()
     else:
         mask = None
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         ctx = pytest.warns(AstropyUserWarning, match=match)
 
     with ctx as warnlist:
@@ -768,7 +768,7 @@ def test_centroid_quadratic_nan_in_fitbox():
     """
     Test centroid_quadratic with a NaN inside the fit box.
 
-    This tests that non-finite values are removed from the coefficient
+    This tests that nonfinite values are removed from the coefficient
     matrix and cutout before the least-squares fit. The NaN pixel is
     masked so that _process_data_mask fills it with NaN (fill_value),
     which is then filtered out by the ``finite_mask`` check inside the
@@ -781,7 +781,7 @@ def test_centroid_quadratic_nan_in_fitbox():
     # branch.
     data[5, 4] = np.nan
     mask = np.zeros(data.shape, dtype=bool)
-    mask[5, 4] = True  # suppress the non-finite warning via explicit mask
+    mask[5, 4] = True  # suppress the nonfinite warning via explicit mask
     xycen = centroid_quadratic(data, mask=mask, fit_boxsize=5)
     assert_allclose(xycen, (5.0, 5.0), atol=0.01)
 
@@ -789,19 +789,19 @@ def test_centroid_quadratic_nan_in_fitbox():
 def test_centroid_quadratic_all_masked():
     """
     Test that centroid_quadratic raises a clear ValueError when all data
-    values are masked or non-finite.
+    values are masked or nonfinite.
 
     Previously, this raised a cryptic "All-NaN slice encountered"
     ValueError from numpy.
     """
     data = np.ones((11, 11))
     mask = np.ones(data.shape, dtype=bool)
-    match = 'All data values are masked or non-finite'
+    match = 'All data values are masked or nonfinite'
     with pytest.raises(ValueError, match=match):
         centroid_quadratic(data, mask=mask)
 
     data = np.full((11, 11), np.nan)
-    warn_match = 'Input data contains non-finite values'
+    warn_match = 'Input data contains nonfinite values'
     with (pytest.warns(AstropyUserWarning, match=warn_match),
           pytest.raises(ValueError, match=match)):
         centroid_quadratic(data)
@@ -1258,7 +1258,7 @@ class TestCentroidSources:
 
     def test_nonfinite_positions(self, test_data):
         """
-        Test that centroid_sources raises a ValueError for non-finite
+        Test that centroid_sources raises a ValueError for nonfinite
         xpos or ypos values.
         """
         data = test_data[0]
@@ -1282,7 +1282,7 @@ class TestCentroidSources:
     def test_xypeak_multiple_sources(self):
         """
         Test that xpeak/ypeak are correctly offset for each source in
-        a multi-source centroid_sources call.
+        a multisource centroid_sources call.
         """
         # Two isolated peaks close together so that xpeak=10 (absolute)
         # lies within both source cutouts (box_size=5):

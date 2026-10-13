@@ -21,12 +21,12 @@ cdef extern from "math.h" nogil:
 
 cdef inline double floor_sqrt(double x) noexcept nogil:
     """
-    Square root of a value expected to be non-negative, treating small
-    negative values (e.g., from floating-point round-off) as zero.
+    Square root of a value expected to be nonnegative, treating small
+    negative values (e.g., from floating-point roundoff) as zero.
 
     This does not check whether a negative value is actually close to
     zero, so it should be used only where the true value is expected
-    to be non-negative.
+    to be nonnegative.
 
     Parameters
     ----------
@@ -96,7 +96,7 @@ cdef inline double area_arc(double x1, double y1, double x2, double y2,
 
     a = distance(x1, y1, x2, y2)
     # Clamp the half-chord ratio to 1 to guard against floating-point
-    # round-off pushing a near-diameter chord past the domain of asin,
+    # roundoff pushing a near-diameter chord past the domain of asin,
     # which would return NaN.
     theta = 2.0 * asin(fmin(1.0, 0.5 * a / r))
     return 0.5 * r * r * (theta - sin(theta))

@@ -97,13 +97,13 @@ class EllipseFitter:
             contamination such as stars and HII regions.
 
             A number of actions may happen when the gradient error
-            exceeds ``maxgerr`` (or becomes non-significant and is
+            exceeds ``maxgerr`` (or becomes nonsignificant and is
             set to `None`). If the maximum semimajor axis specified
             by ``maxsma`` is set to `None`, semimajor axis growth is
             stopped and the algorithm proceeds inwards to the galaxy
             center. If ``maxsma`` is set to some finite value, and this
             value is larger than the current semimajor axis length, the
-            algorithm enters non-iterative mode and proceeds outwards
+            algorithm enters noniterative mode and proceeds outwards
             until reaching ``maxsma``. The default is 0.5.
 
         going_inwards : bool, optional
@@ -181,7 +181,7 @@ class EllipseFitter:
             # Mask out coefficients that control fixed ellipse parameters.
             free_coeffs = np.ma.masked_array(coeffs[1:], mask=fixed_parameters)
 
-            # Largest non-masked harmonic in absolute value drives the
+            # Largest nonmasked harmonic in absolute value drives the
             # correction.
             largest_harmonic_index = np.argmax(np.abs(free_coeffs))
             largest_harmonic = free_coeffs[largest_harmonic_index]
@@ -204,18 +204,18 @@ class EllipseFitter:
                 return Isophote(sample, i + 1, valid=True, stop_code=0)
 
             # It may not have converged yet, but the sample contains too
-            # many invalid data points, so return the best fit sample
+            # many invalid data points, so return the best-fit sample
             # instead of the current one.
             if sample.actual_points < (sample.total_points * fflag):
                 # When too many data points were flagged, return the
-                # best fit sample instead of the current one.
+                # best-fit sample instead of the current one.
                 minimum_amplitude_sample.update(
                     fixed_parameters=fixed_parameters)
                 return Isophote(minimum_amplitude_sample, i + 1, valid=True,
                                 stop_code=1)
 
             # The parameter correctors divide by the sample's local
-            # gradient. If the gradient is zero or non-finite (e.g.,
+            # gradient. If the gradient is zero or nonfinite (e.g.,
             # from a degenerate sample where no gradient could be
             # measured), no correction can be computed and iterations
             # cannot proceed.
@@ -240,7 +240,7 @@ class EllipseFitter:
                 sample.update(fixed_parameters=fixed_parameters)
 
                 # See if any abnormal (or unusual) conditions warrant
-                # the change to non-iterative mode, or go-inwards mode.
+                # the change to noniterative mode, or go-inwards mode.
                 proceed, lexceed = self._check_conditions(
                     sample, maxgerr, going_inwards, lexceed)
 
@@ -250,7 +250,7 @@ class EllipseFitter:
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
-        # best fit sample instead of the current one.
+        # best-fit sample instead of the current one.
         minimum_amplitude_sample.update(fixed_parameters=fixed_parameters)
         return Isophote(minimum_amplitude_sample, maxit, valid=True,
                         stop_code=2)

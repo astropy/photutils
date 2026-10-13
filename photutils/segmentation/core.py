@@ -51,7 +51,7 @@ _SEGMENT_DEPRECATED_ATTRIBUTES = {
 
 def _get_labels(array, *, return_counts=False):
     """
-    Return the sorted non-zero values in ``array``.
+    Return the sorted nonzero values in ``array``.
 
     Parameters
     ----------
@@ -66,7 +66,7 @@ def _get_labels(array, *, return_counts=False):
     Returns
     -------
     labels : `~numpy.ndarray`
-        The sorted non-zero label values. `numpy.unique` preserves the
+        The sorted nonzero label values. `numpy.unique` preserves the
         input dtype.
 
     counts : `~numpy.ndarray`, optional
@@ -104,7 +104,7 @@ def _get_label_stats(array):
     Returns
     -------
     labels : 1D `~numpy.ndarray`
-        The sorted non-zero values in ``array``, with its dtype.
+        The sorted nonzero values in ``array``, with its dtype.
 
     areas : 1D intp `~numpy.ndarray`
         The number of pixels of each label.
@@ -352,7 +352,7 @@ class SegmentationImage:
     def _from_data(cls, data, *, labels=None, areas=None, slices=None,
                    deblend_label_map=None):
         """
-        Create a `SegmentationImage` from a pre-validated segmentation
+        Create a `SegmentationImage` from a prevalidated segmentation
         array, optionally seeding cached properties.
 
         This bypasses the input validation performed by ``__init__``
@@ -367,7 +367,7 @@ class SegmentationImage:
             The valid 2D segmentation array.
 
         labels : `~numpy.ndarray`, optional
-            The sorted non-zero labels in ``data``, used to seed the
+            The sorted nonzero labels in ``data``, used to seed the
             ``labels`` cached property.
 
         areas : `~numpy.ndarray`, optional
@@ -606,7 +606,7 @@ class SegmentationImage:
             The valid 2D segmentation array.
 
         labels : 1D int `~numpy.ndarray`, optional
-            The sorted non-zero labels in ``data``.
+            The sorted nonzero labels in ``data``.
 
         areas : 1D int `~numpy.ndarray`, optional
             The pixel area of each label, in the same order as
@@ -706,7 +706,7 @@ class SegmentationImage:
     @cached_property
     def labels(self):
         """
-        The sorted non-zero labels in the segmentation array.
+        The sorted nonzero labels in the segmentation array.
         """
         # Normally seeded by _set_data. This runs only when the array
         # was set without known labels.
@@ -715,7 +715,7 @@ class SegmentationImage:
     @cached_property
     def n_labels(self):
         """
-        The number of non-zero labels in the segmentation array.
+        The number of nonzero labels in the segmentation array.
         """
         return len(self.labels)
 
@@ -849,7 +849,7 @@ class SegmentationImage:
     @cached_property
     def areas(self):
         """
-        A 1D array of areas (in pixel**2) of the non-zero labeled
+        A 1D array of areas (in pixel**2) of the nonzero labeled
         regions.
 
         The background (label 0) is not included. The returned array
@@ -868,7 +868,7 @@ class SegmentationImage:
         Parameters
         ----------
         label : int
-            The label whose area to return. Label must be non-zero.
+            The label whose area to return. Label must be nonzero.
 
         Returns
         -------
@@ -1050,7 +1050,7 @@ class SegmentationImage:
     @cached_property
     def is_consecutive(self):
         """
-        Boolean value indicating whether the non-zero labels in the
+        Boolean value indicating whether the nonzero labels in the
         segmentation array are consecutive and start from 1.
         """
         if self.n_labels == 0:
@@ -1061,7 +1061,7 @@ class SegmentationImage:
     @cached_property
     def missing_labels(self):
         """
-        A 1D `~numpy.ndarray` of the sorted non-zero labels that are
+        A 1D `~numpy.ndarray` of the sorted nonzero labels that are
         missing in the consecutive sequence from one to the maximum
         label number.
         """
@@ -1418,7 +1418,7 @@ class SegmentationImage:
             except (TypeError, ValueError, OverflowError):
                 valid = False
         if not valid or new_label < 0:
-            msg = 'new_label must be a non-negative integer'
+            msg = 'new_label must be a nonnegative integer'
             raise ValueError(msg)
         new_label = int(new_label)
         if new_label > np.iinfo(self.data.dtype).max:
@@ -1495,7 +1495,7 @@ class SegmentationImage:
                [5, 5, 0, 0, 4, 4]])
         """
         if self.n_labels == 0:
-            msg = 'Cannot relabel a segmentation image with no non-zero labels'
+            msg = 'Cannot relabel a segmentation image with no nonzero labels'
             warnings.warn(msg, AstropyUserWarning)
             return
 
@@ -1510,7 +1510,7 @@ class SegmentationImage:
         old_slices = self.__dict__.get('slices', None)
         old_areas = self.__dict__.get('areas', None)
         dtype = self.data.dtype  # keep the original dtype
-        # The cast keeps a non-native byte order, which the addition
+        # The cast keeps a nonnative byte order, which the addition
         # does not
         new_labels = (np.arange(self.n_labels, dtype=dtype)
                       + start_label).astype(dtype, copy=False)
@@ -1932,7 +1932,7 @@ class SegmentationImage:
             ``size``.
 
         footprint : 2D `~numpy.ndarray`, optional
-            The local footprint used for the source dilation. Non-zero
+            The local footprint used for the source dilation. Nonzero
             elements are considered `True`. ``size=(n, m)`` is
             equivalent to ``footprint=np.ones((n, m))``. To perform
             source dilation, either ``size`` or ``footprint`` must
@@ -2035,9 +2035,9 @@ class SegmentationImage:
         and the values are lists of polygons for each label.
 
         Each value is a list of GeoJSON-like dicts. A label with
-        non-contiguous segments has multiple dicts in its list (e.g.,
+        noncontiguous segments has multiple dicts in its list (e.g.,
         from slicing the segmentation image where a segment label is
-        split into non-contiguous segments). A segment with holes has
+        split into noncontiguous segments). A segment with holes has
         a single dict whose coordinates contain the outer ring followed
         by the inner rings (holes).
 
@@ -2112,7 +2112,7 @@ class SegmentationImage:
 
         A `shapely.Polygon` is returned for a contiguous segment, with
         any holes as interior rings, and a `shapely.MultiPolygon` for
-        a label with non-contiguous pieces. The list matches the order
+        a label with noncontiguous pieces. The list matches the order
         of the ``labels`` attribute. A `ValueError` is raised if the
         label values cannot be represented as 32-bit integers.
         """
@@ -2497,7 +2497,7 @@ class SegmentationImage:
         segments are not included.
 
         See the ``group`` keyword below for details about how
-        non-contiguous segments for a single label are handled.
+        noncontiguous segments for a single label are handled.
 
         Parameters
         ----------
@@ -2506,7 +2506,7 @@ class SegmentationImage:
             object will be returned with a flattened list of
             `~regions.PolygonPixelRegion` objects. Note that in this
             case, there will be multiple `~regions.PolygonPixelRegion`
-            objects for a single label if the label has non-contiguous
+            objects for a single label if the label has noncontiguous
             segments. Because of this, the number of regions returned
             may not be equal to the number of unique labels in the
             segmentation image.
@@ -2514,7 +2514,7 @@ class SegmentationImage:
             If `True`, then a list of `~regions.PolygonPixelRegion`
             or `~regions.Regions` objects will be returned. There
             will be one item in the list for each label. If a
-            label has non-contiguous segments, then the item will
+            label has noncontiguous segments, then the item will
             be a `~regions.Regions` object containing multiple
             `~regions.PolygonPixelRegion` objects for that label.
 
@@ -2536,9 +2536,9 @@ class SegmentationImage:
         If ``group=False``, then the number of regions returned may not
         be equal to the number of unique labels in the segmentation
         image. This occurs when the segmentation image contains
-        non-contiguous segments for a single label. That can happen as a
+        noncontiguous segments for a single label. That can happen as a
         result of slicing the segmentation image where a segment label
-        is split into non-contiguous segments.
+        is split into noncontiguous segments.
 
         The meta attribute of the `~regions.PolygonPixelRegion` objects
         will contain the label number as an integer value under the
@@ -2596,7 +2596,7 @@ class SegmentationImage:
                 or `None`
             A `~regions.PolygonPixelRegion` object, or a
             `~regions.Regions` object if the segment is a MultiPolygon
-            (e.g., non-contiguous). `None` is returned if no polygon
+            (e.g., noncontiguous). `None` is returned if no polygon
             was found or if rasterio or shapely is not available.
 
         Raises
@@ -2641,7 +2641,7 @@ class SegmentationImage:
                 `~regions.Regions`, or `None`
             A list of `~regions.PolygonPixelRegion` objects, or
             `~regions.Regions` objects for labels with MultiPolygon
-            segments (e.g., non-contiguous). An element is `None` if no
+            segments (e.g., noncontiguous). An element is `None` if no
             polygon was found or if rasterio or shapely is not
             available.
 
@@ -2695,7 +2695,7 @@ class SegmentationImage:
         Notes
         -----
         The two segmentation images are usually assumed to have
-        identical non-zero footprints. That assumption is not
+        identical nonzero footprints. That assumption is not
         checked. If ``other`` contains background (zero) pixels
         within a labeled region of this segmentation image, then 0
         will be included in the mapped labels for that label.

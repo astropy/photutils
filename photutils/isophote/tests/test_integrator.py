@@ -55,7 +55,7 @@ class TestUnmasked(TestData):
         assert sample.actual_points == 225
 
     def test_bilinear_small(self):
-        # small radius forces sub-pixel sampling
+        # small radius forces subpixel sampling
         s, sample = self.make_sample(sma=10.0)
 
         # intensities

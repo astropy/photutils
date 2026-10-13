@@ -94,7 +94,7 @@ def test_make_model_image_variable_shape_invalid():
 
 def test_make_model_image_nonfinite_local_bkg():
     """
-    Test that sources with a non-finite local_bkg value are skipped.
+    Test that sources with a nonfinite local_bkg value are skipped.
     """
     params = QTable()
     params['x_0'] = [50.0, 70.0, 90.0]
@@ -190,7 +190,7 @@ def test_make_model_image_units_no_sources_rendered():
     assert image.unit == unit
     assert np.all(image.value == 0)
 
-    # All rows non-finite
+    # All rows nonfinite
     params = QTable()
     params['x_0'] = [np.nan]
     params['y_0'] = [5.0]
@@ -414,7 +414,7 @@ def test_make_model_image_params_map():
 
 def test_make_model_image_nonfinite():
     """
-    Test the model image when the input table contains non-finite
+    Test the model image when the input table contains nonfinite
     values.
     """
     params = QTable()

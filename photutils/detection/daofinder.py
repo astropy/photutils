@@ -74,7 +74,7 @@ class DAOStarFinder(StarFinderBase):
         given.
 
     fwhm : float
-        The full-width half-maximum (FWHM) of the major axis of the
+        The full width at half maximum (FWHM) of the major axis of the
         Gaussian kernel in units of pixels.
 
     ratio : float, optional
@@ -85,8 +85,8 @@ class DAOStarFinder(StarFinderBase):
 
     theta : float, optional
         The position angle (in degrees) of the major axis of the
-        Gaussian kernel measured counter-clockwise from the positive x
-        axis. The default is 0.0.
+        Gaussian kernel measured counterclockwise from the positive
+        x-axis. The default is 0.0.
 
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units of sigma
@@ -644,8 +644,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         axis : {0, 1}
             The axis for which the marginal weights are computed:
 
-            * 0: for the y axis (rows)
-            * 1: for the x axis (columns)
+            * 0: for the y-axis (rows)
+            * 1: for the x-axis (columns)
 
         Returns
         -------
@@ -664,28 +664,28 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         sigma : float
             The standard deviation of the Gaussian kernel used for the
             given axis. As in DAOFIND, this is the major-axis value for
-            the x axis and the minor-axis value for the y axis, whatever
+            the x-axis and the minor-axis value for the y-axis, whatever
             the kernel ``theta``.
 
         dxx : 1D `~numpy.ndarray`
             The array of pixel offsets from the center pixel along the
             given axis. As in DAOFIND, the offsets are the pixel index
-            minus the center for the y axis and the center minus the
-            pixel index for the x axis.
+            minus the center for the y-axis and the center minus the
+            pixel index for the x-axis.
         """
         ycen, xcen = self.cutout_center
         xx = xcen - np.abs(np.arange(self.cutout_shape[1]) - xcen) + 1
         yy = ycen - np.abs(np.arange(self.cutout_shape[0]) - ycen) + 1
         xwt, ywt = np.meshgrid(xx, yy)
 
-        if axis == 0:  # marginal distributions along y axis (rows)
+        if axis == 0:  # marginal distributions along y-axis (rows)
             wt = np.transpose(ywt)[0]  # 1D
             wts = xwt  # 2D
             size = self.cutout_shape[0]
             center = ycen
             sigma = self.kernel.y_sigma
             dxx = np.arange(size) - center
-        elif axis == 1:  # marginal distributions along x axis (columns)
+        elif axis == 1:  # marginal distributions along x-axis (columns)
             wt = xwt[0]  # 1D
             wts = ywt  # 2D
             size = self.cutout_shape[1]
@@ -710,8 +710,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         axis : {0, 1}
             The axis for which the marginal sums are computed:
 
-            * 0: for the y axis (rows)
-            * 1: for the x axis (columns)
+            * 0: for the y-axis (rows)
+            * 1: for the x-axis (columns)
 
         center : int
             The center pixel position of the cutout along the given axis.
@@ -785,8 +785,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         axis : {0, 1}
             The axis for which the marginal sums are computed:
 
-            * 0: for the y axis (rows)
-            * 1: for the x axis (columns)
+            * 0: for the y-axis (rows)
+            * 1: for the x-axis (columns)
 
         dxx : 1D `~numpy.ndarray`
             The array of pixel offsets from the center pixel along the
@@ -926,8 +926,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         axis : {0, 1}, optional
             The axis for which the marginal fit is performed:
 
-            * 0: for the y axis (rows)
-            * 1: for the x axis (columns)
+            * 0: for the y-axis (rows)
+            * 1: for the x-axis (columns)
 
         Returns
         -------
@@ -950,7 +950,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
     def dx_hx(self):
         """
         The fitted fractional shift (dx) and amplitude (hx) from the
-        marginal Gaussian fit along the x axis.
+        marginal Gaussian fit along the x-axis.
         """
         return self.daofind_marginal_fit(axis=1)
 
@@ -958,7 +958,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
     def dy_hy(self):
         """
         The fitted fractional shift (dy) and amplitude (hy) from the
-        marginal Gaussian fit along the y axis.
+        marginal Gaussian fit along the y-axis.
         """
         return self.daofind_marginal_fit(axis=0)
 

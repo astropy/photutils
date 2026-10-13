@@ -61,7 +61,7 @@ class TestValidatePSF:
         normalized).
         """
         psf = np.zeros((5, 5))
-        match = 'must have a non-zero sum'
+        match = 'must have a nonzero sum'
         with pytest.raises(ValueError, match=match):
             _validate_psf(psf, 'psf')
 
@@ -206,7 +206,7 @@ class TestConvertPsfToOtf:
 
     def test_non_square_shapes(self):
         """
-        Test with non-square PSF and output shapes.
+        Test with nonsquare PSF and output shapes.
         """
         # 3x5 PSF to 11x21 output
         psf = np.zeros((3, 5))
@@ -345,7 +345,7 @@ class TestResizePSF:
         assert result.shape == (97, 97)
         assert_allclose(result, psf.sum() / 97**2, rtol=1e-10)
 
-        # A round trip returns the input shape
+        # A round-trip returns the input shape
         result2 = resize_psf(result, 0.25, 1.0)
         assert result2.shape == psf.shape
 

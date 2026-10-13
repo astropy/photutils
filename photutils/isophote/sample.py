@@ -49,8 +49,8 @@ class EllipseSample:
     eps : float, optional
         The ellipticity of the ellipse. The default is 0.2.
     position_angle : float, optional
-        The position angle of ellipse in relation to the positive x axis
-        of the image array (rotating towards the positive y axis). The
+        The position angle of ellipse in relation to the positive x-axis
+        of the image array (rotating towards the positive y-axis). The
         default is 0.
     sclip : float, optional
         The sigma-clip sigma value. The default is 3.0.
@@ -389,7 +389,7 @@ class EllipseSample:
 
         # If the gradient sample (taken at a slightly larger semimajor
         # axis) falls entirely outside the image, no points are sampled.
-        # Return a non-meaningful gradient without operating on empty
+        # Return a nonmeaningful gradient without operating on empty
         # arrays (which would emit numpy warnings). NaN (rather than
         # None) is returned to match the previous numeric behavior so
         # that downstream arithmetic continues to work.

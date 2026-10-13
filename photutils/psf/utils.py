@@ -84,8 +84,8 @@ def _make_mask(image, mask):
     """
     Create a mask for the input image.
 
-    Non-finite values (e.g., NaN or inf) in the ``image`` array are
-    automatically masked. If a mask is provided, then the non-finite
+    Nonfinite values (e.g., NaN or inf) in the ``image`` array are
+    automatically masked. If a mask is provided, then the nonfinite
     values are combined with the provided mask.
 
     Parameters
@@ -105,7 +105,7 @@ def _make_mask(image, mask):
         corresponding element of ``image`` is masked.
     """
     def warn_nonfinite():
-        msg = ('Input data contains unmasked non-finite values '
+        msg = ('Input data contains unmasked nonfinite values '
                '(NaN or inf), which were automatically ignored.')
         warnings.warn(msg, AstropyUserWarning)
 
@@ -165,7 +165,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     `~photutils.psf.CircularGaussianPRF` model to fit the sources using
     the `~photutils.psf.PSFPhotometry` class.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    Nonfinite values (e.g., NaN or inf) in the ``data`` array are
     automatically masked.
 
     Parameters
@@ -315,7 +315,7 @@ def _fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     # Prevent circular import
     from photutils.psf.photometry import PSFPhotometry
 
-    # Mask non-finite values
+    # Mask nonfinite values
     mask = _make_mask(data, mask)
 
     if xypos is None:
@@ -342,7 +342,7 @@ def _fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
         msg = ('fit_shape is None, so the input data array is assumed to be '
                'a cutout image containing only one source. If your input '
                'data is not a cutout image, then the fit may not converge '
-               'or may give poor results. For non-cutout input data, you '
+               'or may give poor results. For noncutout input data, you '
                'should provide a fit_shape value that is appropriate for '
                'the size of the sources in your image. '
                f'Using fit_shape={fit_shape}.')
@@ -402,7 +402,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     `~photutils.psf.CircularGaussianPRF` model to fit the sources using
     the `~photutils.psf.PSFPhotometry` class.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    Nonfinite values (e.g., NaN or inf) in the ``data`` array are
     automatically masked.
 
     Parameters
@@ -447,7 +447,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     -------
     fwhm : `~numpy.ndarray`
         The FWHM of the sources. The fitted FWHM values are constrained
-        to be non-negative. The value is NaN for a source that could
+        to be nonnegative. The value is NaN for a source that could
         not be fit (e.g., a fully masked source).
 
     Warns
@@ -736,7 +736,7 @@ def _create_call_docstring(*, iterative=False):
         mask : 2D bool `~numpy.ndarray`, optional
             A boolean mask with the same shape as ``data``, where
             a `True` value indicates the corresponding element of
-            ``data`` is masked. Non-boolean mask arrays are coerced with
+            ``data`` is masked. Nonboolean mask arrays are coerced with
             `~numpy.ndarray.astype`, so any nonzero value is treated as
             masked.
 

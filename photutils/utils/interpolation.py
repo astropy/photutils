@@ -55,7 +55,7 @@ class ShepardIDWInterpolator:
 
     weights : float or 1D array_like, optional
         Weights to be associated with each data value. These
-        non-negative weights, if provided, are multiplied by the inverse
+        nonnegative weights, if provided, are multiplied by the inverse
         distance weights. When ``weights`` is `None`
         (default), then only inverse distance weights will be used. When
         provided, this input parameter must have the same form as
@@ -183,7 +183,7 @@ class ShepardIDWInterpolator:
                        'coordinates.')
                 raise ValueError(msg)
             if np.any(weights < 0.0):
-                msg = 'All weight values must be non-negative numbers.'
+                msg = 'All weight values must be nonnegative numbers.'
                 raise ValueError(msg)
 
         self.coordinates = coordinates
@@ -252,7 +252,7 @@ class ShepardIDWInterpolator:
             should use the value of the closest data point instead of
             attempting to interpolate. This is used to avoid
             singularities at the known data points, especially if
-            ``regularization`` is 0.0. If `None` or non-positive, the
+            ``regularization`` is 0.0. If `None` or nonpositive, the
             check is disabled.
 
         dtype : data-type, optional
@@ -317,7 +317,7 @@ class ShepardIDWInterpolator:
         # n_neighbors exceeds the number of known data points.
         valid = np.isfinite(distances)
 
-        # Replace non-finite distances and out-of-bound indices with
+        # Replace nonfinite distances and out-of-bound indices with
         # safe values so that vectorized indexing and arithmetic do not
         # raise errors. The ``valid`` mask zeroes them out later.
         safe_distances = np.where(valid, distances, 1.0)

@@ -131,7 +131,7 @@ class Background2D:
         ``exclude_percentile`` percent of its pixels masked then it
         will be excluded from the low-resolution map. Masked pixels
         include those from the input ``mask`` and ``coverage_mask``,
-        non-finite ``data`` values, any padded area at the data
+        nonfinite ``data`` values, any padded area at the data
         edges, and those resulting from any sigma clipping. Setting
         ``exclude_percentile=0`` will exclude boxes that have any
         masked pixels. Note that completely masked boxes are
@@ -199,7 +199,7 @@ class Background2D:
         maps returned by the ``background`` and ``background_rms``
         properties. The default is 1 (no multithreading). When
         ``n_threads`` > 1, the work is divided into chunks along the
-        y axis and processed concurrently. The box statistics are
+        y-axis and processed concurrently. The box statistics are
         identical to the single-threaded computation and the resized
         maps are identical up to floating-point rounding. The underlying
         kernels release the Python global interpreter lock (GIL),
@@ -278,7 +278,7 @@ class Background2D:
         self._data_shape = self._data.shape
         nonfinite_mask = ~np.isfinite(self._data)
         if np.all(nonfinite_mask):
-            msg = ('Input data contains all non-finite (NaN or infinity) '
+            msg = ('Input data contains all nonfinite (NaN or infinity) '
                    'values. Cannot compute a background.')
             raise ValueError(msg)
 
@@ -475,7 +475,7 @@ class Background2D:
         """
         input_mask = self._combine_input_masks()
 
-        msg = ('Input data contains non-finite (NaN or infinity) values, '
+        msg = ('Input data contains nonfinite (NaN or infinity) values, '
                'which were automatically masked.')
 
         if input_mask is None:
@@ -867,7 +867,7 @@ class Background2D:
         Parameters
         ----------
         nonfinite_mask : 2D bool `~numpy.ndarray`
-            A mask of the non-finite (NaN or infinity) values in the
+            A mask of the nonfinite (NaN or infinity) values in the
             input data.
 
         Returns
@@ -885,7 +885,7 @@ class Background2D:
         if self._data.dtype.kind != 'f':
             self._data = self._data.astype(np.float32)
 
-        # Automatically mask non-finite values that aren't already
+        # Automatically mask nonfinite values that aren't already
         # masked and combine all masks
         mask = self._combine_all_masks(nonfinite_mask)
 

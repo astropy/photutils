@@ -69,7 +69,7 @@ def _validate_kernel_inputs(source_psf, target_psf, window):
 def _validate_psf(psf, name):
     """
     Validate that a PSF is a finite 2D array with odd dimensions and a
-    non-zero sum.
+    nonzero sum.
 
     Parameters
     ----------
@@ -99,7 +99,7 @@ def _validate_psf(psf, name):
         raise ValueError(msg)
 
     if np.sum(psf) == 0:
-        msg = f'{name} must have a non-zero sum. It cannot be normalized.'
+        msg = f'{name} must have a nonzero sum. It cannot be normalized.'
         raise ValueError(msg)
 
 
@@ -156,13 +156,13 @@ def _normalize_kernel(kernel):
     Raises
     ------
     ValueError
-        If the kernel contains non-finite values or its sum is zero or
+        If the kernel contains nonfinite values or its sum is zero or
         nearly zero.
     """
     kernel_sum = np.sum(kernel)
 
     if not np.isfinite(kernel_sum):
-        msg = ('The computed kernel contains non-finite values. This '
+        msg = ('The computed kernel contains nonfinite values. This '
                'can occur when the Fourier-space denominator is zero '
                'at frequencies where the numerator is also zero (e.g., '
                'the source OTF and the penalty OTF are both zero at '

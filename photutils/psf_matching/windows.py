@@ -24,7 +24,7 @@ def _normalized_distance_grid(shape):
 
     The distance is 1.0 at the centers of the edge pixels along the
     central row and column, so the contours of constant distance are
-    ellipses for a non-square shape.
+    ellipses for a nonsquare shape.
 
     Parameters
     ----------
@@ -70,7 +70,7 @@ class SplitCosineBellWindow:
         The width of the cosine taper as a fraction of the maximum
         radius. The maximum radius is the distance in pixels from the
         array center to the edge, which is ``(n - 1) / 2`` along an
-        axis of size ``n``. For a non-square shape, it differs
+        axis of size ``n``. For a nonsquare shape, it differs
         between the two axes, so the window is elliptical. ``alpha``
         must be between 0.0 and 1.0, inclusive.
 
@@ -153,7 +153,7 @@ class SplitCosineBellWindow:
             The shape of the output array. It must have two elements.
             The window radii are defined relative to ``(n - 1) / 2``
             along each axis of size ``n``, so the window is elliptical
-            for a non-square shape. When the window is applied to a
+            for a nonsquare shape. When the window is applied to a
             Fourier transform, it then has the same cutoff in spatial
             frequency along both axes.
 
@@ -269,7 +269,7 @@ class TukeyWindow(SplitCosineBellWindow):
         The width of the cosine taper as a fraction of the maximum
         radius. The maximum radius is the distance in pixels from the
         array center to the edge, which is ``(n - 1) / 2`` along an
-        axis of size ``n``. For a non-square shape, it differs
+        axis of size ``n``. For a nonsquare shape, it differs
         between the two axes, so the window is elliptical. Must be
         between 0.0 and 1.0, inclusive. When ``alpha=0``, this becomes a
         `TopHatWindow`. When ``alpha=1``, this becomes a
@@ -344,7 +344,7 @@ class CosineBellWindow(SplitCosineBellWindow):
         The width of the cosine taper as a fraction of the maximum
         radius. The maximum radius is the distance in pixels from the
         array center to the edge, which is ``(n - 1) / 2`` along an
-        axis of size ``n``. For a non-square shape, it differs
+        axis of size ``n``. For a nonsquare shape, it differs
         between the two axes, so the window is elliptical. Must be
         between 0.0 and 1.0, inclusive. When ``alpha=1``, this becomes a
         `HanningWindow`. When ``alpha=0``, the window is zero everywhere
@@ -400,7 +400,7 @@ class TopHatWindow(SplitCosineBellWindow):
     Class to define a 2D top hat window function.
 
     This window equals 1.0 inside a circular region defined by ``beta``
-    (elliptical for a non-square shape) and drops sharply to 0.0
+    (elliptical for a nonsquare shape) and drops sharply to 0.0
     outside, with no smooth transition. It is also known as a
     rectangular or boxcar window.
 
@@ -422,7 +422,7 @@ class TopHatWindow(SplitCosineBellWindow):
         The radius of the window as a fraction of the maximum radius.
         The maximum radius is the distance in pixels from the array
         center to the edge, which is ``(n - 1) / 2`` along an axis of
-        size ``n``. For a non-square shape, it differs between the two
+        size ``n``. For a nonsquare shape, it differs between the two
         axes, so the window is elliptical. The window is zero beyond the
         window radius. Must be between 0.0 and 1.0, inclusive.
 

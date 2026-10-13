@@ -146,7 +146,7 @@ class TestThreadedZoom:
         """
         Test that the multithreaded zoom matches the serial scipy zoom
         up to floating-point rounding, including with uneven bands,
-        non-square meshes and boxes, and output cropping.
+        nonsquare meshes and boxes, and output cropping.
         """
         rng = np.random.default_rng(5)
         mesh = rng.normal(10.0, 3.0, (17, 11))

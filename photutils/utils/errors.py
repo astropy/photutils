@@ -109,7 +109,7 @@ def calc_total_error(data, bkg_error, effective_gain):
     ``effective_gain`` can either be a scalar value or a 2D image with
     the same shape as the ``data``. A 2D ``effective_gain`` image is
     useful when the input ``data`` has variable depths across the field
-    (e.g., a mosaic image with non-uniform exposure times). For example,
+    (e.g., a mosaic image with nonuniform exposure times). For example,
     if your input ``data`` are in units of electrons/s then ideally
     ``effective_gain`` should be an exposure-time map.
 
@@ -197,7 +197,7 @@ def calc_total_error(data, bkg_error, effective_gain):
             raise ValueError(msg)
 
     if np.any(effective_gain < 0):
-        msg = 'effective_gain must be non-negative everywhere'
+        msg = 'effective_gain must be nonnegative everywhere'
         raise ValueError(msg)
 
     # The arrays are converted to the output dtype before any

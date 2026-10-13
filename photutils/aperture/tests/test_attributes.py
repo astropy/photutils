@@ -270,7 +270,7 @@ class TestPixelPositions:
         Test that NaN positions raise ValueError.
         """
         obj = MockPixelPos()
-        match = "'positions' must not contain any non-finite"
+        match = "'positions' must not contain any nonfinite"
         with pytest.raises(ValueError, match=match):
             obj.positions = [(np.nan, 2.0)]
 
@@ -279,7 +279,7 @@ class TestPixelPositions:
         Test that infinite positions raise ValueError.
         """
         obj = MockPixelPos()
-        match = "'positions' must not contain any non-finite"
+        match = "'positions' must not contain any nonfinite"
         with pytest.raises(ValueError, match=match):
             obj.positions = [(1.0, np.inf)]
 
@@ -359,7 +359,7 @@ class TestPositiveScalar:
 
     def test_array_error(self):
         """
-        Test that a non-scalar array raises ValueError.
+        Test that a nonscalar array raises ValueError.
         """
         obj = MockPositiveScalar()
         match = "'r' must be a positive scalar"
@@ -368,7 +368,7 @@ class TestPositiveScalar:
 
     def test_non_numeric_error(self):
         """
-        Test that a non-numeric scalar (e.g., a string) raises
+        Test that a nonnumeric scalar (e.g., a string) raises
         TypeError with the intended message.
         """
         obj = MockPositiveScalar()
@@ -409,7 +409,7 @@ class TestScalarAngle:
 
     def test_nonscalar_error(self):
         """
-        Test that a non-scalar Quantity raises ValueError.
+        Test that a nonscalar Quantity raises ValueError.
         """
         obj = MockScalarAngle()
         match = "'angle' must be a scalar"
@@ -418,7 +418,7 @@ class TestScalarAngle:
 
     def test_non_angle_units_error(self):
         """
-        Test that a Quantity with non-angular units raises ValueError.
+        Test that a Quantity with nonangular units raises ValueError.
         """
         obj = MockScalarAngle()
         match = "'angle' must have angular units"
@@ -459,7 +459,7 @@ class TestPositiveScalarAngle:
 
     def test_nonscalar_error(self):
         """
-        Test that a non-scalar angle array raises ValueError.
+        Test that a nonscalar angle array raises ValueError.
         """
         obj = MockPositiveScalarAngle()
         match = "'angle' must be a scalar"
@@ -478,7 +478,7 @@ class TestPositiveScalarAngle:
 
     def test_non_angle_units_error(self):
         """
-        Test that a Quantity with non-angular units raises ValueError.
+        Test that a Quantity with nonangular units raises ValueError.
         """
         obj = MockPositiveScalarAngle()
         match = "'angle' must have angular units"
@@ -531,7 +531,7 @@ class TestScalarAngleOrValue:
 
     def test_nonscalar_quantity_error(self):
         """
-        Test that a non-scalar angle Quantity raises ValueError.
+        Test that a nonscalar angle Quantity raises ValueError.
         """
         obj = MockScalarAngleOrValue()
         match = "'theta' must be a scalar"
@@ -540,7 +540,7 @@ class TestScalarAngleOrValue:
 
     def test_non_angle_units_error(self):
         """
-        Test that a Quantity with non-angular units raises ValueError.
+        Test that a Quantity with nonangular units raises ValueError.
         """
         obj = MockScalarAngleOrValue()
         match = "'theta' must have angular units"
@@ -549,7 +549,7 @@ class TestScalarAngleOrValue:
 
     def test_nonscalar_float_error(self):
         """
-        Test that a non-scalar float array raises ValueError.
+        Test that a nonscalar float array raises ValueError.
         """
         obj = MockScalarAngleOrValue()
         match = 'If not an angle Quantity'

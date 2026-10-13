@@ -31,7 +31,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
-        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
@@ -75,7 +75,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
     Warns
     -----
     `~astropy.utils.exceptions.AstropyUserWarning`
-        If the ``data`` or ``error`` array contains non-finite values
+        If the ``data`` or ``error`` array contains nonfinite values
         that are not already masked by ``mask``.
     """
 
@@ -149,7 +149,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
     def _compute_mask(self, data, error, mask):
         """
-        Compute the mask array, automatically masking non-finite data or
+        Compute the mask array, automatically masking nonfinite data or
         error values.
         """
         badmask = ~np.isfinite(data)
@@ -159,14 +159,14 @@ class ProfileBase(metaclass=abc.ABCMeta):
             if mask.shape != data.shape:
                 msg = 'mask must have the same shape as data'
                 raise ValueError(msg)
-            # Keep only non-finite values not already masked by the user
+            # Keep only nonfinite values not already masked by the user
             badmask &= ~mask
             combined_mask = mask | badmask  # all masked pixels
         else:
             combined_mask = badmask
 
         if np.any(badmask):
-            msg = ('Input data contains non-finite values (e.g., NaN '
+            msg = ('Input data contains nonfinite values (e.g., NaN '
                    'or inf) that were automatically masked.')
             warnings.warn(msg, AstropyUserWarning)
 
@@ -334,7 +334,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         -----
         `~astropy.utils.exceptions.AstropyUserWarning`
             If the maximum or sum of the profile is not positive or is
-            non-finite. In that case, the current normalization is left
+            nonfinite. In that case, the current normalization is left
             unchanged.
         """
         if method == 'max':
@@ -351,7 +351,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         if not (np.isfinite(normalization) and normalization > 0):
             msg = ('The profile cannot be normalized because the max or '
-                   'sum is not positive or is non-finite.')
+                   'sum is not positive or is nonfinite.')
             warnings.warn(msg, AstropyUserWarning)
         else:
             # A single atomic attribute store. Concurrent readers see

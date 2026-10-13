@@ -32,7 +32,7 @@ def make_repr(instance, params, *, brackets=False, overrides=None, long=False):
         parameters.
 
     long : bool, optional
-        Whether to use the multi-line "long" format typically used by
+        Whether to use the multiline "long" format typically used by
         __str__. It has the fully qualified class name in angle brackets
         followed by one ``name: value`` line per parameter.
 

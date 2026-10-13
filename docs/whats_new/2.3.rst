@@ -44,7 +44,7 @@ error handling and validation:
   (64, 128, 256) to identify these conditions.
 
 - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now raise an error if
-  the input ``error`` array contains non-finite or zero values, preventing
+  the input ``error`` array contains nonfinite or zero values, preventing
   silent failures during fitting.
 
 - A new ``group_warning_threshold`` keyword has been added to control when
@@ -126,7 +126,7 @@ Segmentation Enhancements
 - The ``to_regions`` method now supports a ``group`` keyword for
   better control over region grouping.
 
-- The ``polygons`` attribute can now handle non-contiguous segments,
+- The ``polygons`` attribute can now handle noncontiguous segments,
   returning either Shapely ``Polygon`` or ``MultiPolygon`` objects as
   appropriate.
 
@@ -148,7 +148,7 @@ API Changes
 ===========
 
 ``Background2D`` now raises an explicit ``ValueError`` if the input data
-contains all non-finite values.
+contains all nonfinite values.
 
 
 Breaking Changes

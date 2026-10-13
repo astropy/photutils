@@ -83,7 +83,7 @@ properties:
     title: Full width.
     description: |
       RectangularAperture: the full width of the rectangle in pixels.
-      For ``theta=0`` the width side is along the ``x`` axis.
+      For ``theta=0`` the width side is along the x-axis.
       SkyRectangularAperture: the full width of the rectangle in angular
       units. For ``theta=0`` the width side is along the North-South
       axis.
@@ -94,7 +94,7 @@ properties:
     title: Full height.
     description: |
       RectangularAperture: the full height of the rectangle in pixels.
-      For ``theta=0`` the height side is along the ``y`` axis.
+      For ``theta=0`` the height side is along the y-axis.
       SkyRectangularAperture: the full height of the rectangle in
       angular units. For ``theta=0`` the height side is along the
       East-West axis.
@@ -105,7 +105,7 @@ properties:
     title: Rotation angle.
     description: |
       RectangularAperture: the rotation angle of the rectangle from the
-      positive ``x`` axis, as an angular quantity or as a number in
+      positive x-axis, as an angular quantity or as a number in
       radians. The rotation angle increases counterclockwise.
       SkyRectangularAperture: the position angle (in angular units) of
       the rectangle "width" side. For a right-handed world coordinate

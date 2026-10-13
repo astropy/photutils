@@ -33,12 +33,12 @@ def centroid_com(data, mask=None):
     center of mass derived from `image moments
     <https://en.wikipedia.org/wiki/Image_moment>`_.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    Nonfinite values (e.g., NaN or inf) in the ``data`` array are
     automatically masked. An
     `~astropy.utils.exceptions.AstropyUserWarning` is emitted if any
     of them is not already masked. The final mask is a logical OR
     combination of the input ``mask``, the automatically generated mask
-    for non-finite values, and the mask of the input ``data`` if it is a
+    for nonfinite values, and the mask of the input ``data`` if it is a
     `~numpy.ma.MaskedArray`. The centroid is calculated using only the
     unmasked data values.
 
@@ -139,19 +139,19 @@ def centroid_symmetry(data, *, mask=None, radius=None):
     core of the source and is insensitive to asymmetric structure beyond
     ``radius``.
 
-    Non-finite values (e.g., NaN or inf) in the
+    Nonfinite values (e.g., NaN or inf) in the
     ``data`` array are automatically masked. An
     `~astropy.utils.exceptions.AstropyUserWarning` is emitted if any
     of them is not already masked. The final mask is a logical OR
     combination of the input ``mask``, the automatically generated mask
-    for non-finite values, and the mask of the input ``data`` if it is
+    for nonfinite values, and the mask of the input ``data`` if it is
     a `~numpy.ma.MaskedArray`. The pairs of opposite offsets with a
     position near a masked value are given a lower weight or are not
     used.
 
     .. warning::
 
-        The result is less accurate if masked or non-finite values lie
+        The result is less accurate if masked or nonfinite values lie
         within ``radius`` of the center. The data are interpolated
         between the pixels, so a masked value is first replaced by a
         weighted mean of the unmasked values around it, which is only an
@@ -461,8 +461,8 @@ def _is_lower_inside(xy, value, args, bounds, step):
         The arguments of `_asymmetry` after the trial center.
 
     bounds : tuple of 2 tuples of 2 floats
-        The ``(lower, upper)`` bounds of the allowed region along the x
-        and y axes.
+        The ``(lower, upper)`` bounds of the allowed region along the x-
+        and y-axes.
 
     step : float
         The distance (in pixels) from the edge at which the asymmetry
@@ -583,12 +583,12 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
     Calculate the centroid of a 2D array by fitting a 2D quadratic
     polynomial.
 
-    Non-finite values (e.g., NaN or inf) in the
+    Nonfinite values (e.g., NaN or inf) in the
     ``data`` array are automatically masked. An
     `~astropy.utils.exceptions.AstropyUserWarning` is emitted if any
     of them is not already masked. The final mask is a logical OR
     combination of the input ``mask``, the automatically generated mask
-    for non-finite values, and the mask of the input ``data`` if it is a
+    for nonfinite values, and the mask of the input ``data`` if it is a
     `~numpy.ma.MaskedArray`. The centroid is calculated using only the
     unmasked data values.
 
@@ -682,7 +682,7 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
     * not enough unmasked data points (6 are required)
 
     A `ValueError` is raised if all data values are masked or
-    non-finite.
+    nonfinite.
 
     Also note that a fit is not performed if the maximum data value is
     at the edge of the data. In this case, a warning is emitted and the
@@ -733,7 +733,7 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
     ny, nx = data.shape
 
     if not np.any(np.isfinite(data)):
-        msg = 'All data values are masked or non-finite'
+        msg = 'All data values are masked or nonfinite'
         raise ValueError(msg)
 
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 0),
@@ -813,7 +813,7 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
     x = x.ravel()
     y = y.ravel()
 
-    # Pre-allocate coefficient matrix for optimization
+    # Preallocate coefficient matrix for optimization
     coeff_matrix = np.empty((x.size, 6), dtype=float)
     coeff_matrix[:, 0] = 1
     coeff_matrix[:, 1] = x
@@ -925,7 +925,7 @@ class CentroidQuadratic:
         """
         Calculate the centroid.
 
-        Non-finite values (e.g., NaN or inf) in the ``data`` array
+        Nonfinite values (e.g., NaN or inf) in the ``data`` array
         are automatically masked. An
         `~astropy.utils.exceptions.AstropyUserWarning` is emitted if
         any of them is not already masked. The automatically masked
@@ -979,16 +979,16 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     A cutout image centered on each input position will be used to
     calculate the centroid position. The cutout image is defined either
     using the ``box_size`` or ``footprint`` keyword. The ``footprint``
-    keyword can be used to create a non-rectangular cutout image.
+    keyword can be used to create a nonrectangular cutout image.
 
-    Masks and non-finite values are handled by the input
+    Masks and nonfinite values are handled by the input
     ``centroid_func``. When using a centroid function provided by
-    Photutils, non-finite values (e.g., NaN or inf) in the ``data``
+    Photutils, nonfinite values (e.g., NaN or inf) in the ``data``
     array are automatically masked. The `centroid_1dg` and
     `centroid_2dg` functions also automatically mask any pixels with
-    non-finite ``error`` array values. The final mask is a logical OR
+    nonfinite ``error`` array values. The final mask is a logical OR
     combination of the input ``mask``, the automatically generated
-    mask(s) for non-finite values, and the mask of the input ``data`` if
+    mask(s) for nonfinite values, and the mask of the input ``data`` if
     it is a `~numpy.ma.MaskedArray`. The centroid is calculated using
     only the unmasked data values.
 
@@ -1014,7 +1014,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     footprint : bool `~numpy.ndarray`, optional
         A 2D boolean array where `True` values describe the local
         footprint region to cut out. ``footprint`` can be used to create
-        a non-rectangular cutout image, in which case the input ``xpos``
+        a nonrectangular cutout image, in which case the input ``xpos``
         and ``ypos`` represent the center of the ``footprint`` array.
         ``box_size=(n, m)`` is equivalent to ``footprint=np.ones((n,
         m))``. Either ``box_size`` or ``footprint`` must be defined.
@@ -1169,8 +1169,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         raise ValueError(msg)
 
     # Extract xpeak/ypeak so the original absolute coordinates are
-    # available for every source. The per-source function below re-adds
-    # them with the correct cutout offset.
+    # available for every source. The per-source function below adds
+    # them back with the correct cutout offset.
     # Remove this block once xpeak and ypeak are fully deprecated.
     xpeak_orig = centroid_kwargs.pop('xpeak', None)
     ypeak_orig = centroid_kwargs.pop('ypeak', None)

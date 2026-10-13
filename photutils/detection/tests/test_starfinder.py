@@ -80,7 +80,7 @@ class TestStarFinder:
 
     def test_kernel_nonfinite(self):
         """
-        Test that kernels with non-finite values raise ValueError.
+        Test that kernels with nonfinite values raise ValueError.
         """
         match = 'kernel must contain only finite values'
         for bad_value in (np.nan, np.inf):
@@ -190,7 +190,7 @@ class TestStarFinder:
         finder = StarFinder(1, kernel)
         assert finder.min_separation == 2.5 * (min(kernel.shape) // 2)
 
-        # Non-square kernel
+        # Nonsquare kernel
         rect_kernel = np.ones((3, 7))
         finder2 = StarFinder(1, rect_kernel)
         assert finder2.min_separation == 2.5 * (3 // 2)

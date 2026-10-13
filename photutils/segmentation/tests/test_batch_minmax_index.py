@@ -101,7 +101,7 @@ def test_ties_and_all_masked():
     mask[20, 21] = True
     segm_data[18:24, 18:26] = 3
     # Label 4: repeated minimum whose first occurrence is not first in
-    # the (non-rectangular) segment's bounding box
+    # the (nonrectangular) segment's bounding box
     data[2:7, 15:22] = 5.0
     data[3, 16] = -1.0
     data[5, 20] = -1.0

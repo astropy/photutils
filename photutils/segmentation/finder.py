@@ -34,7 +34,7 @@ class SourceFinder:
     `~photutils.segmentation.deblend_sources`.
 
     Sources are deblended using a combination of
-    multi-thresholding and `watershed segmentation
+    multithresholding and `watershed segmentation
     <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. In
     order to deblend sources, they must be separated enough that there
     is a saddle point between them.
@@ -61,15 +61,15 @@ class SourceFinder:
         Whether to deblend overlapping sources.
 
     n_levels : int, optional
-        The number of multi-thresholding levels to use for deblending.
-        Each source will be re-thresholded at ``n_levels`` levels spaced
-        between its minimum and maximum values (non-inclusive). The
+        The number of multithresholding levels to use for deblending.
+        Each source will be rethresholded at ``n_levels`` levels spaced
+        between its minimum and maximum values (noninclusive). The
         ``mode`` keyword determines how the levels are spaced. This
         keyword is ignored unless ``deblend=True``.
 
     contrast : float, optional
         The fraction of the total source flux that a local peak must
-        have (at any one of the multi-thresholds) to be deblended
+        have (at any one of the multithresholds) to be deblended
         as a separate object. ``contrast`` must be between 0 and 1,
         inclusive. If ``contrast=0`` then every local peak will be made
         a separate object (maximum deblending). If ``contrast=1`` then
@@ -89,7 +89,7 @@ class SourceFinder:
 
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``n_levels`` keyword)
+        multithresholding levels (see the ``n_levels`` keyword)
         during deblending. The ``'exponential'`` and ``'sinh'`` modes
         have more threshold levels near the source minimum and fewer
         near the source maximum. The ``'linear'`` mode evenly spaces
@@ -100,7 +100,7 @@ class SourceFinder:
         larger ratios are more exponential), while the ``'sinh'`` levels
         are not. Unlike the ``'exponential'`` mode, the ``'sinh'``
         and ``'linear'`` modes are well defined for sources with
-        non-positive minimum data values. For such sources, the
+        nonpositive minimum data values. For such sources, the
         ``'exponential'`` mode will be changed to ``'sinh'``. This
         keyword is ignored unless ``deblend=True``.
 
@@ -278,7 +278,7 @@ class SourceFinder:
         DeblendWarning
             If ``deblend=True`` and the deblending mode for one or more
             sources was changed from ``mode`` to "sinh" due to
-            non-positive minimum data values or to "linear" due to too
+            nonpositive minimum data values or to "linear" due to too
             many potential deblended sources.
         """
         segment_img = detect_sources(data, threshold, self.n_pixels[0],

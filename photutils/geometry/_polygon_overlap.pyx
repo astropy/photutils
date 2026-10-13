@@ -46,7 +46,7 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     pixel grid.
 
     The polygon vertices must define a simple polygon (no
-    self-intersections). The polygon may be convex or non-convex. The
+    self-intersections). The polygon may be convex or nonconvex. The
     vertex order may be either clockwise or counterclockwise. Clockwise
     input is reversed internally.
 
@@ -224,7 +224,7 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
     The polygon (subject) is clipped against the four edges of the
     pixel rectangle (clip) using the Sutherland-Hodgman algorithm,
     followed by the shoelace area formula. Because the clip polygon is
-    convex, the subject polygon may be either convex or non-convex (it
+    convex, the subject polygon may be either convex or nonconvex (it
     must, however, be simple, i.e., non-self-intersecting).
 
     Parameters
@@ -243,7 +243,7 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
         Caller-allocated scratch buffers, each holding at least
         ``buf_size`` doubles. The caller is responsible for ensuring
         ``buf_size`` is large enough. Each clip can roughly double the
-        vertex count of a non-convex polygon, so 16 times the maximum
+        vertex count of a nonconvex polygon, so 16 times the maximum
         input polygon size is a safe choice, while for convex input
         polygons each clip adds at most one vertex, so input size plus
         four suffices.
@@ -358,7 +358,7 @@ cdef int convex_edge_normals(double *poly_x, double *poly_y, int n_poly,
 
         # Cross product of consecutive edges. For a counterclockwise
         # convex polygon every turn is a left turn (cross >= 0). A
-        # negative value marks a reflex vertex (non-convex), and a
+        # negative value marks a reflex vertex (nonconvex), and a
         # uniformly negative sign marks a clockwise polygon.
         cross = ex * ey2 - ey * ex2
         if cross < 0.0:
@@ -443,7 +443,7 @@ cdef double convex_polygon_pixel_overlap(double pxmin, double pymin,
     (overlap = pixel area), and wholly outside when it is below
     ``-margin`` (overlap = 0), because every point of the pixel lies
     within ``margin`` of the pixel center. Pixels in the boundary band,
-    and all pixels of non-convex polygons, fall back to the exact
+    and all pixels of nonconvex polygons, fall back to the exact
     Sutherland-Hodgman clip (``polygon_pixel_overlap``).
 
     Parameters
@@ -518,7 +518,7 @@ cdef double convex_polygon_pixel_subpixel(double pxmin, double pymin,
     (see ``convex_pixel_position``) has every subpixel center strictly
     inside (sampled fraction exactly 1), and a wholly outside pixel has
     none (sampled fraction exactly 0). Pixels in the boundary band,
-    and all pixels of non-convex polygons, fall back to the scanline
+    and all pixels of nonconvex polygons, fall back to the scanline
     sampling (``polygon_overlap_single_subpixel``), so the result is
     identical to sampling every pixel.
 
@@ -581,7 +581,7 @@ cdef int point_in_polygon(double x, double y, double *poly_x,
     Test whether a point lies inside a simple polygon, using the
     standard ray-casting algorithm.
 
-    The polygon may be convex or non-convex. The on-edge test is
+    The polygon may be convex or nonconvex. The on-edge test is
     performed first. If ``(x, y)`` lies on any edge (within the closed
     bounding box of that edge and collinear with it), the point is
     reported as outside. Otherwise the standard ray-casting parity test
@@ -669,7 +669,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
 
     The pixel ``[x0, x1] x [y0, y1]`` is divided into ``subpixels ** 2``
     subpixels and the fraction of subpixel centers that fall inside the
-    polygon is returned. The polygon may be convex or non-convex.
+    polygon is returned. The polygon may be convex or nonconvex.
 
     For ``subpixels == 1`` (the ``center`` method) the single
     pixel-center sample is classified with the full ``point_in_polygon``
@@ -683,7 +683,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
     vertical edges) plus a set of closed x-intervals (from any
     horizontal edges lying exactly on that line). The crossings are
     sorted and the row's samples are then classified by a single
-    monotonic sweep instead of re-testing every edge for every sample.
+    monotonic sweep instead of retesting every edge for every sample.
     This reduces the per-pixel cost from ``O(subpixels ** 2 * n_poly)``
     to roughly ``O(subpixels * n_poly + subpixels ** 2)`` while matching
     the classification of ``point_in_polygon``. Interior samples are
@@ -718,8 +718,8 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
         ``n_poly`` doubles. ``xint_buf`` stores the per-row edge
         crossings, while ``hxmin_buf`` and ``hxmax_buf`` store the
         endpoints of the per-row horizontal-edge and on-line vertex
-        intervals. The function keeps no other state, so it is thread
-        safe as long as each thread supplies its own buffers.
+        intervals. The function keeps no other state, so it is
+        thread-safe as long as each thread supplies its own buffers.
 
     Returns
     -------
@@ -846,7 +846,7 @@ cdef inline double _polygon_signed_area(const double *xs, const double *ys,
 
     Positive for counterclockwise vertices, negative for clockwise
     vertices. For a Sutherland-Hodgman-clipped polygon the magnitude is
-    the area of the intersection even when the subject was non-convex
+    the area of the intersection even when the subject was nonconvex
     (any spurious "bridge" edges traverse zero area in pairs).
 
     Parameters
@@ -908,7 +908,7 @@ cdef inline int _clip_against_axis(double *xs_in, double *ys_in, int n_in,
         Output. The x and y coordinates of the clipped polygon vertices.
         Each must point to a buffer large enough to hold the result.
         There are at most ``n_in + 1`` vertices for a convex input
-        polygon. For a non-convex one, ``2 * n_in`` is a safe upper
+        polygon. For a nonconvex one, ``2 * n_in`` is a safe upper
         bound (an entering transition emits two vertices and every
         other vertex emits at most one).
 

@@ -64,7 +64,7 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         direction, respectively.
 
     width : float
-        The full extent of the rectangle along its rotated x axis (the
+        The full extent of the rectangle along its rotated x-axis (the
         direction given by ``theta``).
 
     height : float
@@ -72,7 +72,7 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
 
     theta : float
         The rotation angle of the ``width`` side in radians, measured
-        counterclockwise from the positive x axis.
+        counterclockwise from the positive x-axis.
 
     use_exact : 0 or 1
         Set to ``1`` to use an exact method to calculate the overlap

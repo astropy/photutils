@@ -637,7 +637,7 @@ at those factors, the additional iterations biased the fitted star
 centers toward particular subpixel phases, and at a factor of 3 some
 builds grew a checkerboard pattern.
 
-The filter acts separately along the x and y axes. The signal that it
+The filter acts separately along the x- and y-axes. The signal that it
 removes from an undersampled ePSF therefore shows as a faint ripple
 pattern, with a period of about one pixel, along the row and the
 column through the center of the ePSF. To remove this pattern, the
@@ -680,7 +680,7 @@ a filtered build. The filter is never applied along an axis with an
 oversampling factor of 1.
 
 If the subpixel phases of the fitted star centers are strongly
-non-uniform at the end of the build, which indicates biased star
+nonuniform at the end of the build, which indicates biased star
 centers, a warning is emitted. In that case the star sample should be
 inspected for stars with different PSFs, saturated or contaminated
 cutouts, or spurious detections.
@@ -895,7 +895,7 @@ the variation is small compared to the accuracy you need. Heterogeneous
 stars produce pixel-to-pixel noise in the oversampled grid that biases
 the fitted star centers toward particular subpixel phases, and the
 builder emits a warning if the subpixel phases of the fitted centers are
-strongly non-uniform at the end of the build. In that case, inspect the
+strongly nonuniform at the end of the build. In that case, inspect the
 star sample rather than increasing the number of iterations.
 
 Finally, check the result. The subpixel phases of the fitted star

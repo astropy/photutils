@@ -43,13 +43,13 @@ allOf:
           - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
-          Position of the peak along the x axis.
+          Position of the peak along the x-axis.
       y_0:
         anyOf:
           - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
-          Position of the peak along the y axis.
+          Position of the peak along the y-axis.
       alpha:
         anyOf:
           - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'

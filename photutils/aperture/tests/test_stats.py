@@ -359,7 +359,7 @@ class TestMasking(BaseApertureStatsData):
         with pytest.raises(ValueError, match=match):
             _ = ApertureStats(data, self.aperture, local_bkg=(10, 20))
 
-        match = 'local_bkg must not contain any non-finite'
+        match = 'local_bkg must not contain any nonfinite'
         with pytest.raises(ValueError, match=match):
             _ = ApertureStats(data, self.aperture[0:2], local_bkg=(10, np.nan))
         with pytest.raises(ValueError, match=match):
@@ -568,13 +568,13 @@ class TestIndexing(BaseApertureStatsData):
     def test_scalar_slice_after_cache(self, cached):
         """
         Test that per-source properties are computed correctly for a
-        scalar instance obtained by slicing a multi-source instance when
+        scalar instance obtained by slicing a multisource instance when
         only *some* properties were cached on the parent before slicing.
 
         The ``_array`` accessor is used internally by several properties
         to index along the source axis. A per-source array can be stored
         either with its leading length-1 axis intact (freshly computed
-        for a scalar instance) or with that axis removed (a multi-source
+        for a scalar instance) or with that axis removed (a multisource
         value cached on the parent and then sliced). If ``_array`` does
         not normalize both cases, moment-derived properties such as
         ``cutout_centroid`` raise an ``IndexError`` (or return wrong
@@ -907,7 +907,7 @@ class TestMaskPathParity(BaseApertureStatsData):
     def test_slow_path_extended(self, sum_method, with_units):
         """
         Test that the mask-based code path matches the fast path for data
-        units, ``sum_method='center'``, and a non-overlapping source,
+        units, ``sum_method='center'``, and a nonoverlapping source,
         exercising the unit-application and no-overlap branches.
         """
         positions = [*self.positions, (-50.0, -50.0)]  # last has no overlap
@@ -998,7 +998,7 @@ class TestMaskPathParity(BaseApertureStatsData):
     def test_mask_nonfinite_data(self):
         """
         Test that the fast batch driver correctly combines a
-        user-supplied ``mask`` with the mask derived from non-finite
+        user-supplied ``mask`` with the mask derived from nonfinite
         ``data`` values, giving the same result as the mask-based code
         path.
         """
@@ -1167,7 +1167,7 @@ class TestDdof(BaseApertureStatsData):
         """
         Test that an invalid ``ddof`` raises a ``ValueError``.
         """
-        match = 'ddof must be a non-negative integer'
+        match = 'ddof must be a nonnegative integer'
         for bad in (-1, 1.5, True, False):
             with pytest.raises(ValueError, match=match):
                 ApertureStats(self.data, self.aperture, ddof=bad)
@@ -1180,7 +1180,7 @@ class TestMadStdScale:
 
     def test_scale(self):
         """
-        Test that the hard-coded MAD-to-sigma scale factor matches
+        Test that the hardcoded MAD-to-sigma scale factor matches
         `astropy.stats.mad_std`.
 
         The factor is duplicated in ``photutils.aperture.stats`` and
@@ -1444,8 +1444,8 @@ class TestSigmaClipBiweightStrings:
 def test_sigma_clip_sorted_values_reuse(monkeypatch):
     """
     Test that the order statistics computed from the sigma-clip kernel's
-    sorted output (reused by _sorted_values instead of re-sorting the
-    clipped values) match the mask-based fallback path.
+    sorted output (reused by _sorted_values instead of sorting the
+    clipped values again) match the mask-based fallback path.
     """
     rng = np.random.default_rng(0)
     data = rng.normal(10.0, 2.0, (101, 101))
@@ -1475,7 +1475,7 @@ class TestNThreads:
     @staticmethod
     def make_inputs():
         """
-        Build a deterministic image (with non-finite values), error,
+        Build a deterministic image (with nonfinite values), error,
         mask, and positions (including off-edge positions).
         """
         rng = np.random.default_rng(0)
@@ -1541,7 +1541,7 @@ class TestNThreads:
         """
         Test that multithreaded statistics are identical to the
         single-threaded computation for every property, including for
-        off-edge positions, masked pixels, and non-finite data values.
+        off-edge positions, masked pixels, and nonfinite data values.
         """
         data, error, mask, positions = self.make_inputs()
         wcs = make_wcs(data.shape)
@@ -1695,7 +1695,7 @@ class TestBoundedMemory:
         """
         Test that block processing gives results identical to the
         single-buffer computation for every property, including for
-        off-edge positions, masked pixels, and non-finite data values.
+        off-edge positions, masked pixels, and nonfinite data values.
         """
         data, error, mask, positions = TestNThreads.make_inputs()
         wcs = make_wcs(data.shape)
@@ -1981,7 +1981,7 @@ class TestInputDtypes:
     def test_mixed_dtypes(self):
         """
         Test float32 data with a float64 error array and
-        non-contiguous float32 data.
+        noncontiguous float32 data.
         """
         data, error, _, positions = TestNThreads.make_inputs()
         data32 = data.astype(np.float32)
@@ -2075,7 +2075,7 @@ class TestCenterCutoutParity:
     @staticmethod
     def make_inputs():
         """
-        Build a deterministic image (with non-finite data and error
+        Build a deterministic image (with nonfinite data and error
         values), error, mask, and positions (including partial-overlap
         and no-overlap positions).
         """
@@ -2117,7 +2117,7 @@ class TestCenterCutoutParity:
     def test_matches_mask_path(self, use_sigma_clip, use_error):
         """
         Test that the buffer-reconstructed cutouts equal the
-        mask-based cutouts, including non-finite pixels, partial
+        mask-based cutouts, including nonfinite pixels, partial
         overlaps, and the no-overlap sentinel arrays.
         """
         data, error, mask, positions = self.make_inputs()
@@ -2136,7 +2136,7 @@ class TestCenterCutoutParity:
                           property(lambda _: None)):
             slow = ApertureStats(data, aperture, **kwargs)
             assert slow._fast_cutouts_center is None
-            # The mask-based path multiplies non-finite data values by
+            # The mask-based path multiplies nonfinite data values by
             # the boolean masks (NaN * 0), which emits a numpy
             # RuntimeWarning
             with np.errstate(invalid='ignore'):
@@ -2230,7 +2230,7 @@ class TestSumErrPartialPixelWeights:
     @pytest.fixture(name='scene')
     def fixture_scene(self):
         """
-        A deterministic uniform image and non-uniform error array.
+        A deterministic uniform image and nonuniform error array.
 
         The data are uniform so that sigma clipping never rejects a
         pixel, keeping the expected error identical for the clipped and
@@ -2291,7 +2291,7 @@ def _make_rotated_tan_wcs(parity, rotation_deg, *, scale=0.25):
 
     With ``parity=-1`` and no rotation, +x points West and +y points
     North (the standard "North up, East left" orientation). With
-    ``parity=1`` the x axis is flipped so that +x points East.
+    ``parity=1`` the x-axis is flipped so that +x points East.
     """
     wcs = WCS(naxis=2)
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
@@ -2472,7 +2472,7 @@ def agreement_inputs(request):
     Build the shared data, mask, WCS, apertures, and segmentation image
     on the test class.
 
-    There is one multi-position aperture per radius. The segments are
+    There is one multiposition aperture per radius. The segments are
     the "center"-method aperture footprints, labeled in aperture order,
     then position order.
     """
@@ -2565,7 +2565,7 @@ class TestSourceCatalogAgreement:
 
     def test_non_negative_data(self):
         """
-        Test that the properties agree for non-negative data, where the
+        Test that the properties agree for nonnegative data, where the
         SourceCatalog zeroing does nothing.
         """
         data = np.where(self.data < 0, 0.0, self.data)

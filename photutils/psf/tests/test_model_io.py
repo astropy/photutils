@@ -304,7 +304,7 @@ class TestWebbPSFReader:
         Test that each ePSF plane of a WebbPSF file is placed at the
         detector position given by its DET_YX header keyword.
 
-        The grid is deliberately non-square so that an x/y transpose
+        The grid is deliberately nonsquare so that an x/y transpose
         cannot go unnoticed.
         """
         xgrid = (0.0, 1000.0, 2047.0)

@@ -204,16 +204,16 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
 
     w : float
         The full width of the rectangle in pixels. For ``theta=0`` the
-        width side is along the ``x`` axis.
+        width side is along the x-axis.
 
     h : float
         The full height of the rectangle in pixels. For ``theta=0`` the
-        height side is along the ``y`` axis.
+        height side is along the y-axis.
 
     theta : float or `~astropy.units.Quantity`, optional
         The rotation angle as an angular quantity
         (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
-        value in radians (as a float) from the positive ``x`` axis. The
+        value in radians (as a float) from the positive x-axis. The
         rotation angle increases counterclockwise.
 
     Raises
@@ -243,7 +243,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     h = PositiveScalar('The full height in pixels.')
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
-                               'the positive x axis.')
+                               'the positive x-axis.')
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w, h, theta=0.0):
@@ -396,11 +396,11 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
     w_in : float
         The inner full width of the rectangular annulus in pixels. For
-        ``theta=0`` the width side is along the ``x`` axis.
+        ``theta=0`` the width side is along the x-axis.
 
     w_out : float
         The outer full width of the rectangular annulus in pixels. For
-        ``theta=0`` the width side is along the ``x`` axis.
+        ``theta=0`` the width side is along the x-axis.
 
     h_out : float
         The outer full height of the rectangular annulus in pixels.
@@ -413,12 +413,12 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
             h_{in} = h_{out} \left(\frac{w_{in}}{w_{out}}\right)
 
-        For ``theta=0`` the height side is along the ``y`` axis.
+        For ``theta=0`` the height side is along the y-axis.
 
     theta : float or `~astropy.units.Quantity`, optional
         The rotation angle as an angular quantity
         (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
-        value in radians (as a float) from the positive ``x`` axis. The
+        value in radians (as a float) from the positive x-axis. The
         rotation angle increases counterclockwise.
 
     Raises
@@ -458,7 +458,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     h_out = PositiveScalar('The outer full height in pixels.')
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
-                               'the positive x axis.')
+                               'the positive x-axis.')
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):

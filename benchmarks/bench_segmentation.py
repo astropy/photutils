@@ -269,7 +269,7 @@ def bench_segmentation_image(*, n_sources=1000, repeats=3, seed=0):
     """
     _, _, segm = make_inputs(n_sources, seed=seed)
     segm_data = segm.data
-    # Non-consecutive labels for the relabel benchmark
+    # Nonconsecutive labels for the relabel benchmark
     segm_data_gaps = segm_data * 2
 
     print(f'\n== SegmentationImage operations ({segm.n_labels} segments, '

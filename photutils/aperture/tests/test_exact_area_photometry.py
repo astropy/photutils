@@ -8,7 +8,7 @@ aperture in exact mode must equal the analytic geometric area of the
 aperture shape (up to floating-point error). These tests verify this
 invariant for circular, elliptical, rectangular, and polygon apertures
 (including their annulus counterparts), across a variety of shapes,
-rotation angles, sub-pixel positions, and convex/non-convex polygons.
+rotation angles, subpixel positions, and convex/nonconvex polygons.
 """
 
 import numpy as np
@@ -43,13 +43,13 @@ def _hexagon():
 
 
 def _l_shape():
-    # Non-convex L-shape (centered).
+    # Nonconvex L-shape (centered).
     return np.array([[-2.0, -2.0], [2.0, -2.0], [2.0, 0.0],
                      [0.0, 0.0], [0.0, 2.0], [-2.0, 2.0]])
 
 
 def _star_5():
-    # Non-convex 5-pointed star.
+    # Nonconvex 5-pointed star.
     verts = []
     for i in range(10):
         r = 5.0 if i % 2 == 0 else 2.0
@@ -59,7 +59,7 @@ def _star_5():
 
 
 def _arrow():
-    # Non-convex arrow shape.
+    # Nonconvex arrow shape.
     return np.array([[-3.0, -1.0], [1.0, -1.0], [1.0, -2.0],
                      [3.0, 0.0], [1.0, 2.0], [1.0, 1.0],
                      [-3.0, 1.0]])
@@ -163,7 +163,7 @@ class TestSubPixelApertureAreas:
 class TestPolygonAreas:
     """
     The exact-method polygon aperture sum must equal the analytic
-    polygon area, including for non-convex shapes.
+    polygon area, including for nonconvex shapes.
     """
 
     @pytest.mark.parametrize('shape_name', list(POLY_SHAPES))

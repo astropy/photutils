@@ -80,7 +80,7 @@ def test_centroids_nan_withmask(use_mask):
     else:
         mask = None
         n_warn = 1
-        match = 'Input data contains non-finite values'
+        match = 'Input data contains nonfinite values'
         ctx = pytest.warns(AstropyUserWarning, match=match)
 
     with ctx as warnlist:
@@ -156,7 +156,7 @@ def test_centroid_2dg_constant_data(value):
     A clear error is raised rather than silent NaN results.
     """
     data = np.full((10, 10), value)
-    match = 'Input data must have non-constant values'
+    match = 'Input data must have nonconstant values'
     with pytest.raises(ValueError, match=match):
         centroid_2dg(data)
 
@@ -174,12 +174,12 @@ def test_centroid_2dg_constant_data_masked(value):
     data[2, 3] = 100.0
     mask = np.zeros(data.shape, dtype=bool)
     mask[2, 3] = True
-    match = 'Input data must have non-constant values'
+    match = 'Input data must have nonconstant values'
     with pytest.raises(ValueError, match=match):
         centroid_2dg(data, mask=mask)
 
     data[2, 3] = np.nan
-    with (pytest.warns(AstropyUserWarning, match='non-finite values'),
+    with (pytest.warns(AstropyUserWarning, match='nonfinite values'),
           pytest.raises(ValueError, match=match)):
         centroid_2dg(data)
 
@@ -220,14 +220,14 @@ def test_centroid_1dg_constant_data(value):
     fitter.
     """
     data = np.full((10, 10), value)
-    match = 'Input data must have a nonzero sum and non-constant values'
+    match = 'Input data must have a nonzero sum and nonconstant values'
     with pytest.raises(ValueError, match=match):
         centroid_1dg(data)
 
 
 def test_centroid_1dg_zero_sum_data():
     """
-    Test that centroid_1dg raises a ValueError for non-constant data
+    Test that centroid_1dg raises a ValueError for nonconstant data
     whose sum is zero.
 
     A zero-sum marginal distribution makes the moment estimates 0/0.
@@ -235,7 +235,7 @@ def test_centroid_1dg_zero_sum_data():
     data = np.zeros((10, 10))
     data[3, 3] = 5.0
     data[7, 7] = -5.0
-    match = 'Input data must have a nonzero sum and non-constant values'
+    match = 'Input data must have a nonzero sum and nonconstant values'
     with pytest.raises(ValueError, match=match):
         centroid_1dg(data)
 
@@ -268,7 +268,7 @@ def test_gaussian1d_moments():
     data[0] = np.nan
     mask = np.zeros(data.shape, dtype=bool)
     mask[0] = False
-    match = 'Input data contains non-finite values'
+    match = 'Input data contains nonfinite values'
     with pytest.warns(AstropyUserWarning, match=match):
         result = _gaussian1d_moments(data, mask=mask)
     assert_allclose(result, desired, rtol=0, atol=1.0e-6)

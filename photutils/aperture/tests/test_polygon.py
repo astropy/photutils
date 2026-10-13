@@ -50,7 +50,7 @@ def _pentagram():
     A five-pointed (self-intersecting) star drawn by connecting every
     other vertex of a regular pentagon.
 
-    Its edges self-intersect, but its signed area is non-zero so it is
+    Its edges self-intersect, but its signed area is nonzero so it is
     not caught by the degeneracy check.
     """
     ang = np.pi / 2 + np.arange(5) * 2 * np.pi * 2 / 5
@@ -251,7 +251,7 @@ class TestPolygonApertureTheta:
                                  atol=1e-10 * u.deg)
 
     def test_theta_nonregular_raises(self):
-        # Non-regular polygon raises ValueError.
+        # Nonregular polygon raises ValueError.
         offsets = [(1.0, 0.0), (2.0, 1.0), (0.0, 2.0)]
         aper = PolygonAperture((10, 20), offsets)
         match = "'theta' is only defined for a regular polygon aperture"
@@ -353,7 +353,7 @@ class TestPolygonGeometryHelpers:
         [
             # Proper crossing (segments straddle each other).
             ((0.0, 0.0), (2.0, 2.0), (0.0, 2.0), (2.0, 0.0), True),
-            # Disjoint, non-collinear segments.
+            # Disjoint, noncollinear segments.
             ((0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0), False),
             # p1 lies on segment p3-p4 (d1 == 0).
             ((1.0, 0.0), (1.0, 1.0), (0.0, 0.0), (2.0, 0.0), True),
@@ -363,7 +363,7 @@ class TestPolygonGeometryHelpers:
             ((0.0, 0.0), (2.0, 0.0), (1.0, 0.0), (1.0, 1.0), True),
             # p4 lies on segment p1-p2 (d4 == 0).
             ((0.0, 0.0), (2.0, 0.0), (1.0, 1.0), (1.0, 0.0), True),
-            # Collinear but non-overlapping segments.
+            # Collinear but nonoverlapping segments.
             ((0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (3.0, 0.0), False),
         ])
     def test_segments_intersect(self, p1, p2, p3, p4, expected):
@@ -377,7 +377,7 @@ class TestPolygonGeometryHelpers:
 
     def test_is_simple_pentagram(self):
         star = _pentagram()
-        # Sanity check: the pentagram has non-zero area, so it is not caught
+        # Sanity check: the pentagram has nonzero area, so it is not caught
         # by the degeneracy check and must be rejected by the simplicity
         # check.
         assert _signed_polygon_area(star) != 0.0
@@ -409,7 +409,7 @@ class TestPolygonValidation:
 
     def test_rejects_nonfinite(self):
         bad = np.array([[0.0, 0.0], [np.nan, 0.0], [1.0, 1.0]])
-        match = "'vertex_offsets' must not contain any non-finite values"
+        match = "'vertex_offsets' must not contain any nonfinite values"
         with pytest.raises(ValueError, match=match):
             _validate_simple_polygon(bad)
 
@@ -422,7 +422,7 @@ class TestPolygonValidation:
 
     def test_accepts_nonconvex(self):
         """
-        Test that a non-convex (L-shaped) polygon is accepted.
+        Test that a nonconvex (L-shaped) polygon is accepted.
         """
         arrow = np.array([[0.0, 0.0], [4.0, 0.0], [4.0, 2.0],
                           [2.0, 2.0], [2.0, 4.0], [0.0, 4.0]])
@@ -506,13 +506,13 @@ class TestPolygonConstruction:
 
     def test_invalid_vertex_offsets_nonfinite_raises(self):
         bad = np.array([[0.0, 0.0], [np.nan, 1.0], [1.0, 0.0]])
-        match = "'vertex_offsets' must not contain any non-finite values"
+        match = "'vertex_offsets' must not contain any nonfinite values"
         with pytest.raises(ValueError, match=match):
             PolygonAperture((0, 0), bad)
 
     def test_accepts_nonconvex(self):
         """
-        The aperture supports non-convex (L-shaped) polygons.
+        The aperture supports nonconvex (L-shaped) polygons.
         """
         l_shape = np.array([[0.0, 0.0], [4.0, 0.0], [4.0, 2.0],
                             [2.0, 2.0], [2.0, 4.0], [0.0, 4.0]])
@@ -768,9 +768,9 @@ class TestPolygonPhotometry:
                               ('center', {})])
     def test_array_photometry_matches_scalar(self, method, kwargs):
         """
-        Test that multi-position polygon photometry (batch Cython driver)
+        Test that multiposition polygon photometry (batch Cython driver)
         matches the per-position mask-based (grid) result for the exact,
-        subpixel, and center methods, including for a non-convex polygon.
+        subpixel, and center methods, including for a nonconvex polygon.
 
         This exercises the batch driver's per-position buffer reuse and
         confirms it is numerically identical to the ``polygon_overlap_grid``
@@ -794,7 +794,7 @@ class TestPolygonPhotometry:
         Test that the exact polygon mask for a rotated rectangle matches the
         exact rectangular mask.
 
-        This is a non-trivial test of the polygon masking machinery, since
+        This is a nontrivial test of the polygon masking machinery, since
         the rectangle vertices are not axis-aligned and thus require the
         full generality of the polygon code.
         """
@@ -1214,7 +1214,7 @@ class TestPolygonPixelSkyConversion:
         ``wcs.pixel_to_world``.
 
         The comparison is order-independent. The ``_make_wcs`` WCS flips
-        parity, so the counter-clockwise normalization applied when setting
+        parity, so the counterclockwise normalization applied when setting
         ``vertex_offsets`` may reverse the vertex order relative to the
         input. The two sets of vertices must still describe the same
         polygon.

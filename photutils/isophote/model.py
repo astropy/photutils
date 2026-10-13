@@ -54,7 +54,7 @@ def build_ellipse_model(
         `~photutils.isophote.Isophote` for details.
 
     sma_interval : optional, float
-        The interval between node values of the semi-major axis, which is used
+        The interval between node values of the semimajor axis, which is used
         to spline interpolate values of other shape parameters.
 
     Returns

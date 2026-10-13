@@ -81,18 +81,18 @@ class _ApertureFlags(FlagRegistry):
         FlagDefinition(
             bit_value=16,
             name='non_finite_data',
-            description='non-finite data values within the aperture',
+            description='nonfinite data values within the aperture',
             detailed_description=('One or more unmasked data values '
                                   'with nonzero aperture weight are '
-                                  'non-finite (NaN or inf).'),
+                                  'nonfinite (NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=32,
             name='non_finite_error',
-            description='non-finite error values within the aperture',
+            description='nonfinite error values within the aperture',
             detailed_description=('One or more unmasked error values '
                                   'with nonzero aperture weight are '
-                                  'non-finite (NaN or inf).'),
+                                  'nonfinite (NaN or inf).'),
         ),
         FlagDefinition(
             bit_value=64,
@@ -120,7 +120,7 @@ class _ApertureFlags(FlagRegistry):
             detailed_description=('The aperture contains pixels, but '
                                   'none are valid: every nonzero-weight '
                                   'pixel inside the data is masked, '
-                                  'non-finite, or excluded by '
+                                  'nonfinite, or excluded by '
                                   'segmentation masking.'),
         ),
         FlagDefinition(
@@ -155,7 +155,7 @@ class _ApertureFlags(FlagRegistry):
         FlagDefinition(
             bit_value=4096,
             name='undefined_shape',
-            description=('non-positive net flux or invalid covariance '
+            description=('nonpositive net flux or invalid covariance '
                          '(shape properties undefined)'),
             detailed_description=('The net flux within the aperture '
                                   '(the zeroth image moment of the '

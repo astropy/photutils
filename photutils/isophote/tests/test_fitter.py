@@ -42,7 +42,7 @@ def test_zero_gradient_flat_image():
     identical pixel values at all radii, so the local gradient is
     exactly zero. Since no parameter corrections can be computed from a
     zero gradient, the fit should stop cleanly instead of dividing by
-    zero and crashing on the resulting non-finite geometry.
+    zero and crashing on the resulting nonfinite geometry.
     """
     data = np.ones((101, 101))
     sample = EllipseSample(data, 10.0, integrmode='nearest_neighbor')

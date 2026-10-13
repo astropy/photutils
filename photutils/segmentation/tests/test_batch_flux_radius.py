@@ -318,7 +318,7 @@ def test_all_skipped(scene):
 
 def test_bracket_shrink_and_no_solution(scene):
     # Force the shrink path. Negative data beyond a ring makes the
-    # enclosed flux non-monotonic, so the initial bracket has equal
+    # enclosed flux nonmonotonic, so the initial bracket has equal
     # signs at both ends
     cat = make_catalog(scene)
     entry = [e for e in _unpack_args(cat._flux_radius_optimizer_args)
@@ -384,7 +384,7 @@ def test_prepare_local_background(scene):
 
 
 def test_prepare_skipped_sources(scene):
-    # A non-finite centroid, a zero Kron flux, and an off-image centroid
+    # A nonfinite centroid, a zero Kron flux, and an off-image centroid
     # have no solution, and an oversized bounding box is skipped
     cat = make_catalog(scene)
     _ = cat._kron_photometry
@@ -417,7 +417,7 @@ def test_n_threads(scene, n_threads):
     cat1 = SourceCatalog(scene['data'], scene['segm'], **kwargs)
     cat2 = SourceCatalog(scene['data'], scene['segm'], n_threads=n_threads,
                          **kwargs)
-    # Skip the first and last sources (non-finite centroid) so that
+    # Skip the first and last sources (nonfinite centroid) so that
     # zero-count sources fall at the chunk boundaries
     for cat in (cat1, cat2):
         _ = cat._kron_photometry

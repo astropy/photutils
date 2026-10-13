@@ -612,8 +612,7 @@ apertures with a fixed axis ratio and orientation. This is done using
 the `~photutils.profiles.EllipticalCurveOfGrowth` class, which accepts
 ``radii`` (the semimajor-axis lengths of the elliptical apertures),
 ``axis_ratio`` (the ratio of the semiminor axis to the semimajor axis,
-``b / a``), and ``theta`` (the rotation angle from the positive ``x``
-axis).
+``b / a``), and ``theta`` (the rotation angle from the positive x-axis).
 
 Let's create an elliptical curve of growth for an elliptical source
 with an axis ratio of 0.5 and a rotation angle of 42 degrees::

@@ -8,7 +8,7 @@ The benchmarks cover the per-call cost of the overlap grid functions
 rectangular_overlap_grid, and polygon_overlap_grid) for each overlap
 method (exact, center, and subpixel), the scaling with grid size, and
 the scaling of the polygon overlap with the number of vertices for
-convex and non-convex polygons.
+convex and nonconvex polygons.
 
 Run ``python benchmarks/bench_geometry.py --help`` to see the
 available options.
@@ -44,7 +44,7 @@ def make_polygon_vertices(n_vertices, radius, *, star=False):
 
     star : bool, optional
         If `True`, alternate vertices are placed at half the radius,
-        producing a non-convex (star-shaped) polygon. ``n_vertices``
+        producing a nonconvex (star-shaped) polygon. ``n_vertices``
         must be even in that case.
 
     Returns
@@ -210,10 +210,10 @@ def bench_polygon_vertices(*, n_vertices=(4, 8, 32, 128, 1024),
                            repeats=3):
     """
     Benchmark the polygon overlap grid across vertex counts for convex
-    and non-convex (star-shaped) polygons.
+    and nonconvex (star-shaped) polygons.
 
     Convex polygons use the interior/exterior fast path, so only the
-    boundary band pays the per-vertex clipping cost; non-convex
+    boundary band pays the per-vertex clipping cost; nonconvex
     polygons clip every pixel in the bounding box.
 
     Parameters

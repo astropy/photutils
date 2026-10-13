@@ -64,7 +64,7 @@ class TestPlotGrid:
     def test_plot_grid_blank_epsfs(self, psfmodel):
         """
         Test a grid where one or more ePSFs are blank (all zeros), as
-        is the case for MIRI with its non-square FOV.
+        is the case for MIRI with its nonsquare FOV.
         """
         model = psfmodel.deepcopy()
         model._data[0] = 0.0

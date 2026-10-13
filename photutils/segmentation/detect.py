@@ -102,9 +102,9 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
     are both input, then ``mask`` and ``sigma_clip`` are ignored.
 
     If ``background`` or ``error`` is estimated and the unmasked
-    ``data`` contain non-finite values (NaN or inf), then an
+    ``data`` contain nonfinite values (NaN or inf), then an
     `~astropy.utils.exceptions.AstropyUserWarning` is emitted and the
-    non-finite values are excluded from the statistics, with or without
+    nonfinite values are excluded from the statistics, with or without
     sigma clipping.
     """
     inputs = (data, background, error)
@@ -124,13 +124,13 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
             data = np.ma.MaskedArray(data, mask)
 
         if sigma_clip is None:
-            # Masked and non-finite values are excluded from the
+            # Masked and nonfinite values are excluded from the
             # statistics
             clipped_data = np.ma.getdata(data).astype(float)
             masked = np.ma.getmaskarray(data)
             nonfinite = ~np.isfinite(clipped_data)
             if np.any(nonfinite & ~masked):
-                msg = ('Input data contains non-finite values (NaN or '
+                msg = ('Input data contains nonfinite values (NaN or '
                        'inf), which were excluded from the background '
                        'statistics.')
                 warnings.warn(msg, AstropyUserWarning)

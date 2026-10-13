@@ -355,7 +355,7 @@ class GriddedPSFModel(Fittable2DModel):
             If the input data is not an NDData instance.
         ValueError
             If the input data is not a 3D numpy ndarray, contains NaNs
-            or infs, has 2 or 3 ePSFs, has an x or y axis shorter than
+            or infs, has 2 or 3 ePSFs, has an x- or y-axis shorter than
             4 pixels, or has no ``'oversampling'`` key in its ``meta``.
         """
         if not isinstance(data, NDData):
@@ -379,7 +379,7 @@ class GriddedPSFModel(Fittable2DModel):
         # points along each axis for cubic spline interpolation (kx=3,
         # ky=3).
         if np.any(np.array(data.data.shape[1:]) < 4):
-            msg = ('The length of the PSF x and y axes must both be at '
+            msg = ('The length of the PSF x- and y-axes must both be at '
                    'least 4')
             raise ValueError(msg)
 

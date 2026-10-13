@@ -272,7 +272,7 @@ models:
 
 - `~photutils.psf.GaussianPSF`: a general 2D Gaussian PSF model
   parameterized in terms of the position, total flux, and full width
-  at half maximum (FWHM) along the x and y axes. Rotation can also be
+  at half maximum (FWHM) along the x- and y-axes. Rotation can also be
   included.
 
 - `~photutils.psf.CircularGaussianPSF`: a circular 2D Gaussian PSF model
@@ -280,7 +280,7 @@ models:
 
 - `~photutils.psf.GaussianPRF`: a general 2D Gaussian PRF model
   parameterized in terms of the position, total flux, and FWHM
-  along the x and y axes. Rotation can also be included.
+  along the x- and y-axes. Rotation can also be included.
 
 - `~photutils.psf.CircularGaussianPRF`: a circular 2D Gaussian PRF model
   parameterized in terms of the position, total flux, and FWHM.
@@ -599,7 +599,7 @@ instance of the `~photutils.psf.PSFPhotometry` class::
 To perform the PSF fitting, we then call the class instance
 on the data array, and optionally an error and mask array. A
 `~astropy.nddata.NDData` object holding the data, error, and mask arrays
-can also be input into the ``data`` parameter. Note that all non-finite
+can also be input into the ``data`` parameter. Note that all nonfinite
 (e.g., NaN or inf) data values are automatically masked. Here we input
 the data and error arrays::
 
@@ -872,7 +872,7 @@ distance in pixels that a fitted source can be from its initial (x, y)
 position.
 
 For example, you may want to constrain the flux of a source to be
-between certain values or ensure that it is a non-negative value. This
+between certain values or ensure that it is a nonnegative value. This
 can be done by setting the ``bounds`` attribute on the input PSF model
 parameters. Here we constrain the flux to be greater than or equal to
 0::
@@ -1034,7 +1034,7 @@ full width at half maximum (FWHM) of one or more sources in
 an image. This function fits the source(s) with a circular
 2D Gaussian PRF model (`~photutils.psf.CircularGaussianPRF`)
 using the `~photutils.psf.PSFPhotometry` class. If your sources
-are non-circular or non-Gaussian, you can fit them with the
+are noncircular or non-Gaussian, you can fit them with the
 `~photutils.psf.PSFPhotometry` class and a different PSF model. Because
 the model is integrated over the pixels, the returned FWHM is the FWHM
 of the Gaussian before that integration, which is smaller than the

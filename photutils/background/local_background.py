@@ -36,7 +36,7 @@ class LocalBackground:
         A callable object (a function or e.g., an instance of any
         `~photutils.background.BackgroundBase` subclass) used to
         estimate the background in each aperture. The callable object
-        must take in a 1D `~numpy.ndarray`. Non-finite data values are
+        must take in a 1D `~numpy.ndarray`. Nonfinite data values are
         excluded before it is called. The default is an instance of
         `~photutils.background.MedianBackground` with sigma clipping
         (i.e., sigma-clipped median).
@@ -324,7 +324,7 @@ class LocalBackground:
             bkg = np.empty(n_apertures)
             for i, apermask in enumerate(apermasks):
                 values = apermask.get_values(data, mask=mask)
-                # Exclude non-finite values, as the batched path does
+                # Exclude nonfinite values, as the batched path does
                 values = values[np.isfinite(values)]
                 bkg[i] = self.bkg_estimator(values)
 

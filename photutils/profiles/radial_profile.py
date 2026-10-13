@@ -38,7 +38,7 @@ class RadialProfile(ProfileBase):
     ----------
     data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
-        Non-finite values (e.g., NaN or inf) in the ``data`` or
+        Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     xycen : tuple of 2 floats
@@ -58,7 +58,7 @@ class RadialProfile(ProfileBase):
         the sources (see `~photutils.utils.calc_total_error`). ``error``
         must have the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity`, then ``error`` must have the same
-        units. Non-finite values (e.g., NaN or inf) in the ``data`` or
+        units. Nonfinite values (e.g., NaN or inf) in the ``data`` or
         ``error`` array are automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
@@ -83,7 +83,7 @@ class RadialProfile(ProfileBase):
     Warns
     -----
     `~astropy.utils.exceptions.AstropyUserWarning`
-        If the ``data`` or ``error`` array contains non-finite values
+        If the ``data`` or ``error`` array contains nonfinite values
         that are not already masked by ``mask``.
 
     See Also
@@ -414,13 +414,13 @@ class RadialProfile(ProfileBase):
     def _raw_gaussian_fit(self):
         """
         The 1D Gaussian fitted to the raw (unnormalized) radial profile,
-        or `None` if the profile is entirely non-finite or masked.
+        or `None` if the profile is entirely nonfinite or masked.
         """
         profile = self._raw_profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
 
         if len(profile) == 0:
-            msg = ('The radial profile is entirely non-finite or masked. '
+            msg = ('The radial profile is entirely nonfinite or masked. '
                    'Cannot fit a Gaussian.')
             warnings.warn(msg, AstropyUserWarning)
             return None
@@ -462,12 +462,12 @@ class RadialProfile(ProfileBase):
         The fit uses only the finite profile values, and the Gaussian
         mean is fixed at zero (the source center).
 
-        Returns `None` if the profile is entirely non-finite or masked.
+        Returns `None` if the profile is entirely nonfinite or masked.
 
         Warns
         -----
         `~astropy.utils.exceptions.AstropyUserWarning`
-            If the profile is entirely non-finite or masked, if the sum
+            If the profile is entirely nonfinite or masked, if the sum
             of the profile is zero, or if the smallest bin center with a
             finite profile value is larger than 0.3 times the fitted
             standard deviation (e.g., the input radii do not extend
@@ -489,7 +489,7 @@ class RadialProfile(ProfileBase):
 
         The values reflect the current profile normalization.
 
-        Returns `None` if the profile is entirely non-finite or masked.
+        Returns `None` if the profile is entirely nonfinite or masked.
         """
         if self._raw_gaussian_profile is None:
             return None
@@ -499,7 +499,7 @@ class RadialProfile(ProfileBase):
     def _raw_gaussian_profile(self):
         """
         The raw-fit 1D Gaussian evaluated at the profile radii, or
-        `None` if the profile is entirely non-finite or masked.
+        `None` if the profile is entirely nonfinite or masked.
         """
         if self._raw_gaussian_fit is None:
             return None
@@ -508,12 +508,12 @@ class RadialProfile(ProfileBase):
     @property
     def gaussian_fwhm(self):
         """
-        The full-width at half-maximum (FWHM) in pixels of the 1D
+        The full width at half maximum (FWHM) in pixels of the 1D
         Gaussian fitted to the radial profile.
 
         The FWHM is independent of the profile normalization.
 
-        Returns `None` if the profile is entirely non-finite or masked.
+        Returns `None` if the profile is entirely nonfinite or masked.
         """
         if self._raw_gaussian_fit is None:
             return None
@@ -523,13 +523,13 @@ class RadialProfile(ProfileBase):
     def _raw_moffat_fit(self):
         """
         The 1D Moffat fitted to the raw (unnormalized) radial profile,
-        or `None` if the profile is entirely non-finite or masked.
+        or `None` if the profile is entirely nonfinite or masked.
         """
         profile = self._raw_profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
 
         if len(profile) == 0:
-            msg = ('The radial profile is entirely non-finite or masked. '
+            msg = ('The radial profile is entirely nonfinite or masked. '
                    'Cannot fit a Moffat.')
             warnings.warn(msg, AstropyUserWarning)
             return None
@@ -571,12 +571,12 @@ class RadialProfile(ProfileBase):
         is fixed at zero (the source center) and ``alpha`` is bounded to
         the range [1, 25].
 
-        Returns `None` if the profile is entirely non-finite or masked.
+        Returns `None` if the profile is entirely nonfinite or masked.
 
         Warns
         -----
         `~astropy.utils.exceptions.AstropyUserWarning`
-            If the profile is entirely non-finite or masked, or if the
+            If the profile is entirely nonfinite or masked, or if the
             sum of the profile is zero. The fitter can also emit its own
             warning if the fit may not have converged.
         """
@@ -594,7 +594,7 @@ class RadialProfile(ProfileBase):
 
         The values reflect the current profile normalization.
 
-        Returns `None` if the profile is entirely non-finite or masked.
+        Returns `None` if the profile is entirely nonfinite or masked.
         """
         if self._raw_moffat_profile is None:
             return None
@@ -604,7 +604,7 @@ class RadialProfile(ProfileBase):
     def _raw_moffat_profile(self):
         """
         The raw-fit 1D Moffat evaluated at the profile radii, or
-        `None` if the profile is entirely non-finite or masked.
+        `None` if the profile is entirely nonfinite or masked.
         """
         if self._raw_moffat_fit is None:
             return None
@@ -613,12 +613,12 @@ class RadialProfile(ProfileBase):
     @property
     def moffat_fwhm(self):
         """
-        The full-width at half-maximum (FWHM) in pixels of the 1D Moffat
+        The full width at half maximum (FWHM) in pixels of the 1D Moffat
         fitted to the radial profile.
 
         The FWHM is independent of the profile normalization.
 
-        Returns `None` if the profile is entirely non-finite or masked.
+        Returns `None` if the profile is entirely nonfinite or masked.
         """
         if self._raw_moffat_fit is None:
             return None
@@ -633,7 +633,7 @@ class RadialProfile(ProfileBase):
 
         Returns the radii and values of the unmasked data points between
         the minimum and maximum radii defined by the input radii. Pixels
-        flagged in ``self.mask`` (including auto-masked non-finite
+        flagged in ``self.mask`` (including auto-masked nonfinite
         values) are excluded.
         """
         shape = self.data.shape
@@ -659,7 +659,7 @@ class RadialProfile(ProfileBase):
         yidx_sub = yidx[within]
         xidx_sub = xidx[within]
 
-        # Exclude masked pixels (user mask and auto-masked non-finite
+        # Exclude masked pixels (user mask and auto-masked nonfinite
         # values)
         valid = ~self.mask[yidx_sub, xidx_sub]
         radii = radii[valid]

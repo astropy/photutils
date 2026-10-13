@@ -133,7 +133,7 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     integrated using `scipy.integrate.dblquad`. This is *much* slower
     than the default integration of the evaluated model, but it is more
     accurate. Also, note that the ``dblquad`` integration can sometimes
-    fail, e.g., return zero for a non-zero model. This can happen when
+    fail, e.g., return zero for a nonzero model. This can happen when
     the model function is sharply localized relative to the size of the
     integration interval. A `ValueError` is raised if the integral is
     zero.
@@ -268,7 +268,7 @@ def _integrate_model(model, *, x_name=None, y_name=None, dx=50, dy=50,
     integrated using `scipy.integrate.dblquad`. This is *much* slower
     than the default integration of the evaluated model, but it is more
     accurate. Also, note that the ``dblquad`` integration can sometimes
-    fail, e.g., return zero for a non-zero model. This can happen when
+    fail, e.g., return zero for a nonzero model. This can happen when
     the model function is sharply localized relative to the size of the
     integration interval.
 

@@ -37,8 +37,8 @@ def add_parameter_bounds(node, model):
     Store every parameter bound of a model in its YAML tree.
 
     The ``asdf-astropy`` transform converter omits a bound whose limits
-    are all zero or `None` (e.g., a non-negative bound of ``(0,
-    None)``), so such a bound would be lost on a round trip.
+    are all zero or `None` (e.g., a nonnegative bound of ``(0,
+    None)``), so such a bound would be lost on a round-trip.
 
     Parameters
     ----------

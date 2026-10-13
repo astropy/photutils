@@ -414,7 +414,7 @@ class TestGriddedPSFModel:
 
     def test_bilinear_weights(self, psfmodel):
         """
-        Bilinear weights should sum to one, be non-negative, and clamp
+        Bilinear weights should sum to one, be nonnegative, and clamp
         out-of-cell coordinates to the cell bounds.
         """
         grid_xy = np.array((0.0, 40.0, 0.0, 60.0))
@@ -669,7 +669,7 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(NDData(np.ones((3, 3))))
 
-        match = 'The length of the PSF x and y axes must both be at least 4'
+        match = 'The length of the PSF x- and y-axes must both be at least 4'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(NDData(np.ones((4, 3, 3))))
 
@@ -1235,8 +1235,8 @@ class TestSTDPSFGridFromASDF:
 @pytest.mark.parametrize('dtype', [np.float32, np.float64])
 def test_read_only_inputs(psfmodel, dtype):
     """
-    Regression test that read-only (non-writeable) input arrays are
-    accepted, are not modified, and give results identical to writeable
+    Regression test that read-only (nonwritable) input arrays are
+    accepted, are not modified, and give results identical to writable
     arrays.
     """
     psf_data = psfmodel.data.astype(dtype)

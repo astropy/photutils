@@ -168,7 +168,7 @@ def test_matches_reference(scene, method, with_mask):
 
 def test_negative_data_gives_minimum_radius(scene):
     # A negative background within the measurement ellipse makes the
-    # Kron numerator or denominator non-positive, which gives the
+    # Kron numerator or denominator nonpositive, which gives the
     # minimum Kron radius
     data = scene['data'].copy()
     data[scene['segm'].data == 0] = -20.0
@@ -180,7 +180,7 @@ def test_negative_data_gives_minimum_radius(scene):
 
 
 def test_nonfinite_and_masked_sources(scene):
-    # A completely masked source or a non-finite centroid is NaN
+    # A completely masked source or a nonfinite centroid is NaN
     mask = scene['mask'].copy()
     segm = scene['segm']
     slc = segm.slices[0]

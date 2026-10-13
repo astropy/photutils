@@ -298,7 +298,7 @@ def batch_mask_plane(mask):
     """
     Build the uint8 mask plane used by the batch Cython kernels.
 
-    Bit 1 (value 1) marks input-masked pixels. Non-finite ``data``
+    Bit 1 (value 1) marks input-masked pixels. Nonfinite ``data``
     pixels are not marked in the plane. The kernels test them per pixel
     (their ``mask_nonfinite`` argument), so no full-image pass is
     needed.
@@ -321,7 +321,7 @@ def batch_mask_plane(mask):
     normalized to 0 and 1. An ill-formed boolean array whose storage
     holds other byte values (e.g., a uint8 array viewed as bool)
     excludes the same pixels, but the kernels interpret its bytes as
-    plane bits, so such a pixel can be counted as non-finite (bit 2)
+    plane bits, so such a pixel can be counted as nonfinite (bit 2)
     rather than as masked (bit 1). Boolean arrays created by NumPy
     always hold 0 or 1.
     """

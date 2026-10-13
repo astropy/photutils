@@ -59,7 +59,7 @@ def test_fit_2dgaussian_single(fix_fwhm):
     assert len(record) == 2
     warning_msgs = [str(w.message) for w in record]
     assert any('fit_shape is None' in msg for msg in warning_msgs)
-    assert any('non-finite values' in msg for msg in warning_msgs)
+    assert any('nonfinite values' in msg for msg in warning_msgs)
     fit_tbl = fit.results
     assert isinstance(fit_tbl, QTable)
     assert len(fit_tbl) == 1
@@ -78,7 +78,7 @@ def test_fit_2dgaussian_single(fix_fwhm):
 
 def test_fit_2dgaussian_user_mask_with_nan():
     """
-    Regression test that unmasked non-finite values are merged into
+    Regression test that unmasked nonfinite values are merged into
     a user-provided mask.
     """
     rng = np.random.default_rng(0)
@@ -89,13 +89,13 @@ def test_fit_2dgaussian_user_mask_with_nan():
     mask = np.zeros(data.shape, dtype=bool)
     mask[0, 0] = True
     # Expect exactly two warnings: fit_shape is None and unmasked
-    # non-finite values
+    # nonfinite values
     with pytest.warns(AstropyUserWarning) as record:
         fit = fit_2dgaussian(data, mask=mask, fix_fwhm=False)
     assert len(record) == 2
     warning_msgs = [str(w.message) for w in record]
     assert any('fit_shape is None' in msg for msg in warning_msgs)
-    assert any('unmasked non-finite values' in msg
+    assert any('unmasked nonfinite values' in msg
                for msg in warning_msgs)
     assert_allclose(fit.results['x_fit'][0], 15.0, atol=0.1)
 
@@ -240,7 +240,7 @@ def test_fit_fwhm_single():
     model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=fwhm0)
     data = model(xx, yy)
 
-    # fit_fwhm re-emits the fit_shape warning
+    # fit_fwhm emits the fit_shape warning again
     match = ('fit_shape is None, so the input data array is assumed to be '
              'a cutout image containing only one source')
     with pytest.warns(AstropyUserWarning, match=match):
@@ -467,14 +467,14 @@ def test_fit_2dgaussian_flux_init_excludes_masked_pixels():
 
 def test_fit_fwhm_reemits_other_warnings():
     """
-    Regression test that fit_fwhm re-emits non-convergence warnings
+    Regression test that fit_fwhm passes on nonconvergence warnings
     verbatim instead of replacing them with a false convergence
     warning.
     """
     yy, xx = np.mgrid[0:31, 0:31]
     data = CircularGaussianPRF(flux=50, x_0=15, y_0=15, fwhm=3.1)(xx, yy)
     data[0, 0] = np.nan
-    match = 'Input data contains unmasked non-finite values'
+    match = 'Input data contains unmasked nonfinite values'
     with pytest.warns(AstropyUserWarning, match=match) as record:
         fwhm = fit_fwhm(data, xypos=(15, 15), fit_shape=7)
     assert_allclose(fwhm[0], 3.1, atol=0.01)

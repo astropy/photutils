@@ -91,10 +91,10 @@ MODEL_EXAMPLES = [
 @pytest.mark.parametrize('example', MODEL_EXAMPLES, ids=_example_id)
 def test_psf_converters_preserve_fitting_state(tmp_path, example):
     """
-    Test that non-default fixed, bounds, and name states survive a
-    round trip.
+    Test that nondefault fixed, bounds, and name states survive a
+    round-trip.
 
-    The file stores only the fixed=True entries and the non-empty
+    The file stores only the fixed=True entries and the nonempty
     bounds, so parameters whose class defaults differ from that
     baseline (e.g., the shape parameters, which default to fixed=True
     with a lower bound) must be reset when reading.
@@ -125,10 +125,10 @@ def test_psf_converters_preserve_fitting_state(tmp_path, example):
 def test_psf_converters_preserve_zero_bounds(tmp_path, example):
     """
     Test that bounds whose limits are all zero or `None` survive a
-    round trip.
+    round-trip.
 
     The asdf-astropy transform converter does not write these bounds
-    (e.g., a non-negative flux bound of ``(0, None)``).
+    (e.g., a nonnegative flux bound of ``(0, None)``).
     """
     psf, _ = example()
     psf.bounds[psf.param_names[0]] = (0, None)
@@ -164,7 +164,7 @@ def test_psf_examples_cover_all_converters():
                     reason='asdf-astropy is not installed')
 def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path):
     """
-    Test that a modified oversampling value survives a round trip.
+    Test that a modified oversampling value survives a round-trip.
     """
     psf, _ = examples.gridded_psf()
     psf.oversampling = (2, 3)
@@ -221,7 +221,7 @@ def test_grid_structure_is_stored_outside_meta(example, converter_name,
                     reason='asdf-astropy is not installed')
 def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
     """
-    Test that a non-default oversampling value survives a round trip.
+    Test that a nondefault oversampling value survives a round-trip.
     """
     data = np.ones((4, 4, 4))
     meta = {
@@ -253,7 +253,7 @@ def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
                     reason='asdf-astropy is not installed')
 def test_stdpsf_grid_converter_repeated_grid_coordinate(tmp_path):
     """
-    Test a round trip for an ACS/WFC grid, whose y coordinates are
+    Test a round-trip for an ACS/WFC grid, whose y coordinates are
     repeated where the two detectors abut.
     """
     filename = examples.PSF_DATA_DIR / 'STDPSF_ACSWFC_F814W_mock.fits'

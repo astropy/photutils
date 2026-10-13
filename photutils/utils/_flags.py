@@ -383,7 +383,7 @@ def decode_flags(flags, registry, *, return_bit_values=False):
             raise TypeError(msg)
 
         if flag_value < 0:
-            msg = 'Flag value must be a non-negative integer'
+            msg = 'Flag value must be a nonnegative integer'
             raise ValueError(msg)
 
         # A NumPy integer cannot be compared with a bit value that is

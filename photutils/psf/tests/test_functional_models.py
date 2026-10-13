@@ -590,7 +590,7 @@ class TestGaussianPRFRotated:
     @pytest.mark.parametrize('value', [np.nan, np.inf])
     def test_non_finite_position(self, value):
         """
-        Test that a non-finite position gives NaN for that pixel only.
+        Test that a nonfinite position gives NaN for that pixel only.
         """
         model = GaussianPRF(x_0=4.3, y_0=0.2, x_fwhm=1.1, y_fwhm=2.3,
                             theta=33.0)

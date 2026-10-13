@@ -25,7 +25,7 @@ def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
     Parameters
     ----------
     fwhm : float
-        The full-width at half-maximum (FWHM) of the 2D circular
+        The full width at half maximum (FWHM) of the 2D circular
         Gaussian kernel, in pixels.
 
     size : int or (2,) int array_like
@@ -141,7 +141,7 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None,
         ``replace_mask`` pixels. In other words, if a pixel in
         ``replace_mask`` has a mirror pixel in this ``mask``, then the
         mirrored value is set to zero. Using this keyword prevents
-        potential spreading of known non-finite or bad pixel values.
+        potential spreading of known nonfinite or bad pixel values.
 
     return_uncorrected : bool, optional
         If `True`, also return a boolean mask of the ``replace_mask``

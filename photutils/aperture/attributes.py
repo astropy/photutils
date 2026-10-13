@@ -128,7 +128,7 @@ class PixelPositions(ApertureAttribute):
             raise TypeError(msg)
 
         if np.any(~np.isfinite(value)):
-            msg = (f'{self.name!r} must not contain any non-finite '
+            msg = (f'{self.name!r} must not contain any nonfinite '
                    '(e.g., NaN or inf) positions')
             raise ValueError(msg)
 
@@ -166,7 +166,7 @@ class PositiveScalar(ApertureAttribute):
             # NaN compares False, so it is also rejected here
             positive = value > 0
         except TypeError:
-            # Non-numeric scalars (e.g., strings) do not support
+            # Nonnumeric scalars (e.g., strings) do not support
             # comparison with 0
             raise TypeError(msg) from None
         if not positive:

@@ -156,7 +156,7 @@ def _check_jacobian_defined(jacobian, pixcoord):
     """
     Raise a ValueError if a Jacobian is not finite.
 
-    A non-finite Jacobian means the WCS is undefined at the position,
+    A nonfinite Jacobian means the WCS is undefined at the position,
     for example outside the valid region of an all-sky projection.
     The per-region helpers raise here so that the caller gets a clear
     message instead of a NaN scale or a failed decomposition later.
@@ -251,7 +251,7 @@ def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
     using SVD.
 
     Given 2x2 matrices ``m_comp`` whose columns represent the mapped
-    semi-axis vectors of ellipses, perform SVD and return the full
+    semiaxis vectors of ellipses, perform SVD and return the full
     widths, heights, and rotation angles, preserving the width/height
     assignment of the input ellipses.
 
@@ -260,7 +260,7 @@ def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
     m_comp : `~numpy.ndarray`
         The composite matrices, with shape ``(..., 2, 2)``, whose SVD
         gives the output ellipse axes. The first column is the mapped
-        width semi-axis and the second the mapped height semi-axis.
+        width semiaxis and the second the mapped height semiaxis.
 
     sky_angle : bool, optional
         If True, the composite matrix columns are tangent-plane (``xi``
@@ -274,7 +274,7 @@ def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
         Whether each input ellipse is known to be circular (width ==
         height), in which case the SVD's principal axis is meaningless
         and the rotation angle is taken directly from the mapped width
-        semi-axis. Broadcast against the leading shape of ``m_comp``.
+        semiaxis. Broadcast against the leading shape of ``m_comp``.
         Default is False.
 
     Returns
@@ -294,7 +294,7 @@ def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
     # SVD returns singular values in descending order, so s_vals[0]
     # corresponds to the major axis. Determine whether the major axis
     # corresponds to the width or height by checking alignment with the
-    # mapped width semi-axis.
+    # mapped width semiaxis.
     width_col = m_comp[..., :, 0]
     dot_major = np.abs(np.einsum('...i,...i->...', u_mat[..., :, 0],
                                  width_col))
@@ -310,7 +310,7 @@ def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
                          u_mat[..., :, 1])
 
     # Fix SVD sign ambiguity. Ensure the angle direction aligns with the
-    # mapped width semi-axis.
+    # mapped width semiaxis.
     flip = np.einsum('...i,...i->...', angle_col, width_col) < 0
     angle_col = np.where(flip[..., np.newaxis], -angle_col, angle_col)
 
@@ -318,7 +318,7 @@ def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
     # principal direction has no physical meaning. Any rotation of a
     # circle yields an identical shape, so the SVD picks an arbitrary
     # principal axis derived from the Jacobian. To preserve the input
-    # rotation angle, fall back to the mapped width semi-axis direction
+    # rotation angle, fall back to the mapped width semiaxis direction
     # (which carries the input theta through the Jacobian).
     width_norm = np.linalg.norm(width_col, axis=-1)
     use_width = (np.broadcast_to(input_circular, width_norm.shape)
@@ -486,7 +486,7 @@ def sky_to_pixel_mean_scale(wcs, skycoord, *, pixcoord=None):
 
     For a WCS without distortion or skew and with equal pixel scales
     in x and y, the two singular values are equal at the tangent point
-    and the scale is exact. For distorted WCS, non-square pixels, or
+    and the scale is exact. For distorted WCS, nonsquare pixels, or
     positions far from the tangent point, the two singular values differ
     and the geometric mean is the area-preserving compromise.
 
@@ -560,9 +560,9 @@ def pixel_shape_to_sky_svd(wcs, pixcoord, width, height, pixel_angle_rad):
     Convert a pixel ellipse to a sky ellipse using SVD.
 
     This builds the composite matrix ``M_sky = F @ M_pix`` where
-    ``M_pix`` encodes the pixel ellipse semi-axes and rotation, and ``F
+    ``M_pix`` encodes the pixel ellipse semiaxes and rotation, and ``F
     = d(sky_arcsec)/d(pixel)`` is the local forward Jacobian. The SVD of
-    ``M_sky`` gives the exact sky ellipse semi-axes and orientation.
+    ``M_sky`` gives the exact sky ellipse semiaxes and orientation.
 
     This handles WCS shear correctly. The sky image of a pixel ellipse
     is always an ellipse, and SVD extracts its true principal axes,
@@ -615,7 +615,7 @@ def pixel_shape_to_sky_svd(wcs, pixcoord, width, height, pixel_angle_rad):
                                              pixcoord[1])[0]
     _check_jacobian_defined(forward, pixcoord)
 
-    # Build M_pix: columns are pixel semi-axis vectors, one matrix per
+    # Build M_pix: columns are pixel semiaxis vectors, one matrix per
     # broadcast width and height.
     width = np.asarray(width, dtype=float)
     height = np.asarray(height, dtype=float)
@@ -630,7 +630,7 @@ def pixel_shape_to_sky_svd(wcs, pixcoord, width, height, pixel_angle_rad):
     m_pix[..., 1, 0] = half_w * sin_a
     m_pix[..., 1, 1] = half_h * cos_a
 
-    # M_sky = F @ M_pix: columns are sky semi-axis vectors.
+    # M_sky = F @ M_pix: columns are sky semiaxis vectors.
     m_sky = forward @ m_pix
 
     sky_width, sky_height, sky_angle = _svd_ellipse_from_composite(
@@ -648,9 +648,9 @@ def sky_shape_to_pixel_svd(wcs, skycoord, width_arcsec, height_arcsec,
     Convert a sky ellipse to a pixel ellipse using SVD.
 
     This builds the composite matrix ``M_pix = J @ M_sky`` where
-    ``M_sky`` encodes the sky ellipse semi-axes and rotation, and ``J``
+    ``M_sky`` encodes the sky ellipse semiaxes and rotation, and ``J``
     is the local Jacobian. The SVD of ``M_pix`` gives the exact pixel
-    ellipse semi-axes and orientation.
+    ellipse semiaxes and orientation.
 
     This handles WCS shear correctly. The pixel image of a sky ellipse
     is always an ellipse, and SVD extracts its true principal axes,
@@ -711,7 +711,7 @@ def sky_shape_to_pixel_svd(wcs, skycoord, width_arcsec, height_arcsec,
     center, jacobian = _sky_to_pixel_jacobian(wcs, skycoord,
                                               pixcoord=pixcoord)
 
-    # Build M_sky: columns are sky semi-axis vectors in tangent-plane
+    # Build M_sky: columns are sky semiaxis vectors in tangent-plane
     # coordinates (xi=East, eta=North). The width axis is at the given
     # PA from North (toward East), so its tangent-plane components are
     # (sin(PA), cos(PA)). The height axis is perpendicular, at PA+90.
@@ -730,7 +730,7 @@ def sky_shape_to_pixel_svd(wcs, skycoord, width_arcsec, height_arcsec,
     m_sky[..., 1, 0] = half_w * cos_pa
     m_sky[..., 1, 1] = -half_h * sin_pa
 
-    # M_pix = J @ M_sky: columns are pixel semi-axis vectors
+    # M_pix = J @ M_sky: columns are pixel semiaxis vectors
     m_pix = jacobian @ m_sky
 
     pixel_width, pixel_height, pixel_angle = _svd_ellipse_from_composite(

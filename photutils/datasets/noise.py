@@ -24,7 +24,7 @@ def apply_poisson_noise(data, seed=None):
     ----------
     data : array_like
         The array on which to apply Poisson noise. Every pixel in the
-        array must have a finite, non-negative value (i.e., counts).
+        array must have a finite, nonnegative value (i.e., counts).
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -39,7 +39,7 @@ def apply_poisson_noise(data, seed=None):
     Raises
     ------
     ValueError
-        If ``data`` contains any non-finite or negative values.
+        If ``data`` contains any nonfinite or negative values.
 
     See Also
     --------
@@ -66,7 +66,7 @@ def apply_poisson_noise(data, seed=None):
     """
     data = np.asanyarray(data)
     if not np.all(np.isfinite(data)):
-        msg = 'data must not contain any non-finite values'
+        msg = 'data must not contain any nonfinite values'
         raise ValueError(msg)
     if np.any(data < 0):
         msg = 'data must not contain any negative values'

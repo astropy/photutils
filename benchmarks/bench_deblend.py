@@ -289,7 +289,7 @@ def bench_many_peaks(*, size=1000, n_peaks_sweep=(10, 25, 50, 100),
     The contrast criterion applies to the flux in each watershed
     basin (which includes a share of the envelope flux), so larger
     contrast values remove more markers. Each removal iteration
-    re-runs the watershed over the full segment, so comparing the
+    reruns the watershed over the full segment, so comparing the
     contrast=0 row (a single watershed call) to the larger-contrast
     rows isolates the cost of the iterative marker-removal loop. The
     number of watershed calls is at most the difference between the

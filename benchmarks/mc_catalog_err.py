@@ -339,7 +339,7 @@ def check_end_to_end(*, amplitude=400.0, radius=7.0, n_real=4000, seed=0):
         cat = SourceCatalog(data, segm, error=error, wcs=wcs)
         results[i] = measure(cat)
 
-    # Realizations with a non-finite value (e.g., a windowed or
+    # Realizations with a nonfinite value (e.g., a windowed or
     # quadratic centroid that fell back or failed) would corrupt the
     # scatter, so they are excluded and counted
     finite = np.all(np.isfinite(results), axis=1)
@@ -354,7 +354,7 @@ def check_end_to_end(*, amplitude=400.0, radius=7.0, n_real=4000, seed=0):
           f'({footprint.sum()} px), model at the segment edge '
           f'{edge:.1f} sigma, total S/N {snr:.0f}, {n_real} realizations, '
           f'{n_negative / n_real:.1f} negative pixels per realization, '
-          f'{n_dropped} realizations with non-finite values dropped.')
+          f'{n_dropped} realizations with nonfinite values dropped.')
     print(f'{"quantity":>26}{"MC scatter":>12}{"reported":>12}{"ratio":>8}')
     rows = []
     for i, (_, label) in enumerate(CENTROID_KINDS):

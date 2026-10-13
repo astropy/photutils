@@ -16,7 +16,7 @@ from photutils.utils.tests.wcs_test_helpers import (WCS_CDELT_ARCSEC,
 @pytest.fixture
 def simple_wcs():
     """
-    Non-distorted TAN WCS aligned with the celestial axes.
+    Nondistorted TAN WCS aligned with the celestial axes.
     """
     return make_simple_wcs(WCS_CENTER, WCS_CDELT_ARCSEC * u.arcsec, 20)
 
@@ -24,7 +24,7 @@ def simple_wcs():
 @pytest.fixture
 def rotated_wcs():
     """
-    Non-distorted TAN WCS with a 25-degree rotation (CD matrix).
+    Nondistorted TAN WCS with a 25-degree rotation (CD matrix).
     """
     return make_simple_wcs(WCS_CENTER, WCS_CDELT_ARCSEC * u.arcsec, 20,
                            rotation_deg=25.0)
@@ -42,7 +42,7 @@ def sip_wcs():
 @pytest.fixture
 def nonsquare_wcs():
     """
-    Non-distorted TAN WCS with non-square pixels (0.03 x 0.05 deg).
+    Nondistorted TAN WCS with nonsquare pixels (0.03 x 0.05 deg).
     """
     wcs = WCS(naxis=2)
     wcs.wcs.crpix = [10.5, 10.5]
@@ -55,7 +55,7 @@ def nonsquare_wcs():
 @pytest.fixture
 def swapped_wcs():
     """
-    Non-distorted TAN WCS with the latitude axis first.
+    Nondistorted TAN WCS with the latitude axis first.
 
     The CD matrix maps the same sky footprint as ``simple_wcs`` (RA
     increasing to the left along x, Dec increasing along y), but the
@@ -74,7 +74,7 @@ def swapped_wcs():
 @pytest.fixture
 def flipped_wcs():
     """
-    Non-distorted TAN WCS with a flipped parity (North down, East left).
+    Nondistorted TAN WCS with a flipped parity (North down, East left).
 
     Both CDELT values are negative, so the determinant of the pixel
     scale matrix is positive (parity = +1). This is the opposite parity

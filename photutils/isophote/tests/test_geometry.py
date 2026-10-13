@@ -47,7 +47,7 @@ def test_to_polar():
     assert_allclose(r, 100.0, atol=0.1)
     assert_allclose(p, np.pi / 4.0, atol=0.0001)
 
-    # position angle tilted 45 deg from X axis
+    # position angle tilted 45 deg from X-axis
     geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, np.pi / 4.0, astep=0.2,
                                linear_growth=False)
 

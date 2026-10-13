@@ -31,13 +31,13 @@ def pin_minimum(req_str_sections):
     ----------
     req_str_sections : list of list of str
         A list of sections, where each section is a list of
-        requirement strings (e.g. from [build-system].requires or
+        requirement strings (e.g., from [build-system].requires or
         [project].dependencies).
 
     Returns
     -------
     result : list of str
-        A list of requirement strings with minimum versions pinned (e.g.
+        A list of requirement strings with minimum versions pinned (e.g.,
         'package==1.2.3').
     """
     mins = {}

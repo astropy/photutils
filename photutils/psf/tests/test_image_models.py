@@ -249,7 +249,7 @@ class TestImagePSF:
         with pytest.raises(ValueError, match=match):
             ImagePSF(np.ones((10, 10, 10)))
 
-        match = 'The length of the x and y axes must both be at least 4'
+        match = 'The length of the x- and y-axes must both be at least 4'
         with pytest.raises(ValueError, match=match):
             ImagePSF(np.ones((3, 4)))
 
@@ -617,7 +617,7 @@ class TestImagePSF:
         with pytest.raises(ValueError, match=match):
             model.data = np.ones(10)
 
-        match = 'The length of the x and y axes must both be at least 4'
+        match = 'The length of the x- and y-axes must both be at least 4'
         with pytest.raises(ValueError, match=match):
             model.data = np.ones((3, 4))
 
@@ -734,8 +734,8 @@ class TestImagePSF:
 @pytest.mark.parametrize('oversampling', [1, 2])
 def test_read_only_inputs(gaussian_psf, dtype, oversampling):
     """
-    Regression test that read-only (non-writeable) input arrays are
-    accepted, are not modified, and give results identical to writeable
+    Regression test that read-only (nonwritable) input arrays are
+    accepted, are not modified, and give results identical to writable
     arrays.
     """
     yy, xx = np.mgrid[-10:11, -10:11]

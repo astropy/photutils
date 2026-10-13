@@ -197,7 +197,7 @@ class _PSFParameterMapper:
 
     def rename_table_columns(self, table):
         """
-        Rename columns in-place in an input table to the ``_init``
+        Rename columns in place in an input table to the ``_init``
         format.
 
         Parameters
@@ -624,7 +624,7 @@ class PSFPhotometry:
         the x and y coordinates of the sources and return an integer
         array of the group ID numbers (starting from 1) indicating
         the group in which a given source belongs. If `None`, then no
-        grouping is performed, i.e. each source is fit independently.
+        grouping is performed, i.e., each source is fit independently.
         The ``group_id`` values in ``init_params`` override this
         keyword. A warning is raised if any group size is larger than
         ``group_warning_threshold`` sources.
@@ -829,7 +829,7 @@ class PSFPhotometry:
         self._results_assembler = PSFResultsAssembler(self._param_mapper,
                                                       self.fit_shape)
 
-        # Callers that report non-convergence themselves set this to
+        # Callers that report nonconvergence themselves set this to
         # False
         self._warn_no_convergence = True
 
@@ -1033,7 +1033,7 @@ class PSFPhotometry:
         ------
         ValueError
             If xy_bounds has incorrect shape, dimension, or contains
-            invalid values (non-positive or non-finite).
+            invalid values (nonpositive or nonfinite).
         """
         if xy_bounds is None:
             return xy_bounds
@@ -1189,7 +1189,7 @@ class PSFPhotometry:
         between the PSFPhotometry instance and its internal component
         objects (e.g., _data_processor).
 
-        This method modifies the internal state in-place.
+        This method modifies the internal state in place.
         """
         self._data_processor.data_unit = self.data_unit
 
@@ -1359,7 +1359,7 @@ class PSFPhotometry:
 
         mask : 2D `numpy.ndarray` or `None`
             The boolean mask combining the input mask and any
-            non-finite data values, or `None` if no pixels are masked.
+            nonfinite data values, or `None` if no pixels are masked.
 
         error : 2D `numpy.ndarray` or `None`
             The validated 1-sigma uncertainties of the input data.
@@ -1874,7 +1874,7 @@ class PSFPhotometry:
             If None, returns None.
 
         remove_invalid : bool, optional
-            If `True`, rows containing non-finite fitted values are
+            If `True`, rows containing nonfinite fitted values are
             removed. Default is `True`.
 
         reset_ids : bool, optional
@@ -1907,7 +1907,7 @@ class PSFPhotometry:
             tbl[init_name] = results_tbl[col_name]
 
         if remove_invalid:
-            # Remove rows with any non-finite fitted values
+            # Remove rows with any nonfinite fitted values
             keep = PSFPhotometry._finite_fit_mask(tbl)
             tbl = tbl[keep]
 
@@ -1943,7 +1943,7 @@ class PSFPhotometry:
             'x_0', 'flux').
 
         remove_invalid : bool, optional
-            If `True`, rows containing non-finite fitted values are
+            If `True`, rows containing nonfinite fitted values are
             removed. Default is `True`.
 
         reset_ids : bool, optional
@@ -1977,7 +1977,7 @@ class PSFPhotometry:
             tbl[model_param_name] = results_tbl[col_name]
 
         if remove_invalid:
-            # Remove rows with any non-finite fitted values
+            # Remove rows with any nonfinite fitted values
             keep = PSFPhotometry._finite_fit_mask(tbl)
             tbl = tbl[keep]
 
@@ -1997,7 +1997,7 @@ class PSFPhotometry:
         Parameters
         ----------
         remove_invalid : bool, optional
-            If `True`, rows that contain non-finite fitted values are
+            If `True`, rows that contain nonfinite fitted values are
             removed.
 
         reset_ids : bool, optional
@@ -2027,7 +2027,7 @@ class PSFPhotometry:
         Parameters
         ----------
         remove_invalid : bool, optional
-            If `True`, rows that contain non-finite fitted values are
+            If `True`, rows that contain nonfinite fitted values are
             removed.
 
         reset_ids : bool, optional

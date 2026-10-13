@@ -326,7 +326,7 @@ other four and is parameterized by two values:
   (the flat inner region).
 
 The array radius is the distance from the array center to the array
-edge. For a non-square array, it differs between the two axes, so the
+edge. For a nonsquare array, it differs between the two axes, so the
 window is elliptical. The window then has the same cutoff in spatial
 frequency along both axes.
 

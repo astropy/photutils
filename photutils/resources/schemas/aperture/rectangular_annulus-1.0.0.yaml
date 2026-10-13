@@ -143,7 +143,7 @@ properties:
     title: Rotation angle.
     description: |
       RectangularAnnulus: the rotation angle of the rectangle from the
-      positive ``x`` axis, as an angular quantity or as a number in
+      positive x-axis, as an angular quantity or as a number in
       radians. The rotation angle increases counterclockwise.
       SkyRectangularAnnulus: the position angle (in angular units) of
       the rectangle "width" side. For a right-handed world coordinate

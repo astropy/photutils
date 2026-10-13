@@ -17,7 +17,7 @@ The scenes are the blended Gaussian-pair image used by the
 ``SourceCatalog`` benchmarks in ``bench_segmentation.py`` (with error,
 background, mask, and WCS inputs) and a small edge-case scene with
 close source pairs, sources touching every image edge, masked pixels
-spanning a close pair, and non-finite data values. The configurations
+spanning a close pair, and nonfinite data values. The configurations
 cover the three ``aperture_mask_method`` values, a bare catalog, a
 local background, the minimum-circular-radius Kron aperture, sliced
 and scalar catalogs, and a ``detection_catalog``.
@@ -131,7 +131,7 @@ def make_edge_scene(*, seed=0):
 
     The scene contains isolated sources, close/overlapping pairs,
     sources touching every image edge, masked pixels inside a source
-    and spanning a close pair, and non-finite data values inside a
+    and spanning a close pair, and nonfinite data values inside a
     source.
 
     Parameters
@@ -162,7 +162,7 @@ def make_edge_scene(*, seed=0):
     mask = np.zeros((ny, nx), dtype=bool)
     mask[18:20, 22:24] = True  # inside a source of a close pair
     mask[73:75, 72:84] = True  # spans a close pair
-    data[77, 78] = np.nan  # non-finite inside a source
+    data[77, 78] = np.nan  # nonfinite inside a source
     data[75, 83] = np.inf
     segm = detect_sources(data, 1.0, 5)
     kernel = make_2dgaussian_kernel(2.0, size=5)

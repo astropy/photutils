@@ -164,7 +164,7 @@ def bispline_sum(const double[::1] tx, const double[::1] ty,
         The knot vectors along the first (x) and second (y) variables
         of bicubic splines (``kx=ky=3``), in the FITPACK format of
         ``RectBivariateSpline.get_knots()``. The knots
-        must be in non-decreasing order, which is not checked. The knot
+        must be in nondecreasing order, which is not checked. The knot
         interval is located with a binary search, which gives wrong
         values for unordered knots. A scipy smoothing fit (``s > 0``)
         can return such knots.

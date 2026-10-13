@@ -174,7 +174,7 @@ or the WCS is sheared. Pass ``as_ellipse=True`` to the ``to_pixel``
 or ``to_sky`` method of a circular aperture or annulus to return that
 ellipse instead. For example, with pixels that are 0.1 arcsec wide and
 0.2 arcsec tall, a 0.4 arcsec sky circle becomes a pixel ellipse with
-semi-axes of 4 and 2 pixels::
+semiaxes of 4 and 2 pixels::
 
     >>> from astropy.wcs import WCS
     >>> wcs2 = WCS(naxis=2)
@@ -227,7 +227,7 @@ its ``vertex_offsets``) that can be applied at one or more positions::
     >>> aperture = PolygonAperture(positions, offsets)
 
 The polygon must be simple (non-self-intersecting) with at least three
-vertices, but it does not need to be convex. Non-convex shapes such as
+vertices, but it does not need to be convex. Nonconvex shapes such as
 L-shapes or stars are fully supported. The vertices may be input in
 either clockwise or counterclockwise order. They are normalized to
 counterclockwise order internally.
@@ -353,7 +353,7 @@ one of three methods:
   aperture, and 0 otherwise.
 
 * ``'subpixel'``:
-  Pixels are divided into a sub-grid of :math:`N \times N` subpixels
+  Pixels are divided into a subgrid of :math:`N \times N` subpixels
   (where :math:`N` is set by the ``subpixels`` keyword). The pixel
   weight is the fraction of subpixel centers that fall within the
   aperture.
@@ -630,7 +630,7 @@ The result is very different if a ``mask`` image is not provided::
     111.56637061435919
 
 For :class:`~photutils.aperture.AperturePhotometry` and
-:class:`~photutils.aperture.ApertureStats`, non-finite values (NaN
+:class:`~photutils.aperture.ApertureStats`, nonfinite values (NaN
 or Inf) in the input ``data`` are automatically masked, so they are
 automatically excluded from calculations. For example::
 
@@ -828,10 +828,10 @@ have not already been computed (the results are cached and shared with
 the corresponding properties), so the flag values never depend on which
 properties were accessed first.
 
-Because non-finite values are automatically masked in
+Because nonfinite values are automatically masked in
 both :class:`~photutils.aperture.AperturePhotometry` and
 :class:`~photutils.aperture.ApertureStats`, an aperture that contains
-only non-finite values will have ``flags = 272`` (``'non_finite_data'``
+only nonfinite values will have ``flags = 272`` (``'non_finite_data'``
 + ``'all_masked'``) in :class:`~photutils.aperture.AperturePhotometry`.
 :class:`~photutils.aperture.ApertureStats` also sets
 ``'undefined_shape'``, giving ``flags = 4368``.
@@ -1230,7 +1230,7 @@ The ``'center'`` method produces a binary mask, in contrast to the
 fractional weights returned by the ``'exact'`` method.
 
 We can also use an :class:`~photutils.aperture.ApertureMask` to create
-a mask-weighted cutout from the data, with partial or non-overlapping
+a mask-weighted cutout from the data, with partial or nonoverlapping
 regions handled automatically. The following example plots the first
 cutout using the mask generated above with the ``'exact'`` overlap
 method:

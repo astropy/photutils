@@ -156,9 +156,9 @@ cdef inline int _classify_seg_pixel(const seg_t *segmentation,
         The C-contiguous mask-plane data, or NULL if there is no mask.
         Used only by the symmetric 'correct' method (``seg_method`` 4)
         to reject mirror pixels that are marked in the plane (i.e.,
-        input-masked pixels, and non-finite pixels when the caller
+        input-masked pixels, and nonfinite pixels when the caller
         marks them in the plane). The aperture drivers called with
-        ``mask_nonfinite`` reject non-finite mirror pixels themselves.
+        ``mask_nonfinite`` reject nonfinite mirror pixels themselves.
 
     nx_data : Py_ssize_t
         The row stride (number of columns) of the data arrays.
@@ -628,7 +628,7 @@ cdef inline double _ellipse_frac_core(double pxmin, double pymin,
                                       int use_exact,
                                       int subpixels) noexcept nogil:
     """
-    Fraction of a single pixel that overlaps an ellipse with semi-axes
+    Fraction of a single pixel that overlaps an ellipse with semiaxes
     ``rx``/``ry`` and orientation ``cos_theta``/``sin_theta``, centered
     on the origin.
 
@@ -770,7 +770,7 @@ cdef inline double _elliptical_annulus_pixel_frac(
         int use_exact, int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps an elliptical annulus with
-    inner semi-axes ``rx_in``/``ry_in`` and outer semi-axes
+    inner semiaxes ``rx_in``/``ry_in`` and outer semiaxes
     ``rx_out``/``ry_out`` (sharing orientation
     ``cos_theta``/``sin_theta``), centered on the origin.
 
@@ -1119,7 +1119,7 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
                                        int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps a simple polygon, supplied
-    as counter-clockwise vertices centered on the origin.
+    as counterclockwise vertices centered on the origin.
 
     This replicates the per-pixel logic of ``polygon_overlap_grid``.
     Both modes use an interior/exterior fast path for convex polygons
@@ -1141,7 +1141,7 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
 
     poly_x, poly_y : double *
         The x and y coordinates of the polygon vertices, in
-        counter-clockwise order.
+        counterclockwise order.
 
     n_poly : int
         The number of polygon vertices.
@@ -1153,7 +1153,7 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
     is_convex : int
         Set to 1 if the polygon is convex, which enables the
         interior/exterior fast path. Set to 0 for general (possibly
-        non-convex) polygons.
+        nonconvex) polygons.
 
     buf_a_x, buf_a_y, buf_b_x, buf_b_y : double *
         Scratch buffers used by the polygon-clipping routine.

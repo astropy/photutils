@@ -75,7 +75,7 @@ def test_circular_overlap_grid_no_readonly_inputs(use_exact):
     """
     Test that the scalar-input overlap grid function takes no array
     inputs (so read-only input arrays cannot occur) and returns a
-    freshly allocated, writeable output array of shape (ny, nx).
+    freshly allocated, writable output array of shape (ny, nx).
     """
     g = circular_overlap_grid(-5.0, 5.0, -5.0, 5.0, 10, 12, 3.0, use_exact, 5)
     assert g.shape == (12, 10)

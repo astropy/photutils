@@ -131,7 +131,7 @@ properties:
     title: Rotation angle.
     description: |
       EllipticalAnnulus: the rotation angle of the ellipse from the
-      positive ``x`` axis, as an angular quantity or as a number in
+      positive x-axis, as an angular quantity or as a number in
       radians. The rotation angle increases counterclockwise.
       SkyEllipticalAnnulus: the position angle (in angular units) of the
       ellipse semimajor axis. For a right-handed world coordinate

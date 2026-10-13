@@ -271,9 +271,9 @@ def test_create_weights_cutout_with_uncertainty():
 
 def test_create_weights_cutout_non_finite_warning():
     """
-    Test detection of non-finite weights.
+    Test detection of nonfinite weights.
     """
-    # Create weights with non-finite values
+    # Create weights with nonfinite values
     bad_weights = np.ones((5, 5))
     bad_weights[2, 2] = np.inf
 
@@ -289,7 +289,7 @@ def test_create_weights_cutout_non_finite_warning():
     # emitted by caller)
     weights, has_nonfinite = _create_weights_cutout(info, mask, slices)
     assert has_nonfinite
-    # Non-finite value should be set to zero
+    # Nonfinite value should be set to zero
     assert weights[1, 1] == 0.0
 
 
@@ -351,16 +351,16 @@ class TestEPSFStar:
         with pytest.raises(ValueError, match=match):
             EPSFStar(data, weights=wrong_weights)
 
-        # Test non-finite weights (should generate warning)
+        # Test nonfinite weights (should generate warning)
         bad_weights = np.ones((5, 5))
         bad_weights[2, 2] = np.inf
         bad_weights[1, 1] = np.nan
 
-        match = 'Non-finite weight values'
+        match = 'Nonfinite weight values'
         with pytest.warns(AstropyUserWarning, match=match):
             star = EPSFStar(data, weights=bad_weights)
 
-        # Check that non-finite weights were set to zero
+        # Check that nonfinite weights were set to zero
         assert star.weights[2, 2] == 0.0
         assert star.weights[1, 1] == 0.0
 
@@ -400,7 +400,7 @@ class TestEPSFStar:
         with pytest.raises(ValueError, match=match):
             star.cutout_center = [1, 2, 3]
 
-        # Test non-finite values
+        # Test nonfinite values
         match = 'must be finite'
         with pytest.raises(ValueError, match=match):
             star.cutout_center = [np.nan, 2.0]
@@ -421,7 +421,7 @@ class TestEPSFStar:
         with pytest.raises(ValueError, match=match):
             EPSFStar(data, origin=[1, 2, 3])
 
-        # Test non-finite origin
+        # Test nonfinite origin
         match = 'Origin coordinates must be finite'
         with pytest.raises(ValueError, match=match):
             EPSFStar(data, origin=[np.inf, 2])
@@ -588,7 +588,7 @@ class TestEPSFStar:
 
     def test_slices_bbox_rectangular_roundtrip(self):
         """
-        Regression test that slices/bbox are correct for non-square
+        Regression test that slices/bbox are correct for nonsquare
         cutouts. Indexing the parent image with star.slices must
         return the cutout.
         """
@@ -916,7 +916,7 @@ class TestEPSFStars:
     def test_getattr_with_linked_stars(self, simple_wcs):
         """
         Regression test that attribute delegation works for a mix of
-        EPSFStar and multi-star LinkedEPSFStar objects (ragged
+        EPSFStar and multistar LinkedEPSFStar objects (ragged
         per-star values return an object array).
         """
         star = EPSFStar(np.ones((5, 5)))
@@ -1257,13 +1257,13 @@ class TestLinkedEPSFStar:
 
     def test_getattr_private_attribute_error(self, simple_wcs):
         """
-        Test that accessing non-existent private attributes raises
+        Test that accessing nonexistent private attributes raises
         error.
         """
         star = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs)
         linked = LinkedEPSFStar([star])
 
-        # Accessing non-existent private attribute should raise
+        # Accessing nonexistent private attribute should raise
         match = "'LinkedEPSFStar' object has no attribute"
         with pytest.raises(AttributeError, match=match):
             _ = linked._nonexistent_attribute
@@ -1788,9 +1788,9 @@ class TestExtractStars:
             # Check warnings
             warning_messages = [str(warning.message) for warning in w]
 
-            # Should have one warning about non-finite weights
+            # Should have one warning about nonfinite weights
             nonfinite_warnings = [msg for msg in warning_messages
-                                  if 'non-finite weight values' in msg]
+                                  if 'nonfinite weight values' in msg]
             assert len(nonfinite_warnings) == 1
 
             # Should have warnings about failed EPSFStar creation
@@ -1807,23 +1807,23 @@ class TestExtractStars:
 
     def test_extract_stars_nonfinite_weights_warning(self):
         """
-        Test that non-finite weights in uncertainty emit warning.
+        Test that nonfinite weights in uncertainty emit warning.
         """
         data = np.ones((50, 50)) * 100
         nddata = NDData(data)
 
-        # Create uncertainty with non-finite values
+        # Create uncertainty with nonfinite values
         uncertainty = np.ones((50, 50)) * 0.1
         uncertainty[20:30, 20:30] = 0  # Will cause 1/0 = inf in weights
         nddata.uncertainty = StdDevUncertainty(uncertainty)
 
         table = Table({'x': [25], 'y': [25]})
 
-        match = 'non-finite weight values'
+        match = 'nonfinite weight values'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(nddata, table, size=11)
 
-        # Star should still be extracted (non-finite weights set to 0)
+        # Star should still be extracted (nonfinite weights set to 0)
         assert len(stars) == 1
 
     def test_extract_stars_weights_input_not_modified(self):
@@ -1856,7 +1856,7 @@ class TestExtractStars:
 
     def test_extract_stars_nonfinite_positions(self, simple_nddata):
         """
-        Regression test that non-finite source positions are skipped
+        Regression test that nonfinite source positions are skipped
         with a warning instead of raising an error.
         """
         table = Table({'x': [25.0, np.nan], 'y': [25.0, 30.0]})
@@ -2022,16 +2022,16 @@ class TestExtractStars:
     def test_extract_stars_nonfinite_weights(self, epsf_test_data):
         """
         Test extract_stars with sparse zero uncertainty values that create
-        non-finite weights at specific locations. The stars should still
+        nonfinite weights at specific locations. The stars should still
         be extracted successfully, with only the expected warning about
-        non-finite weights being set to zero.
+        nonfinite weights being set to zero.
         """
         shape = epsf_test_data['nddata'].data.shape
         init = epsf_test_data['init_stars']
 
-        # Create an uncertainty array with mostly valid (non-zero) values,
+        # Create an uncertainty array with mostly valid (nonzero) values,
         # but include some zero uncertainty values at specific locations
-        # within the star cutout regions to trigger non-finite weights
+        # within the star cutout regions to trigger nonfinite weights
         uncertainty_data = np.ones(shape)
         for i in range(min(3, len(init))):
             x_pix = int(init['x'][i])
@@ -2043,9 +2043,9 @@ class TestExtractStars:
         ndd = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty)
         size = 25
 
-        # Should only get the non-finite weights warning. Stars should
+        # Should only get the nonfinite weights warning. Stars should
         # still be extracted successfully
-        match = 'non-finite weight values'
+        match = 'nonfinite weight values'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(ndd, init[0:3], size=size)
 
@@ -2073,7 +2073,7 @@ class TestExtractStars:
         # masked errors because all weights are set to zero (fully
         # masked data).
         match1 = 'Star cutout is completely masked'
-        match2 = 'non-finite weight values'
+        match2 = 'nonfinite weight values'
         with (pytest.warns(AstropyUserWarning, match=match1),
               pytest.warns(AstropyUserWarning, match=match2)):
             stars = extract_stars(ndd,
@@ -2086,7 +2086,7 @@ class TestExtractStars:
 
 def test_star_nonfinite_flux_raises():
     """
-    Regression test that a non-finite flux raises a clear error
+    Regression test that a nonfinite flux raises a clear error
     instead of crashing later deep inside the ePSF fitter.
     """
     match = 'flux must be a finite value'
@@ -2099,8 +2099,8 @@ def test_star_nonfinite_flux_raises():
 
 def test_extract_stars_nonfinite_flux_column():
     """
-    Regression test that non-finite catalog flux values are skipped
-    with a warning, like non-finite positions.
+    Regression test that nonfinite catalog flux values are skipped
+    with a warning, like nonfinite positions.
     """
     data = np.ones((50, 50))
     catalog = Table({'x': [25.0, 10.0], 'y': [25.0, 10.0],
@@ -2164,7 +2164,7 @@ def test_epsfstars_array_conversion():
     """
     Regression test that a single-star EPSFStars container (e.g., from
     indexing) converts to the 2D star cutout, so that it can be passed
-    directly to matplotlib's imshow, and that a multi-star container
+    directly to matplotlib's imshow, and that a multistar container
     stacks the cutouts along the first axis.
     """
     data1 = np.arange(25.0).reshape(5, 5)

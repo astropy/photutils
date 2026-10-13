@@ -32,7 +32,7 @@ def warnings_as_errors():
     """
     Turn every warning into an error for each test in this module.
 
-    The helpers must not emit a warning for zero-flux or non-finite
+    The helpers must not emit a warning for zero-flux or nonfinite
     inputs. This fixture checks that without relying on the pytest
     warnings plugin, which some CI jobs disable.
     """
@@ -77,7 +77,7 @@ def covariances():
     3. Elongated with one unresolved axis (det 0.2, min eigenvalue
        0.05, which is below 1/12 while det is above (1/12)**2).
     4. Not positive semidefinite (det -3, min eigenvalue -1).
-    5. Partially non-finite.
+    5. Partially nonfinite.
     """
     return np.array([[[4.0, 0.0], [0.0, 1.0]],
                      [[0.0, 0.0], [0.0, 0.0]],
@@ -132,7 +132,7 @@ class TestImageMoments:
 
     def test_central_nonsquare(self):
         """
-        Test the central moments of a non-square array.
+        Test the central moments of a nonsquare array.
         """
         data = np.array([[0, 1], [0, 1], [0, 1]])
         moments = image_moments(data, center=(1.0, 1.0), order=2)
@@ -154,7 +154,7 @@ class TestImageMoments:
         Test that a negative order raises ValueError.
         """
         data = np.array([[0, 1], [0, 1]])
-        match = 'order must be non-negative'
+        match = 'order must be nonnegative'
         with pytest.raises(ValueError, match=match):
             image_moments(data, order=-1)
 
@@ -220,7 +220,7 @@ class TestCovarianceFromMoments:
 
     def test_zero_flux(self, moments_central):
         """
-        Test that zero total flux is non-finite without a warning.
+        Test that zero total flux is nonfinite without a warning.
         """
         covar = covariance_from_moments(moments_central)
         assert not np.any(np.isfinite(covar[2]))
@@ -382,7 +382,7 @@ class TestIsSingularCovariance:
         The elongated source 3 has a determinant above ``(1/12)**2`` and
         is flagged only by its minor-axis variance. The source 4 is not
         positive semidefinite, so it is invalid instead of singular. The
-        partially non-finite source 5 is not flagged.
+        partially nonfinite source 5 is not flagged.
         """
         det = covariance_determinant(covariances)
         mask = is_singular_covariance(covariances, determinant=det)
@@ -430,7 +430,7 @@ class TestIsInvalidCovariance:
         is flagged.
 
         The singular sources 1 to 3 are valid, and the partially
-        non-finite source 5 is not flagged.
+        nonfinite source 5 is not flagged.
         """
         det = covariance_determinant(covariances)
         mask = is_invalid_covariance(covariances, determinant=det)
@@ -585,10 +585,10 @@ class TestFloorCovarianceEigvals:
         [[-np.inf, 0.0], [0.0, 1.0]]])
     def test_non_finite_unchanged(self, covar):
         """
-        Test that a matrix with a non-finite element is returned
+        Test that a matrix with a nonfinite element is returned
         unchanged, without a warning.
 
-        An infinite off-diagonal element with a non-positive trace gives
+        An infinite off-diagonal element with a nonpositive trace gives
         eigenvalues of negative and positive infinity.
         """
         covar = np.array([covar, [[1.0, 0.0], [0.0, 0.01]]])
@@ -832,7 +832,7 @@ class TestCovarianceEigvals:
         Test the descending order and the NaN cases.
 
         Source 4 has eigenvalues 3 and -1. Source 5 is partially
-        non-finite.
+        nonfinite.
         """
         eigvals = eigvals_from_covariance(covariances)
         assert eigvals.shape == (6, 2)
@@ -955,7 +955,7 @@ class TestPixelToSkyCovariance:
         Test the transport and the NaN cases.
 
         The x-axis flip changes the sign of the off-diagonal element.
-        A non-finite covariance or position gives a NaN matrix.
+        A nonfinite covariance or position gives a NaN matrix.
         """
         pix_cov = np.array([[[4.0, 1.0], [1.0, 2.0]],
                             [[np.nan, 1.0], [1.0, 2.0]],

@@ -217,7 +217,7 @@ class ApertureStats:
             `~astropy.nddata.NDData`
         The 2D array from which to calculate the source properties.
         For accurate source properties, ``data`` should be
-        background-subtracted. Non-finite ``data`` values (NaN and inf)
+        background-subtracted. Nonfinite ``data`` values (NaN and inf)
         are automatically masked. If ``data`` is an
         `~astropy.nddata.NDData` object, its ``mask``, ``wcs``, unit,
         and uncertainty are used. The ``error``, ``mask``, and ``wcs``
@@ -243,15 +243,15 @@ class ApertureStats:
         the same shape as the input ``data``. If ``data`` is a
         `~astropy.units.Quantity` array then ``error`` must be a
         `~astropy.units.Quantity` array (and vice versa) with identical
-        units. Non-finite ``error`` values (NaN and +/- inf) are not
+        units. Nonfinite ``error`` values (NaN and +/- inf) are not
         automatically masked, unless they are at the same position of
-        non-finite values in the input ``data`` array. Such pixels can
+        nonfinite values in the input ``data`` array. Such pixels can
         be masked using the ``mask`` keyword.
 
     mask : 2D `~numpy.ndarray` (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from all calculations. Non-finite
+        Masked data are excluded from all calculations. Nonfinite
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
@@ -306,7 +306,7 @@ class ApertureStats:
         background subtraction is performed. If the input ``data`` has
         units, then ``local_bkg`` must be a `~astropy.units.Quantity`
         with the same units. A `ValueError` is raised if ``local_bkg``
-        contains any non-finite values (NaN or inf).
+        contains any nonfinite values (NaN or inf).
 
     <segmentation_descriptions>
 
@@ -340,7 +340,7 @@ class ApertureStats:
     value of the pixels within the input aperture, but the input
     aperture is not recentered at the measured centroid position
     when making the measurements. If desired, you can create a new
-    `Aperture` object using the measured centroid and then re-run
+    `Aperture` object using the measured centroid and then rerun
     `~photutils.aperture.ApertureStats`.
 
     All properties other than the sum-related ones described below are
@@ -507,7 +507,7 @@ class ApertureStats:
 
         if (isinstance(ddof, bool)
                 or not isinstance(ddof, (int, np.integer)) or ddof < 0):
-            msg = 'ddof must be a non-negative integer'
+            msg = 'ddof must be a nonnegative integer'
             raise ValueError(msg)
         self.ddof = ddof
 
@@ -540,7 +540,7 @@ class ApertureStats:
             local_bkg = np.broadcast_to(local_bkg, self.n_positions)
 
             if np.any(~np.isfinite(local_bkg)):
-                msg = ('local_bkg must not contain any non-finite '
+                msg = ('local_bkg must not contain any nonfinite '
                        '(e.g., inf or NaN) values')
                 raise ValueError(msg)
             self._local_bkg = local_bkg  # always an iterable
@@ -745,7 +745,7 @@ class ApertureStats:
         always operates on arrays regardless of whether the instance is
         scalar.
 
-        For a non-scalar instance this returns the attribute unchanged.
+        For a nonscalar instance this returns the attribute unchanged.
         For a scalar instance the value is first read through the normal
         attribute access, which applies the scalar collapse performed by
         `__getattribute__` (e.g., ``moments`` becomes a ``(4, 4)`` array
@@ -757,7 +757,7 @@ class ApertureStats:
         is important. A per-source value can be stored either with
         its leading length-1 axis intact (when computed directly
         for a scalar instance) or with that axis already removed
-        (when a multi-source value is cached and then sliced to a
+        (when a multisource value is cached and then sliced to a
         scalar via ``__getitem__``). Going through the scalar collapse
         normalizes both cases to the same shape, so this method is
         robust regardless of how the value was produced.
@@ -960,7 +960,7 @@ class ApertureStats:
             if self.isscalar:
                 values = (values,)
 
-            # Use the canonical (non-deprecated) column name so that
+            # Use the canonical (nondeprecated) column name so that
             # assigning into ``tbl`` does not trigger a second,
             # redundant deprecation warning (the deprecated attribute
             # access above already warned once).
@@ -1077,9 +1077,9 @@ class ApertureStats:
         positions, local_bkg, labels_arr = self._index_sources(
             index, inputs.positions, local_bkg, inputs.labels)
 
-        # The batch kernels always exclude non-finite ``data`` values
+        # The batch kernels always exclude nonfinite ``data`` values
         # (``mask_nonfinite=1``). This matches the mask-based path,
-        # which masks non-finite data before any segmentation
+        # which masks nonfinite data before any segmentation
         # correction.
         def gather_chunk(pos, bkg, labels):
             (values, lx, ly, starts, counts, overlap,
@@ -1736,7 +1736,7 @@ class ApertureStats:
             unmasked pixel values when the fast path is unavailable.
 
         square_unit : bool, optional
-            Whether the statistic has squared data units (e.g. variance).
+            Whether the statistic has squared data units (e.g., variance).
 
         apply_unit : bool, optional
             Whether to apply the data unit at all (`False` for
@@ -1877,7 +1877,7 @@ class ApertureStats:
                 mask_cutout = np.array([False])
                 weight_cutout = np.array([np.nan])
             else:
-                # Create a mask of non-finite ``data`` values combined
+                # Create a mask of nonfinite ``data`` values combined
                 # with the input ``mask`` array
                 nonfinite_mask = ~np.isfinite(data_cutout)
                 if self._mask is not None:
@@ -2022,7 +2022,7 @@ class ApertureStats:
         Boolean mask cutouts representing the total mask.
 
         The total mask is a combination of the input ``mask``,
-        non-finite ``data`` values, the cutout aperture mask using the
+        nonfinite ``data`` values, the cutout aperture mask using the
         "center" method, and the sigma-clip mask.
         """
         fast = self._fast_cutouts_center
@@ -2036,7 +2036,7 @@ class ApertureStats:
         Boolean mask cutouts representing the total mask.
 
         The total mask is a combination of the input ``mask``,
-        non-finite ``data`` values, the cutout aperture mask using the
+        nonfinite ``data`` values, the cutout aperture mask using the
         ``sum_method`` method, and the sigma-clip mask.
         """
         return list(zip(*self._aperture_cutouts, strict=True))[2]
@@ -2055,8 +2055,8 @@ class ApertureStats:
         surviving) together with their cutout coordinates, so the total
         mask is `True` for every pixel absent from the buffer, and the
         weight cutout is zero there. The data and variance cutouts are
-        also zero there, except that they are NaN at non-finite
-        ``data`` pixels (without sigma clipping) and at non-finite
+        also zero there, except that they are NaN at nonfinite
+        ``data`` pixels (without sigma clipping) and at nonfinite
         ``error`` pixels, matching the mask-based arrays. Sources whose
         bounding box does not overlap the data get the same single-NaN
         sentinel arrays as the mask-based path.
@@ -2114,7 +2114,7 @@ class ApertureStats:
             data_cutout[ly, lx] = values[i0:i1]
             if self.sigma_clip is None:
                 # The mask-based path multiplies the data by the
-                # boolean masks, so non-finite pixels are NaN in the
+                # boolean masks, so nonfinite pixels are NaN in the
                 # cutout data instead of zero. (With sigma clipping
                 # it instead fills every masked pixel with zero.)
                 data_cutout[~np.isfinite(self._data[slc])] = np.nan
@@ -2128,7 +2128,7 @@ class ApertureStats:
             else:
                 # Multiplying the full variance cutout by the weights
                 # replicates the mask-based arithmetic exactly,
-                # including NaN for masked non-finite error values. The
+                # including NaN for masked nonfinite error values. The
                 # center-method weights are 0 or 1, so squaring them is
                 # not needed.
                 variance_cutout = (error[slc].astype(float) ** 2
@@ -2177,7 +2177,7 @@ class ApertureStats:
         masked quantity arrays.
 
         The mask is `True` for pixels from the input ``mask``,
-        non-finite ``data`` values (NaN and inf), pixels excluded by
+        nonfinite ``data`` values (NaN and inf), pixels excluded by
         the segmentation masking (``mask_method``), sigma-clipped pixels
         within the aperture, and pixels where the aperture mask has zero
         weight.
@@ -2208,7 +2208,7 @@ class ApertureStats:
         masked quantity arrays.
 
         The mask is `True` for pixels from the input ``mask``,
-        non-finite ``data`` values (NaN and inf), pixels excluded by
+        nonfinite ``data`` values (NaN and inf), pixels excluded by
         the segmentation masking (``mask_method``), sigma-clipped pixels
         within the aperture, and pixels where the aperture mask has zero
         weight.
@@ -2231,7 +2231,7 @@ class ApertureStats:
         masked quantity arrays.
 
         The mask is `True` for pixels from the input ``mask``,
-        non-finite ``data`` values (NaN and inf), sigma-clipped pixels
+        nonfinite ``data`` values (NaN and inf), sigma-clipped pixels
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
@@ -2254,7 +2254,7 @@ class ApertureStats:
         masked quantity arrays.
 
         The mask is `True` for pixels from the input ``mask``,
-        non-finite ``data`` values (NaN and inf), sigma-clipped pixels
+        nonfinite ``data`` values (NaN and inf), sigma-clipped pixels
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
@@ -2278,7 +2278,7 @@ class ApertureStats:
         masked quantity arrays.
 
         The mask is `True` for pixels from the input ``mask``,
-        non-finite ``data`` values (NaN and inf), pixels excluded by
+        nonfinite ``data`` values (NaN and inf), pixels excluded by
         the segmentation masking (``mask_method``), sigma-clipped pixels
         within the aperture, and pixels where the aperture mask has zero
         weight.
@@ -2303,7 +2303,7 @@ class ApertureStats:
         The aperture mask weights are for the "center" method.
 
         The mask is `True` for pixels outside the aperture mask, pixels
-        from the input ``mask``, non-finite ``data`` values (NaN and
+        from the input ``mask``, nonfinite ``data`` values (NaN and
         inf), and sigma-clipped pixels.
         """
         fast = self._fast_cutouts_center
@@ -2321,7 +2321,7 @@ class ApertureStats:
         The aperture mask weights are for the ``sum_method`` method.
 
         The mask is `True` for pixels outside the aperture mask, pixels
-        from the input ``mask``, non-finite ``data`` values (NaN and
+        from the input ``mask``, nonfinite ``data`` values (NaN and
         inf), and sigma-clipped pixels.
         """
         return self._make_masked_array(list(zip(*self._aperture_cutouts,
@@ -2532,7 +2532,7 @@ class ApertureStats:
         is small compared to the noise. Sources with a NaN centroid
         are not flagged here. They are already reported by the
         ``'undefined_shape'`` and overlap bits. An infinite centroid
-        (a zero net flux with a non-zero first moment) is flagged.
+        (a zero net flux with a nonzero first moment) is flagged.
         """
         centroid = self._array('centroid')
         # The inclusive integer pixel bounds span half a pixel beyond
@@ -2964,7 +2964,7 @@ class ApertureStats:
         :math:`I_i` is the background-subtracted ``data``, and
         :math:`A` are the unmasked pixels in the aperture.
 
-        Non-finite pixel values (NaN and inf) are excluded
+        Nonfinite pixel values (NaN and inf) are excluded
         (automatically masked). If ``sigma_clip`` is input, the
         sigma-clipped pixels are also excluded.
         """
@@ -3013,7 +3013,7 @@ class ApertureStats:
         in the aperture.
 
         Pixel values that are masked in the input ``data``, including
-        any non-finite pixel values (NaN and inf) that are automatically
+        any nonfinite pixel values (NaN and inf) that are automatically
         masked, are also masked in the error array.
 
         NaN if ``error`` is not input.
@@ -3247,10 +3247,9 @@ class ApertureStats:
 
         The rows and columns of the ``(2, 2)`` tensor are ordered ``(y,
         x)``, the reverse of the `covariance` matrix. The diagonal
-        elements are the moments of inertia about the ``y`` and ``x``
-        axes and the off-diagonal elements are the negative of the
-        product of inertia. The tensor is not normalized by the total
-        flux.
+        elements are the moments of inertia about the y- and x-axes and
+        the off-diagonal elements are the negative of the product of
+        inertia. The tensor is not normalized by the total flux.
         """
         moments = self._array('moments_central')
         return inertia_tensor_from_moments(moments) * u.pix**2
@@ -3358,7 +3357,7 @@ class ApertureStats:
     @cached_property
     def orientation(self):
         """
-        The angle between the ``x`` axis and the major axis of the 2D
+        The angle between the x-axis and the major axis of the 2D
         Gaussian function that has the same second-order moments as the
         source.
 

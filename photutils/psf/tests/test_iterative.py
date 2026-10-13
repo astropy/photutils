@@ -386,7 +386,7 @@ def make_one_shot_finder(x, y):
 def test_mode_all_invalid_source():
     """
     Regression test for mode='all' when an earlier iteration
-    produced a non-finite fit (the invalid row is dropped and
+    produced a nonfinite fit (the invalid row is dropped and
     iter_detected must stay aligned).
     """
     sources = QTable()
@@ -755,11 +755,11 @@ def test_iterative_deprecated_shims(test_data):
 
 def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
     """
-    Test that make_model_image and make_residual_image handle non-finite
+    Test that make_model_image and make_residual_image handle nonfinite
     local background values correctly for IterativePSFPhotometry.
 
-    When include_local_bkg=True and the local_bkg is non-finite (NaN or
-    inf), the non-finite value should be treated as 0 and not included
+    When include_local_bkg=True and the local_bkg is nonfinite (NaN or
+    inf), the nonfinite value should be treated as 0 and not included
     in the model or residual images.
     """
     data, error, _ = test_data
@@ -768,7 +768,7 @@ def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(10.0, 2.0)
 
-    # Find sources and manually set some local_bkg values to non-finite
+    # Find sources and manually set some local_bkg values to nonfinite
     sources = finder(data)
     sources['local_bkg'] = np.zeros(len(sources))
     sources['local_bkg'][0] = np.nan
@@ -776,7 +776,7 @@ def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
     if len(sources) > 2:
         sources['local_bkg'][2] = -np.inf
 
-    # Perform iterative PSF photometry with non-finite local_bkg
+    # Perform iterative PSF photometry with nonfinite local_bkg
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      aperture_radius=4, maxiters=2)
     phot = psfphot(data, error=error, init_params=sources)
@@ -792,8 +792,8 @@ def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
     assert np.all(np.isfinite(model_with_bkg))
     assert np.all(np.isfinite(model_without_bkg))
 
-    # For sources with non-finite local_bkg, the model with and without
-    # local_bkg should be identical (since non-finite is treated as 0).
+    # For sources with nonfinite local_bkg, the model with and without
+    # local_bkg should be identical (since nonfinite is treated as 0).
     # Check this by comparing the models at source positions.
     for i in range(min(3, len(phot))):
         if not np.isfinite(phot['local_bkg'][i]):
@@ -805,7 +805,7 @@ def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
 
 def test_iterative_residual_image_localbkg_invalid_sources(test_data):
     """
-    Test that make_residual_image handles sources with non-finite
+    Test that make_residual_image handles sources with nonfinite
     local_bkg values and sources outside the image (invalid sources)
     correctly for IterativePSFPhotometry.
     """
@@ -817,7 +817,7 @@ def test_iterative_residual_image_localbkg_invalid_sources(test_data):
 
     sources = finder(data)
 
-    # Add non-finite local_bkg values to init_params
+    # Add nonfinite local_bkg values to init_params
     sources['local_bkg'] = np.zeros(len(sources))
     sources['local_bkg'][0] = np.nan
     sources['local_bkg'][1] = np.inf
@@ -827,7 +827,7 @@ def test_iterative_residual_image_localbkg_invalid_sources(test_data):
     sources['y_centroid'][-3] = 1000
 
     # Perform iterative PSF photometry with init_params containing
-    # non-finite local_bkg
+    # nonfinite local_bkg
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      aperture_radius=4, maxiters=2)
     psfphot(data, error=error, init_params=sources)

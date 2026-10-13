@@ -261,18 +261,18 @@ IDs::
     >>> groups = SourceGroups(x, y, group_ids)
 
 
-Improved Handling of Non-Finite Local Background Values in PSF Photometry
--------------------------------------------------------------------------
+Improved Handling of Nonfinite Local Background Values in PSF Photometry
+------------------------------------------------------------------------
 
 :class:`~photutils.psf.PSFPhotometry` and
 :class:`~photutils.psf.IterativePSFPhotometry` now gracefully handle
-non-finite (NaN or inf) local background values instead of raising an
+nonfinite (NaN or inf) local background values instead of raising an
 error. This situation can occur when the local background estimator
 encounters fully masked regions within the background annulus.
 
-When a non-finite local background value is encountered:
+When a nonfinite local background value is encountered:
 
-1. The actual non-finite value is preserved and reported in the output
+1. The actual nonfinite value is preserved and reported in the output
    table's ``local_bkg`` column
 2. The value is not subtracted from the data before PSF fitting
 3. A new flag (bit 2048, ``NON_FINITE_LOCALBKG``) is set in the
@@ -290,7 +290,7 @@ The :meth:`~photutils.psf.PSFPhotometry.results_to_init_params` and
 (and their :class:`~photutils.psf.IterativePSFPhotometry` equivalents)
 now support two new optional keyword arguments:
 
-* ``remove_invalid``: When ``True``, removes sources with non-finite
+* ``remove_invalid``: When ``True``, removes sources with nonfinite
   fitted parameters (positions or flux) from the output table. This is
   useful for iterative PSF photometry workflows
   where you want to exclude failed fits from subsequent iterations.
@@ -468,7 +468,7 @@ The :meth:`~photutils.aperture.PixelAperture.to_sky` and
 aperture types have been significantly improved. They now use the local
 WCS Jacobian to accurately compute pixel scale factors and rotation
 angles, correctly handling WCS with distortions (e.g., SIP polynomial
-corrections) and non-square pixels.
+corrections) and nonsquare pixels.
 
 For elliptical and rectangular apertures specifically, the conversion
 now uses singular value decomposition (SVD) of the local Jacobian to
@@ -930,7 +930,7 @@ The default ``min_separation`` for
 :class:`~photutils.detection.DAOStarFinder`,
 :class:`~photutils.detection.IRAFStarFinder`, and
 :class:`~photutils.detection.StarFinder` has been unified so that all
-three star finders derive a sensible non-zero default from the PSF
+three star finders derive a sensible nonzero default from the PSF
 scale. The default ``min_separation`` is now `None` for all three
 classes, which triggers an automatic default based on the PSF FWHM or
 kernel size:

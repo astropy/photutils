@@ -76,7 +76,7 @@ properties:
     description: |
       The offsets of each polygon vertex relative to ``positions``. The polygon
       must be simple (non-self-intersecting) with at least 3 vertices.
-      The polygon may be convex or non-convex.
+      The polygon may be convex or nonconvex.
       PolygonAperture:
         The offsets are in pixel space.
       SkyPolygonAperture:

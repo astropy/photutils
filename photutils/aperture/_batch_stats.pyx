@@ -243,7 +243,7 @@ def _heapsort_values(double[::1] values):
 
     Parameters
     ----------
-    values : 1D ndarray of float64 (C-contiguous, writeable)
+    values : 1D ndarray of float64 (C-contiguous, writable)
         The values to sort in place.
     """
     if values.shape[0] > 1:
@@ -511,7 +511,7 @@ def batch_aperture_gather(const real_t[:, ::1] data,
     by `~photutils.aperture._batch_photometry.batch_aperture_sums`.
 
     Pixels that are masked or excluded by the segmentation masking are
-    skipped. With ``mask_nonfinite``, non-finite ``data`` pixels are
+    skipped. With ``mask_nonfinite``, nonfinite ``data`` pixels are
     skipped too, before any segmentation correction (matching the
     mask-based path). The local background ``local_bkg[k]`` is
     subtracted from each pixel value of source ``k``.
@@ -525,7 +525,7 @@ def batch_aperture_gather(const real_t[:, ::1] data,
         A mask array where nonzero values indicate masked pixels. For
         the flag counts, bit 1 (value 1) marks input-masked pixels. A
         caller that does not use ``mask_nonfinite`` can set bit 2
-        (value 2) to mark the non-finite data pixels itself. Any
+        (value 2) to mark the nonfinite data pixels itself. Any
         nonzero value excludes the pixel.
 
     positions : 2D ndarray of float64 (C-contiguous)
@@ -560,12 +560,12 @@ def batch_aperture_gather(const real_t[:, ::1] data,
         The default is 0.
 
     mask_nonfinite : int, optional
-        If nonzero, non-finite ``data`` pixels are skipped (in addition
+        If nonzero, nonfinite ``data`` pixels are skipped (in addition
         to the ``mask`` pixels) before the segmentation masking is
         applied, and they are counted in the ``FLAG_COL_NONFINITE_DATA``
         column. A method-4 neighbor pixel whose mirror pixel is
-        non-finite is then left uncorrected. When zero (default),
-        non-finite data values are gathered like any other value.
+        nonfinite is then left uncorrected. When zero (default),
+        nonfinite data values are gathered like any other value.
 
     Returns
     -------
@@ -600,8 +600,8 @@ def batch_aperture_gather(const real_t[:, ::1] data,
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked
         * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels
-          excluded as non-finite data (by ``mask_nonfinite`` or by mask
-          bit 2) that are not input-masked. Non-finite values gathered
+          excluded as nonfinite data (by ``mask_nonfinite`` or by mask
+          bit 2) that are not input-masked. Nonfinite values gathered
           when ``mask_nonfinite`` is zero are not counted
         * ``FLAG_COL_NONFINITE_ERROR``: always zero (this function does
           not read error values)
@@ -862,7 +862,7 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                         continue
                     n_pix += 1
 
-                    # With ``mask_nonfinite``, an unmasked non-finite
+                    # With ``mask_nonfinite``, an unmasked nonfinite
                     # data pixel is treated as mask bit 2. Only the
                     # aperture pixels are tested, so no full-image pass
                     # is needed.
@@ -908,7 +908,7 @@ def batch_aperture_gather(const real_t[:, ::1] data,
                     # A corrected neighbor pixel is the only pixel
                     # read from a different (mirror) pixel. A pixel
                     # that mirrors onto itself is a neighbor, so it is
-                    # never corrected. A non-finite mirror pixel leaves
+                    # never corrected. A nonfinite mirror pixel leaves
                     # the neighbor pixel uncorrected.
                     if (mask_nonfinite and (six != ix or siy != iy)
                             and not isfinite(data[siy, six])):
@@ -1770,7 +1770,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     The rows are typically the flattened pixels of the boxes of a
     regular grid (e.g., the `~photutils.background.Background2D`
     low-resolution mesh), with NaN values marking masked pixels.
-    Infinite values are not removed and give non-finite statistics, so
+    Infinite values are not removed and give nonfinite statistics, so
     the caller must replace them with NaN.
 
     Parameters

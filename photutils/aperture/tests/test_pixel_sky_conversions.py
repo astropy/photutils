@@ -4,7 +4,7 @@ Tests for aperture pixel-to-sky and sky-to-pixel coordinate conversions.
 
 This module covers:
 
-* roundtrip conversions for all pixel and sky aperture classes through
+* round-trip conversions for all pixel and sky aperture classes through
   simple, rotated, distorted (SIP), sheared, and generalized
   (`gwcs.wcs.WCS`) WCS objects, exercising the SVD/Jacobian shape
   conversion (the SIP and gWCS cases in particular force the distortion
@@ -13,7 +13,7 @@ This module covers:
 * the rotation-angle convention for directed (elliptical and
   rectangular) apertures, which pins down the 90 deg offset between the
   sky position angle (measured from North) and the pixel angle (measured
-  from the positive ``x`` axis).
+  from the positive x-axis).
 """
 
 import astropy.units as u
@@ -43,12 +43,12 @@ PIX_CENTER = (10.5, 10.5)
 ANGLES_DEG = [0, 30, 60, 135, 200, 315]
 
 # Position angles (deg) used for the sheared-WCS and degenerate-shape
-# roundtrip tests.
+# round-trip tests.
 SHEAR_ANGLES_DEG = [0.0, 30.0, 75.0]
 
 # Each case bundles a matching (sky, pixel) aperture class pair with
 # their construction kwargs. ``size_attrs`` lists the shape attributes
-# compared in roundtrip assertions and ``has_angle`` flags whether the
+# compared in round-trip assertions and ``has_angle`` flags whether the
 # aperture carries a ``theta`` rotation angle.
 _APERTURE_CASES = [
     {'id': 'ellipse',
@@ -193,7 +193,7 @@ def rotated_wcs():
 @pytest.fixture
 def sheared_wcs():
     """
-    A sheared TAN WCS where the pixel x and y axes are 80 deg apart on
+    A sheared TAN WCS where the pixel x- and y-axes are 80 deg apart on
     the sky (10 deg of shear from a perpendicular axis-aligned grid).
     """
     cdelt = 0.1 / 3600
@@ -308,9 +308,9 @@ class TestPixelToSky:
             assert getattr(sky, attr) > 0 * u.arcsec
 
 
-class TestRoundtripSkyPixelSky:
+class TestRoundTripSkyPixelSky:
     """
-    A sky -> pixel -> sky roundtrip must recover the original shape
+    A sky -> pixel -> sky round-trip must recover the original shape
     parameters and rotation angle.
     """
 
@@ -340,7 +340,7 @@ class TestRoundtripSkyPixelSky:
     @pytest.mark.parametrize('case', APERTURE_CASES)
     def test_sip_wcs(self, sip_wcs, case):
         """
-        Roundtrip through a distorted (SIP) WCS, exercising the Jacobian
+        Round-trip through a distorted (SIP) WCS, exercising the Jacobian
         code path.
         """
         sky = case['sky_cls'](CENTER, **case['sky_kw'])
@@ -353,9 +353,9 @@ class TestRoundtripSkyPixelSky:
                                      atol=1e-3 * u.deg)
 
 
-class TestRoundtripPixelSkyPixel:
+class TestRoundTripPixelSkyPixel:
     """
-    A pixel -> sky -> pixel roundtrip must recover the original center,
+    A pixel -> sky -> pixel round-trip must recover the original center,
     shape parameters, and rotation angle.
     """
 
@@ -399,7 +399,7 @@ class TestSwappedAxisWCS:
     A WCS with the latitude axis first must give the same apertures as
     the equivalent WCS with the longitude axis first.
 
-    A roundtrip alone would not catch a Jacobian built from swapped
+    A round-trip alone would not catch a Jacobian built from swapped
     longitude and latitude, because the forward and inverse conversions
     would share the same error.
     """
@@ -432,9 +432,9 @@ class TestSwappedAxisWCS:
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
-class TestGWCSRoundtrip:
+class TestGWCSRoundTrip:
     """
-    Roundtrip conversions through a generalized WCS (`gwcs.wcs.WCS`).
+    Round-trip conversions through a generalized WCS (`gwcs.wcs.WCS`).
 
     A gWCS has no ``has_distortion`` attribute, so the Jacobian path is
     always used.
@@ -476,7 +476,7 @@ class TestSkyPixelAngleConvention:
     For a directed sky aperture, ``theta`` is the position angle (PA) of
     the width axis measured from North, counterclockwise. For a directed
     pixel aperture, ``theta`` is measured counterclockwise from the
-    positive ``x`` axis. For a standard axis-aligned WCS (RA increasing
+    positive x-axis. For a standard axis-aligned WCS (RA increasing
     to the left, equal isotropic pixel scale, North = +y), these two
     conventions differ by exactly 90 deg:
 
@@ -484,8 +484,8 @@ class TestSkyPixelAngleConvention:
         pixel.to_sky(wcs).theta == pixel.theta - 90 deg (mod 360 deg)
 
     These tests pin that convention down so that any future refactor of
-    the internal ``_wcs_helpers`` cannot silently re-introduce a
-    symmetric 90 deg offset bug, which is invisible to roundtrip-only
+    the internal ``_wcs_helpers`` cannot silently reintroduce a
+    symmetric 90 deg offset bug, which is invisible to round-trip-only
     tests because the offset cancels in sky -> pixel -> sky (and vice
     versa).
     """
@@ -535,10 +535,10 @@ class TestSkyPixelAngleConvention:
         assert abs(diff) < 2e-5
 
 
-class TestShearedWCSRoundtrip:
+class TestShearedWCSRoundTrip:
     """
     Verify that directed apertures round-trip exactly through a sheared
-    WCS, where the pixel x and y axes are not perpendicular on the sky.
+    WCS, where the pixel x- and y-axes are not perpendicular on the sky.
     """
 
     @pytest.mark.parametrize('case', DIRECTED_CASES)
@@ -572,7 +572,7 @@ class TestCircularInputAnglePreserved:
     height). The converted theta must round-trip exactly.
 
     For a circular shape the SVD principal axis is otherwise arbitrary,
-    so the helper falls back to the mapped width semi-axis direction to
+    so the helper falls back to the mapped width semiaxis direction to
     preserve orientation.
     """
 
@@ -686,7 +686,7 @@ class TestFlippedParityWCS:
 
 def _make_nonsquare_wcs():
     """
-    Non-distorted TAN WCS with non-square pixels (0.03 x 0.05 deg).
+    Nondistorted TAN WCS with nonsquare pixels (0.03 x 0.05 deg).
     """
     wcs = WCS(naxis=2)
     wcs.wcs.crpix = list(PIX_CENTER)
@@ -745,7 +745,7 @@ class TestCircleAsEllipse:
     def test_pixel_to_sky_nonsquare(self):
         wcs = _make_nonsquare_wcs()
         # Place the aperture on the tangent point (CRPIX is 1-based),
-        # where the pixel y axis points exactly North. One pixel away
+        # where the pixel y-axis points exactly North. One pixel away
         # the meridians have already converged by 0.02 deg with these
         # 0.05 deg pixels.
         pix = CircularAperture((PIX_CENTER[0] - 1, PIX_CENTER[1] - 1), r=2)

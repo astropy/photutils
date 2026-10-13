@@ -24,7 +24,7 @@ compared this way are:
 For the M51 image we have mostly good agreement with the SPP code
 in most of the parameters (mean isophotal intensity agrees within a
 fraction of 1% mostly), but every now and then the ellipticity and
-position angle of the semi-major axis may differ by a large amount from
+position angle of the semimajor axis may differ by a large amount from
 what the SPP code measures. The code also stops prematurely with respect
 to the larger sma values measured by the SPP code. This is caused by a
 difference in the way the gradient relative error is measured in each
@@ -105,7 +105,7 @@ def test_regression(name):
         try:
             iso = isophote_list[row]
         except IndexError:
-            # skip non-existent rows in isophote list, if that's the case.
+            # skip nonexistent rows in isophote list, if that's the case.
             break
 
         # data from Isophote

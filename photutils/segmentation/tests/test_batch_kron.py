@@ -150,8 +150,8 @@ def _reference_kron_photometry(cat, kron_aperture):
                 and np.any(uncorrected_mask & in_aperture)):
             kron_flag |= SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS
 
-        # A non-finite error value among the summed pixels makes the
-        # flux error non-finite
+        # A nonfinite error value among the summed pixels makes the
+        # flux error nonfinite
         if error is not None and not np.all(np.isfinite(error[pixel_mask])):
             kron_flag |= SEGMENTATION_FLAGS.KRON_NON_FINITE_ERROR
 

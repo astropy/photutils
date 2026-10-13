@@ -456,7 +456,7 @@ class TestArrayBounds:
 
     def test_nan_in_bbox(self):
         """
-        Regression test that non-finite data values outside the aperture
+        Regression test that nonfinite data values outside the aperture
         mask but within the bounding box do not affect the photometry.
         """
         data1 = np.ones((101, 101))
@@ -649,7 +649,7 @@ class TestWcsInput:
 
 class TestUnitsAndMasking:
     """
-    Tests for Quantity inputs, masks, and non-finite values.
+    Tests for Quantity inputs, masks, and nonfinite values.
     """
 
     def test_data_units(self):
@@ -1077,7 +1077,7 @@ class TestPartialPixelErrorWeights:
     @pytest.fixture(name='scene')
     def fixture_scene(self):
         """
-        A deterministic image and non-uniform error array.
+        A deterministic image and nonuniform error array.
         """
         rng = np.random.default_rng(seed=123)
         data = rng.normal(10.0, 1.0, (25, 25))

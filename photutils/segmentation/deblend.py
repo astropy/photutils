@@ -128,7 +128,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     Deblend overlapping sources labeled in a segmentation image.
 
     Sources are deblended using a combination of
-    multi-thresholding and `watershed segmentation
+    multithresholding and `watershed segmentation
     <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. In
     order to deblend sources, they must be separated enough that there
     is a saddle point between them.
@@ -148,7 +148,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     n_pixels : int
         The minimum number of connected pixels, each greater than a
-        given multi-thresholding level, that a local peak must have
+        given multithresholding level, that a local peak must have
         at that level to be considered a separate object. ``n_pixels``
         must be a positive integer. Sources with fewer than
         ``2 * n_pixels`` pixels are not deblended.
@@ -158,14 +158,14 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         labels in the segmentation image will be deblended.
 
     n_levels : int, optional
-        The number of multi-thresholding levels to use for deblending.
-        Each source will be re-thresholded at ``n_levels`` levels spaced
-        between its minimum and maximum values (non-inclusive). The
+        The number of multithresholding levels to use for deblending.
+        Each source will be rethresholded at ``n_levels`` levels spaced
+        between its minimum and maximum values (noninclusive). The
         ``mode`` keyword determines how the levels are spaced.
 
     contrast : float, optional
         The fraction of the total source flux that a local peak must
-        have (at any one of the multi-thresholds) to be deblended
+        have (at any one of the multithresholds) to be deblended
         as a separate object. ``contrast`` must be between 0 and 1,
         inclusive. If ``contrast=0`` then every local peak will be
         made a separate object (maximum deblending). If ``contrast=1``
@@ -180,7 +180,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         basin, which includes the share of the surrounding envelope
         territory assigned to the source. Basins below the contrast are
         removed iteratively (faintest first, in batches when provably
-        equivalent) and their territory is re-flooded. For ``'saddle'``,
+        equivalent) and their territory is reflooded. For ``'saddle'``,
         the fraction is the flux the source holds above the saddle
         level where it separates from its neighbors, evaluated once
         during marker construction with no iteration. This measures
@@ -199,7 +199,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``n_levels`` keyword)
+        multithresholding levels (see the ``n_levels`` keyword)
         during deblending. The ``'exponential'`` and ``'sinh'`` modes
         have more threshold levels near the source minimum and fewer
         near the source maximum. The ``'linear'`` mode evenly spaces
@@ -210,7 +210,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         larger ratios are more exponential), while the ``'sinh'`` levels
         are not. Unlike the ``'exponential'`` mode, the ``'sinh'``
         and ``'linear'`` modes are well defined for sources with
-        non-positive minimum data values. For such sources, the
+        nonpositive minimum data values. For such sources, the
         ``'exponential'`` mode will be changed to ``'sinh'``. In
         addition, with the ``'basin'`` contrast method, a source that
         has more than 200 potential deblended sources (markers) in the
@@ -283,7 +283,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         of the returned segmentation image is a dictionary that stores
         the input labels for which the deblending mode was changed
         to a fallback mode as arrays under ``'non_positive_min_labels'``
-        (non-positive minimum data values, changed to "sinh") and
+        (nonpositive minimum data values, changed to "sinh") and
         ``'too_many_markers_labels'`` (too many potential deblended
         sources, changed to "linear") keys. The dictionary is empty if
         no mode fallbacks occurred. The ``flags`` attribute of the
@@ -295,7 +295,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     -----
     DeblendWarning
         If the deblending mode for one or more sources was changed
-        from ``mode`` to "sinh" due to non-positive minimum data
+        from ``mode`` to "sinh" due to nonpositive minimum data
         values or to "linear" due to too many potential deblended
         sources.
 
@@ -316,7 +316,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         raise ValueError(msg)
 
     if segmentation_image.n_labels == 0:
-        msg = 'segmentation_image must have at least one non-zero label'
+        msg = 'segmentation_image must have at least one nonzero label'
         raise ValueError(msg)
 
     if (n_pixels <= 0) or (int(n_pixels) != n_pixels):
@@ -558,7 +558,7 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
 
     mode : {'exponential', 'linear', 'sinh'}
         The level spacing. For the ``'exponential'`` mode, the sources
-        with a non-positive minimum use the ``'sinh'`` spacing.
+        with a nonpositive minimum use the ``'sinh'`` spacing.
 
     Returns
     -------
@@ -569,7 +569,7 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
 
     nonposmin : 1D bool `~numpy.ndarray`
         Whether each source fell back to the ``'sinh'`` spacing
-        because of a non-positive minimum.
+        because of a nonpositive minimum.
     """
     source_min = np.asarray(source_min)
     source_max = np.asarray(source_max)
@@ -594,7 +594,7 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
         else:
             use_sinh = np.ones(source_min.shape, dtype=bool)
         if np.any(use_sinh):
-            # The exponential spacing is undefined for non-positive
+            # The exponential spacing is undefined for nonpositive
             # minima, so those sources use the sinh spacing, which
             # keeps the levels concentrated near the source minimum and
             # is defined for any data values

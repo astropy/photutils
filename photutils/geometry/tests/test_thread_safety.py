@@ -38,7 +38,7 @@ def test_geometry_module_importable(modname):
 
     On a free-threaded build, importing a module that was not compiled
     with ``freethreading_compatible=True`` emits a ``RuntimeWarning``
-    and reenables the GIL. This import check is the entry point for the
+    and re-enables the GIL. This import check is the entry point for the
     free-threading verification below.
     """
     assert importlib.import_module(f'photutils.geometry.{modname}') is not None
@@ -48,13 +48,13 @@ def test_geometry_module_importable(modname):
                     reason='requires a free-threaded (GIL-disabled) build')
 def test_geometry_modules_do_not_reenable_gil():
     """
-    Test that importing the geometry Cython modules does not reenable
+    Test that importing the geometry Cython modules does not re-enable
     the GIL on a free-threaded build.
 
     Each module is compiled with the ``freethreading_compatible=True``
     directive, which marks it as free-threading compatible
     (``Py_MOD_GIL_NOT_USED``). A module lacking that directive would
-    force the runtime to reenable the GIL on import, which this test
+    force the runtime to re-enable the GIL on import, which this test
     detects.
     """
     for modname in GEOMETRY_MODULES:

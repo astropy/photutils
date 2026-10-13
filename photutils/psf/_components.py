@@ -494,7 +494,7 @@ class PSFDataProcessor:
             init_params = self.normalize_init_units(init_params, flux_col)
 
         if 'local_bkg' in init_params.colnames:
-            # Non-finite local_bkg will not be subtracted, and a flag
+            # Nonfinite local_bkg will not be subtracted, and a flag
             # will be set in the results.
             init_params = self.normalize_init_units(init_params, 'local_bkg')
 
@@ -646,7 +646,7 @@ class PSFDataProcessor:
 
         init_params : `~astropy.table.Table`
             Table containing initial source parameters. Will be modified
-            in-place to add flux and/or local_bkg columns if missing.
+            in place to add flux and/or local_bkg columns if missing.
 
         Returns
         -------
@@ -735,11 +735,11 @@ class PSFDataProcessor:
         y_cen = row[self.param_mapper.init_colnames['y']]
         flux_init = row[self.param_mapper.init_colnames['flux']]
 
-        # Check for non-finite positions
+        # Check for nonfinite positions
         if not (np.isfinite(x_cen) and np.isfinite(y_cen)):
             return True, 'invalid_position'
 
-        # Check for non-finite flux
+        # Check for nonfinite flux
         if not np.isfinite(flux_init):
             return True, 'non_finite_flux'
 
@@ -1025,7 +1025,7 @@ class PSFFitter:
         Raises
         ------
         ValueError
-            If the error array contains non-positive or non-finite
+            If the error array contains nonpositive or nonfinite
             values at the fit pixels.
         """
         kwargs = {'inplace': True}
@@ -1047,7 +1047,7 @@ class PSFFitter:
             # definition here (model - data).
             err = error[yi, xi]
             if np.any(err <= 0) or np.any(~np.isfinite(err)):
-                msg = ('Error array contains non-positive or non-finite '
+                msg = ('Error array contains nonpositive or nonfinite '
                        'values within the fit region centered near '
                        f'x={np.mean(xi):.1f}, y={np.mean(yi):.1f}. '
                        'Cannot compute fit weights.')
@@ -1215,7 +1215,7 @@ class PSFResultsAssembler:
         -------
         table : `~astropy.table.QTable`
             Table containing error columns for fitted parameters,
-            with NaN values for non-fitted (fixed) parameters.
+            with NaN values for nonfitted (fixed) parameters.
         """
         # Create error columns for model parameters that were fit
         mapper = self.param_mapper
@@ -1231,7 +1231,7 @@ class PSFResultsAssembler:
                       for i, err_col in enumerate(fitted_err_cols)}
         table = QTable(table_data)
 
-        # Ensure columns for non-fitted (fixed) params exist
+        # Ensure columns for nonfitted (fixed) params exist
         all_err_cols = list(err_colnames.values())
         for err_col in all_err_cols:
             if err_col not in table.colnames:
@@ -1441,11 +1441,11 @@ class PSFResultsAssembler:
                       | (y_fit > ny - 0.5))
         flags[flag2_mask] |= PSF_FLAGS.POSITION_OUTSIDE_IMAGE
 
-        # Non-positive flux
+        # Nonpositive flux
         flag4_mask = results_tbl[flux_col] <= 0
         flags[flag4_mask] |= PSF_FLAGS.NON_POSITIVE_FLUX
 
-        # Possible non-convergence
+        # Possible nonconvergence
         if fit_error_indices is not None:
             flags[fit_error_indices] |= PSF_FLAGS.NO_CONVERGENCE
 
@@ -1481,7 +1481,7 @@ class PSFResultsAssembler:
                     break
 
         # Invalid source reasons. Sources invalid because of a
-        # non-finite input flux get the non-finite flux flag below from
+        # nonfinite input flux get the nonfinite flux flag below from
         # their NaN fitted flux.
         if invalid_reasons is not None:
             reasons = np.array(invalid_reasons, dtype=object)
@@ -1489,16 +1489,16 @@ class PSFResultsAssembler:
             flags[reasons == 'fully_masked'] |= PSF_FLAGS.FULLY_MASKED
             flags[reasons == 'too_few_pixels'] |= PSF_FLAGS.TOO_FEW_PIXELS
 
-        # Non-finite fitted position
+        # Nonfinite fitted position
         non_finite_pos_mask = ~np.isfinite(x_fit) | ~np.isfinite(y_fit)
         flags[non_finite_pos_mask] |= PSF_FLAGS.NON_FINITE_POSITION
 
-        # Non-finite fitted flux
+        # Nonfinite fitted flux
         flux_fit = results_tbl[flux_col]
         non_finite_flux_mask = ~np.isfinite(flux_fit)
         flags[non_finite_flux_mask] |= PSF_FLAGS.NON_FINITE_FLUX
 
-        # Non-finite local background
+        # Nonfinite local background
         local_bkg_vals = init_params['local_bkg']
         if hasattr(local_bkg_vals, 'value'):
             # Handle Quantity
@@ -1510,7 +1510,7 @@ class PSFResultsAssembler:
         # The region is the fit_shape box around the initial position,
         # trimmed to the image, matching the overlap_slices cutout in
         # get_source_cutout_data. Its edges are the outer pixel edges.
-        # Non-finite positions compare as False and are not flagged.
+        # Nonfinite positions compare as False and are not flagged.
         fit_ny, fit_nx = self.fit_shape
         x_init = np.asarray(
             init_params[self.param_mapper.init_colnames['x']], dtype=float)
@@ -1683,7 +1683,7 @@ def _make_model_image_docstring(func):
             included around each source over the region defined by
             ``psf_shape``. Thus, regions where the ``psf_shape`` of
             sources overlap will have the local background added
-            multiple times. Non-finite local background values (NaN or
+            multiple times. Nonfinite local background values (NaN or
             inf) are treated as zero and not included in the output
             image.
 
@@ -1730,7 +1730,7 @@ def _make_residual_image_docstring(func):
             around each source over the region defined by ``psf_shape``.
             Thus, regions where the ``psf_shape`` of sources overlap
             will have the local background subtracted multiple times.
-            Non-finite local background values (NaN or inf) are not
+            Nonfinite local background values (NaN or inf) are not
             subtracted from the residual image.
 
         Returns
@@ -1788,14 +1788,14 @@ optional
         progress_bar = self.progress_bar
 
         if include_local_bkg:
-            # Add local_bkg, but set non-finite values to 0 to avoid
+            # Add local_bkg, but set nonfinite values to 0 to avoid
             # corrupting the model image
             model_params = model_params.copy()
             if local_bkgs is None:
                 local_bkgs_clean = np.zeros(len(model_params))
             else:
                 local_bkgs_clean = local_bkgs.copy()
-                # Replace non-finite values with 0
+                # Replace nonfinite values with 0
                 nonfinite_mask = ~np.isfinite(local_bkgs_clean)
                 if np.any(nonfinite_mask):
                     local_bkgs_clean[nonfinite_mask] = 0

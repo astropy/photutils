@@ -44,7 +44,7 @@ APERTURES = [
     PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
     PolygonAperture(POSITIONS, [[-4.0, -3.0], [6.0, -2.0], [3.0, 5.0],
                                 [-5.0, 4.0]]),
-    # A non-convex (concave arrowhead) polygon offset shape
+    # A nonconvex (concave arrowhead) polygon offset shape
     PolygonAperture(POSITIONS, [[-5.0, -4.0], [5.0, -4.0], [0.0, 6.0],
                                 [0.0, 0.0]]),
 ]
@@ -164,9 +164,9 @@ class TestReadonlyArrays:
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
     def test_batch_driver(self, method, subpixels):
         """
-        Test that read-only (non-writeable) data, error, and mask arrays are
+        Test that read-only (nonwritable) data, error, and mask arrays are
         accepted by the batch photometry driver and give results identical
-        to writeable arrays.
+        to writable arrays.
 
         The batch Cython driver buffers the data, error, and positions into
         ``const`` typed memoryviews so that read-only arrays do not raise a

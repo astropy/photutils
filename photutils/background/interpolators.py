@@ -180,7 +180,7 @@ class _BkgZoomInterpolator:
         Notes
         -----
         If ``data`` is an `~astropy.units.Quantity`, units are stripped
-        before interpolation. Unit re-assignment is the caller's
+        before interpolation. Unit reassignment is the caller's
         responsibility.
         """
         data = np.asanyarray(data)
@@ -325,7 +325,7 @@ class BkgIDWInterpolator:
         Notes
         -----
         If ``data`` is an `~astropy.units.Quantity`, units are stripped
-        before interpolation. Unit re-assignment is the caller's
+        before interpolation. Unit reassignment is the caller's
         responsibility.
         """
         data = np.asanyarray(data)

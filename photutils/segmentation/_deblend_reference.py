@@ -30,7 +30,7 @@ def _detect_sources_deblend(data, threshold, n_pixels, *, footprint,
 
     This is the deblending analogue of
     `photutils.segmentation.detect._detect_sources`. It differs in
-    that the detected segments keep their (possibly non-consecutive)
+    that the detected segments keep their (possibly nonconsecutive)
     label numbers from `~scipy.ndimage.label`, the small segments are
     removed with a bincount-based area filter (the per-label cutout
     loop used by ``_detect_sources`` has a fixed per-label overhead
@@ -186,10 +186,10 @@ class _SingleSourceDeblender:
 
     def compute_thresholds(self):
         """
-        Compute the multi-level detection thresholds for the source.
+        Compute the multilevel detection thresholds for the source.
 
         Note that this method has side effects. When the mode is
-        "exponential" and the source minimum is non-positive, it
+        "exponential" and the source minimum is nonpositive, it
         changes ``self.mode`` to "sinh" and records the fallback in
         ``self.warnings``. Later calls (e.g., from ``make_markers``)
         therefore use the fallback mode, mirroring the sticky per-source
@@ -198,13 +198,13 @@ class _SingleSourceDeblender:
         Returns
         -------
         thresholds : 1D `~numpy.ndarray`
-            The multi-level detection thresholds for the source.
+            The multilevel detection thresholds for the source.
         """
         if self.mode == 'exponential' and self.source_min <= 0:
-            # The exponential spacing is undefined for non-positive
+            # The exponential spacing is undefined for nonpositive
             # minima. sinh keeps the levels concentrated near the
             # source minimum and is defined for any data values.
-            self.warnings['nonposmin'] = 'non-positive minimum'
+            self.warnings['nonposmin'] = 'nonpositive minimum'
             self.mode = 'sinh'
 
         if self.mode == 'linear':
@@ -455,7 +455,7 @@ class _SingleSourceDeblender:
         if multi_parents.size == 0:
             return segment_lower
 
-        # Replace each multi-child parent by its children. Pixels of
+        # Replace each multichild parent by its children. Pixels of
         # the parent mask that are below the upper threshold are unset.
         # Single-child parents are kept as is (maximizing the marker
         # size).

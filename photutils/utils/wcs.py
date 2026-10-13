@@ -46,7 +46,7 @@ def compute_pixel_areas(wcs, x, y):
     areas : float or `~numpy.ndarray`
         The pixel areas in arcsec\\ :sup:`2`, with the same shape as
         ``x`` and ``y``. A float is returned for scalar input. The area
-        is NaN for a non-finite position or a position where the WCS is
+        is NaN for a nonfinite position or a position where the WCS is
         undefined (e.g., outside the valid region of the projection).
 
     See Also
@@ -86,7 +86,7 @@ def compute_pixel_areas(wcs, x, y):
                    - jacobians[:, 0, 1] * jacobians[:, 1, 0])
 
     # An infinite position gives coincident offset points and thus a
-    # zero area. Report NaN for any non-finite position instead.
+    # zero area. Report NaN for any nonfinite position instead.
     finite = (np.isfinite(x) & np.isfinite(y)).ravel()
     areas = np.where(finite, areas, np.nan).reshape(x.shape)
     if areas.ndim == 0:

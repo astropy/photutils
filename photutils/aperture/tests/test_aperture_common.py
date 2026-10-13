@@ -4,7 +4,7 @@ Base classes for aperture tests.
 
 The shape-specific test modules (e.g., ``test_circle``, ``test_ellipse``,
 ``test_rectangle``) define one class per aperture class. Each of those
-classes sets the ``aperture`` attribute (a multi-position aperture) and
+classes sets the ``aperture`` attribute (a multiposition aperture) and
 the ``copy_param``/``copy_value`` pair naming a parameter to change, and
 inherits the tests that apply to every aperture of that kind from the
 base classes here.
@@ -125,7 +125,7 @@ class BaseTestPixelAperture(BaseTestAperture):
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_to_patch_nonscalar(self):
         """
-        Test that _to_patch returns a list for non-scalar apertures.
+        Test that _to_patch returns a list for nonscalar apertures.
         """
         patches = self.aperture._to_patch()
         assert isinstance(patches, list)

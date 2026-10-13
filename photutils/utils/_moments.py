@@ -61,7 +61,7 @@ def image_moments(data, *, center=(0, 0), order=1):
         raise ValueError(msg)
 
     if order < 0:
-        msg = 'order must be non-negative'
+        msg = 'order must be nonnegative'
         raise ValueError(msg)
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
@@ -87,7 +87,7 @@ def centroid_from_moments(moments):
     centroid : `~numpy.ndarray`
         The ``(N, 2)`` centroids in ``(x, y)`` order, relative to the
         origin of the moments. Sources with zero total flux have
-        non-finite values.
+        nonfinite values.
     """
     # Ignore divide-by-zero floating-point errors
     with np.errstate(divide='ignore', invalid='ignore'):
@@ -135,7 +135,7 @@ def covariance_from_moments(moments_central):
     -------
     covariance : `~numpy.ndarray`
         The ``(N, 2, 2)`` covariance matrices, before any
-        regularization. Sources with zero total flux have non-finite
+        regularization. Sources with zero total flux have nonfinite
         elements.
     """
     # Ignore divide-by-zero floating-point errors
@@ -167,7 +167,7 @@ def covariance_determinant(covariance):
     determinant : `~numpy.ndarray`
         The ``(N,)`` determinants. Matrices with NaN elements give NaN.
     """
-    # Ignore floating-point errors from non-finite values in the
+    # Ignore floating-point errors from nonfinite values in the
     # covariance and from the overflow of huge variances
     with np.errstate(over='ignore', invalid='ignore'):
         return (covariance[:, 0, 0] * covariance[:, 1, 1]
@@ -208,7 +208,7 @@ def covariance_min_eigval(covariance, *, determinant):
         The ``(N,)`` smaller eigenvalues (the minor-axis variances).
         Matrices with NaN elements give NaN.
     """
-    # Ignore floating-point errors from non-finite values in the
+    # Ignore floating-point errors from nonfinite values in the
     # covariance and from the unused branch of the np.where call
     with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
         var_x = covariance[:, 0, 0]
@@ -239,7 +239,7 @@ def covariance_max_eigval(covariance):
         The ``(N,)`` larger eigenvalues (the major-axis variances).
         Matrices with NaN elements give NaN.
     """
-    # Ignore floating-point errors from non-finite values in the
+    # Ignore floating-point errors from nonfinite values in the
     # covariance
     with np.errstate(over='ignore', invalid='ignore'):
         var_x = covariance[:, 0, 0]
@@ -254,7 +254,7 @@ def is_invalid_covariance(covariance, *, determinant):
     semidefinite.
 
     A valid covariance is positive semidefinite (determinant and trace
-    both non-negative). A matrix that is not (e.g., from net-negative
+    both nonnegative). A matrix that is not (e.g., from net-negative
     flux weighting) does not describe a shape. The determinant of an
     exactly thin source (a rank-1 matrix) is zero, but its computed
     value can be slightly negative from rounding. A determinant is
@@ -279,7 +279,7 @@ def is_invalid_covariance(covariance, *, determinant):
         element is flagged only if its trace is negative or if its
         determinant is negative infinity while its trace is finite.
     """
-    # Ignore floating-point errors from non-finite values in the
+    # Ignore floating-point errors from nonfinite values in the
     # covariance and from the overflow of huge variances
     with np.errstate(over='ignore', invalid='ignore'):
         covar_trace = covariance[:, 0, 0] + covariance[:, 1, 1]
@@ -357,7 +357,7 @@ def floor_covariance_eigvals(covariance, *, minimum):
     floored : `~numpy.ndarray`
         A new ``(N, 2, 2)`` array. Matrices whose eigenvalues all reach
         the minimum are returned unchanged, as are matrices with any
-        non-finite element.
+        nonfinite element.
     """
     floored = covariance.copy()
 
@@ -367,8 +367,8 @@ def floor_covariance_eigvals(covariance, *, minimum):
     # lose precision for a highly elongated matrix. Its determinant can
     # overflow for huge variances. That gives a smaller eigenvalue that
     # is infinite or NaN, which compares false below, so the matrix is
-    # returned unchanged. A matrix with a non-finite element has a
-    # non-finite eigenvalue and is also returned unchanged.
+    # returned unchanged. A matrix with a nonfinite element has a
+    # nonfinite eigenvalue and is also returned unchanged.
     determinant = covariance_determinant(covariance)
     eig_min = covariance_min_eigval(covariance, determinant=determinant)
     eig_max = covariance_max_eigval(covariance)
@@ -384,7 +384,7 @@ def floor_covariance_eigvals(covariance, *, minimum):
     # (minimum - eig_min) times the projector changes that eigenvalue
     # and keeps both eigenvectors. The three unique elements are updated
     # directly, so the result is exactly symmetric. An infinite
-    # off-diagonal element with a non-positive trace gives eigenvalues
+    # off-diagonal element with a nonpositive trace gives eigenvalues
     # of negative and positive infinity, which pass the comparisons, so
     # both eigenvalues must also be finite.
     idx = np.flatnonzero((eig_min < minimum) & (eig_max >= minimum)
@@ -436,7 +436,7 @@ def regularize_covariance(covariance, *, determinant):
     regularized : `~numpy.ndarray`
         A new ``(N, 2, 2)`` array of regularized covariance matrices.
     """
-    # Matrices with a non-finite element are not changed by the floor
+    # Matrices with a nonfinite element are not changed by the floor
     covar = floor_covariance_eigvals(covariance, minimum=PIXEL_VARIANCE)
     invalid = is_invalid_covariance(covariance, determinant=determinant)
     covar[invalid] = np.nan
@@ -462,7 +462,7 @@ def eigvals_from_covariance(covariance):
     -------
     eigvals : `~numpy.ndarray`
         The ``(N, 2)`` eigenvalues, largest first. Both eigenvalues are
-        NaN for a matrix with any non-finite element or with a negative
+        NaN for a matrix with any nonfinite element or with a negative
         eigenvalue (a matrix that is not positive semidefinite).
     """
     # Eigenvalues of each symmetric 2x2 matrix in closed form, which
@@ -474,7 +474,7 @@ def eigvals_from_covariance(covariance):
     determinant = covariance_determinant(covariance)
     eig_min = covariance_min_eigval(covariance, determinant=determinant)
     eig_max = covariance_max_eigval(covariance)
-    # Ignore floating-point errors from non-finite values in the
+    # Ignore floating-point errors from nonfinite values in the
     # covariance and from a zero larger eigenvalue
     with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
         covar_xy = covariance[:, 0, 1]
@@ -483,7 +483,7 @@ def eigvals_from_covariance(covariance):
     eig_min = np.where(np.isfinite(determinant), eig_min, scaled)
     eigvals = np.transpose((eig_max, eig_min))
 
-    # A non-finite element gives a NaN or infinite eigenvalue, and a
+    # A nonfinite element gives a NaN or infinite eigenvalue, and a
     # negative variance means that the matrix is not positive
     # semidefinite
     good = np.isfinite(eigvals).all(axis=1) & (eig_min >= 0)
@@ -511,7 +511,7 @@ def major_axis_angle(var_a, var_b, covar_ab):
         angle is zero for an isotropic matrix and NaN where the
         difference of the variances is undefined.
     """
-    # Ignore floating-point errors from non-finite values (e.g., the
+    # Ignore floating-point errors from nonfinite values (e.g., the
     # difference of two infinite variances). Adding zero turns a
     # negative-zero covariance into positive zero, which keeps the angle
     # at 90 instead of -90 degrees when var_a < var_b.
@@ -522,7 +522,7 @@ def major_axis_angle(var_a, var_b, covar_ab):
 
 def orientation_from_covariance(covariance):
     """
-    Compute the angle between the ``x`` axis and the major axis of the
+    Compute the angle between the x-axis and the major axis of the
     2D Gaussian function described by each covariance matrix.
 
     Parameters

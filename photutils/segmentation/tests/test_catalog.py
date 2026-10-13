@@ -363,13 +363,13 @@ class TestSourceCatalog:
     def test_scalar_slice_after_cached_dependency(self, cached):
         """
         Test that per-source properties are computed correctly for a
-        scalar catalog obtained by slicing a multi-source catalog when
+        scalar catalog obtained by slicing a multisource catalog when
         only some properties were cached on the parent before slicing.
 
         The ``_array`` accessor is used internally by several properties
         to index along the source axis. A per-source array can be stored
         either with its leading length-1 axis intact (freshly computed
-        for a scalar catalog) or with that axis removed (a multi-source
+        for a scalar catalog) or with that axis removed (a multisource
         value cached on the parent and then sliced). If ``_array`` does
         not normalize both cases, moment-derived properties such as
         ``cutout_centroid`` raise an ``IndexError`` (or return wrong
@@ -476,7 +476,7 @@ class TestSourceCatalog:
         Test invalid inputs.
         """
         segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
-        match = 'segmentation_image must have at least one non-zero label'
+        match = 'segmentation_image must have at least one nonzero label'
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, segm)
 
@@ -641,7 +641,7 @@ class TestSourceCatalog:
 
     def test_masks(self):
         """
-        Test masks, including automatic masking of all non-finite (e.g.,
+        Test masks, including automatic masking of all nonfinite (e.g.,
         NaN, inf) values in the data array.
         """
         data = np.copy(self.data)
@@ -1436,7 +1436,7 @@ class TestSourceCatalog:
     @pytest.mark.parametrize('dtype', [int, np.uint8, float])
     def test_non_boolean_mask(self, dtype):
         """
-        Test that a non-boolean mask gives the same catalog as the
+        Test that a nonboolean mask gives the same catalog as the
         equivalent boolean mask.
         """
         kwargs = {'error': self.error, 'local_bkg_width': 24}
@@ -1686,7 +1686,7 @@ class TestSourceCatalogFlags:
 
     def test_masked_non_finite_pixel(self):
         """
-        Test that a pixel that is both input-masked and non-finite
+        Test that a pixel that is both input-masked and nonfinite
         sets the masked_pixels, non_finite_data, and non_finite_error
         flags together.
         """
@@ -1719,7 +1719,7 @@ class TestSourceCatalogFlags:
 
     def test_undefined_shape(self):
         """
-        Test the undefined_shape flag for a source with non-positive
+        Test the undefined_shape flag for a source with nonpositive
         net flux.
         """
         data = np.zeros((11, 11))
@@ -1996,7 +1996,7 @@ class TestSourceCatalogFlags:
 
     def test_kron_non_finite_data(self):
         """
-        Test the kron_non_finite_data flag for a non-finite pixel inside
+        Test the kron_non_finite_data flag for a nonfinite pixel inside
         the Kron aperture but outside the segment.
         """
         cat0 = SourceCatalog(self.data, self.segm)
@@ -2048,7 +2048,7 @@ class TestSourceCatalogFlags:
 
     def test_kron_non_finite_error(self):
         """
-        Test the kron_non_finite_error flag for a non-finite error value
+        Test the kron_non_finite_error flag for a nonfinite error value
         inside the Kron aperture but outside the segment.
         """
         cat0 = SourceCatalog(self.data, self.segm)
@@ -2608,7 +2608,7 @@ def test_centroid_win_migrate():
     indices = (0, 3, 14, 30)
     for idx in indices:
         assert_equal(cat.centroid_win[idx], cat.centroid[idx])
-        # The windowed centroid diverged off the image (a non-ellipse
+        # The windowed centroid diverged off the image (a nonellipse
         # fallback condition), so the fallback is reported
         assert cat.centroid_win_fallback[idx]
 
@@ -2800,7 +2800,7 @@ def test_invalid_covariance_flag(single_source_catalog):
 
 def test_partially_finite_covariance_eigvals(centroid_win_data):
     """
-    Test that a covariance matrix with any non-finite element gives NaN
+    Test that a covariance matrix with any nonfinite element gives NaN
     eigenvalues, while wholly finite matrices are unaffected.
     """
     data, segm, _convolved_data = centroid_win_data
@@ -3026,7 +3026,7 @@ def test_flux_radius_cache_not_mutated_by_centroid_win(gauss_101_data):
     the flux_radius cache.
 
     ``centroid_win`` calls ``flux_radius(0.5)`` internally and then
-    modifies the returned half-light radius array in-place (replacing
+    modifies the returned half-light radius array in place (replacing
     NaN with a minimum radius). This must not mutate the cached
     ``flux_radius`` Quantity.
 
@@ -3279,7 +3279,7 @@ class TestInputDtypes:
     def test_mixed_dtypes(self):
         """
         Test float32 data with float64 error and convolved data,
-        non-contiguous float32 inputs, and Quantity inputs.
+        noncontiguous float32 inputs, and Quantity inputs.
         """
         data, error, _, convolved_data, segm = self.make_inputs()
         data32 = data.astype(np.float32)
@@ -3405,7 +3405,7 @@ def test_make_scalar(single_source_catalog):
     """
     Test the scalar collapse of method results. A length-1 sequence
     is collapsed for a scalar catalog, a longer sequence is returned
-    unchanged, and a multi-source catalog never collapses.
+    unchanged, and a multisource catalog never collapses.
     """
     _data, _segm, cat = single_source_catalog
     assert not cat.isscalar
@@ -3419,7 +3419,7 @@ def test_make_scalar(single_source_catalog):
     value = [5.0, 6.0]
     assert obj._make_scalar(value) is value
 
-    # A multi-source catalog never collapses
+    # A multisource catalog never collapses
     assert cat._make_scalar([7.0]) == [7.0]
 
 
@@ -3680,12 +3680,12 @@ def test_centroid_win_err_sliced():
 
 def test_centroid_win_err_peak_pixel_error():
     """
-    Test centroid_win_err for a source where non-zero error is limited
+    Test centroid_win_err for a source where nonzero error is limited
     to a single pixel, which makes the propagated error covariance
     nearly singular.
 
     The pixel-size (1/12) variance term is added to both variances, so
-    the errors are finite and non-zero. The source and the errors are
+    the errors are finite and nonzero. The source and the errors are
     symmetric, so the two errors are equal.
     """
     data = np.zeros((21, 21))
@@ -3695,7 +3695,7 @@ def test_centroid_win_err_peak_pixel_error():
     data[10, 9] = 50.0
     data[9, 10] = 50.0
 
-    # Non-zero error only at center pixel, where the propagated
+    # Nonzero error only at center pixel, where the propagated
     # position error terms vanish
     error = np.zeros(data.shape)
     error[10, 10] = 10000.0
@@ -3845,7 +3845,7 @@ def test_centroid_err_singularity():
     Test that the singularity correction in centroid_err is applied to
     a point-like source.
 
-    The error is non-zero only at the centroid pixel, so the propagated
+    The error is nonzero only at the centroid pixel, so the propagated
     error covariance is zero apart from rounding. Both error variances
     are raised to the floor ``sum(sigma**2) / (12 F**2)``, which is
     1/12 here because the error equals the flux.
@@ -3877,7 +3877,7 @@ def test_centroid_err_thin_source():
     ``(1/12)**2`` because of its long major axis. The pixel errors are
     concentrated in the bright row, so the error covariance matrix is
     nearly singular along ``y``. Only the error along ``y`` is raised to
-    the floor. The error along the resolved ``x`` axis is unchanged.
+    the floor. The error along the resolved x-axis is unchanged.
     """
     data = np.zeros((15, 25))
     data[7, 5:20] = 99.5
@@ -3905,7 +3905,7 @@ def test_centroid_err_resolved_source_singular_error():
     Test that the singularity correction in centroid_err depends on the
     error covariance and not on the source shape.
 
-    The source is well resolved, but the error is non-zero only in the
+    The source is well resolved, but the error is nonzero only in the
     row of the centroid. The propagated error covariance is singular
     along ``y``, so the error along ``y`` is raised to the floor. The
     error along ``x`` is unchanged.
@@ -3965,7 +3965,7 @@ def test_centroid_err_formula():
     """
     Test that centroid_err matches the analytic error-propagation
     formula, Var(x_c) = sum(sigma_i^2 * (x_i - x_c)^2) / F^2, for a
-    non-singular source (this is also the SourceExtractor and SEP
+    nonsingular source (this is also the SourceExtractor and SEP
     formula).
     """
     yy, xx = np.mgrid[0:25, 0:25]
@@ -4386,7 +4386,7 @@ def test_sky_centroid_err_no_wcs():
         names.extend([f'{prefix}_err', f'{prefix}_ra_err',
                       f'{prefix}_dec_err'])
     for name in names:
-        # A length-1 (non-scalar) catalog returns an array of None
+        # A length-1 (nonscalar) catalog returns an array of None
         value = getattr(cat, name)
         assert np.all(value == np.array(None))
         # A scalar catalog collapses to a single None
@@ -4431,7 +4431,7 @@ def _make_rotated_tan_wcs(parity, rotation_deg, *, scale=0.25,
 
     With ``parity=-1`` and no rotation, +x points West and +y points
     North (the standard "North up, East left" orientation). With
-    ``parity=1`` the x axis is flipped so that +x points East.
+    ``parity=1`` the x-axis is flipped so that +x points East.
     """
     wcs = WCS(naxis=2)
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
@@ -4640,7 +4640,7 @@ class TestPartialPixelErrorWeights:
     @pytest.fixture(name='catalog')
     def fixture_catalog(self):
         """
-        A single-source catalog with a non-uniform error array.
+        A single-source catalog with a nonuniform error array.
         """
         yy, xx = np.mgrid[0:41, 0:41]
         gmodel = Gaussian2D(100.0, 20.0, 20.0, 2.5, 2.5)
@@ -4667,7 +4667,7 @@ class TestPartialPixelErrorWeights:
 @pytest.fixture
 def many_source_inputs():
     """
-    Multi-source inputs for the n_threads tests.
+    Multisource inputs for the n_threads tests.
 
     Returns ``(data, segm, error, mask)``.
     """
@@ -4773,7 +4773,7 @@ class TestNThreads:
 
     def test_sliced_catalog_new_fraction(self, many_source_inputs):
         """
-        Test that a multi-source slice of a threaded catalog computes
+        Test that a multisource slice of a threaded catalog computes
         a flux radius for a new fraction identically to the parent.
 
         Slicing drops the packed flux-radius inputs, so the slice
@@ -4826,8 +4826,8 @@ class TestNThreads:
 @pytest.mark.parametrize('local_bkg_width', [0, 8])
 def test_read_only_inputs(dtype, local_bkg_width):
     """
-    Regression test that read-only (non-writeable) input arrays are
-    accepted, are not modified, and give results identical to writeable
+    Regression test that read-only (nonwritable) input arrays are
+    accepted, are not modified, and give results identical to writable
     arrays.
     """
     scene = make_batch_scene()
@@ -4869,7 +4869,7 @@ def test_read_only_inputs(dtype, local_bkg_width):
 
 def test_moments_non_finite_data():
     """
-    Test that a pixel with a non-finite data value and a finite
+    Test that a pixel with a nonfinite data value and a finite
     convolved_data value is included in the centroid and shape
     properties, and that it is excluded if it is also masked.
     """
@@ -4937,7 +4937,7 @@ def _masked_quad_inputs():
                                         ((12, 11), (14, 11), (14, 12))])
 def test_centroid_quad_masked_pixels(bad_pixels, bad_value):
     """
-    Test that masked and non-finite pixels in the 3x3 box are left out
+    Test that masked and nonfinite pixels in the 3x3 box are left out
     of the quadratic centroid fit and of its error propagation, and that
     an unmasked box pixel outside of the source segment is fit with its
     data value.

@@ -56,8 +56,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         ``y_name`` keywords. Model parameters not defined in the table
         or ``params_map`` keep the values of the input ``model``. To
         attach units to model parameters, ``params_table`` must be input
-        as a `~astropy.table.QTable`. Rows that contain any non-finite
-        model parameters or a non-finite ``'local_bkg'`` value will be
+        as a `~astropy.table.QTable`. Rows that contain any nonfinite
+        model parameters or a nonfinite ``'local_bkg'`` value will be
         skipped.
 
         If the table contains a column named ``'model_shape'``, then
@@ -347,7 +347,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     for i, source in enumerate(params_table):
         params = {key: source[param] for key, param in params_map.items()}
 
-        # Skip sources that have any non-finite parameter or local
+        # Skip sources that have any nonfinite parameter or local
         # background value
         if (not all(np.isfinite(value) for value in params.values())
                 or not np.isfinite(local_bkg[i])):

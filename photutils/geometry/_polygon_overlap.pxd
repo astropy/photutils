@@ -54,7 +54,7 @@ cdef inline Py_ssize_t polygon_work_size(int n_poly,
     Hodgman clip buffers, and the three edge-normal arrays used by the
     convex fast path (see ``polygon_work_partition`` for the layout).
     Each Sutherland-Hodgman clip can at most double the vertex count of
-    a non-convex polygon, so after the four half-plane clips the vertex
+    a nonconvex polygon, so after the four half-plane clips the vertex
     count is bounded by ``16 * n_poly``.
 
     Parameters

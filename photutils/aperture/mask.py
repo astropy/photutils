@@ -146,7 +146,7 @@ class ApertureMask:
             The value used to fill pixels where the aperture mask does
             not overlap with the input ``data``. The default is 0. For
             a partial overlap, the cutout has the data type of ``data``,
-            so ``fill_value`` is cast to that type. A non-finite
+            so ``fill_value`` is cast to that type. A nonfinite
             ``fill_value`` gives a float cutout.
 
         copy : bool, optional
@@ -233,7 +233,7 @@ class ApertureMask:
         if cutout is None:
             return None
 
-        # Ignore multiplication with non-finite data values
+        # Ignore multiplication with nonfinite data values
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             weighted_cutout = cutout * self.data
@@ -340,7 +340,7 @@ class ApertureMask:
                 values <<= data.unit
             return values
 
-        # Ignore multiplication with non-finite data values
+        # Ignore multiplication with nonfinite data values
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             # pixel_mask is used so that pixels value where data = 0 and

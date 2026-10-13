@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for measuring non-parametric morphologies of sources.
+Tools for measuring nonparametric morphologies of sources.
 """
 
 import numpy as np

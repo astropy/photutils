@@ -73,7 +73,7 @@ def make_sip_wcs(shape=(20, 20), *, center=WCS_CENTER, coeffs=None):
         The sky position of CRPIX.
 
     coeffs : dict, optional
-        The SIP coefficients, e.g. ``{'A_2_0': 1e-6, 'B_0_2': 1e-6}``.
+        The SIP coefficients, e.g., ``{'A_2_0': 1e-6, 'B_0_2': 1e-6}``.
         The polynomial orders are set from the highest given indices.
 
     Returns

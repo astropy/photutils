@@ -259,7 +259,7 @@ class TestDeblendSources:
     def test_contrast_one_relabel(self, relabel):
         """
         Test that contrast=1 (no deblending) honors the relabel keyword
-        for non-consecutive input labels.
+        for nonconsecutive input labels.
         """
         segm = self.segm.copy()
         segm.reassign_label(1, 1000)
@@ -300,11 +300,11 @@ class TestDeblendSources:
 
     def test_empty_segmentation_image(self):
         """
-        Test that a segmentation image with no non-zero labels raises a
+        Test that a segmentation image with no nonzero labels raises a
         ValueError.
         """
         segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
-        match = 'segmentation_image must have at least one non-zero label'
+        match = 'segmentation_image must have at least one nonzero label'
         with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, segm, self.n_pixels)
 
@@ -387,7 +387,7 @@ class TestDeblendSources:
     def test_flags_nonposmin_children(self):
         """
         Test that children of a parent whose mode fell back due to
-        non-positive minimum data values carry both the deblended and
+        nonpositive minimum data values carry both the deblended and
         fallback flags.
         """
         data = self.data.copy()
@@ -903,7 +903,7 @@ def test_chunk_driver_matches_python_path(dtype, scene, contrast_method):
     segments with overlapping bounding boxes, NaN pixels within a
     segment, the checkerboard deblended in linear mode, which keeps
     all of its markers instead of falling back, and the checkerboard
-    with a non-positive minimum, which falls back to sinh and is then
+    with a nonpositive minimum, which falls back to sinh and is then
     retried with linear levels, each with both contrast criteria.
     """
     contrast = 0.001
@@ -969,7 +969,7 @@ def test_chunk_driver_matches_python_path(dtype, scene, contrast_method):
         segm = detect_sources(data, threshold, n_pixels)
 
     if scene == 'checkerboard-negmin':
-        # A non-positive minimum (sinh fallback) combined with too many
+        # A nonpositive minimum (sinh fallback) combined with too many
         # markers (linear retry), applied after the detection
         data = data - 2
 
@@ -1013,7 +1013,7 @@ def test_n_threads_identical():
             + Gaussian2D(50, 250, 50, 5, 5)(x, y))
     segm = detect_sources(data, 10, 5)
     assert segm.n_labels == 3
-    data -= 20  # non-positive minima trigger the mode fallback
+    data -= 20  # nonpositive minima trigger the mode fallback
 
     match = 'The deblending mode of one or more source labels'
     with pytest.warns(DeblendWarning, match=match):
@@ -1068,7 +1068,7 @@ def test_n_threads_invalid(n_threads):
 
 def test_deblend_segm_dtype():
     """
-    Test that deblending a segmentation image with a non-native
+    Test that deblending a segmentation image with a nonnative
     integer dtype gives the same result as the int32 one.
     """
     data, segm = make_multipeak_source()
@@ -1101,7 +1101,7 @@ def test_deblend_segm_unsigned_dtype(dtype):
 
 def test_deblend_byte_order():
     """
-    Test that non-native byte order data and segmentation images give
+    Test that nonnative byte order data and segmentation images give
     results identical to the native ones.
     """
     data, segm = make_multipeak_source()
@@ -1125,7 +1125,7 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
     """
     Test that the vectorized multithreshold levels are bitwise identical
     to the per-source levels of the reference implementation, including
-    the exponential-mode fallback for non-positive minima and the
+    the exponential-mode fallback for nonpositive minima and the
     zero-step special case of np.linspace.
     """
     rng = np.random.default_rng(42)
@@ -1417,8 +1417,8 @@ def test_relabel_consecutive(dtype, n_threads):
 def test_relabel_nonconsecutive_input(n_threads):
     """
     Test that deblending relabels a segmentation image with
-    non-consecutive input labels identically to relabeling the
-    non-relabeled result.
+    nonconsecutive input labels identically to relabeling the
+    nonrelabeled result.
     """
     data, segm = make_multipeak_source()
     segm_data = segm.data.copy()
@@ -1900,10 +1900,10 @@ def test_flags_fallback_without_deblending(relabel):
     Test that a fallback parent that did not split still gets the
     fallback flag on its output label, with and without relabeling.
     """
-    # Three well-separated, non-deblendable sources with a negative
+    # Three well-separated, nondeblendable sources with a negative
     # minimum (to trigger the nonposmin fallback). The middle label is
     # removed after detection so the remaining input labels (1 and 3)
-    # are non-consecutive, exercising the relabel-map translation path
+    # are nonconsecutive, exercising the relabel-map translation path
     # when relabel=True.
     g1 = Gaussian2D(100, 25, 25, 3, 3)
     g2 = Gaussian2D(100, 50, 50, 3, 3)
@@ -1994,8 +1994,8 @@ def test_n_markers_fallback_returns_none():
 @pytest.mark.parametrize('n_threads', [1, 2])
 def test_read_only_inputs(dtype, contrast_method, n_threads):
     """
-    Regression test that read-only (non-writeable) input arrays are
-    accepted, are not modified, and give results identical to writeable
+    Regression test that read-only (nonwritable) input arrays are
+    accepted, are not modified, and give results identical to writable
     arrays.
     """
     data, segm = make_multipeak_source()
@@ -2053,7 +2053,7 @@ def test_huge_labels(relabel):
 @pytest.mark.parametrize('relabel', [True, False])
 def test_non_native_byte_order(dtype, offset, relabel):
     """
-    Test that a segmentation image with a non-native byte order, such
+    Test that a segmentation image with a nonnative byte order, such
     as one read from a FITS file, is deblended to an image with the
     same dtype, for small and large labels.
     """

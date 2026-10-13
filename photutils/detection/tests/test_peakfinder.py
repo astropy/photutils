@@ -159,7 +159,7 @@ class TestFindPeaks:
     @pytest.mark.parametrize('n_peaks', [0, -1, 5.5])
     def test_n_peaks_invalid(self, data, n_peaks):
         """
-        Test that non-positive or non-integral n_peaks values raise a
+        Test that nonpositive or nonintegral n_peaks values raise a
         ValueError.
         """
         match = 'n_peaks must be'
@@ -786,7 +786,7 @@ class TestFindPeaks:
         This test would fail with a greedy KD-tree-only approach that
         uses a small box_size for initial peak detection, because such
         an approach would keep faint peaks that are not the maximum
-        within a circle of min_separation (due to non-peak pixels with
+        within a circle of min_separation (due to nonpeak pixels with
         higher values in the neighborhood).
         """
         data = np.zeros((100, 100))
@@ -991,10 +991,10 @@ class TestFindPeaks:
     @pytest.mark.parametrize('axis', ['x', 'y'])
     def test_min_separation_noninteger_radius_regression(self, axis):
         """
-        Regression test for non-integer min_separation with peaks
+        Regression test for noninteger min_separation with peaks
         separated by 12 pixels (< min_separation = 12.5).
 
-        With a non-integer radius the circular footprint had an
+        With a noninteger radius the circular footprint had an
         even number of elements, causing an asymmetric half-pixel
         shift that allowed the fainter peak to survive depending on
         which side of the brighter peak it was placed.

@@ -63,7 +63,7 @@ def use_future_column_names(enabled=True):
     Within the ``with`` block, photutils functions will behave as
     though ``photutils.future_column_names`` were set to ``enabled``,
     without modifying the global flag. This is safe to use in
-    multi-threaded and async code because the override is stored in a
+    multithreaded and async code because the override is stored in a
     `~contextvars.ContextVar`.
 
     Parameters
@@ -408,7 +408,7 @@ class DeprecatedColumnMixin:
         -------
         result : str or list
             The translated new column name(s). A list is returned for
-            both list and tuple input. Any other non-string input is
+            both list and tuple input. Any other nonstring input is
             returned unchanged.
         """
         if isinstance(names, (list, tuple)):
