@@ -36,6 +36,21 @@ class DAOStarFinder(StarFinderBase):
     kernel is defined by the ``fwhm``, ``ratio``, ``theta``, and
     ``sigma_radius`` input parameters.
 
+    The kernel has a positive core and negative wings, and it sums to
+    zero. Convolving the image with this kernel is equivalent to a
+    linear least-squares fit, at every pixel, of the amplitude of the
+    Gaussian centered on that pixel plus a constant local background.
+    Each pixel of the convolved image is therefore the height of the
+    best-fitting Gaussian at that position, in the units of the input
+    ``data``. Because the local background is fitted, the convolved
+    image does not depend on the background level. For uncorrelated
+    noise, the uncertainty of the fitted height is the pixel noise
+    multiplied by the kernel relative error, which is why ``threshold``
+    is scaled by that factor by default (see ``scale_threshold``). The
+    local background is fitted using only the pixels within the kernel
+    footprint, so a larger ``sigma_radius`` gives a less noisy fitted
+    height.
+
     ``DAOStarFinder`` finds the object centroid by fitting the marginal
     x and y 1D distributions of the Gaussian kernel to the marginal x
     and y distributions of the input (unconvolved) ``data`` image.

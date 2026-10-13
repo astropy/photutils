@@ -34,6 +34,19 @@ class IRAFStarFinder(StarFinderBase):
     input ``fwhm``. The objects' centroid, roundness (ellipticity), and
     sharpness are calculated using image moments.
 
+    The image is convolved with a circular Gaussian kernel that has a
+    positive core and negative wings, and that sums to zero. This
+    convolution is equivalent to a linear least-squares fit, at every
+    pixel, of the amplitude of the Gaussian centered on that pixel
+    plus a constant local background. Each pixel of the convolved
+    image is therefore the height of the best-fitting Gaussian at that
+    position, in the units of the input ``data``. Because the local
+    background is fitted, the convolved image does not depend on the
+    background level. The ``threshold`` is applied directly to this
+    fitted height. The local background is fitted using only the pixels
+    within the kernel footprint, so a larger ``sigma_radius`` gives a
+    less noisy fitted height.
+
     Parameters
     ----------
     threshold : float or 2D `~numpy.ndarray`
