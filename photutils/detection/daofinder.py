@@ -192,7 +192,26 @@ class DAOStarFinder(StarFinderBase):
 
     For the convolution step, this routine sets pixels beyond the
     image borders to 0.0. The equivalent parameters in DAOFIND are
-    ``boundary='constant'`` and ``constant=0.0``.
+    ``boundary='constant'`` and ``constant=0.0``. This is not the
+    DAOFIND default, which is ``boundary='nearest'``. The two modes
+    differ only for sources near the image borders. With the zero
+    boundary used here, a star that is truncated by the image border
+    can be detected. Its centroid is biased toward the image interior
+    and its sharpness and roundness values are not reliable. With the
+    DAOFIND default, the centroid of such a star usually falls outside
+    of the image and the star is rejected. Set ``exclude_border=True``
+    to exclude the sources near the image borders.
+
+    As in DAOFIND, the centroid is computed using the major-axis
+    standard deviation of the Gaussian kernel for the x-axis fit and
+    the minor-axis standard deviation for the y-axis fit, whatever the
+    kernel ``theta``. The centroids are therefore biased for an
+    elliptical kernel (``ratio < 1``) whose major axis is not along
+    the x-axis. The largest bias occurs for a ``theta`` of 90 or 270
+    degrees, where the x offset of the centroid from the peak pixel is
+    too large by a factor of ``1 / ratio**2`` and the y offset is too
+    small by the same factor. Circular kernels and elliptical kernels
+    with a ``theta`` of 0 or 180 degrees are not affected.
 
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
@@ -581,14 +600,26 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         A circular source will have a zero roundness. A source
         extended in x or y will have a negative or positive roundness,
         respectively.
-        """
-        # Set the central (peak) pixel to zero for the sum4 calculation
-        cutout_conv = self.cutout_convdata.copy()
-        cutout_conv[:, self.cutout_center[0], self.cutout_center[1]] = 0.0
 
-        # Calculate the four roundness quadrants.
-        # The cutout size always matches the kernel size, which has odd
-        # dimensions.
+        As in DAOFIND, the symmetry is measured over the central square
+        of the convolved-data cutout. For a non-square kernel, the
+        pixels beyond the smaller kernel half-width are not used.
+        """
+        # DAOFIND computes the sums over the central square of the
+        # cutout, with a half-width equal to the smaller of the two
+        # cutout half-widths. This is the full cutout for a square
+        # kernel.
+        ycen, xcen = self.cutout_center
+        center = min(ycen, xcen)
+        cutout_conv = self.cutout_convdata[
+            :, ycen - center:ycen + center + 1,
+            xcen - center:xcen + center + 1].copy()
+
+        # Set the central (peak) pixel to zero for the sum4 calculation
+        cutout_conv[:, center, center] = 0.0
+
+        # Calculate the four roundness quadrants of the central square,
+        # which has odd dimensions.
         # quad1 = bottom right
         # quad2 = bottom left
         # quad3 = top left
@@ -598,14 +629,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         # 3 3 x 1 1
         # 2 2 2 1 1
         # 2 2 2 1 1
-        quad1 = cutout_conv[:, 0:self.cutout_center[0] + 1,
-                            self.cutout_center[1] + 1:]
-        quad2 = cutout_conv[:, 0:self.cutout_center[0],
-                            0:self.cutout_center[1] + 1]
-        quad3 = cutout_conv[:, self.cutout_center[0]:,
-                            0:self.cutout_center[1]]
-        quad4 = cutout_conv[:, self.cutout_center[0] + 1:,
-                            self.cutout_center[1]:]
+        quad1 = cutout_conv[:, 0:center + 1, center + 1:]
+        quad2 = cutout_conv[:, 0:center, 0:center + 1]
+        quad3 = cutout_conv[:, center:, 0:center]
+        quad4 = cutout_conv[:, center + 1:, center:]
 
         axis = (1, 2)
         sum2 = (-quad1.sum(axis=axis) + quad2.sum(axis=axis)
@@ -1076,9 +1103,16 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         if newcat is None:
             return None
 
+        # As in DAOFIND, reject sources with a centroid outside the image
+        ny, nx = newcat.data.shape
+        mask = ((newcat.x_centroid >= -0.5)
+                & (newcat.x_centroid <= nx - 0.5)
+                & (newcat.y_centroid >= -0.5)
+                & (newcat.y_centroid <= ny - 0.5))
+
         bounds = [
             ('sharpness', self.sharpness_range),
             ('roundness1', self.roundness_range),
             ('roundness2', self.roundness_range),
         ]
-        return newcat._filter_bounds(bounds)
+        return newcat._filter_bounds(bounds, initial_mask=mask)

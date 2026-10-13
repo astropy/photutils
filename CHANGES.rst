@@ -205,6 +205,11 @@ New Features
     The ``columns`` keyword now accepts a single string in addition to a
     list of column names. [#2329]
 
+  - Added a ``min_n_pixels`` keyword to ``IRAFStarFinder`` to set the
+    minimum number of positive sky-subtracted pixels within the kernel
+    footprint that a source must have. It is equivalent to the
+    ``npixmin`` parameter in IRAF's starfind. [#2510]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by
@@ -753,6 +758,27 @@ Bug Fixes
   - ``StarFinder`` now validates the input ``kernel`` values. The
     kernel must contain only finite values and have a positive
     maximum. [#2377]
+
+  - Fixed the ``DAOStarFinder`` ``roundness1`` values for a non-square
+    kernel, which can occur for an elliptical kernel (``ratio < 1``).
+    As in DAOFIND, ``roundness1`` is now computed over the central
+    square of the kernel array. Previously, it was computed over the
+    entire rectangular kernel array. The sources selected by
+    ``roundness_range`` may therefore differ for such kernels. Square
+    kernels are not affected. [#2510]
+
+  - ``DAOStarFinder`` now rejects sources whose centroid is outside
+    of the image, as in DAOFIND. Such sources could previously be
+    returned for peaks in the pixels at the image edges. [#2510]
+
+  - ``IRAFStarFinder`` now rejects sources with fewer than 5 positive
+    sky-subtracted pixels within the kernel footprint by default, as
+    in IRAF's starfind. Previously, only 2 such pixels were required,
+    so fewer faint sources may be returned. Set ``min_n_pixels=2`` to
+    recover the previous behavior. [#2510]
+
+  - ``IRAFStarFinder`` now rejects sources whose centroid is outside
+    of the image, as in IRAF's starfind. [#2510]
 
 - ``photutils.isophote``
 

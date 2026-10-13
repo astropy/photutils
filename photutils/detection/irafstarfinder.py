@@ -145,6 +145,13 @@ class IRAFStarFinder(StarFinderBase):
         rejected. If `None`, no roundness filtering is performed. The
         default is ``(0.0, 0.2)``.
 
+    min_n_pixels : int, optional
+        The minimum number of positive sky-subtracted pixels within
+        the kernel footprint that a source must have. Sources with
+        fewer such pixels are rejected. The default is 5, which is the
+        default and the minimum value of the ``npixmin`` parameter in
+        IRAF's starfind.
+
     See Also
     --------
     DAOStarFinder
@@ -166,6 +173,10 @@ class IRAFStarFinder(StarFinderBase):
     * ``fwhm = hwhmpsf * 2``
     * ``sigma_radius = fradius * sqrt(2.0 * log(2.0))``
     * ``min_separation = max(2, int((fwhm * sepmin) + 0.5))``
+    * ``min_n_pixels = npixmin``
+
+    As in IRAF's starfind, sources whose centroid is outside of the
+    image are rejected.
 
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
@@ -208,7 +219,7 @@ class IRAFStarFinder(StarFinderBase):
                  exclude_border=False, n_brightest=None, peak_max=None,
                  xycoords=None, min_separation=None, *,
                  sharpness_range=(0.5, 2.0),
-                 roundness_range=(0.0, 0.2)):
+                 roundness_range=(0.0, 0.2), min_n_pixels=5):
 
         # Validate the units, but do not strip them
         inputs = (threshold, peak_max)
@@ -263,6 +274,11 @@ class IRAFStarFinder(StarFinderBase):
         self.n_brightest = _validate_n_brightest(n_brightest)
         self.peak_max = peak_max
 
+        if min_n_pixels < 1:
+            msg = 'min_n_pixels must be >= 1'
+            raise ValueError(msg)
+        self.min_n_pixels = min_n_pixels
+
         if xycoords is not None:
             xycoords = np.asarray(xycoords)
             if xycoords.ndim != 2 or xycoords.shape[1] != 2:
@@ -285,7 +301,7 @@ class IRAFStarFinder(StarFinderBase):
         params = ('threshold', 'fwhm', 'sigma_radius',
                   'sharpness_range', 'roundness_range',
                   'exclude_border', 'n_brightest', 'peak_max', 'xycoords',
-                  'min_separation')
+                  'min_separation', 'min_n_pixels')
         overrides = {}
         if not isscalar(self.threshold):
             overrides['threshold'] = (
@@ -352,7 +368,8 @@ class IRAFStarFinder(StarFinderBase):
                                       sharpness_range=self.sharpness_range,
                                       roundness_range=self.roundness_range,
                                       n_brightest=self.n_brightest,
-                                      peak_max=self.peak_max)
+                                      peak_max=self.peak_max,
+                                      min_n_pixels=self.min_n_pixels)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
@@ -460,11 +477,15 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         `~astropy.units.Quantity` array, then ``peak_max`` must have the
         same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
+
+    min_n_pixels : int, optional
+        The minimum number of positive sky-subtracted pixels within
+        the kernel footprint that a source must have. The default is 5.
     """
 
     def __init__(self, data, convolved_data, xypos, kernel, *,
                  sharpness_range=(0.5, 2.0), roundness_range=(0.0, 0.2),
-                 n_brightest=None, peak_max=None):
+                 n_brightest=None, peak_max=None, min_n_pixels=5):
 
         # Validate the units, but do not strip them
         inputs = (data, convolved_data, peak_max)
@@ -478,6 +499,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         self.convolved_data = convolved_data
         self.sharpness_range = sharpness_range
         self.roundness_range = roundness_range
+        self.min_n_pixels = min_n_pixels
 
         self.default_columns = ('id', 'x_centroid', 'y_centroid', 'fwhm',
                                 'sharpness', 'roundness', 'orientation',
@@ -489,7 +511,8 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         return ('data', 'unit', 'convolved_data', 'kernel',
                 'sharpness_range', 'roundness_range', 'n_brightest',
-                'peak_max', 'cutout_shape', 'default_columns')
+                'peak_max', 'min_n_pixels', 'cutout_shape',
+                'default_columns')
 
     @cached_property
     def sky(self):
@@ -591,7 +614,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         attrs = ('x_centroid', 'y_centroid', 'sharpness', 'roundness',
                  'orientation', 'sky', 'peak', 'flux')
-        initial_mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
+        initial_mask = self.n_pixels >= self.min_n_pixels
         newcat = self._filter_finite(attrs, initial_mask=initial_mask)
         if newcat is None:
             return None
@@ -600,4 +623,12 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
             ('sharpness', self.sharpness_range),
             ('roundness', self.roundness_range),
         ]
-        return newcat._filter_bounds(bounds)
+
+        # As in IRAF starfind, reject sources with a centroid outside the
+        # image
+        ny, nx = newcat.data.shape
+        mask = ((newcat.x_centroid >= -0.5)
+                & (newcat.x_centroid <= nx - 0.5)
+                & (newcat.y_centroid >= -0.5)
+                & (newcat.y_centroid <= ny - 0.5))
+        return newcat._filter_bounds(bounds, initial_mask=mask)

@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
+from scipy.ndimage import convolve as ndi_convolve
 
 from photutils.detection.daofinder import DAOStarFinder
 from photutils.utils.exceptions import (NoDetectionsWarning,
@@ -307,6 +308,59 @@ class TestDAOStarFinder:
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
+
+    @pytest.mark.parametrize('theta', [0.0, 90.0])
+    def test_roundness1_nonsquare_kernel(self, data, theta):
+        """
+        Test that roundness1 is computed over the central square of a
+        non-square kernel, as in DAOFIND.
+        """
+        tbl0 = DAOStarFinder(threshold=5.0, fwhm=3.5)(data)
+        xycoords = np.round(np.transpose((tbl0['x_centroid'],
+                                          tbl0['y_centroid'])))
+        xycoords = xycoords.astype(int)
+        finder = DAOStarFinder(threshold=1, fwhm=8.0, ratio=0.5,
+                               theta=theta, xycoords=xycoords,
+                               sharpness_range=None, roundness_range=None)
+        ny, nx = finder.kernel.shape
+        assert ny != nx
+        tbl = finder(data)
+        assert len(tbl) == len(xycoords)
+
+        # Explicit DAOFIND sums over the convolved data
+        conv = ndi_convolve(data, finder.kernel.data, mode='constant')
+        n_half = min(ny, nx) // 2
+        expected = []
+        for xpos, ypos in xycoords:
+            sum2 = 0.0
+            sum4 = 0.0
+            for k in range(n_half + 1):
+                for j in range(1, n_half + 1):
+                    values = (conv[ypos - j, xpos - k],
+                              conv[ypos + j, xpos + k],
+                              -conv[ypos + k, xpos - j],
+                              -conv[ypos - k, xpos + j])
+                    sum2 += np.sum(values)
+                    sum4 += np.sum(np.abs(values))
+            expected.append(2.0 * sum2 / sum4)
+
+        assert_allclose(tbl['roundness1'], expected, rtol=1e-12)
+
+    def test_centroid_outside_image(self):
+        """
+        Test that sources with a centroid outside the image are
+        rejected, as in DAOFIND.
+        """
+        rng = np.random.default_rng(1)
+        shape = (80, 90)
+        data = rng.normal(0.0, 1.0, shape)
+        finder = DAOStarFinder(threshold=1.0, fwhm=2.0, min_separation=0,
+                               sharpness_range=None, roundness_range=None)
+        tbl = finder(data)
+        assert np.all(tbl['x_centroid'] >= -0.5)
+        assert np.all(tbl['x_centroid'] <= shape[1] - 0.5)
+        assert np.all(tbl['y_centroid'] >= -0.5)
+        assert np.all(tbl['y_centroid'] <= shape[0] - 0.5)
 
     @pytest.mark.parametrize('roundness_range', [0.5, (0.5,), (1, 2, 3)])
     def test_invalid_roundness_range(self, roundness_range):
