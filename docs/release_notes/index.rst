@@ -20,8 +20,8 @@ What's New
 The "What's New" pages highlight major new features and improvements
 in recent releases.
 
-Development Version
--------------------
+|whatsnew_heading|
+------------------
 
 .. toctree::
     :maxdepth: 1
