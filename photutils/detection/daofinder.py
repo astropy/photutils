@@ -192,7 +192,15 @@ class DAOStarFinder(StarFinderBase):
 
     For the convolution step, this routine sets pixels beyond the
     image borders to 0.0. The equivalent parameters in DAOFIND are
-    ``boundary='constant'`` and ``constant=0.0``.
+    ``boundary='constant'`` and ``constant=0.0``. This is not the
+    DAOFIND default, which is ``boundary='nearest'``. The two modes
+    differ only for sources near the image borders. With the zero
+    boundary used here, a star that is truncated by the image border
+    can be detected. Its centroid is biased toward the image interior
+    and its sharpness and roundness values are not reliable. With the
+    DAOFIND default, the centroid of such a star usually falls outside
+    of the image and the star is rejected. Set ``exclude_border=True``
+    to exclude the sources near the image borders.
 
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
