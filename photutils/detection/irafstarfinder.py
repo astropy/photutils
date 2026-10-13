@@ -170,7 +170,8 @@ class IRAFStarFinder(StarFinderBase):
     As in IRAF's starfind, sources with fewer than 5 positive
     sky-subtracted pixels within the kernel footprint are rejected. This
     is the default and the minimum value of the starfind ``npixmin``
-    parameter.
+    parameter. Sources whose centroid is outside of the image are also
+    rejected.
 
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
@@ -607,4 +608,12 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
             ('sharpness', self.sharpness_range),
             ('roundness', self.roundness_range),
         ]
-        return newcat._filter_bounds(bounds)
+
+        # As in IRAF starfind, reject sources with a centroid outside the
+        # image
+        ny, nx = newcat.data.shape
+        mask = ((newcat.x_centroid >= -0.5)
+                & (newcat.x_centroid <= nx - 0.5)
+                & (newcat.y_centroid >= -0.5)
+                & (newcat.y_centroid <= ny - 0.5))
+        return newcat._filter_bounds(bounds, initial_mask=mask)

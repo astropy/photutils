@@ -771,6 +771,9 @@ Bug Fixes
     starfind (``npixmin``). Previously, only 2 such pixels were
     required, so fewer faint sources may be returned. [#2510]
 
+  - ``IRAFStarFinder`` now rejects sources whose centroid is outside
+    of the image, as in IRAF's starfind. [#2510]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``_ellipse_model.pyx`` to fix a

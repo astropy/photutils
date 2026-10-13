@@ -382,6 +382,23 @@ class TestIRAFStarFinder:
         assert len(tbl) > 100
         assert np.min(tbl['n_pixels']) == 5
 
+    def test_centroid_outside_image(self):
+        """
+        Test that sources with a centroid outside the image are
+        rejected, as in IRAF's starfind.
+        """
+        rng = np.random.default_rng(1)
+        shape = (80, 90)
+        data = rng.normal(0.0, 1.0, shape)
+        finder = IRAFStarFinder(threshold=0.5, fwhm=2.0, min_separation=2,
+                                sharpness_range=None, roundness_range=None)
+        tbl = finder(data)
+        assert len(tbl) > 100
+        assert np.all(tbl['x_centroid'] >= -0.5)
+        assert np.all(tbl['x_centroid'] <= shape[1] - 0.5)
+        assert np.all(tbl['y_centroid'] >= -0.5)
+        assert np.all(tbl['y_centroid'] <= shape[0] - 0.5)
+
     def test_data_not_mutated(self, data):
         """
         Test that input data is not mutated by find_stars.
