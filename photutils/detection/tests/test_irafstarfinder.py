@@ -369,6 +369,19 @@ class TestIRAFStarFinder:
         assert tbl[0]['roundness'] < 1.e-15
         assert tbl[0]['peak'] == 0.8
 
+    def test_min_n_pixels(self):
+        """
+        Test that sources with fewer than 5 positive pixels are
+        rejected, as in IRAF's starfind.
+        """
+        rng = np.random.default_rng(1)
+        data = rng.normal(0.0, 1.0, (80, 90))
+        finder = IRAFStarFinder(threshold=0.5, fwhm=2.0, min_separation=2,
+                                sharpness_range=None, roundness_range=None)
+        tbl = finder(data)
+        assert len(tbl) > 100
+        assert np.min(tbl['n_pixels']) == 5
+
     def test_data_not_mutated(self, data):
         """
         Test that input data is not mutated by find_stars.

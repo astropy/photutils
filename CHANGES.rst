@@ -766,6 +766,11 @@ Bug Fixes
     of the image, as in DAOFIND. Such sources could previously be
     returned for peaks in the pixels at the image edges. [#2510]
 
+  - ``IRAFStarFinder`` now rejects sources with fewer than 5 positive
+    sky-subtracted pixels within the kernel footprint, as in IRAF's
+    starfind (``npixmin``). Previously, only 2 such pixels were
+    required, so fewer faint sources may be returned. [#2510]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``_ellipse_model.pyx`` to fix a

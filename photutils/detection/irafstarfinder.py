@@ -167,6 +167,11 @@ class IRAFStarFinder(StarFinderBase):
     * ``sigma_radius = fradius * sqrt(2.0 * log(2.0))``
     * ``min_separation = max(2, int((fwhm * sepmin) + 0.5))``
 
+    As in IRAF's starfind, sources with fewer than 5 positive
+    sky-subtracted pixels within the kernel footprint are rejected. This
+    is the default and the minimum value of the starfind ``npixmin``
+    parameter.
+
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
 
@@ -591,7 +596,9 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         attrs = ('x_centroid', 'y_centroid', 'sharpness', 'roundness',
                  'orientation', 'sky', 'peak', 'flux')
-        initial_mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
+        # IRAF starfind requires at least 5 positive sky-subtracted
+        # pixels (its default and minimum npixmin)
+        initial_mask = self.n_pixels >= 5
         newcat = self._filter_finite(attrs, initial_mask=initial_mask)
         if newcat is None:
             return None
