@@ -634,7 +634,12 @@ class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
         The position angle (in angular units) of the ellipse semimajor
         axis, measured from North (PA=0) toward East. This is
         counterclockwise on an image displayed with North up and East to
-        the left.
+        the left. North and East are the directions of increasing
+        latitude and longitude in the coordinate frame of ``positions``
+        (e.g., ICRS or Galactic). When the aperture is converted to
+        pixels with a WCS whose celestial frame differs from that frame,
+        the angle is converted to the equivalent angle in the WCS frame,
+        so the aperture keeps the same orientation on the sky.
 
     Raises
     ------
@@ -769,7 +774,12 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         The position angle (in angular units) of the ellipse semimajor
         axis, measured from North (PA=0) toward East. This is
         counterclockwise on an image displayed with North up and East to
-        the left.
+        the left. North and East are the directions of increasing
+        latitude and longitude in the coordinate frame of ``positions``
+        (e.g., ICRS or Galactic). When the aperture is converted to
+        pixels with a WCS whose celestial frame differs from that frame,
+        the angle is converted to the equivalent angle in the WCS frame,
+        so the aperture keeps the same orientation on the sky.
 
     Raises
     ------

@@ -125,10 +125,15 @@ using the :class:`~photutils.aperture.SkyCircularAperture` class::
     Sky apertures are not defined entirely in sky coordinates. The
     aperture center is specified by sky coordinates, while the aperture
     size is specified in angular units, and the orientation (``theta``,
-    where applicable) is defined in the sky coordinate frame. When
-    converting to pixel coordinates, the aperture size and orientation
-    are transformed using the local pixel scale and rotation at the
-    aperture center. Projection distortions are not taken into account.
+    where applicable) is defined in the coordinate frame of the aperture
+    positions. When converting to pixel coordinates, the aperture size
+    and orientation are transformed using the local pixel scale and
+    rotation at the aperture center. If the celestial frame of the WCS
+    differs from the frame of the aperture positions (e.g., ICRS
+    positions with a Galactic WCS), the orientation angle is also
+    converted to the equivalent angle in the WCS frame, so the aperture
+    keeps the same orientation on the sky. Projection distortions are
+    not taken into account.
 
     Consequently, sky apertures are **not** apertures defined on the
     celestial sphere. Instead, they represent aperture shapes on an
