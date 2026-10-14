@@ -4,7 +4,6 @@ Tools for plotting gridded PSF models.
 """
 
 import numpy as np
-from astropy.visualization import simple_norm
 
 __all__ = []
 
@@ -117,6 +116,7 @@ class _ModelGridPlotter:
                   deltas=False, cmap='viridis', dividers=True,
                   divider_color='darkgray', divider_ls='-', figsize=None):
         import matplotlib.pyplot as plt
+        from astropy.visualization import simple_norm
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         data = self.model.data.astype(float)

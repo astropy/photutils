@@ -4,9 +4,8 @@
 General
 ^^^^^^^
 
-- Importing the top-level ``photutils`` package is now much faster. It
-  no longer imports ``photutils.utils`` or reads the metadata of every
-  installed distribution. [#2512]
+- Importing the top-level ``photutils`` package and subpackages is now
+  faster. [#2512]
 
 New Features
 ^^^^^^^^^^^^
