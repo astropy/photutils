@@ -17,8 +17,9 @@ bug fixes, and improvements in each release.
 What's New
 ==========
 
-The "What's New" pages highlight major new features and improvements
-in recent releases.
+Each page below describes the most significant changes in a feature
+release, often with examples. See the changelog for the complete list
+of changes.
 
 |whatsnew_heading|
 ------------------
