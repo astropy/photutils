@@ -105,6 +105,13 @@ release = metadata.version(project)
 version = '.'.join(release.split('.')[:2])
 dev = 'dev' in release
 
+# The heading above the newest "What's New" page in the release notes
+# index depends on whether this is a development or a release build.
+whatsnew_heading = 'Development Version' if dev else 'Current Release'
+rst_epilog += f"""
+.. |whatsnew_heading| replace:: {whatsnew_heading}
+"""
+
 # -- Options for HTML output --------------------------------------------------
 
 html_theme_options = {

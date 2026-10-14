@@ -101,8 +101,11 @@ named ``upstream``.
 #. Add a new "What's New" page (``docs/whats_new/<X.Y>.rst``) for
    the next release. Update the ``docs/release_notes/index.rst`` file
    by moving the page of the released version to the top of the "Past
-   Releases" list and adding the new "What's New" page under
-   "Development Version". Then commit the changes::
+   Releases" list and adding the new "What's New" page under the
+   ``|whatsnew_heading|`` heading. That heading is set in
+   ``docs/conf.py`` and is rendered as "Development Version" for
+   development builds and as "Current Release" for release builds, so
+   it should not be edited. Then commit the changes::
 
         git add docs/whats_new/<X.Y>.rst docs/release_notes/index.rst
         git commit -m"Add what's new for version <X.Y.Z>"
