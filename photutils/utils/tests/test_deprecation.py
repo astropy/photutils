@@ -10,15 +10,15 @@ import numpy as np
 import pytest
 from astropy.table import QTable, Table, TableMergeError, join, unique
 
+from photutils._future_column_names import (_future_column_names_var,
+                                            use_future_column_names)
 from photutils.utils._deprecation import (DeprecatedColumnQTable,
                                           DeprecatedColumnTable,
-                                          _future_column_names_var,
                                           create_deprecated_table_from_data,
                                           create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs,
-                                          deprecated_renamed_argument,
-                                          use_future_column_names)
+                                          deprecated_renamed_argument)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DEPRECATION_MAP = {'old': 'new', 'old_b': 'new_b'}

@@ -13,7 +13,7 @@ try:
 except ImportError:
     __version__ = ''
 
-from .utils._deprecation import use_future_column_names  # noqa: F401
+from ._future_column_names import use_future_column_names  # noqa: F401
 
 future_column_names = False
 """

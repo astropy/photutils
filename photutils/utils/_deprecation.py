@@ -17,8 +17,6 @@ must use the new column names when calling such functions.
 
 import inspect
 import warnings
-from contextlib import contextmanager
-from contextvars import ContextVar
 from copy import deepcopy
 from functools import wraps
 
@@ -27,67 +25,8 @@ from astropy.utils.decorators import deprecated as astropy_deprecated
 from astropy.utils.decorators import (
     deprecated_renamed_argument as astropy_deprecated_renamed_argument)
 
+from photutils._future_column_names import get_future_column_names
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
-
-_SENTINEL = object()
-_future_column_names_var = ContextVar(
-    'photutils_future_column_names', default=_SENTINEL,
-)
-
-
-def _get_future_column_names():
-    """
-    Return the effective value of ``future_column_names``.
-
-    A context-local override (set via `use_future_column_names`) takes
-    precedence over the global ``photutils.future_column_names`` flag.
-
-    Returns
-    -------
-    result : bool
-        Whether future column names are enabled.
-    """
-    import photutils
-
-    val = _future_column_names_var.get()
-    if val is not _SENTINEL:
-        return val
-    return photutils.future_column_names
-
-
-@contextmanager
-def use_future_column_names(enabled=True):
-    """
-    Context manager to temporarily override ``future_column_names``.
-
-    Within the ``with`` block, photutils functions will behave as
-    though ``photutils.future_column_names`` were set to ``enabled``,
-    without modifying the global flag. This is safe to use in
-    multithreaded and async code because the override is stored in a
-    `~contextvars.ContextVar`.
-
-    Parameters
-    ----------
-    enabled : bool, optional
-        The value to use inside the block. The default is `True`.
-
-    Examples
-    --------
-    >>> import photutils
-    >>> from photutils import use_future_column_names
-    >>> photutils.future_column_names  # global default
-    False
-    >>> with use_future_column_names():
-    ...     # inside here, tables use new column names only
-    ...     pass
-    >>> photutils.future_column_names  # unchanged
-    False
-    """
-    token = _future_column_names_var.set(enabled)
-    try:
-        yield
-    finally:
-        _future_column_names_var.reset(token)
 
 
 def deprecated(since, *, alternative=None, until=None):
@@ -701,7 +640,7 @@ def create_empty_deprecated_qtable(deprecation_map, *, since=None,
     >>> float(col[0])
     1.0
     """
-    if _get_future_column_names():
+    if get_future_column_names():
         return QTable(**kwargs)
 
     table = DeprecatedColumnQTable(**kwargs)
@@ -800,7 +739,7 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
         deprecation_map.get(k, k): v for k, v in data.items()
     }
 
-    if _get_future_column_names():
+    if get_future_column_names():
         table_class = QTable if use_qtable else Table
         return table_class(renamed_data, **kwargs)
 
