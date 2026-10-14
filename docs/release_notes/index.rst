@@ -2,11 +2,12 @@
 Release Notes
 *************
 
-Detailed Release Notes
-======================
+Changelog
+=========
 
-The complete changelog contains detailed information about all changes,
-bug fixes, and improvements in each release.
+The changelog lists every change in each release, including bug-fix
+releases. Entries are grouped into new features, bug fixes, and API
+changes, and then by subpackage.
 
 .. toctree::
     :maxdepth: 1
