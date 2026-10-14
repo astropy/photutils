@@ -4,6 +4,9 @@
 General
 ^^^^^^^
 
+- Importing the top-level ``photutils`` package and subpackages is now
+  faster. [#2512]
+
 New Features
 ^^^^^^^^^^^^
 

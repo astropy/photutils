@@ -17,6 +17,7 @@ from astropy.coordinates import SkyCoord
 from astropy.stats import gaussian_fwhm_to_sigma
 from scipy.ndimage import map_coordinates
 
+from photutils._future_column_names import get_future_column_names
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
@@ -51,8 +52,7 @@ from photutils.segmentation._batch_results import BatchFluxRadiusArgs
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
-from photutils.utils._deprecation import (_get_future_column_names,
-                                          create_empty_deprecated_qtable,
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
@@ -925,7 +925,7 @@ class SourceCatalog:
         for attr in attrs:
             meta_values[attr] = getattr(self, attr)
 
-        if not _get_future_column_names():
+        if not get_future_column_names():
             for old_name, new_name in _DEPRECATED_META_KEYS.items():
                 if new_name in meta_values:
                     meta_values[old_name] = meta_values[new_name]

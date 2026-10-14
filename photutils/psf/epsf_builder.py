@@ -19,8 +19,6 @@ from astropy.table import Table
 from astropy.utils.decorators import deprecated, deprecated_attribute
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
-from scipy.signal import fftconvolve
-from scipy.stats import chi2 as chi2_dist
 
 from photutils.centroids import centroid_com, centroid_symmetry
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
@@ -365,6 +363,9 @@ def _phase_uniformity_pvalue(centers, *, nbins=4):
         The p-value of the chi-square test of a uniform phase
         distribution, combining both axes.
     """
+    # scipy.stats is slow to import, so it is imported only when needed.
+    from scipy.stats import chi2 as chi2_dist
+
     chi2 = 0.0
     for axis in (0, 1):
         phases = np.mod(centers[:, axis], 1.0)
@@ -2728,6 +2729,10 @@ class EPSFBuilder:
             return epsf_data
         weight_large = np.clip((radius - _WING_LARGE_START) / _WING_BLEND,
                                0.0, 1.0)
+
+        # scipy.signal is slow to import, so it is imported only when
+        # needed.
+        from scipy.signal import fftconvolve
 
         def box_fit(width):
             size = max(_odd_size(width * fwhm * float(np.min(oversampling))),

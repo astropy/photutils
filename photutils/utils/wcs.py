@@ -7,7 +7,6 @@ import warnings
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
-from scipy.interpolate import RectBivariateSpline
 
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 
@@ -265,6 +264,10 @@ def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
     # directly at every pixel in that case.
     if not np.all(np.isfinite(coarse)):
         return _compute_areas_at_every_pixel(wcs, ny, nx)
+
+    # scipy.interpolate is slow to import, so it is imported only when
+    # needed.
+    from scipy.interpolate import RectBivariateSpline
 
     spline = RectBivariateSpline(grid_y, grid_x, coarse)
     return spline(np.arange(ny, dtype=float), np.arange(nx, dtype=float))
