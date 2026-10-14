@@ -15,7 +15,7 @@ is maintained.
 """
 
 import importlib
-from importlib.metadata import packages_distributions, requires
+from importlib.metadata import requires
 
 from packaging.requirements import Requirement
 
@@ -67,11 +67,11 @@ def _dist_to_has_key(dist_name):
     return import_name.upper().replace('-', '_').replace('.', '_')
 
 
-# Derive the distribution name of this package from its top-level import
-# name
-_pkg_import_name = __name__.split('.')[0]
-_pkg_dist_name = packages_distributions().get(_pkg_import_name,
-                                              [_pkg_import_name])[0]
+# The distribution name of this package is the same as its top-level
+# import name. Looking it up with
+# ``importlib.metadata.packages_distributions`` would read the metadata
+# of every installed distribution on import.
+_pkg_dist_name = __name__.split('.', maxsplit=1)[0]
 
 # Build lookup: HAS_* suffix -> dist name.
 _optional_deps = _get_optional_deps(_pkg_dist_name, extra='all')
