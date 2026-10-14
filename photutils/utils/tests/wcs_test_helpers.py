@@ -138,6 +138,13 @@ class CountingWCS:
         """
         return self._wcs.world_axis_object_components
 
+    @property
+    def world_axis_object_classes(self):
+        """
+        The world axis object classes of the wrapped WCS.
+        """
+        return self._wcs.world_axis_object_classes
+
     def pixel_to_world(self, *args, **kwargs):
         """
         Count and forward a high-level pixel-to-world call.

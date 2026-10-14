@@ -8,7 +8,8 @@ import sys
 
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import Angle
+from astropy.coordinates import (Angle, BaseCoordinateFrame,
+                                 frame_transform_graph)
 from astropy.wcs.wcsapi import high_level_objects_to_values
 
 
@@ -51,6 +52,56 @@ def _to_radians(values, unit):
     if unit == 'deg':
         return np.deg2rad(values)
     return np.asarray(values, dtype=float) * u.Unit(unit).to(u.rad)
+
+
+def _frame_rotation(wcs, skycoord):
+    """
+    Return the rotation from the frame of a sky coordinate to the
+    celestial frame of a WCS.
+
+    The rotation is the position angle, measured in the WCS frame
+    at ``skycoord``, of the North direction of the ``skycoord``
+    frame. Adding it to a position angle measured in the ``skycoord``
+    frame gives the position angle in the WCS frame, which is the
+    frame of the local Jacobian. It is zero when the two frames are
+    equivalent or when the WCS does not define a celestial frame.
+
+    Parameters
+    ----------
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    skycoord : `~astropy.coordinates.SkyCoord`
+        The sky coordinate.
+
+    Returns
+    -------
+    rotation : float
+        The rotation angle in radians.
+    """
+    low_level_wcs = _low_level_wcs(wcs)
+    key = next(comp[0] for comp in low_level_wcs.world_axis_object_components
+               if comp[1] == 0)
+    frame = low_level_wcs.world_axis_object_classes[key][2].get('frame')
+
+    # A gwcs celestial frame is often given by name (e.g., 'icrs').
+    # Resolve a name or a class to a frame instance with default
+    # attributes so that it can be compared with the skycoord frame.
+    if isinstance(frame, str):
+        frame = frame_transform_graph.lookup_name(frame) or frame
+    if isinstance(frame, type):
+        frame = frame()
+
+    if frame is None or (isinstance(frame, BaseCoordinateFrame)
+                         and skycoord.is_equivalent_frame(frame)):
+        return 0.0
+
+    center = skycoord.transform_to(frame)
+    north = skycoord.directional_offset_by(0.0, 1 * u.arcsec)
+    return center.position_angle(north.transform_to(frame)).to_value(u.rad)
 
 
 def _pixel_to_world_radians(wcs, x, y):
@@ -681,13 +732,17 @@ def sky_shape_to_pixel_svd(wcs, skycoord, width_arcsec, height_arcsec,
     sky_angle_rad : float
         The sky rotation angle in radians as a position angle (PA).
         This is the angle of the ellipse's width axis measured
-        counterclockwise from North (the latitude/Dec axis).
+        counterclockwise from North (the latitude/Dec axis) of the
+        ``skycoord`` frame, which may differ from the WCS celestial
+        frame.
 
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
-        When given, the WCS is not inverted to find it and ``skycoord``
-        is used only to name the position in an error message (it may be
-        `None`).
+        When given, the WCS is not inverted to find it. ``skycoord`` is
+        then used only to name the position in an error message and to
+        find the rotation between its frame and the WCS frame. It may be
+        `None`, in which case ``sky_angle_rad`` is taken to be measured
+        in the WCS frame.
 
     Returns
     -------
@@ -710,6 +765,11 @@ def sky_shape_to_pixel_svd(wcs, skycoord, width_arcsec, height_arcsec,
     """
     center, jacobian = _sky_to_pixel_jacobian(wcs, skycoord,
                                               pixcoord=pixcoord)
+
+    # The Jacobian is defined in the WCS celestial frame, so rotate the
+    # position angle from the skycoord frame into that frame.
+    if skycoord is not None:
+        sky_angle_rad = sky_angle_rad + _frame_rotation(wcs, skycoord)
 
     # Build M_sky: columns are sky semiaxis vectors in tangent-plane
     # coordinates (xi=East, eta=North). The width axis is at the given
