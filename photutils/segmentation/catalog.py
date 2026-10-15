@@ -73,8 +73,17 @@ from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['SourceCatalog']
+
+# Default table columns for the to_table() output
+_DEFAULT_COLUMNS = ('label', 'x_centroid', 'y_centroid', 'sky_centroid',
+                    'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
+                    'area', 'semimajor_axis', 'semiminor_axis',
+                    'orientation', 'eccentricity', 'min_value',
+                    'max_value', 'segment_flux', 'segment_flux_err',
+                    'kron_flux', 'kron_flux_err', 'flags')
 
 # The inner rectangle of the local background annulus is this factor
 # times the segment bounding box size
@@ -819,14 +828,7 @@ class SourceCatalog:
             'cen_win': {'method': 'center'},
         }
 
-        self.default_columns = ['label', 'x_centroid', 'y_centroid',
-                                'sky_centroid', 'bbox_xmin', 'bbox_xmax',
-                                'bbox_ymin', 'bbox_ymax', 'area',
-                                'semimajor_axis', 'semiminor_axis',
-                                'orientation', 'eccentricity', 'min_value',
-                                'max_value', 'segment_flux',
-                                'segment_flux_err', 'kron_flux',
-                                'kron_flux_err', 'flags']
+        self.default_columns = list(_DEFAULT_COLUMNS)
 
         self._custom_properties = []
         self._flux_radius_cache = {}
@@ -6010,3 +6012,21 @@ class SourceCatalog:
                                        mode=mode, fill_value=fill_value))
 
         return self._make_scalar(cutouts)
+
+
+def __getattr__(name):
+    # DEFAULT_COLUMNS is a deprecated public name for the 3.0 default
+    # to_table() columns, which did not include the flags column.
+    if name == 'DEFAULT_COLUMNS':
+        msg = ('DEFAULT_COLUMNS is deprecated and will be removed in '
+               'version 4.0. Use the SourceCatalog.default_columns attribute '
+               'instead.')
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        return ['label', 'x_centroid', 'y_centroid', 'sky_centroid',
+                'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax', 'area',
+                'semimajor_axis', 'semiminor_axis', 'orientation',
+                'eccentricity', 'min_value', 'max_value', 'segment_flux',
+                'segment_flux_err', 'kron_flux', 'kron_flux_err']
+
+    msg = f'module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)

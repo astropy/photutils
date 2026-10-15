@@ -1310,6 +1310,18 @@ is deprecated and will be removed in version 4.0. All property
 calculations are now computed for all sources at once in compiled
 code, so no progress bar is displayed and the keyword has no effect.
 
+``DEFAULT_COLUMNS`` Constants Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``DEFAULT_COLUMNS`` constants in the
+``photutils.aperture.stats`` and ``photutils.segmentation.catalog``
+modules were removed in version 3.1.0 without a deprecation period.
+Version 3.1.1 restores them as deprecated names that will be removed
+in version 4.0. They contain the 3.0 default columns, which do not
+include the ``flags`` column. Use the ``default_columns`` attribute of
+`~photutils.aperture.ApertureStats` or
+`~photutils.segmentation.SourceCatalog` instead.
+
 PSF Flags Renamed
 ^^^^^^^^^^^^^^^^^
 

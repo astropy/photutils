@@ -4,6 +4,7 @@ Tools for calculating properties of sources defined by an Aperture.
 """
 
 import inspect
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy, deepcopy
 from functools import cached_property
@@ -62,8 +63,18 @@ from photutils.utils._moments import (centroid_from_moments,
                                       sky_orientation_from_covariance)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['ApertureStats']
+
+# Default table columns for the to_table() output
+_DEFAULT_COLUMNS = ('id', 'x_centroid', 'y_centroid', 'sky_centroid',
+                    'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
+                    'min', 'max', 'mean', 'median', 'mode', 'std',
+                    'mad_std', 'var', 'biweight_location',
+                    'biweight_midvariance', 'fwhm', 'semimajor_axis',
+                    'semiminor_axis', 'orientation', 'eccentricity',
+                    'flags')
 
 
 # Scale factor that converts the median absolute deviation to a robust
@@ -546,14 +557,7 @@ class ApertureStats:
             self._local_bkg = local_bkg  # always an iterable
 
         self._ids = np.arange(self.n_positions) + 1
-        self.default_columns = ['id', 'x_centroid', 'y_centroid',
-                                'sky_centroid', 'sum', 'sum_err',
-                                'sum_aper_area', 'center_aper_area',
-                                'min', 'max', 'mean', 'median', 'mode',
-                                'std', 'mad_std', 'var', 'biweight_location',
-                                'biweight_midvariance', 'fwhm',
-                                'semimajor_axis', 'semiminor_axis',
-                                'orientation', 'eccentricity', 'flags']
+        self.default_columns = list(_DEFAULT_COLUMNS)
 
         self.meta = _get_meta()
         self.meta.update(aperture_meta)
@@ -3564,3 +3568,22 @@ class ApertureStats:
         """
         return self._finalize_value_stat(self._gini, gini_func,
                                          apply_unit=False)
+
+
+def __getattr__(name):
+    # DEFAULT_COLUMNS is a deprecated public name for the 3.0 default
+    # to_table() columns, which did not include the flags column.
+    if name == 'DEFAULT_COLUMNS':
+        msg = ('DEFAULT_COLUMNS is deprecated and will be removed in '
+               'version 4.0. Use the ApertureStats.default_columns attribute '
+               'instead.')
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        return ['id', 'x_centroid', 'y_centroid', 'sky_centroid', 'sum',
+                'sum_err', 'sum_aper_area', 'center_aper_area', 'min', 'max',
+                'mean', 'median', 'mode', 'std', 'mad_std', 'var',
+                'biweight_location', 'biweight_midvariance', 'fwhm',
+                'semimajor_axis', 'semiminor_axis', 'orientation',
+                'eccentricity']
+
+    msg = f'module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)
