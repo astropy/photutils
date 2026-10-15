@@ -706,24 +706,34 @@ class TestPolygonPhotometry:
         exactly on a horizontal polygon edge.
 
         This is the ``photometry`` counterpart of
-        ``test_polygon_overlap_subpixel_on_horizontal_boundary`` in
-        ``photutils/geometry/tests/test_polygon_overlap_grid.py``,
-        using the same wide rectangle (half-widths 2 in x, 1 in y) and
-        ``subpixels=3``.
+        ``test_polygon_overlap_subpixel_on_horizontal_boundary``
+        in ``photutils/geometry/tests/test_polygon_overlap.py``,
+        using a wide rectangle (half-widths 2 in x, 1.25 in y) and
+        ``subpixels=2``.
 
-        At an integer position the subpixel centers fall on all multiples
-        of 1/3, so the horizontal edges at y = center +/- 1 coincide with
-        a row of subpixel centers and are excluded. The strictly interior
-        subpixel centers are the 11 x-positions and 5 y-positions inside the
-        open rectangle, giving 55 of every 9 subpixels, i.e., 55/9. Were the
-        on-boundary centers counted instead, the result would be 91/9.
+        At an integer position the subpixel centers fall at offsets of
+        +/-0.25, +/-0.75, +/-1.25, and so on from the aperture center.
+        The horizontal edges at y = center +/- 1.25 coincide with a
+        row of subpixel centers and are excluded, while the vertical
+        edges at x = center +/- 2 fall between subpixel columns. The
+        strictly interior subpixel centers are the 8 x-positions and 4
+        y-positions inside the open rectangle, giving 32 subpixels of
+        area 1/4, i.e., 8. Were the on-boundary centers counted instead,
+        the result would be 12.
+
+        A power-of-two ``subpixels`` makes every subpixel center exactly
+        representable, so the on-edge samples land exactly on the edges
+        with any floating-point arithmetic. The 1/3-pixel steps of
+        ``subpixels=3`` are inexact, and the x87 extended precision used
+        by 32-bit x86 builds can move a nominally on-edge sample just
+        off the edge.
         """
         data = np.ones((31, 31))
-        offsets = np.array([[-2.0, -1.0], [2.0, -1.0],
-                            [2.0, 1.0], [-2.0, 1.0]])
+        offsets = np.array([[-2.0, -1.25], [2.0, -1.25],
+                            [2.0, 1.25], [-2.0, 1.25]])
         aper = PolygonAperture((15.0, 15.0), offsets)
-        phot = AperturePhotometry(data, aper, method='subpixel', subpixels=3)
-        assert_allclose(phot.flux, [55.0 / 9.0])
+        phot = AperturePhotometry(data, aper, method='subpixel', subpixels=2)
+        assert_allclose(phot.flux, [8.0])
 
     def test_photometry_subpixel_on_vertical_boundary(self):
         """
@@ -731,18 +741,20 @@ class TestPolygonPhotometry:
         exactly on a vertical polygon edge.
 
         This is the ``photometry`` counterpart of
-        ``test_polygon_overlap_subpixel_on_vertical_boundary``, using
-        the same tall rectangle (half-widths 1 in x, 2 in y) and
-        ``subpixels=3``. The vertical edges at x = center +/- 1 coincide
-        with a column of subpixel centers and are excluded, giving 55/9 (the
-        boundary-included value would be 91/9).
+        ``test_polygon_overlap_subpixel_on_vertical_boundary``,
+        using a tall rectangle (half-widths 1.25
+        in x, 2 in y) and ``subpixels=2`` (see
+        ``test_photometry_subpixel_on_horizontal_boundary``). The
+        vertical edges at x = center +/- 1.25 coincide with a
+        column of subpixel centers and are excluded, giving 8 (the
+        boundary-included value would be 12).
         """
         data = np.ones((31, 31))
-        offsets = np.array([[-1.0, -2.0], [1.0, -2.0],
-                            [1.0, 2.0], [-1.0, 2.0]])
+        offsets = np.array([[-1.25, -2.0], [1.25, -2.0],
+                            [1.25, 2.0], [-1.25, 2.0]])
         aper = PolygonAperture((15.0, 15.0), offsets)
-        phot = AperturePhotometry(data, aper, method='subpixel', subpixels=3)
-        assert_allclose(phot.flux, [55.0 / 9.0])
+        phot = AperturePhotometry(data, aper, method='subpixel', subpixels=2)
+        assert_allclose(phot.flux, [8.0])
 
     def test_photometry_subpixel_on_all_boundaries(self):
         """
@@ -750,17 +762,20 @@ class TestPolygonPhotometry:
         edges, vertical edges, and at corners.
 
         This is the ``photometry`` counterpart of
-        ``test_polygon_overlap_subpixel_on_all_boundaries``, using the same
-        unit square (half-widths 1 in both axes) and ``subpixels=3``. At
-        an integer position the four edges and four corners coincide with
-        subpixel centers and are all excluded, leaving the 5 x-positions
-        and 5 y-positions strictly inside the open square, i.e., 25/9 (the
-        boundary-included value would be 49/9).
+        ``test_polygon_overlap_subpixel_on_all_boundaries``, using a
+        square (half-widths 1.25 in both axes) and ``subpixels=2`` (see
+        ``test_photometry_subpixel_on_horizontal_boundary``). At an
+        integer position the four edges and four corners coincide with
+        subpixel centers and are all excluded, leaving the 4 x-positions
+        and 4 y-positions strictly inside the open square, i.e., 4 (the
+        boundary-included value would be 9).
         """
         data = np.ones((31, 31))
-        aper = PolygonAperture((15.0, 15.0), SQUARE_OFFSETS)
-        phot = AperturePhotometry(data, aper, method='subpixel', subpixels=3)
-        assert_allclose(phot.flux, [25.0 / 9.0])
+        offsets = np.array([[-1.25, -1.25], [1.25, -1.25],
+                            [1.25, 1.25], [-1.25, 1.25]])
+        aper = PolygonAperture((15.0, 15.0), offsets)
+        phot = AperturePhotometry(data, aper, method='subpixel', subpixels=2)
+        assert_allclose(phot.flux, [4.0])
 
     @pytest.mark.parametrize(('method', 'kwargs'),
                              [('exact', {}),
