@@ -13,6 +13,15 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed the ``to_pixel`` methods of ``SkyEllipticalAperture``,
+    ``SkyEllipticalAnnulus``, ``SkyRectangularAperture``, and
+    ``SkyRectangularAnnulus`` for an aperture whose position frame
+    differs from the WCS celestial frame (e.g., ICRS positions with a
+    Galactic WCS). The rotation angle ``theta`` is again measured in
+    the frame of the aperture position. [#2514]
+
 API Changes
 ^^^^^^^^^^^
 

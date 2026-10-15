@@ -8,14 +8,15 @@ import warnings
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.coordinates import Angle, SkyCoord
+from astropy.coordinates import ICRS, Angle, Galactic, SkyCoord
 from astropy.wcs import WCS as APWCS
 from astropy.wcs.wcsapi import HighLevelWCSWrapper
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
-from photutils.utils._wcs_helpers import (compute_pixel_to_sky_jacobians,
+from photutils.utils._wcs_helpers import (_frame_rotation,
+                                          compute_pixel_to_sky_jacobians,
                                           pixel_shape_to_sky_svd,
                                           pixel_to_sky_mean_scale,
                                           pixel_to_sky_svd_scales,
@@ -1160,6 +1161,20 @@ class TestKnownPixelPosition:
         assert_allclose(result[1:3], expected[1:3], rtol=1e-12)
         assert_allclose(result[3].deg, expected[3].deg, atol=1e-10)
 
+    def test_shape_svd_without_skycoord(self, sip_wcs, known):
+        """
+        Test that the angle is taken to be in the WCS frame when the
+        sky coordinate is None.
+        """
+        skycoord, pixcoord = known
+        args = (2.0, 1.0, 0.3)
+        expected = sky_shape_to_pixel_svd(sip_wcs, skycoord, *args,
+                                          pixcoord=pixcoord)
+        result = sky_shape_to_pixel_svd(sip_wcs, None, *args,
+                                        pixcoord=pixcoord)
+        assert result[:3] == expected[:3]
+        assert result[3] == expected[3]
+
 
 def _make_allsky_ait_wcs():
     """
@@ -1299,3 +1314,82 @@ class TestUndefinedWCS:
         wcs.world_to_pixel = lambda _skycoord: self.OUTSIDE
         with pytest.raises(ValueError, match='WCS is undefined'):
             sky_to_pixel_mean_scale(wcs, skycoord)
+
+
+class _FrameSpecWCS(CountingWCS):
+    """
+    Wrapper whose celestial frame is given by ``frame``, which may be a
+    frame name or class as in some gwcs objects.
+    """
+
+    def __init__(self, real_wcs, frame):
+        super().__init__(real_wcs)
+        self._frame = frame
+
+    @property
+    def world_axis_object_classes(self):
+        """
+        The world axis object classes of the wrapped WCS with the frame
+        replaced.
+        """
+        classes = self._wcs.world_axis_object_classes
+        return {key: (cls, args, {**kwargs, 'frame': self._frame})
+                for key, (cls, args, kwargs) in classes.items()}
+
+
+class TestFrameRotation:
+    """
+    Tests for the rotation between the frame of a sky coordinate and the
+    celestial frame of a WCS.
+    """
+
+    @staticmethod
+    def _make_galactic_wcs(skycoord):
+        wcs = APWCS(naxis=2)
+        center = skycoord.galactic
+        wcs.wcs.crval = [center.l.deg, center.b.deg]
+        wcs.wcs.ctype = ['GLON-TAN', 'GLAT-TAN']
+        wcs.wcs.cdelt = [-0.1, 0.1]
+        wcs.wcs.crpix = [25.5, 25.5]
+        return wcs
+
+    def test_same_frame(self, simple_wcs):
+        assert _frame_rotation(simple_wcs, WCS_CENTER) == 0.0
+
+    def test_icrs_on_galactic_wcs(self):
+        """
+        Test the position angle of ICRS North in Galactic coordinates
+        at ICRS (0, 0) (regions issue #712).
+        """
+        skycoord = SkyCoord(0 * u.deg, 0 * u.deg)
+        wcs = self._make_galactic_wcs(skycoord)
+        rotation = _frame_rotation(wcs, skycoord)
+        assert_allclose(np.rad2deg(rotation), 23.47980599, atol=1e-6)
+
+    def test_inverse_rotation(self, simple_wcs):
+        """
+        Test that swapping the two frames negates the rotation.
+        """
+        wcs = self._make_galactic_wcs(WCS_CENTER)
+        forward = _frame_rotation(wcs, WCS_CENTER)
+        inverse = _frame_rotation(simple_wcs, WCS_CENTER.galactic)
+        assert abs(forward) > 0.1
+        assert_allclose(Angle(forward + inverse, u.rad).wrap_at(180 * u.deg),
+                        0.0, atol=1e-10)
+
+    @pytest.mark.parametrize(('frame', 'frame_instance'),
+                             [('icrs', ICRS()),
+                              (ICRS, ICRS()),
+                              ('galactic', Galactic()),
+                              (Galactic, Galactic())])
+    def test_frame_name_or_class(self, simple_wcs, frame, frame_instance):
+        """
+        Test that a WCS frame given by name or class gives the same
+        rotation as a frame instance.
+        """
+        expected = _frame_rotation(_FrameSpecWCS(simple_wcs, frame_instance),
+                                   WCS_CENTER)
+        rotation = _frame_rotation(_FrameSpecWCS(simple_wcs, frame),
+                                   WCS_CENTER)
+        assert rotation == expected
+        assert (rotation == 0.0) == isinstance(frame_instance, ICRS)

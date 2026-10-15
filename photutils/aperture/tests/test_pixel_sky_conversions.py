@@ -236,6 +236,22 @@ def flipped_wcs():
 
 
 @pytest.fixture
+def galactic_wcs():
+    """
+    A simple axis-aligned TAN WCS in Galactic coordinates centered on
+    CENTER.
+    """
+    center = CENTER.galactic
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [center.l.deg, center.b.deg]
+    wcs.wcs.cdelt = [-0.1 / 3600, 0.1 / 3600]
+    wcs.wcs.ctype = ['GLON-TAN', 'GLAT-TAN']
+
+    return wcs
+
+
+@pytest.fixture
 def swapped_wcs():
     """
     A TAN WCS with the latitude axis first (Dec, RA).
@@ -1065,3 +1081,91 @@ class TestSingleWCSEvaluation:
         assert wcs.n_pixel_to_world_values == 1
         assert type(result) is type(expected)
         assert result.positions.separation(expected.positions).arcsec < 1e-9
+
+
+def _expected_pixel_theta(wcs, position, theta):
+    """
+    Return the pixel angle (deg, modulo 180) of the width axis of a sky
+    aperture, found by projecting a point on that axis through the WCS.
+
+    The sky ``theta`` is a position angle measured in the frame of
+    ``position``. A point offset along it is projected with the WCS,
+    which transforms it to the WCS frame.
+    """
+    tip = position.directional_offset_by(theta, 1 * u.arcsec)
+    x0, y0 = wcs.world_to_pixel(position)
+    x1, y1 = wcs.world_to_pixel(tip)
+    return np.rad2deg(np.arctan2(y1 - y0, x1 - x0)) % 180
+
+
+def _frame_mismatch_params():
+    """
+    Return (position, wcs fixture name) pairs whose position frame
+    differs from the WCS celestial frame.
+    """
+    return [pytest.param(CENTER, 'galactic_wcs', id='icrs_on_galactic'),
+            pytest.param(CENTER.galactic, 'simple_wcs',
+                         id='galactic_on_icrs')]
+
+
+class TestPositionFrameDiffersFromWCSFrame:
+    """
+    Regression tests for a sky aperture whose position frame differs
+    from the WCS celestial frame.
+
+    The sky ``theta`` is a position angle measured in the frame of the
+    aperture position, so converting to pixels must include the rotation
+    between that frame and the WCS frame.
+    """
+
+    @pytest.mark.parametrize(('position', 'wcs_name'),
+                             _frame_mismatch_params())
+    @pytest.mark.parametrize('case', DIRECTED_CASES)
+    @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
+    def test_sky_to_pixel_theta(self, position, wcs_name, case, theta_deg,
+                                request):
+        wcs = request.getfixturevalue(wcs_name)
+        theta = theta_deg * u.deg
+        sky = case['sky_cls'](position, **{**case['sky_kw'], 'theta': theta})
+        pix = sky.to_pixel(wcs)
+        expected = _expected_pixel_theta(wcs, position, theta)
+        diff = (pix.theta.to_value(u.deg) - expected + 90) % 180 - 90
+        assert abs(diff) < 1e-4
+
+    @pytest.mark.parametrize('case', DIRECTED_CASES)
+    def test_multiple_positions(self, galactic_wcs, case):
+        """
+        Test that the frame rotation is evaluated at the first aperture
+        position.
+        """
+        theta = 30 * u.deg
+        positions = SkyCoord([CENTER.ra, CENTER.ra + 1 * u.arcsec],
+                             [CENTER.dec, CENTER.dec])
+        sky = case['sky_cls'](positions,
+                              **{**case['sky_kw'], 'theta': theta})
+        pix = sky.to_pixel(galactic_wcs)
+        expected = _expected_pixel_theta(galactic_wcs, positions[0], theta)
+        diff = (pix.theta.to_value(u.deg) - expected + 90) % 180 - 90
+        assert abs(diff) < 1e-4
+
+    def test_icrs_aperture_on_galactic_wcs(self):
+        """
+        Test that an ICRS aperture projected onto a Galactic WCS
+        centered on it is rotated by the position angle of ICRS North in
+        Galactic coordinates (regions issue #712).
+        """
+        position = SkyCoord(0, 0, unit='deg', frame='icrs')
+        aperture = SkyEllipticalAperture(position, a=0.5 * u.deg,
+                                         b=0.25 * u.deg, theta=0 * u.deg)
+        wcs = WCS(naxis=2)
+        wcs.wcs.crval = [position.galactic.l.deg, position.galactic.b.deg]
+        wcs.wcs.ctype = ['GLON-TAN', 'GLAT-TAN']
+        wcs.wcs.cdelt = [-0.1, 0.1]
+        wcs.wcs.crpix = [25.5, 25.5]
+        wcs.wcs.cunit = ['deg', 'deg']
+        pix = aperture.to_pixel(wcs)
+        assert_allclose(pix.positions, (24.5, 24.5))
+        assert_allclose(pix.a, 5.0, rtol=1e-6)
+        assert_allclose(pix.b, 2.5, rtol=1e-6)
+        assert_quantity_allclose(pix.theta, 113.47980599 * u.deg,
+                                 atol=1e-6 * u.deg)
