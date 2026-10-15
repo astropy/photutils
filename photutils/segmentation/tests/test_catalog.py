@@ -25,6 +25,7 @@ from photutils.background import Background2D, MedianBackground
 from photutils.centroids import centroid_quadratic
 from photutils.datasets import (make_100gaussians_image, make_gwcs,
                                 make_noise_image, make_wcs)
+from photutils.segmentation import catalog as catalog_module
 from photutils.segmentation.catalog import SourceCatalog
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.deblend import deblend_sources
@@ -5060,3 +5061,31 @@ def test_centroid_quad_masked_pixels_sliced():
         assert_equal(obj.centroid_quad, cat.centroid_quad[i])
         assert_equal(obj.centroid_quad_err, cat.centroid_quad_err[i])
         assert obj.centroid_quad_fallback == cat.centroid_quad_fallback[i]
+
+
+def test_default_columns_deprecated():
+    """
+    Test that the deprecated module-level DEFAULT_COLUMNS constant
+    returns a copy of the 3.0 default to_table() columns, which did not
+    include the flags column.
+    """
+    data = np.zeros((10, 10))
+    data[2:5, 2:5] = 1.0
+    cat = SourceCatalog(data, SegmentationImage((data > 0).astype(int)))
+
+    match = 'DEFAULT_COLUMNS is deprecated'
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        columns = catalog_module.DEFAULT_COLUMNS
+    assert 'flags' not in columns
+    assert columns == [column for column in cat.default_columns
+                       if column != 'flags']
+    assert cat.to_table(columns=columns).colnames == columns
+
+    columns.append('foo')
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        assert 'foo' not in catalog_module.DEFAULT_COLUMNS
+    assert 'foo' not in cat.default_columns
+
+    match = 'has no attribute'
+    with pytest.raises(AttributeError, match=match):
+        _ = catalog_module.NOT_AN_ATTRIBUTE

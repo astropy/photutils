@@ -1,4 +1,4 @@
-3.2.0 (unreleased)
+3.1.1 (unreleased)
 ------------------
 
 General
@@ -6,9 +6,6 @@ General
 
 - Importing the top-level ``photutils`` package and subpackages is now
   faster. [#2512]
-
-New Features
-^^^^^^^^^^^^
 
 Bug Fixes
 ^^^^^^^^^
@@ -24,6 +21,23 @@ Bug Fixes
 
 API Changes
 ^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Restored the ``photutils.aperture.stats.DEFAULT_COLUMNS`` constant,
+    which was removed in 3.1.0 without a deprecation period. It contains
+    the 3.0 default columns, which do not include the ``flags`` column.
+    It is now deprecated and will be removed in version 4.0. Use the
+    ``ApertureStats.default_columns`` attribute instead. [#2517]
+
+- ``photutils.segmentation``
+
+  - Restored the ``photutils.segmentation.catalog.DEFAULT_COLUMNS``
+    constant, which was removed in 3.1.0 without a deprecation period.
+    It contains the 3.0 default columns, which do not include the
+    ``flags`` column. It is now deprecated and will be removed in
+    version 4.0. Use the ``SourceCatalog.default_columns`` attribute
+    instead. [#2517]
 
 
 3.1.0 (2026-10-13)

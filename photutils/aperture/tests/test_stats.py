@@ -19,6 +19,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 
+from photutils.aperture import stats as stats_module
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.core import _enable_batch_photometry
@@ -2664,3 +2665,30 @@ class TestSourceCatalogAgreement:
             assert stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE
             assert cat.flags[0] & SEGMENTATION_FLAGS.ALL_MASKED
             assert cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+
+
+def test_default_columns_deprecated():
+    """
+    Test that the deprecated module-level DEFAULT_COLUMNS constant
+    returns a copy of the 3.0 default to_table() columns, which did not
+    include the flags column.
+    """
+    data = np.ones((10, 10))
+    apstats = ApertureStats(data, CircularAperture((5, 5), r=2))
+
+    match = 'DEFAULT_COLUMNS is deprecated'
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        columns = stats_module.DEFAULT_COLUMNS
+    assert 'flags' not in columns
+    assert columns == [column for column in apstats.default_columns
+                       if column != 'flags']
+    assert apstats.to_table(columns=columns).colnames == columns
+
+    columns.append('foo')
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        assert 'foo' not in stats_module.DEFAULT_COLUMNS
+    assert 'foo' not in apstats.default_columns
+
+    match = 'has no attribute'
+    with pytest.raises(AttributeError, match=match):
+        _ = stats_module.NOT_AN_ATTRIBUTE
