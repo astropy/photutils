@@ -72,7 +72,10 @@ jobs:
   test_more_architectures:
     # The following architectures are emulated and are therefore slow, so
     # we include them just in the weekly cron. These also serve as a test
-    # of using system libraries and using pytest directly.
+    # of using system libraries and using pytest directly. The i386 image
+    # runs natively on the x86_64 runner. Debian's i386 compiler uses the
+    # x87 FPU, whose extended-precision intermediates the other
+    # architectures do not exercise.
 
     runs-on: ubuntu-latest
     name: More architectures
@@ -94,6 +97,9 @@ jobs:
           - arch: s390x
           - arch: ppc64le
           - arch: armv7
+          - arch: none
+            distro: none
+            base_image: --platform=linux/386 i386/debian:sid
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -105,7 +111,8 @@ jobs:
         id: build
         with:
           arch: ${{ matrix.arch }}
-          distro: ubuntu_rolling
+          distro: ${{ matrix.distro || 'ubuntu_rolling' }}
+          base_image: ${{ matrix.base_image }}
 
           shell: /bin/bash
           env: |
