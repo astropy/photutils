@@ -39,6 +39,11 @@ html[data-theme='light'] {
   --pst-color-target: #f3cf95;
 
   --sst-footer-background-color: #f6f6f6;
+
+  /* Swap the zebra row colors so the first table row differs from the
+     header background */
+  --pst-color-table-row-zebra-low-bg: var(--pst-color-on-background);
+  --pst-color-table-row-zebra-high-bg: var(--pst-color-surface);
 }
 
 html[data-theme='dark'] {
@@ -72,6 +77,11 @@ html[data-theme='dark'] {
   --pst-color-target: #54311c;
 
   --sst-footer-background-color: #282828;
+
+  /* Swap the zebra row colors so the first table row differs from the
+     header background */
+  --pst-color-table-row-zebra-low-bg: var(--pst-color-on-background);
+  --pst-color-table-row-zebra-high-bg: var(--pst-color-surface);
 }
 
 /* =========================================================================
