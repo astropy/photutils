@@ -43,6 +43,7 @@ html[data-theme='light'] {
 
 html[data-theme='dark'] {
   --pst-color-text-base: #d6d6d6;
+  --pst-color-text-muted: #a8a8a8;
   --pst-color-danger-bg: #5c2a31;
 
   /* Steel blue link/card colors */
