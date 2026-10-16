@@ -46,7 +46,7 @@ html[data-theme='dark'] {
   --pst-color-danger-bg: #5c2a31;
 
   /* Steel blue link/card colors */
-  --pst-color-link: #5b9fd6;
+  --pst-color-link: #6aaee0;
   --pst-color-link-hover: #8dbfe7;
   --pst-color-primary: #5b9fd6;
   --pst-color-primary-highlight: #4a85bc;
@@ -59,8 +59,8 @@ html[data-theme='dark'] {
   --pst-color-secondary-highlight-text: #14181e;
 
   --pst-color-inline-code: #fbaa74;
-  --pst-color-inline-code-links: #5b9fd6;
-  --pst-color-link-higher-contrast: #5b9fd6;
+  --pst-color-inline-code-links: #6aaee0;
+  --pst-color-link-higher-contrast: #6aaee0;
 
   --pst-color-target: #54311c;
 
