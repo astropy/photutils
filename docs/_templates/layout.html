@@ -1,8 +1,13 @@
 {% extends "!layout.html" %}
 
-{# Browsers that support SVG favicons use the last matching icon link,
-   so the SVG favicon is linked after the ICO from html_favicon. #}
+{# Sphinx writes the html_favicon link without a sizes attribute, which
+   makes Chromium prefer the ICO. Both favicon links are written below
+   instead, with the ICO declared as a small fallback so that Chromium
+   prefers the SVG. #}
+{%- set favicon_url = none %}
+
 {%- block linktags %}
     {{- super() }}
+    <link rel="icon" href="{{ pathto('_static/photutils_logo.ico', 1) }}" sizes="48x48"/>
     <link rel="icon" href="{{ pathto('_static/photutils_favicon.svg', 1) }}" type="image/svg+xml"/>
 {%- endblock %}
