@@ -196,6 +196,14 @@ html[data-theme='dark'] .admonition.warning > .admonition-title:after {
    Typography / Code
    ========================================================================= */
 
+/* Give dark-mode text selections an explicit translucent steel blue.
+   Without it, the browser's inactive selection color for a dark color
+   scheme is nearly black, so a selection almost vanishes once the
+   window loses focus. */
+html[data-theme='dark'] ::selection {
+  background-color: rgba(106, 174, 224, 0.35);
+}
+
 .field-list ul {
   padding-left: 2em;
 }
