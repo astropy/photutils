@@ -32,7 +32,7 @@ html[data-theme='light'] {
   --pst-color-secondary-text: #ffffff;
   --pst-color-secondary-highlight-text: #ffffff;
 
-  --pst-color-inline-code: #8e2726;
+  --pst-color-inline-code: #913f08;
   --pst-color-inline-code-links: #2e6da4;
   --pst-color-link-higher-contrast: #2e6da4;
 
@@ -58,7 +58,7 @@ html[data-theme='dark'] {
   --pst-color-secondary--text: #14181e;
   --pst-color-secondary-highlight-text: #14181e;
 
-  --pst-color-inline-code: #f49a9a;
+  --pst-color-inline-code: #fbaa74;
   --pst-color-inline-code-links: #5b9fd6;
   --pst-color-link-higher-contrast: #5b9fd6;
 
