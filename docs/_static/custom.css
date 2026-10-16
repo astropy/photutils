@@ -166,7 +166,7 @@ html[data-theme='dark'] .admonition > .admonition-title {
   background-color: #1c4378;
 }
 html[data-theme='dark'] .admonition > .admonition-title:after {
-  color: #5b9fd6;
+  color: #6aaee0;
 }
 
 /* Orange theming for warning admonitions */
