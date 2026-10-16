@@ -32,20 +32,35 @@ html[data-theme='light'] {
   --pst-color-secondary-text: #ffffff;
   --pst-color-secondary-highlight-text: #ffffff;
 
-  --pst-color-inline-code: #912583;
+  --pst-color-inline-code: #913f08;
   --pst-color-inline-code-links: #2e6da4;
   --pst-color-link-higher-contrast: #2e6da4;
 
   --pst-color-target: #f3cf95;
 
   --sst-footer-background-color: #f6f6f6;
+
+  /* Swap the zebra row colors so the first table row differs from the
+     header background */
+  --pst-color-table-row-zebra-low-bg: var(--pst-color-on-background);
+  --pst-color-table-row-zebra-high-bg: var(--pst-color-surface);
 }
 
 html[data-theme='dark'] {
+  --pst-color-text-base: #d6d6d6;
+  --pst-color-text-muted: #a8a8a8;
+  --pst-color-danger-bg: #5c2a31;
+
+  /* Neutral gray borders and backgrounds */
+  --pst-color-border: #555555;
+  --pst-color-border-muted: #303030;
+  --pst-color-on-background: #282828;
+  --pst-color-table-inner-border: #404040;
+
   /* Steel blue link/card colors */
-  --pst-color-link: #5b9fd6;
-  --pst-color-link-hover: #4a85bc;
-  --pst-color-primary: #5b9fd6;
+  --pst-color-link: #6aaee0;
+  --pst-color-link-hover: #8dbfe7;
+  --pst-color-primary: #6aaee0;
   --pst-color-primary-highlight: #4a85bc;
   --sd-color-primary-highlight: #4a85bc;
 
@@ -55,13 +70,18 @@ html[data-theme='dark'] {
   --pst-color-secondary--text: #14181e;
   --pst-color-secondary-highlight-text: #14181e;
 
-  --pst-color-inline-code: #f3c7ee;
-  --pst-color-inline-code-links: #5b9fd6;
-  --pst-color-link-higher-contrast: #5b9fd6;
+  --pst-color-inline-code: #fbaa74;
+  --pst-color-inline-code-links: #6aaee0;
+  --pst-color-link-higher-contrast: #6aaee0;
 
-  --pst-color-target: #5a3c19;
+  --pst-color-target: #54311c;
 
   --sst-footer-background-color: #282828;
+
+  /* Swap the zebra row colors so the first table row differs from the
+     header background */
+  --pst-color-table-row-zebra-low-bg: var(--pst-color-on-background);
+  --pst-color-table-row-zebra-high-bg: var(--pst-color-surface);
 }
 
 /* =========================================================================
@@ -83,11 +103,6 @@ html[data-theme='dark'] {
 /* Theme toggle and GitHub icon hover color */
 html .pst-navbar-icon:hover {
   color: #ff9a6c !important;
-}
-
-/* Selected theme in the light/dark mode dropdown */
-html[data-theme='light'] .theme-switch-button + .dropdown-menu {
-  --bs-dropdown-link-active-color: #5b9fd6;
 }
 
 /* Vertical sidebar/content separator */
@@ -163,7 +178,7 @@ html[data-theme='dark'] .admonition > .admonition-title {
   background-color: #1c4378;
 }
 html[data-theme='dark'] .admonition > .admonition-title:after {
-  color: #5b9fd6;
+  color: #6aaee0;
 }
 
 /* Orange theming for warning admonitions */
@@ -190,6 +205,29 @@ code.literal {
   border: 1px solid var(--pst-color-border);
   border-radius: 0.25rem;
   padding: 0.1rem 0.25rem;
+}
+
+/* Brighten the Nord comment, prompt, and number colors in dark mode
+   for contrast against the code block background */
+html[data-theme='dark'] .highlight .c,
+html[data-theme='dark'] .highlight .ch,
+html[data-theme='dark'] .highlight .cm,
+html[data-theme='dark'] .highlight .cpf,
+html[data-theme='dark'] .highlight .c1,
+html[data-theme='dark'] .highlight .cs,
+html[data-theme='dark'] .highlight .sd,
+html[data-theme='dark'] .highlight .gp {
+  color: #929cb0;
+}
+
+html[data-theme='dark'] .highlight .m,
+html[data-theme='dark'] .highlight .mb,
+html[data-theme='dark'] .highlight .mf,
+html[data-theme='dark'] .highlight .mh,
+html[data-theme='dark'] .highlight .mi,
+html[data-theme='dark'] .highlight .mo,
+html[data-theme='dark'] .highlight .il {
+  color: #bd9ab7;
 }
 
 /* Prevent unnecessary vertical scrollbars for MathJax equations */
