@@ -46,6 +46,12 @@ html[data-theme='dark'] {
   --pst-color-text-muted: #a8a8a8;
   --pst-color-danger-bg: #5c2a31;
 
+  /* Neutral gray borders and backgrounds */
+  --pst-color-border: #555555;
+  --pst-color-border-muted: #303030;
+  --pst-color-on-background: #282828;
+  --pst-color-table-inner-border: #404040;
+
   /* Steel blue link/card colors */
   --pst-color-link: #6aaee0;
   --pst-color-link-hover: #8dbfe7;
