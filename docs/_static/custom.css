@@ -191,6 +191,29 @@ code.literal {
   padding: 0.1rem 0.25rem;
 }
 
+/* Brighten the Nord comment, prompt, and number colors in dark mode
+   for contrast against the code block background */
+html[data-theme='dark'] .highlight .c,
+html[data-theme='dark'] .highlight .ch,
+html[data-theme='dark'] .highlight .cm,
+html[data-theme='dark'] .highlight .cpf,
+html[data-theme='dark'] .highlight .c1,
+html[data-theme='dark'] .highlight .cs,
+html[data-theme='dark'] .highlight .sd,
+html[data-theme='dark'] .highlight .gp {
+  color: #929cb0;
+}
+
+html[data-theme='dark'] .highlight .m,
+html[data-theme='dark'] .highlight .mb,
+html[data-theme='dark'] .highlight .mf,
+html[data-theme='dark'] .highlight .mh,
+html[data-theme='dark'] .highlight .mi,
+html[data-theme='dark'] .highlight .mo,
+html[data-theme='dark'] .highlight .il {
+  color: #bd9ab7;
+}
+
 /* Prevent unnecessary vertical scrollbars for MathJax equations */
 mjx-container {
   overflow: visible !important;
