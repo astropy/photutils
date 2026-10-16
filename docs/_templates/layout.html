@@ -1,0 +1,8 @@
+{% extends "!layout.html" %}
+
+{# Browsers that support SVG favicons use the last matching icon link,
+   so the SVG favicon is linked after the ICO from html_favicon. #}
+{%- block linktags %}
+    {{- super() }}
+    <link rel="icon" href="{{ pathto('_static/photutils_favicon.svg', 1) }}" type="image/svg+xml"/>
+{%- endblock %}

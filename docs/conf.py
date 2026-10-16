@@ -140,6 +140,7 @@ html_title = f'{project} {release}'
 html_show_sourcelink = False
 html_favicon = os.path.join('_static', 'photutils_logo.ico')
 html_static_path = ['_static']
+templates_path = ['_templates']
 html_css_files = ['custom.css']  # path relative to _static
 
 # Output file base name for HTML help builder.

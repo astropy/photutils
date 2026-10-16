@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="17.3 13.4 470.0 470.0" width="48" height="48">
+  <defs>
+    <linearGradient id="linearGradient6755">
+      <stop id="stop6757" style="stop-color:#ffffff;stop-opacity:1" offset="0"/>
+      <stop id="stop6759" style="stop-color:#b0b0b0;stop-opacity:1" offset="1"/>
+    </linearGradient>
+    <filter x="-0.098448984" y="-0.15363057" width="1.196898" height="1.3072611" color-interpolation-filters="sRGB" id="filter6815">
+      <feGaussianBlur stdDeviation="2.102492" id="feGaussianBlur6817"/>
+    </filter>
+    <radialGradient cx="274.37" cy="416.73691" r="25.62739" fx="274.37" fy="416.73691" id="radialGradient6902" xlink:href="#linearGradient6755" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1,0,0,0.64081637,0,149.68507)"/>
+    <radialGradient r="25.62739" fy="416.73691" fx="274.37" cy="416.73691" cx="274.37" gradientTransform="matrix(1,0,0,0.64081637,0,149.68507)" gradientUnits="userSpaceOnUse" id="radialGradient3094" xlink:href="#linearGradient6755"/>
+  </defs>
+  <g id="photutils_logo" transform="translate(7.5250579,10.872219)" style="display:inline">
+    <g id="Blue_oval" style="display:inline">
+      <linearGradient x1="121.5908" y1="450.85941" x2="367.95941" y2="24.1366" id="path3837_1_" gradientUnits="userSpaceOnUse">
+        <stop id="stop630" style="stop-color:#3071ab;stop-opacity:1" offset="0"/>
+        <stop id="stop632" style="stop-opacity:1;stop-color:#0d4a80" offset="1"/>
+      </linearGradient>
+      <path d="m 435.073,75.974 c 74.759,90.138 50.173,235.523 -54.931,324.73 -105.091,89.214 -250.897,88.456 -325.66,-1.681 v 0 C -20.283,308.886 4.309,163.503 109.403,74.295 214.498,-14.914 360.307,-14.16 435.073,75.974 Z" id="path3837" style="display:inline;fill:url(#path3837_1_)"/>
+    </g>
+    <g id="Bottom_spiral" style="display:inline">
+      <g id="g637" style="display:inline">
+        <path d="m 162.764,351.388 c -16.795,-15.21 -26.388,6.568 -17.466,20.021 9.808,14.79 30.911,14.44 43.322,3.394 15.724,-13.988 15.314,-39.059 1.541,-54.168" id="path5413" style="fill:none;stroke:#ffffff;stroke-width:7.75"/>
+        <path d="m 172.918,363.657 c -3.778,3.661 -12.668,2.067 -19.859,-3.559 -7.191,-5.626 -9.96,-13.158 -6.184,-16.819 0.001,0 0.005,-0.003 0.005,-0.005 3.776,-3.663 12.668,-2.067 19.859,3.559 7.191,5.626 9.959,13.156 6.185,16.818 -0.003,0.003 -0.006,0.004 -0.006,0.006 z" id="path3819" style="fill:#ffffff"/>
+        <path d="m 158.333,357.802 c 20.588,11.304 24.802,-12.65 12.537,-24.02 -13.487,-12.498 -34.535,-7.277 -44.235,6.618 -12.382,17.739 -5.549,42.876 12.244,54.678 0.662,0.439 1.335,0.86 2.021,1.261" id="path2987-5" style="fill:none;stroke:#ffffff;stroke-width:7.75"/>
+      </g>
+      <circle cx="159.899" cy="353.466" r="60.694" id="circle647" style="display:inline;fill:none;stroke:#ff5000;stroke-miterlimit:10;stroke-width:10"/>
+    </g>
+    <g id="Right_spiral" style="display:inline">
+      <g id="g665" style="display:inline">
+        <path d="m 387.692,223.127 c 8.143,20.997 -7.948,55.125 -15.934,47.878 -8.778,-7.965 -5.76,-48.488 3.396,-80.205 11.595,-40.165 28.611,-57.61 37.085,-42.303" id="path5413_2_" style="fill:none;stroke:#ffffff;stroke-linecap:square;stroke-width:5.22"/>
+        <path d="m 380.674,212.67 c -2.989,9.866 -3.076,25.673 -0.192,35.308 2.883,9.633 7.646,9.443 10.637,-0.425 10e-4,-0.003 0.002,-0.01 0.004,-0.012 2.991,-9.868 3.076,-25.674 0.192,-35.307 -2.883,-9.632 -7.646,-9.443 -10.635,0.421 -0.002,0.009 -0.004,0.009 -0.006,0.015 z" id="path3819_2_" style="fill:#ffffff"/>
+        <path d="m 382.741,236.246 c -4.984,-31.071 11.88,-56.521 18.005,-41.378 6.732,16.651 0.406,60.607 -10.333,89.215 -13.709,36.518 -29.924,41.752 -35.616,16.374 -0.212,-0.942 -0.408,-1.924 -0.592,-2.941" id="path2987-5_2_" style="display:inline;fill:none;stroke:#ffffff;stroke-width:5.08"/>
+      </g>
+      <path d="m 393.893,114.284 c -22.823,24.361 -44.902,95.963 -49.317,159.929 -4.417,63.967 10.506,96.071 33.328,71.707 22.823,-24.36 44.904,-95.96 49.319,-159.925 4.415,-63.965 -10.507,-96.074 -33.33,-71.711 z" id="path675" style="display:inline;fill:none;stroke:#ff5000;stroke-miterlimit:10;stroke-width:10"/>
+    </g>
+    <g id="Top_spiral" style="display:inline">
+      <g id="g651" style="display:inline">
+        <path d="m 222.357,94.307 c -24.173,-1.096 -30.618,16.793 -16.48,20.641 15.543,4.231 41.215,-6.219 53.7,-18.955 15.809,-16.128 9.256,-31.168 -11.209,-33.667" id="path5413_3_" style="display:inline;fill:none;stroke:#ffffff;stroke-linecap:square;stroke-width:5.22"/>
+        <path d="m 237.715,96.838 c -3.725,4.057 -14.96,7.402 -25.097,7.471 -10.137,0.069 -15.335,-3.164 -11.61,-7.222 10e-4,-0.001 0.004,-0.004 0.005,-0.006 3.724,-4.058 14.96,-7.402 25.097,-7.471 10.135,-0.069 15.334,3.165 11.612,7.221 -0.007,0.004 -0.005,0.005 -0.007,0.007 z" id="path3819_3_" style="display:inline;fill:#ffffff"/>
+        <path d="m 218.499,100.355 c 27.859,-3.118 27.214,-19.721 9.498,-20.68 -19.479,-1.053 -43.908,12.331 -52.389,25.481 -10.827,16.788 3.584,28.751 28.154,27.292 0.913,-0.055 1.837,-0.126 2.77,-0.215" id="path2987-5_3_" style="display:inline;fill:none;stroke:#ffffff;stroke-width:5.08"/>
+      </g>
+      <ellipse cx="219.36501" cy="96.959999" rx="79.718002" ry="39.694" transform="matrix(0.9293,-0.3694,0.3694,0.9293,-20.301,87.8826)" id="ellipse661" style="display:inline;fill:none;stroke:#ff5000;stroke-miterlimit:10;stroke-width:10"/>
+    </g>
+    <g id="Right_star" style="display:inline">
+      <g id="g699">
+        <polygon points="282.196,316.653 238.925,318.143 282.196,319.63 283.685,362.904 285.176,319.63 328.449,318.143 285.176,316.653 283.685,273.377 " id="polygon701" style="opacity:0.19;fill:#ffffff"/>
+        <polygon points="280.981,315.438 253.155,318.143 280.981,320.845 283.685,348.676 286.391,320.845 314.219,318.143 286.391,315.438 283.685,287.607 " id="polygon703" style="opacity:0.595;fill:#ffffff"/>
+        <polygon points="279.766,314.221 267.383,318.143 279.766,322.06 283.685,334.446 287.607,322.06 299.991,318.143 287.607,314.221 283.685,301.838 " id="polygon705" style="fill:#ffffff"/>
+      </g>
+      <circle cx="283.68701" cy="318.14099" r="18.724001" id="circle707" style="fill:none;stroke:#ff5000;stroke-miterlimit:10;stroke-width:10"/>
+    </g>
+    <g id="Left_star" style="display:inline">
+      <g id="g687" style="display:inline">
+        <polygon points="204.291,227.977 206.229,284.35 208.169,227.977 264.543,226.038 208.169,224.1 206.229,167.722 204.291,224.1 147.918,226.038 " id="polygon689" style="display:inline;opacity:0.19;fill:#ffffff"/>
+        <polygon points="209.752,229.56 246.006,226.038 209.752,222.516 206.229,186.26 202.707,222.516 166.455,226.038 202.707,229.56 206.229,265.813 " id="polygon691" style="display:inline;opacity:0.595;fill:#ffffff"/>
+        <polygon points="211.336,231.144 227.469,226.038 211.336,220.931 206.229,204.798 201.124,220.931 184.991,226.038 201.124,231.144 206.229,247.276 " id="polygon693" style="display:inline;fill:#ffffff"/>
+      </g>
+      <circle cx="206.23" cy="226.036" r="24.392" id="circle695" style="display:inline;fill:none;stroke:#ff5000;stroke-miterlimit:10;stroke-width:10"/>
+    </g>
+    <g id="Right_elliptical" style="display:inline">
+      <path d="m 299.99739,416.73691 a 25.62739,16.422451 0 1 1 -51.25478,0 25.62739,16.422451 0 1 1 51.25478,0 z" transform="matrix(0.70978578,0.47033803,-0.23741137,0.49713833,206.59879,-167.50846)" id="path6751" style="display:inline;fill:url(#radialGradient3094);fill-opacity:1;stroke:none;filter:url(#filter6815)"/>
+      <ellipse cx="-344.90265" cy="30.906416" rx="30.084486" ry="15.043743" transform="rotate(-145.72195)" id="ellipse711" style="display:inline;fill:none;stroke:#ff5000;stroke-miterlimit:10;stroke-width:10"/>
+    </g>
+    <g id="Left_elliptical" style="display:inline">
+      <path d="m 299.99739,416.73691 a 25.62739,16.422451 0 1 1 -51.25478,0 25.62739,16.422451 0 1 1 51.25478,0 z" transform="matrix(0.3063477,1.3497507,-0.84948261,0.31616786,356.39984,-280.13673)" id="path6900" style="display:inline;fill:url(#radialGradient6902);fill-opacity:1;stroke:none;filter:url(#filter6815)"/>
+      <ellipse cx="86.445" cy="221.951" rx="49.216" ry="24.608" transform="matrix(-0.1919,-0.98140003,0.98140003,-0.1919,-114.7922,349.3827)" id="ellipse679" style="display:inline;fill:none;stroke:#ff5000;stroke-miterlimit:10;stroke-width:10"/>
+    </g>
+  </g>
+</svg>
