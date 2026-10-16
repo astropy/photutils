@@ -1,0 +1,37 @@
+.. doctest-skip-all
+
+.. _whatsnew-3.2:
+
+****************************
+What's New in Photutils 3.2?
+****************************
+
+Here we highlight some of the new functionality of the 3.2 release.
+In addition to these changes, Photutils 3.2 includes several
+smaller improvements and bug fixes, which are described in the full
+:ref:`changelog`.
+
+.. contents::
+   :local:
+   :depth: 2
+
+
+Dependency Version Updates
+==========================
+
+
+.. _whatsnew-3.2-api-changes:
+
+API Changes
+===========
+
+.. _whatsnew-3.2-deprecations:
+
+New Deprecations
+----------------
+
+
+.. _whatsnew-3.2-breaking-changes:
+
+Breaking Changes
+----------------
