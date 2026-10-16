@@ -122,6 +122,7 @@ near the centroids:
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from matplotlib import patheffects
     from photutils.centroids import (centroid_1dg, centroid_2dg,
                                      centroid_com, centroid_quadratic,
                                      centroid_symmetry)
@@ -161,6 +162,10 @@ near the centroids:
     ax2.set_ylim(19.99, 20.09)
     ax2.set_aspect('equal')
     ax2.tick_params(colors='white')
+    pe_col = 'darkgray'
+    for ticklabel in ax2.get_xticklabels() + ax2.get_yticklabels():
+        ticklabel.set_path_effects([patheffects.withStroke(linewidth=1.5,
+                                                           foreground=pe_col)])
     ax.indicate_inset_zoom(ax2, edgecolor='gray', alpha=1)
 
 
