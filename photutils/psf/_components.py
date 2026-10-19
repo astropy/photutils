@@ -492,6 +492,15 @@ class PSFDataProcessor:
             init_params = self.normalize_init_units(init_params, flux_col)
 
         if 'local_bkg' in init_params.colnames:
+            # Masked local_bkg values are handled as nonfinite values.
+            # They are filled before the units are normalized because
+            # the conversion of a MaskedColumn with a unit to a Quantity
+            # drops the mask.
+            local_bkg = init_params['local_bkg']
+            if hasattr(local_bkg, 'mask'):
+                init_params['local_bkg'] = local_bkg.astype(float).filled(
+                    np.nan)
+
             # Nonfinite local_bkg will not be subtracted, and a flag
             # will be set in the results.
             init_params = self.normalize_init_units(init_params, 'local_bkg')
@@ -679,7 +688,9 @@ class PSFDataProcessor:
                        'not in init_params')
                 raise ValueError(msg)
 
-            # Only finite local_bkg values are subtracted
+            # Only finite local_bkg values are subtracted. The local_bkg
+            # values are already in the data units, and the data here
+            # have no units.
             local_bkg = np.asarray(init_params['local_bkg'].value)
             flux = self.get_aper_fluxes(data, mask, init_params,
                                         local_bkg=local_bkg)
@@ -1493,7 +1504,8 @@ class PSFResultsAssembler:
         non_finite_flux_mask = ~np.isfinite(flux_fit)
         flags[non_finite_flux_mask] |= PSF_FLAGS.NON_FINITE_FLUX
 
-        # Nonfinite local background
+        # Nonfinite local background. The local_bkg column is a Column
+        # or a Quantity, so it always has a value attribute.
         local_bkg_vals = init_params['local_bkg'].value
         non_finite_bkg_mask = ~np.isfinite(local_bkg_vals)
         flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCAL_BKG

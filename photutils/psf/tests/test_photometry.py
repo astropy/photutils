@@ -16,8 +16,9 @@ from astropy.modeling.fitting import (LevMarLSQFitter, LMLSQFitter,
                                       SimplexLSQFitter, TRFLSQFitter)
 from astropy.modeling.models import Const2D, Gaussian1D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.table import QTable, Table
+from astropy.table import MaskedColumn, QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.masked import Masked
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
@@ -1189,6 +1190,62 @@ def test_local_bkg_nonfinite(test_data):
     # Check that sources with finite local_bkg don't have this flag
     if len(phot) > 3:
         assert not (phot['flags'][3] & 2048)
+
+
+@pytest.mark.parametrize('column_type',
+                         ['masked_column', 'masked_column_unit',
+                          'masked_quantity'])
+def test_local_bkg_masked(test_data, column_type):
+    """
+    Test that masked local_bkg values are handled as nonfinite values.
+
+    The results must match those for NaN values in place of the masked
+    values, so the values under the mask are never used.
+    """
+    data, error, true_params = test_data
+    xy = {'x': true_params['x_0'], 'y': true_params['y_0']}
+    local_bkg = np.ones(len(true_params))
+    local_bkg_mask = np.zeros(len(true_params), dtype=bool)
+    local_bkg_mask[[0, 3]] = True
+    local_bkg_masked = np.where(local_bkg_mask, 500.0, local_bkg)
+    local_bkg_nan = np.where(local_bkg_mask, np.nan, local_bkg)
+
+    unit = u.Jy
+    if column_type == 'masked_column':
+        masked_col = MaskedColumn(local_bkg_masked, mask=local_bkg_mask)
+        init_masked = Table({**xy, 'local_bkg': masked_col})
+        init_nan = Table({**xy, 'local_bkg': local_bkg_nan})
+    else:
+        data = data << unit
+        error = error << unit
+        init_nan = QTable({**xy, 'local_bkg': local_bkg_nan << unit})
+        if column_type == 'masked_column_unit':
+            # A Table stores a column with a unit as a MaskedColumn
+            masked_col = MaskedColumn(local_bkg_masked, mask=local_bkg_mask,
+                                      unit=unit)
+            init_masked = Table({**xy, 'local_bkg': masked_col})
+        else:
+            masked_col = Masked(local_bkg_masked << unit,
+                                mask=local_bkg_mask)
+            init_masked = QTable({**xy, 'local_bkg': masked_col})
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    psfphot = PSFPhotometry(psf_model, (5, 5), aperture_radius=4)
+    phot_nan = psfphot(data, error=error, init_params=init_nan)
+    resid_nan = psfphot.make_residual_image(data, include_local_bkg=True)
+    phot = psfphot(data, error=error, init_params=init_masked)
+    resid = psfphot.make_residual_image(data, include_local_bkg=True)
+
+    assert not hasattr(phot['local_bkg'], 'mask')
+    if column_type != 'masked_column':
+        assert phot['local_bkg'].unit == unit
+    assert_equal(phot['flags'] & 2048 > 0, local_bkg_mask)
+    for col in ('local_bkg', 'flux_init', 'flux_fit', 'flux_err', 'flags'):
+        assert_equal(np.asarray(phot[col]), np.asarray(phot_nan[col]))
+    assert_equal(np.asarray(resid), np.asarray(resid_nan))
+
+    # The input table is not modified
+    assert_equal(init_masked['local_bkg'].mask, local_bkg_mask)
 
 
 def test_local_bkg_nonfinite_measured(test_data):

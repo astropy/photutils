@@ -804,7 +804,9 @@ def _create_call_docstring(*, iterative=False):
             ``local_bkg`` is input, those values will be used and the
             ``local_bkg_estimator`` will be ignored. If ``data`` has
             units, then the ``local_bkg`` values must have compatible
-            units.
+            units. Masked ``local_bkg`` values are replaced by NaN.
+            Nonfinite ``local_bkg`` values are not subtracted from the
+            data, and those sources are flagged.
 
             The table can also have an ``'id'`` column of unique source
             identification numbers. If it is not input, the sources are
