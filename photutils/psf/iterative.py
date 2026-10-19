@@ -10,9 +10,7 @@ import numpy as np
 from astropy.nddata import NDData
 from astropy.table import QTable, vstack
 
-from photutils.psf._components import (_make_model_image_docstring,
-                                       _make_residual_image_docstring,
-                                       _ModelImageMaker)
+from photutils.psf._components import _ModelImageMixin
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.utils import _create_call_docstring
@@ -25,7 +23,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['IterativePSFPhotometry']
 
 
-class IterativePSFPhotometry:
+class IterativePSFPhotometry(_ModelImageMixin):
     """
     Class to iteratively perform PSF photometry.
 
@@ -827,51 +825,9 @@ class IterativePSFPhotometry:
                 for id_, flags in zip(self.results['id'], decoded,
                                       strict=True)}
 
-    def _get_model_image_params(self):
-        # Convert fitted parameters to model parameter names without
-        # filtering, so the row indices align with self.results
-        model_params = self.results_to_model_params(remove_invalid=False)
-
-        # Filter out invalid sources (those with NaN fitted values)
-        keep = np.all([np.isfinite(model_params[col])
-                       for col in model_params.colnames], axis=0)
-        model_params = model_params[keep]
-
-        # Extract local_bkg for the same valid sources
-        local_bkg = self.results['local_bkg'][keep]
-
-        return model_params, local_bkg
-
-    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
-                                 '3.0', until='4.0')
-    @_make_model_image_docstring
-    def make_model_image(self, shape, *, psf_shape=None,
-                         include_local_bkg=False):
-        if self.results is None:
-            msg = ('No results available. Please run the '
-                   'IterativePSFPhotometry instance first.')
-            raise ValueError(msg)
-
-        model_params, local_bkg = self._get_model_image_params()
-        maker = _ModelImageMaker(self._psfphot.psf_model, model_params,
-                                 local_bkg=local_bkg,
-                                 progress_bar=self._psfphot.progress_bar)
-        return maker.make_model_image(shape, psf_shape=psf_shape,
-                                      include_local_bkg=include_local_bkg)
-
-    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
-                                 '3.0', until='4.0')
-    @_make_residual_image_docstring
-    def make_residual_image(self, data, *, psf_shape=None,
-                            include_local_bkg=False):
-        if self.results is None:
-            msg = ('No results available. Please run the '
-                   'IterativePSFPhotometry instance first.')
-            raise ValueError(msg)
-
-        model_params, local_bkg = self._get_model_image_params()
-        maker = _ModelImageMaker(self._psfphot.psf_model, model_params,
-                                 local_bkg=local_bkg,
-                                 progress_bar=self._psfphot.progress_bar)
-        return maker.make_residual_image(data, psf_shape=psf_shape,
-                                         include_local_bkg=include_local_bkg)
+    @property
+    def _psf_photometry(self):
+        """
+        The `PSFPhotometry` instance used to render the images.
+        """
+        return self._psfphot
