@@ -2129,7 +2129,7 @@ class SegmentationImage:
                 raise ValueError(msg)
             if len(geo_polys) == 1:
                 polygons.append(shape(geo_polys[0]))
-            elif len(geo_polys) > 1:
+            else:  # len(geo_polys) > 1
                 # Merge multiple polygons for the same label
                 polys = [shape(poly) for poly in geo_polys]
                 polygons.append(MultiPolygon(polys))

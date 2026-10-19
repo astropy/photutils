@@ -217,7 +217,7 @@ class _SingleSourceDeblender:
             thresholds = np.sinh(thresholds / a) / np.sinh(1.0 / a)
             thresholds *= (maxval - minval)
             thresholds += minval
-        elif self.mode == 'exponential':
+        else:  # 'exponential'
             minval = self.source_min
             maxval = self.source_max
             thresholds = self.normalized_thresholds
