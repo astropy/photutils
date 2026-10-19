@@ -727,7 +727,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             center = ycen
             sigma = self.kernel.y_sigma
             dxx = np.arange(size) - center
-        elif axis == 1:  # marginal distributions along x-axis (columns)
+        else:  # axis == 1, marginal distributions along x-axis (columns)
             wt = xwt[0]  # 1D
             wts = ywt  # 2D
             size = self.cutout_shape[1]

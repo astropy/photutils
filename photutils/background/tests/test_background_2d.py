@@ -780,6 +780,21 @@ class TestBackground2D:
         bkg = Background2D(test_data, (25, 25))
         bkg.plot_meshes(outlines=True)
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_meshes_input_ax_no_outlines(self, test_data):
+        """
+        Test the plot_meshes method with an input axes and no box
+        outlines.
+        """
+        import matplotlib.pyplot as plt
+
+        bkg = Background2D(test_data, (25, 25))
+        fig, ax = plt.subplots()
+        bkg.plot_meshes(ax=ax, outlines=False)
+        assert len(ax.collections) == 1
+        assert not ax.patches
+        plt.close(fig)
+
     def test_repr(self):
         """
         Test the __repr__ method.
