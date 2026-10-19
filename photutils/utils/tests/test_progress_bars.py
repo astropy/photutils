@@ -13,15 +13,16 @@ from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils._progress_bars import add_progress_bar
 
 
-def test_add_progress_bar_no_tqdm():
+def test_add_progress_bar_no_tqdm(monkeypatch):
     """
     Test that when tqdm is not available, the original iterable is
     returned.
     """
+    monkeypatch.setattr('photutils.utils._progress_bars.HAS_TQDM', False)
     items = range(5)
-    result = add_progress_bar(items, text=False)
-    if not HAS_TQDM:
-        assert result is items
+    assert add_progress_bar(items, text=False) is items
+    assert add_progress_bar(items, text=True) is items
+    assert add_progress_bar(None, total=5) is None
 
 
 def test_add_progress_bar_text():

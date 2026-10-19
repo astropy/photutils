@@ -156,6 +156,22 @@ class TestImageDepth:
         depth(self.data, mask_empty)
         np.testing.assert_array_equal(mask_empty, mask_empty_copy)
 
+    def test_sigma_clip_none(self):
+        """
+        Test that the aperture fluxes are not clipped when sigma_clip is
+        None.
+        """
+        radius = 4
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=100, n_iters=2,
+                           mask_pad=5, overlap=True, seed=123,
+                           zeropoint=23.9, sigma_clip=None,
+                           progress_bar=False)
+        flux_limit, _ = depth(self.data, self.mask)
+        assert all(len(fluxes) == 100 for fluxes in depth.fluxes)
+        expected = [5.0 * np.std(fluxes) for fluxes in depth.fluxes]
+        assert_allclose(depth.flux_limits, expected)
+        assert_allclose(flux_limit, np.mean(expected))
+
     def test_inputs(self):
         """
         Test ImageDepth with invalid input parameters.

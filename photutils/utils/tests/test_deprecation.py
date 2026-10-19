@@ -207,6 +207,13 @@ class TestDeprecatedColumn:
         sliced = table[0:2]
         assert len(sliced) == 2
 
+        # Assign and delete a row by integer
+        table[0] = (30, 40, 70)
+        assert table['new'][0] == 30
+        del table[1]
+        assert len(table) == 2
+        assert list(table['new']) == [30, 1]
+
         # Assert that no warnings were recorded during these operations
         assert len(recwarn) == 0
 

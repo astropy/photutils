@@ -531,10 +531,7 @@ class ImageDepth:
         mask : 2D bool `~numpy.ndarray`
             Dilated boolean mask array.
         """
-        mask = np.asarray(mask, dtype=bool).copy()
-        if np.any(mask):
-            mask = binary_dilation(mask, structure=self.dilate_footprint)
-
+        mask = binary_dilation(mask, structure=self.dilate_footprint)
         return self._mask_border(mask)
 
     def _make_all_coords_no_mask(self, shape):
