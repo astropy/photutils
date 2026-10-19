@@ -333,6 +333,43 @@ def test_iterative_mode_all_local_bkg_init_flux():
     assert_allclose(init_fluxes[1], init_fluxes[0], rtol=0.01)
 
 
+def test_iterative_mode_all_local_bkg_units():
+    """
+    Test mode='all' with a local_bkg_estimator and data with units when
+    a source is found in a later iteration.
+
+    The results must match those for the same data without units.
+    """
+    model = CircularGaussianPRF(fwhm=3)
+    sources = Table({'x_0': [30.0, 34.5], 'y_0': [30.0, 30.0],
+                     'flux': [5000.0, 800.0]})
+    data = make_model_image((61, 61), model, sources, model_shape=(31, 31))
+    data += make_noise_image(data.shape, mean=5.0, stddev=0.05, seed=0)
+    local_bkg_estimator = LocalBackground(12, 18,
+                                          bkg_estimator=MMMBackground())
+
+    unit = u.Jy
+    results = []
+    for data_unit in (1, unit):
+        psfphot = IterativePSFPhotometry(
+            model, (7, 7), finder=DAOStarFinder(20.0 * data_unit, 3.0),
+            grouper=SourceGrouper(10), aperture_radius=5,
+            local_bkg_estimator=local_bkg_estimator, mode='all',
+            maxiters=2)
+        phot = psfphot(data * data_unit)
+        assert_equal(phot['iter_detected'], [1, 2])
+        init_params = psfphot.fit_results[1].init_params
+        results.append((phot, init_params))
+
+    (phot, init_params), (phot_unit, init_params_unit) = results
+    for col in ('flux_init', 'flux_fit', 'flux_err', 'local_bkg'):
+        assert phot_unit[col].unit == unit
+        assert_allclose(phot_unit[col].value, phot[col])
+    assert init_params_unit['flux_init'].unit == unit
+    assert_allclose(init_params_unit['flux_init'].value,
+                    init_params['flux_init'])
+
+
 def test_iterative_psf_photometry_mode_all_local_bkg():
     """
     Test mode='all' with a local_bkg_estimator, which is used to

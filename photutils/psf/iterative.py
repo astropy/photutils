@@ -451,7 +451,7 @@ class IterativePSFPhotometry:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The 2D array on which to perform photometry.
 
         mask : 2D bool `~numpy.ndarray`
@@ -468,9 +468,23 @@ class IterativePSFPhotometry:
         sources : `~astropy.table.Table`
             The input ``sources`` table with the new flux column added.
         """
-        local_bkg = np.asarray(sources['local_bkg'].value)
+        # The fluxes are measured without units, with the local
+        # background values in the data units, and the data unit is then
+        # attached to the fluxes.
+        unit = getattr(data, 'unit', None)
+        if unit is not None:
+            data = data.value
+
+        local_bkg = sources['local_bkg']
+        if unit is None:
+            local_bkg = np.asarray(local_bkg)
+        else:
+            local_bkg = local_bkg.to_value(unit)
+
         flux = self._psfphot._data_processor.get_aper_fluxes(
             data, mask, sources, local_bkg=local_bkg)
+        if unit is not None:
+            flux <<= unit
         flux_col = self._psfphot._param_mapper.init_colnames['flux']
         sources[flux_col] = flux
         return sources
