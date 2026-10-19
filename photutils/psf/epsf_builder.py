@@ -3502,8 +3502,8 @@ class EPSFBuilder:
 
     def _finalize_build(self, epsf, stars, iter_num, converged,
                         final_center_accuracy,
-                        final_converged_fraction=None, *, history=None,
-                        initial_epsf=None):
+                        final_converged_fraction, *, history,
+                        initial_epsf):
         """
         Finalize the ePSF building process and create result object.
 
@@ -3528,15 +3528,15 @@ class EPSFBuilder:
         final_center_accuracy : float
             Final center accuracy achieved.
 
-        final_converged_fraction : float, optional
+        final_converged_fraction : float
             The fraction of the successfully fitted stars whose centers
             changed by less than the center accuracy in the final
             iteration.
 
-        history : list of `_IterationRecord` or `None`, optional
+        history : list of `_IterationRecord`
             The record of each building and refinement iteration.
 
-        initial_epsf : 2D `~numpy.ndarray` or `None`, optional
+        initial_epsf : 2D `~numpy.ndarray` or `None`
             The image of the input ePSF that the build started from.
 
         Returns
@@ -3564,12 +3564,9 @@ class EPSFBuilder:
         if fit_shape is not None:
             fit_shape = tuple(int(size) for size in fit_shape)
 
-        iteration_epsfs = None
-        iteration_info = None
-        if history is not None:
-            iteration_epsfs = [record.epsf_data for record in history]
-            iteration_info = self._make_iteration_info(
-                history, initial_epsf=initial_epsf)
+        iteration_epsfs = [record.epsf_data for record in history]
+        iteration_info = self._make_iteration_info(
+            history, initial_epsf=initial_epsf)
 
         center_asymmetry = self._measure_center_asymmetry(epsf)
 

@@ -445,9 +445,9 @@ class IterativePSFPhotometry:
         The fluxes are added in place to the input ``sources`` table.
 
         The fluxes are measured using aperture photometry with a
-        circular aperture of radius ``aperture_radius``. If ``sources``
-        has a ``local_bkg`` column, each finite value times the aperture
-        area is subtracted from the flux.
+        circular aperture of radius ``aperture_radius``. Each finite
+        ``local_bkg`` value times the unmasked aperture area within the
+        image is subtracted from the flux.
 
         Parameters
         ----------
@@ -460,17 +460,15 @@ class IterativePSFPhotometry:
             is masked.
 
         sources : `~astropy.table.Table`
-            A table containing the initial (x, y) positions of the
-            sources.
+            A table containing the initial (x, y) positions and the
+            ``local_bkg`` values of the sources.
 
         Returns
         -------
         sources : `~astropy.table.Table`
             The input ``sources`` table with the new flux column added.
         """
-        local_bkg = None
-        if 'local_bkg' in sources.colnames:
-            local_bkg = np.asarray(sources['local_bkg'].value)
+        local_bkg = np.asarray(sources['local_bkg'].value)
         flux = self._psfphot._data_processor.get_aper_fluxes(
             data, mask, sources, local_bkg=local_bkg)
         flux_col = self._psfphot._param_mapper.init_colnames['flux']
@@ -519,15 +517,13 @@ class IterativePSFPhotometry:
         prepared_orig['id'] = orig_sources['id']
 
         for alias in param_mapper.alias_to_model_param:
-            init_col = param_mapper.init_colnames.get(alias)
-            if init_col and init_col in orig_sources.colnames:
-                # Use the previous fit result as the initial guess for
-                # the next iteration
-                prepared_orig[init_col] = orig_sources[init_col]
+            # Use the previous fit result as the initial guess for the
+            # next iteration
+            init_col = param_mapper.init_colnames[alias]
+            prepared_orig[init_col] = orig_sources[init_col]
 
         # Carry the local background values into the next iteration
-        if 'local_bkg' in orig_sources.colnames:
-            prepared_orig['local_bkg'] = orig_sources['local_bkg']
+        prepared_orig['local_bkg'] = orig_sources['local_bkg']
 
         # Prepare the newly found sources
         max_id = np.max(orig_sources['id']) if len(orig_sources) > 0 else 0
@@ -536,20 +532,18 @@ class IterativePSFPhotometry:
         # Estimate the local background for the new sources from the
         # residual data. If no estimator was input, use zero, matching
         # the values assigned by PSFPhotometry.
-        if 'local_bkg' in prepared_orig.colnames:
-            estimator = self._psfphot.local_bkg_estimator
-            if estimator is None:
-                local_bkg = np.zeros(len(new_sources))
-                unit = getattr(prepared_orig['local_bkg'], 'unit', None)
-                if unit is not None:
-                    local_bkg <<= unit
-            else:
-                x_col = param_mapper.init_colnames['x']
-                y_col = param_mapper.init_colnames['y']
-                local_bkg = estimator(residual_data,
-                                      new_sources[x_col],
-                                      new_sources[y_col], mask=mask)
-            new_sources['local_bkg'] = local_bkg
+        estimator = self._psfphot.local_bkg_estimator
+        if estimator is None:
+            local_bkg = np.zeros(len(new_sources))
+            unit = getattr(prepared_orig['local_bkg'], 'unit', None)
+            if unit is not None:
+                local_bkg <<= unit
+        else:
+            x_col = param_mapper.init_colnames['x']
+            y_col = param_mapper.init_colnames['y']
+            local_bkg = estimator(residual_data, new_sources[x_col],
+                                  new_sources[y_col], mask=mask)
+        new_sources['local_bkg'] = local_bkg
 
         # Measure initial fluxes and add default values for other model
         # parameters
@@ -558,8 +552,8 @@ class IterativePSFPhotometry:
 
         model_param_mapper = param_mapper.alias_to_model_param
         for alias, model_param_name in model_param_mapper.items():
-            init_col = param_mapper.init_colnames.get(alias)
-            if init_col and init_col not in new_sources.colnames:
+            init_col = param_mapper.init_colnames[alias]
+            if init_col not in new_sources.colnames:
                 default_value = getattr(self._psfphot.psf_model,
                                         model_param_name)
                 new_sources[init_col] = default_value
@@ -629,9 +623,7 @@ class IterativePSFPhotometry:
                     keep = PSFPhotometry._finite_fit_mask(prev_init)
                     prev_init = prev_init[keep]
                     prev_init['id'] = np.arange(1, len(prev_init) + 1)
-                    if 'local_bkg' in prev_results.colnames:
-                        prev_init['local_bkg'] = (
-                            prev_results['local_bkg'][keep])
+                    prev_init['local_bkg'] = prev_results['local_bkg'][keep]
                     iter_detected = iter_detected[keep]
 
                     init_params = self._prepare_next_iteration_sources(
@@ -645,7 +637,7 @@ class IterativePSFPhotometry:
                                            dtype=int)
                     iter_detected = np.concatenate((iter_detected,
                                                     current_iter))
-                elif self.mode == 'new':
+                else:  # 'new'
                     # Fit new sources on the residual data
                     init_params = new_sources
 
@@ -658,7 +650,7 @@ class IterativePSFPhotometry:
                     new_tbl['iter_detected'] = iter_detected
                     phot_tbl = new_tbl
 
-                elif self.mode == 'new':
+                else:  # 'new'
                     # Combine tables
                     new_tbl['id'] += np.max(phot_tbl['id'])
                     new_tbl['group_id'] += np.max(phot_tbl['group_id'])

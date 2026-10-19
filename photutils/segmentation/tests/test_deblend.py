@@ -1469,6 +1469,26 @@ def test_relabel_large_labels(n_threads, monkeypatch):
     assert_equal(raw.labels, offset + 1 + np.arange(1, raw.n_labels + 1))
 
 
+def test_relabel_large_labels_no_deblending(monkeypatch):
+    """
+    Test the sort-based relabeling of an image whose labels are already
+    consecutive because no source was deblended.
+
+    Consecutive labels too large for the compiled relabeling need an
+    image with millions of pixels, so the label limit is patched
+    instead.
+    """
+    data = Gaussian2D(10, 15, 15, 3, 3)(*np.mgrid[0:31, 0:31])
+    segm_data = np.zeros(data.shape, dtype=int)
+    segm_data[5:26, 5:26] = 1
+    segm = SegmentationImage(segm_data)
+
+    monkeypatch.setattr(deblend_module, '_max_dense_label', lambda _: 0)
+    result = deblend_sources(data, segm, 5, relabel=True)
+    assert_equal(result.data, segm_data)
+    assert result.parent_to_deblended_labels == {}
+
+
 def test_chunk_kernels_validate_inputs():
     """
     Test that the chunk kernels reject per-source arrays with the wrong

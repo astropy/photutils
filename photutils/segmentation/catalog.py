@@ -929,8 +929,7 @@ class SourceCatalog:
 
         if not get_future_column_names():
             for old_name, new_name in _DEPRECATED_META_KEYS.items():
-                if new_name in meta_values:
-                    meta_values[old_name] = meta_values[new_name]
+                meta_values[old_name] = meta_values[new_name]
 
         self.meta.update(meta_values)
 

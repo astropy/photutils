@@ -548,7 +548,7 @@ class PixelAperture(Aperture):
             subpixels = 1
         elif method == 'subpixel':
             use_exact = 0
-        elif method == 'exact':
+        else:  # 'exact'
             use_exact = 1
             subpixels = 1
 

@@ -2210,6 +2210,27 @@ class TestEPSFBuilder:
         assert len(cutout_shapes) >= 1
         assert cutout_shapes[0] == expected_box
 
+    def test_find_epsf_center_center_accuracy(self, epsf_test_data):
+        """
+        Test that the recentering stops once the shift is smaller than
+        the input center_accuracy.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:5], size=11)
+        builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
+        epsf, _ = builder(stars)
+
+        n_calls = []
+
+        def offset_centroid(data, *, mask=None):  # noqa: ARG001
+            n_calls.append(1)
+            cy, cx = (np.array(data.shape) - 1) / 2.0
+            return (cx + 0.5, cy + 0.5)
+
+        builder._find_epsf_center(epsf, centroid_func=offset_centroid,
+                                  maxiters=10, center_accuracy=10.0)
+        assert len(n_calls) == 1
+
     def test_recentering_boxsize_is_in_star_space(self, epsf_test_data):
         """
         Test that recentering_boxsize operates in the input star pixel
@@ -4392,6 +4413,26 @@ class TestAutoSmoothingAndFitShape:
         else:
             assert result.smoothing_kernel.shape == kernel_shape
         assert result.fit_shape == fit_shape
+
+    def test_auto_fallback_build_steps(self):
+        """
+        Build steps run outside of a build fall back to a 5x5 fit shape
+        that is not capped by a cutout size, with a single warning.
+        """
+        stars = EPSFStars([EPSFStar(np.ones((11, 11))) for _ in range(3)])
+        builder = EPSFBuilder(oversampling=1, progress_bar=False)
+        match = 'The FWHM of the ePSF could not be measured'
+        with pytest.warns(AstropyUserWarning, match=match):
+            epsf = builder._build_epsf_step(stars)
+        assert builder._current_fit_shape() == (5, 5)
+
+        # The second step does not warn again
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter('always')
+            builder._build_epsf_step(stars, epsf=epsf)
+        assert not [r for r in record
+                    if 'could not be measured' in str(r.message)]
+        assert builder._current_fit_shape() == (5, 5)
 
     def test_fixed_choices_reported(self, stars):
         """

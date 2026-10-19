@@ -94,6 +94,17 @@ class TestPlotGrid:
         expected_max = (data - mean_epsf).max() / mean_epsf.max()
         assert_allclose(image.max(), expected_max)
 
+    def test_plot_grid_deltas_vmax_scale(self, psfmodel):
+        """
+        Test that vmax_scale sets the symmetric color limits of the
+        deltas image.
+        """
+        fig = psfmodel.plot_grid(deltas=True, vmax_scale=0.5)
+        image = fig.axes[0].images[0]
+        vmax = image.get_array().max() * 0.5
+        assert_allclose(image.norm.vmax, vmax)
+        assert_allclose(image.norm.vmin, -vmax)
+
     def test_plot_grid_input_axes(self, psfmodel):
         """
         Test that a user-supplied axes is used and that its figure is

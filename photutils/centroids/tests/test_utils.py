@@ -118,6 +118,27 @@ class TestProcessDataMask:
         with pytest.raises(ValueError, match=match):
             _process_data_mask(data, mask)
 
+    def test_mask_and_nan_fills_and_warns(self):
+        """
+        Unmasked NaN values are filled in the copy made for the mask.
+        """
+        data = np.array([[1.0, np.nan], [3.0, 4.0]])
+        mask = np.array([[True, False], [False, False]])
+        match = 'Input data contains nonfinite values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            result = _process_data_mask(data, mask, fill_value=0.0)
+        assert_array_equal(result, [[0.0, 0.0], [3.0, 4.0]])
+        assert np.isnan(data[0, 1])
+
+    def test_masked_array_no_masked_values(self):
+        """
+        A MaskedArray with no masked values returns its plain data.
+        """
+        masked_data = np.ma.array([[1.0, 2.0], [3.0, 4.0]], mask=False)
+        result = _process_data_mask(masked_data, None)
+        assert not isinstance(result, np.ma.MaskedArray)
+        assert_array_equal(result, masked_data.data)
+
     def test_masked_array_no_mutation(self):
         """
         Input mask must not be mutated when data is a MaskedArray.

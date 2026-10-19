@@ -2097,6 +2097,32 @@ def test_results_to_params_exclude_n_pixels():
     assert set(model_tbl.colnames) == {'id', 'x_0', 'y_0', 'flux'}
 
 
+def test_results_to_params_keep_ids():
+    """
+    Test that the ids of the valid sources are kept when invalid
+    sources are removed with reset_ids=False.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image(
+        (60, 60), model, 5, model_shape=(9, 9), flux=(500, 700),
+        min_separation=10, seed=0)
+    init = Table({'x': params['x_0'], 'y': params['y_0']})
+
+    # Mask the third source so that it cannot be fit
+    mask = np.zeros(data.shape, dtype=bool)
+    xcen = round(params['x_0'][2])
+    ycen = round(params['y_0'][2])
+    mask[ycen - 4:ycen + 5, xcen - 4:xcen + 5] = True
+
+    psfphot = PSFPhotometry(model, (5, 5), aperture_radius=4)
+    psfphot(data, mask=mask, init_params=init)
+
+    for method in (psfphot.results_to_init_params,
+                   psfphot.results_to_model_params):
+        assert_equal(method()['id'], [1, 2, 3, 4])
+        assert_equal(method(reset_ids=False)['id'], [1, 2, 4, 5])
+
+
 def test_duplicate_init_params_ids():
     """
     Regression test that duplicate init_params ids are rejected

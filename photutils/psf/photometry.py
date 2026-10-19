@@ -942,9 +942,7 @@ class PSFPhotometry:
         table = QTable(param_data)
 
         # Set id column to match init_params for clean merging
-        if self.init_params is not None:
-            ids = self.init_params['id']
-            table['id'] = ids
+        table['id'] = self.init_params['id']
 
         return table
 
@@ -1615,16 +1613,14 @@ class PSFPhotometry:
             source.
         """
         # Add row index for stable mapping
-        if '_row_index' not in init_params.colnames:
-            init_params['_row_index'] = np.arange(len(init_params))
+        init_params['_row_index'] = np.arange(len(init_params))
         self._initialize_source_state_storage(len(init_params))
 
         try:
             self._fit_source_groups(init_params, data, mask, error)
         finally:
             # Clean up temporary row index column
-            if '_row_index' in init_params.colnames:
-                init_params.remove_column('_row_index')
+            init_params.remove_column('_row_index')
 
         return self._assemble_fit_results()
 
@@ -1714,9 +1710,11 @@ class PSFPhotometry:
         error = None
         if unc is not None:
             err = unc.represent_as(StdDevUncertainty).quantity
-            if getattr(err, 'unit', None) == u.dimensionless_unscaled:
+            # NDData gives the uncertainty the unit of the data, so the
+            # uncertainty is dimensionless when the data have no unit
+            if err.unit == u.dimensionless_unscaled:
                 err = err.value
-            elif data.unit is not None:
+            else:  # data.unit is not None
                 err = err.to(data.unit)
             error = err
 
@@ -1804,8 +1802,7 @@ class PSFPhotometry:
         This ensures memory is freed even if the normal cleanup path is
         not reached due to an exception during processing.
         """
-        if hasattr(self, '_state') and self._state:
-            self._state.clear()
+        self._state.clear()
 
     @property
     @deprecated('2.3.0', alternative='results',

@@ -3,14 +3,17 @@
 Tests for the photutils ASDF extension.
 """
 
+import importlib
 import re
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
 from asdf import get_config
 from asdf.extension import Converter, ExtensionProxy, ManifestExtension
 
+import photutils.extension as extension_mod
 from photutils import converters
 from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.extension import (PHOTUTILS_APERTURE_CONVERTERS,
@@ -156,3 +159,39 @@ def test_documented_tags_match_the_manifest():
     documented = set(re.findall(r'``(photutils/\w+/[\w.-]+)``',
                                 docs.read_text()))
     assert documented == {tag.split(':')[-1] for tag in _manifest_tags()}
+
+
+@pytest.mark.parametrize('missing', ['asdf', 'asdf_astropy'])
+def test_missing_optional_dependency(missing):
+    """
+    Test the converter registration when an optional dependency is not
+    installed.
+
+    The modules are reloaded with ``find_spec`` patched to report the
+    package as missing, and then reloaded again to restore them.
+    """
+    real_find_spec = importlib.util.find_spec
+
+    def find_spec(name, *args, **kwargs):
+        if name == missing:
+            return None
+        return real_find_spec(name, *args, **kwargs)
+
+    try:
+        with patch('importlib.util.find_spec', new=find_spec):
+            importlib.reload(converters)
+            assert not converters._ASDF_ASTROPY_INSTALLED
+            if missing == 'asdf':
+                assert not converters._ASDF_INSTALLED
+                assert converters.__all__ == []
+            else:
+                assert converters._ASDF_INSTALLED
+                assert converters.__all__
+                importlib.reload(extension_mod)
+                assert extension_mod.PHOTUTILS_PSF_CONVERTERS == []
+                assert (extension_mod.PHOTUTILS_CONVERTERS
+                        == extension_mod.PHOTUTILS_APERTURE_CONVERTERS)
+    finally:
+        # Reload again to restore the original state
+        importlib.reload(converters)
+        importlib.reload(extension_mod)

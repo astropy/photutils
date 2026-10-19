@@ -269,6 +269,24 @@ class TestCurveOfGrowth:
             result = cg.plot_error()
         assert result is None
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_input_ax(self, profile_data):
+        """
+        Test the CurveOfGrowth plot methods with an input axes.
+        """
+        import matplotlib.pyplot as plt
+
+        xycen, data, error, _ = profile_data
+
+        radii = np.arange(1, 36)
+        cg = CurveOfGrowth(data, xycen, radii, error=error)
+        fig, ax = plt.subplots()
+        lines = cg.plot(ax=ax)
+        assert lines[0].axes is ax
+        poly = cg.plot_error(ax=ax)
+        assert poly.axes is ax
+        plt.close(fig)
+
     def test_repr(self, profile_data):
         """
         Test __repr__ output format.

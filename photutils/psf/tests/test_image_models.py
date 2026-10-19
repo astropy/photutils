@@ -502,6 +502,15 @@ class TestImagePSF:
         model.copy()
         assert '_spline' in model.__dict__
 
+        # The derivative interpolators are not built when fit_deriv is
+        # disabled
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            custom = CustomImagePSF(data, origin=(12.0, 12.0))
+        custom.fit_deriv = None
+        custom._precompute_interpolators()
+        assert 'interpolator' in custom.__dict__
+        assert '_deriv_interpolators' not in custom.__dict__
+
     @pytest.mark.parametrize('evaluate_first', [False, True])
     @pytest.mark.parametrize('degree', [2, 3])
     def test_assigned_interpolator(self, evaluate_first, degree):

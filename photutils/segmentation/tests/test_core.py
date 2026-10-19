@@ -22,7 +22,7 @@ from photutils.segmentation._label_stats import label_stats
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
-from photutils.utils import circular_footprint
+from photutils.utils import circular_footprint, make_random_cmap
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
                                             HAS_REGIONS, HAS_SHAPELY)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -798,6 +798,16 @@ class TestSegmentationImage:
         cmap = self.segm.make_cmap(background_color=color)
         assert_allclose(cmap.colors[0], (0, 0, 0, alpha))
 
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_make_cmap_no_background_color(self):
+        """
+        Test that make_cmap keeps the first random color when
+        background_color is None.
+        """
+        cmap = self.segm.make_cmap(background_color=None, seed=0)
+        expected = make_random_cmap(n_colors=self.segm.max_label + 1, seed=0)
+        assert_allclose(cmap.colors, expected.colors)
+
     def test_reassign_labels(self):
         """
         Test reassign labels.
@@ -1179,6 +1189,23 @@ class TestSegmentationImage:
 
         axim, _ = self.segm.imshow_map(figsize=(5, 5))
         assert isinstance(axim, AxesImage)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_imshow_input_ax_cmap(self):
+        """
+        Test imshow and imshow_map with an input axes and colormap.
+        """
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots()
+        axim = self.segm.imshow(ax=ax, cmap='viridis')
+        assert axim.axes is ax
+        assert axim.get_cmap().name == 'viridis'
+
+        axim, _ = self.segm.imshow_map(ax=ax, cmap='viridis')
+        assert axim.axes is ax
+        assert axim.get_cmap().name == 'viridis'
+        plt.close(fig)
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')

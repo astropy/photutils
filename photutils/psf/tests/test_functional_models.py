@@ -233,6 +233,20 @@ class TestFitDeriv:
                                            fwhm, fwhm, 0.0)
         assert_allclose(circular[3], elliptical[3] + elliptical[4])
 
+    def test_gaussian_fit_deriv_quantity_theta(self):
+        """
+        Test that the GaussianPSF derivatives are the same for a theta
+        input in degrees and as an angular Quantity.
+        """
+        params = self.gaussian_params
+        theta = params[-1]
+        derivs = GaussianPSF.fit_deriv(self.xx, self.yy, *params)
+        derivs_quantity = GaussianPSF.fit_deriv(
+            self.xx, self.yy, *params[:-1], np.deg2rad(theta) * u.rad)
+        for deriv, deriv_quantity in zip(derivs, derivs_quantity,
+                                         strict=True):
+            assert_allclose(deriv_quantity, deriv)
+
     def test_gaussian_fit_deriv_zero_flux(self):
         """
         Test that the flux derivative is finite when the flux is zero.
