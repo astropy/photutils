@@ -10,6 +10,18 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.psf``
+
+  - Fixed ``IterativePSFPhotometry`` with ``mode='all'`` and a
+    ``local_bkg_estimator`` for data with units, which raised a
+    ``UnitConversionError`` when a source was found in a later
+    iteration. [#2520]
+
+  - Fixed ``PSFPhotometry`` and ``IterativePSFPhotometry`` for an
+    ``init_params`` table with masked ``local_bkg`` values. Masked
+    values are now handled as NaN, so they are not subtracted and the
+    sources are flagged. [#2520]
+
 API Changes
 ^^^^^^^^^^^
 
