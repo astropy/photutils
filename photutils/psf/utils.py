@@ -902,14 +902,11 @@ def _create_call_docstring(*, iterative=False):
                 iter_detected_column='',
             )
 
-        placeholder = '<flag_descriptions>'
-        if placeholder in customized_docstring:
-            flag_descriptions = define_flag_docstring(PSF_FLAGS, indent=14)
-
-            # Replace the placeholder with the flag descriptions
-            flag_text = '\n'.join(flag_descriptions)
-            customized_docstring = customized_docstring.replace(
-                placeholder, flag_text)
+        # Replace the placeholder with the flag descriptions
+        flag_descriptions = define_flag_docstring(PSF_FLAGS, indent=14)
+        flag_text = '\n'.join(flag_descriptions)
+        customized_docstring = customized_docstring.replace(
+            '<flag_descriptions>', flag_text)
 
         # Update the method's docstring
         func.__doc__ = customized_docstring

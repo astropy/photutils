@@ -49,15 +49,13 @@ def _apply_bounds_to_param(model, param_name, param_value, bound_value):
     param_value : float
         Current value of the parameter.
 
-    bound_value : float or None
+    bound_value : float
         The bound offset (parameter will be bounded to
-        [param_value - bound_value, param_value + bound_value]). If
-        None, no bounds are applied.
+        [param_value - bound_value, param_value + bound_value]).
     """
-    if bound_value is not None:
-        param_obj = getattr(model, param_name)
-        param_obj.bounds = (param_value - bound_value,
-                            param_value + bound_value)
+    param_obj = getattr(model, param_name)
+    param_obj.bounds = (param_value - bound_value,
+                        param_value + bound_value)
 
 
 def _update_flags_docstring(func):
@@ -1141,12 +1139,9 @@ class PSFFitter:
             # Extract parameter values and bounds for this source from
             # the flat model
             for param_name in param_names:
-                flat_param_name = f'{param_name}_{i}'
-                if hasattr(flat_model, flat_param_name):
-                    flat_param = getattr(flat_model, flat_param_name)
-                    setattr(source_model, param_name, flat_param.value)
-                    getattr(source_model,
-                            param_name).bounds = flat_param.bounds
+                flat_param = getattr(flat_model, f'{param_name}_{i}')
+                setattr(source_model, param_name, flat_param.value)
+                getattr(source_model, param_name).bounds = flat_param.bounds
 
             source_models.append(source_model)
 
@@ -1499,10 +1494,7 @@ class PSFResultsAssembler:
         flags[non_finite_flux_mask] |= PSF_FLAGS.NON_FINITE_FLUX
 
         # Nonfinite local background
-        local_bkg_vals = init_params['local_bkg']
-        if hasattr(local_bkg_vals, 'value'):
-            # Handle Quantity
-            local_bkg_vals = local_bkg_vals.value
+        local_bkg_vals = init_params['local_bkg'].value
         non_finite_bkg_mask = ~np.isfinite(local_bkg_vals)
         flags[non_finite_bkg_mask] |= PSF_FLAGS.NON_FINITE_LOCAL_BKG
 

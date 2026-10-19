@@ -824,6 +824,31 @@ class TestSourceGroups:
         plt.close(fig)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_cmap_instance(self, sample_groups):
+        """
+        Test that the colors of a Colormap instance input are used for
+        the groups.
+        """
+        import matplotlib.pyplot as plt
+        from matplotlib import colormaps
+
+        fig, ax = plt.subplots()
+        groups = sample_groups['groups']
+        cmap = colormaps['Blues']
+        result_ax = groups.plot(radius=0.5, ax=ax, cmap=cmap)
+
+        assert result_ax is ax
+
+        # Each source has one patch, and the patches are drawn group by
+        # group
+        _, counts = np.unique(groups.groups, return_counts=True)
+        group_colors = cmap(np.linspace(0, 1, groups.n_groups))
+        expected = np.repeat(group_colors, counts, axis=0)
+        edge_colors = [patch.get_edgecolor() for patch in ax.patches]
+        assert_allclose(edge_colors, expected)
+        plt.close(fig)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_with_label_offset(self, sample_groups):
         """
         Test plot with label offset.

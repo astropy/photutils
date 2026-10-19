@@ -400,6 +400,22 @@ class TestPSFFitter:
         assert model.y_0.value == 15.0
         assert model.flux.value == 100.0
 
+    def test_make_psf_model_single_source_no_id(self, psf_model,
+                                                param_mapper):
+        """
+        Test make_psf_model with a single source and no id column.
+        """
+        fitter = PSFFitter(psf_model, param_mapper)
+        sources = Table({'x_init': [10.0], 'y_init': [15.0],
+                         'flux_init': [100.0]})
+
+        model = fitter.make_psf_model(sources)
+
+        assert model.name == psf_model.name
+        assert model.x_0.value == 10.0
+        assert model.y_0.value == 15.0
+        assert model.flux.value == 100.0
+
     def test_make_psf_model_multiple_sources(self, psf_model, param_mapper):
         """
         Test make_psf_model with multiple sources.
@@ -583,6 +599,24 @@ class TestPSFResultsAssembler:
                                        fitted_models_table, None, None,
                                        init_params)
         assert_equal(flags, [32, 0])
+
+    def test_create_fit_results_no_valid_mask(self, param_mapper):
+        """
+        Test that create_fit_results keeps every fitted value when
+        valid_mask is None.
+        """
+        assembler = PSFResultsAssembler(param_mapper, (7, 7))
+        fit_model_all_params = QTable({'id': [1, 2], 'x_0': [11.0, 30.0],
+                                       'y_0': [10.0, 31.0],
+                                       'flux': [100.0, 200.0]})
+        fit_param_errs = np.full((2, 3), 0.1)
+
+        fit_table = assembler.create_fit_results(
+            fit_model_all_params, fit_param_errs, None, None)
+        assert_equal(fit_table['x_fit'], [11.0, 30.0])
+        assert_equal(fit_table['y_fit'], [10.0, 31.0])
+        assert_equal(fit_table['flux_fit'], [100.0, 200.0])
+        assert_equal(fit_table['flux_err'], [0.1, 0.1])
 
     def test_get_fit_error_indices_all_converged(self, param_mapper):
         """

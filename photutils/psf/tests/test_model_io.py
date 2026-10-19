@@ -139,6 +139,20 @@ class TestSTDPSFReader:
         assert_equal(psfmodel.oversampling, [4, 4])
         assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
 
+    def test_read_stdpsf_unparsable_filename(self, tmp_path):
+        """
+        Test STDPSF read of a file whose name has no metadata fields.
+        """
+        filename = tmp_path / 'psfgrid.fits'
+        filename.write_bytes(
+            Path(get_data_filename('STDPSF_NRCA1_F150W_mock.fits'))
+            .read_bytes())
+        psfmodel = GriddedPSFModel.read(str(filename), format='stdpsf')
+        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
+        assert_equal(psfmodel.oversampling, [4, 4])
+        assert 'STDPSF' not in psfmodel.meta
+        assert 'filter' not in psfmodel.meta
+
     def test_read_stdpsf_path(self):
         """
         Test STDPSF read with a pathlib.Path.
@@ -348,6 +362,18 @@ class TestWebbPSFReader:
         psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
         assert psfmodel.data.shape == (1, 8, 8)
         assert_equal(psfmodel.grid_xypos, [(100.0, 200.0)])
+
+    def test_read_webbpsf_oversampling_key(self, tmp_path):
+        """
+        Test that an ``OVERSAMPLING`` header keyword takes precedence
+        over the ``OVERSAMP`` keyword.
+        """
+        filename = str(tmp_path / 'webbpsf_oversampling.fits')
+        make_webbpsf_file(filename, (0.0, 10.0), (0.0, 10.0))
+        with fits.open(filename, mode='update') as hdulist:
+            hdulist[0].header['HIERARCH OVERSAMPLING'] = 2
+        psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
+        assert_equal(psfmodel.oversampling, [2, 2])
 
     def test_read_webbpsf_missing_det_yx(self, tmp_path):
         filename = str(tmp_path / 'webbpsf_no_det_yx.fits')

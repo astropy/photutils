@@ -4,6 +4,8 @@ Tests for the iterative module.
 """
 
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -724,6 +726,23 @@ def test_move_column():
     assert tbl2.colnames == ['a', 'b', 'c']
     tbl3 = psfphot._move_column(tbl, 'b', 'b')
     assert tbl3.colnames == ['a', 'b', 'c']
+
+
+def test_emit_warnings_unique():
+    """
+    Test that recorded warnings with the same message are emitted only
+    once.
+    """
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter('always')
+        warnings.warn('repeated', AstropyUserWarning)
+        warnings.warn('repeated', AstropyUserWarning)
+        warnings.warn('other', AstropyUserWarning)
+    assert len(recorded) == 3
+
+    with pytest.warns(AstropyUserWarning) as record:
+        IterativePSFPhotometry._emit_warnings(recorded)
+    assert [str(rec.message) for rec in record] == ['repeated', 'other']
 
 
 def test_iterative_deprecated_shims(test_data):

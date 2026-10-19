@@ -1227,6 +1227,19 @@ class TestLinkedEPSFStar:
         centers = linked.center
         assert centers.shape == (2, 2)
 
+    def test_getattr_list_attribute(self, simple_wcs):
+        """
+        Test that delegated attributes other than the centers and
+        fluxes are returned as a list.
+        """
+        star1 = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs)
+        star2 = EPSFStar(np.ones((7, 7)), wcs_large=simple_wcs)
+        linked = LinkedEPSFStar([star1, star2])
+
+        origins = linked.origin
+        assert isinstance(origins, list)
+        assert len(origins) == 2
+
     def test_getattr_single_star(self, simple_wcs):
         """
         Test __getattr__ with single star (returns scalar not array).
