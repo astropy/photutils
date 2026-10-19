@@ -21,7 +21,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import AperturePhotometry, CircularAperture
 from photutils.datasets import make_model_image as _make_model_image
-from photutils.utils._deprecation import DeprecatedColumnQTable
+from photutils.utils._deprecation import (DeprecatedColumnQTable,
+                                          deprecated_renamed_argument)
 from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
 from photutils.utils._overlap import overlap_slices
@@ -1835,3 +1836,78 @@ optional
             np.subtract(data, residual, out=residual)
 
         return residual
+
+
+class _ModelImageMixin:
+    """
+    Mixin class that adds the model and residual image methods to the
+    PSF photometry classes.
+
+    The class using this mixin must have a ``results`` attribute and
+    a ``results_to_model_params`` method. Its ``_psf_photometry``
+    attribute is the `PSFPhotometry` instance whose ``psf_model`` and
+    ``progress_bar`` are used to render the images.
+    """
+
+    @property
+    def _psf_photometry(self):
+        """
+        The `PSFPhotometry` instance used to render the images.
+        """
+        return self
+
+    def _get_model_image_params(self):
+        # Convert fitted parameters to model parameter names without
+        # filtering, so the row indices align with self.results
+        model_params = self.results_to_model_params(remove_invalid=False)
+
+        # Filter out invalid sources (those with NaN fitted values)
+        keep = np.all([np.isfinite(model_params[col])
+                       for col in model_params.colnames], axis=0)
+        model_params = model_params[keep]
+
+        # Extract local_bkg for the same valid sources
+        local_bkg = self.results['local_bkg'][keep]
+
+        return model_params, local_bkg
+
+    def _make_image_maker(self):
+        """
+        Make the object that renders the model and residual images.
+
+        Returns
+        -------
+        maker : `_ModelImageMaker`
+            The image maker for the valid fit results.
+
+        Raises
+        ------
+        ValueError
+            If the photometry has not been run.
+        """
+        if self.results is None:
+            msg = (f'No results available. Please run the '
+                   f'{type(self).__name__} instance first.')
+            raise ValueError(msg)
+
+        model_params, local_bkg = self._get_model_image_params()
+        psfphot = self._psf_photometry
+        return _ModelImageMaker(psfphot.psf_model, model_params,
+                                local_bkg=local_bkg,
+                                progress_bar=psfphot.progress_bar)
+
+    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
+                                 '3.0', until='4.0')
+    @_make_model_image_docstring
+    def make_model_image(self, shape, *, psf_shape=None,
+                         include_local_bkg=False):
+        return self._make_image_maker().make_model_image(
+            shape, psf_shape=psf_shape, include_local_bkg=include_local_bkg)
+
+    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
+                                 '3.0', until='4.0')
+    @_make_residual_image_docstring
+    def make_residual_image(self, data, *, psf_shape=None,
+                            include_local_bkg=False):
+        return self._make_image_maker().make_residual_image(
+            data, psf_shape=psf_shape, include_local_bkg=include_local_bkg)
