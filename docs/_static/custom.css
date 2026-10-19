@@ -47,6 +47,9 @@ html[data-theme='light'] {
 }
 
 html[data-theme='dark'] {
+  /* Darker page background than the sunpy theme's #222222 */
+  --sst-darkest-color: #151515;
+
   --pst-color-text-base: #d6d6d6;
   --pst-color-text-muted: #a8a8a8;
   --pst-color-danger-bg: #5c2a31;
@@ -54,7 +57,7 @@ html[data-theme='dark'] {
   /* Neutral gray borders and backgrounds */
   --pst-color-border: #555555;
   --pst-color-border-muted: #303030;
-  --pst-color-on-background: #282828;
+  --pst-color-on-background: #2a2a2a;
   --pst-color-table-inner-border: #404040;
 
   /* Steel blue link/card colors */
@@ -76,11 +79,12 @@ html[data-theme='dark'] {
 
   --pst-color-target: #54311c;
 
-  --sst-footer-background-color: #282828;
+  --sst-footer-background-color: #2a2a2a;
 
   /* Swap the zebra row colors so the first table row differs from the
-     header background */
-  --pst-color-table-row-zebra-low-bg: var(--pst-color-on-background);
+     header background. The odd rows are darker than the on-background
+     color to widen the stripe contrast. */
+  --pst-color-table-row-zebra-low-bg: #262626;
   --pst-color-table-row-zebra-high-bg: var(--pst-color-surface);
 }
 
