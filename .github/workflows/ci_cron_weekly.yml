@@ -24,7 +24,6 @@ permissions:
 
 env:
   TOXARGS: '-v'
-  IS_CRON: 'true'
 
 jobs:
   tests:
@@ -68,7 +67,7 @@ jobs:
           python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
           python -c "import tox; print(f'tox {tox.__version__}')"
       - name: Run tests
-        run: python -m tox -e ${{ matrix.tox_env }} -- -n=auto ${{ matrix.toxposargs }}
+        run: python -m tox -e ${{ matrix.tox_env }} -- -n=auto
 
   test_more_architectures:
     # The following architectures are emulated and are therefore slow, so
@@ -89,9 +88,6 @@ jobs:
         github.event_name == 'workflow_dispatch' ||
         contains(github.event.pull_request.labels.*.name, 'Arch CI')
       )
-    env:
-      ARCH_ON_CI: ${{ matrix.arch }}
-
     strategy:
       fail-fast: false
       matrix:
@@ -117,16 +113,12 @@ jobs:
           base_image: ${{ matrix.base_image }}
 
           shell: /bin/bash
-          env: |
-            ARCH_ON_CI: ${{ env.ARCH_ON_CI }}
-            IS_CRON: ${{ env.IS_CRON }}
 
           install: |
             apt-get update -q -y
             apt-get install -q -y --no-install-recommends \
                                   git \
                                   g++ \
-                                  pkg-config \
                                   python3 \
                                   python3-astropy \
                                   python3-erfa \
@@ -139,8 +131,7 @@ jobs:
                                   python3-setuptools-scm \
                                   python3-scipy \
                                   python3-venv \
-                                  python3-wheel \
-                                  wcslib-dev
+                                  python3-wheel
 
           run: |
             uname -a
@@ -149,7 +140,6 @@ jobs:
             source tests/bin/activate
             # Update older versions
             pip install -U cython setuptools packaging
-            pip install -U --no-build-isolation pyerfa
-            ASTROPY_USE_SYSTEM_ALL=1 pip3 install -v --no-build-isolation -e .[test]
+            pip3 install -v --no-build-isolation -e .[test]
             pip3 list
             python3 -m pytest
