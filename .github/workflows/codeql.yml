@@ -33,12 +33,11 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@5618c9fc1e675841ca52c1c6b1304f5255a905a0 # codeql-bundle-v2.19.0
+        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           languages: python
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@5618c9fc1e675841ca52c1c6b1304f5255a905a0 # codeql-bundle-v2.19.0
+          build-mode: none
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@5618c9fc1e675841ca52c1c6b1304f5255a905a0 # codeql-bundle-v2.19.0
+        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           category: '/language:python'
