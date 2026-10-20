@@ -39,6 +39,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.allow_failure }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
