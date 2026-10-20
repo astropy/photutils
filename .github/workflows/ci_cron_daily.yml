@@ -37,6 +37,7 @@ jobs:
       )
     name: ${{ matrix.prefix }} ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     continue-on-error: ${{ matrix.allow_failure }}
     strategy:
       fail-fast: false

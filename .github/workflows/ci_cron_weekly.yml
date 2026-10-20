@@ -38,6 +38,7 @@ jobs:
       )
     name: ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     continue-on-error: ${{ matrix.allow_failure }}
     strategy:
       fail-fast: false
@@ -78,6 +79,7 @@ jobs:
     # architectures do not exercise.
 
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     name: More architectures
     if: |
       github.repository == 'astropy/photutils' &&
