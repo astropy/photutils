@@ -13,8 +13,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -26,13 +26,21 @@ jobs:
   tests:
     name: ${{ matrix.prefix }} ${{ matrix.os }}, ${{ matrix.tox_env }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     continue-on-error: ${{ matrix.allow_failure }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             python: '3.12'
             tox_env: 'py312-test-oldestdeps'
+            allow_failure: false
+            prefix: ''
+
+          - os: ubuntu-latest
+            python: '3.12'
+            tox_env: 'py312-oldest_cython'
             allow_failure: false
             prefix: ''
 
@@ -66,6 +74,12 @@ jobs:
           - os: ubuntu-24.04-arm
             python: '3.14'
             tox_env: 'py314-test'
+            allow_failure: false
+            prefix: ''
+
+          - os: ubuntu-latest
+            python: '3.15'
+            tox_env: 'py315-test-alldeps'
             allow_failure: false
             prefix: ''
 
@@ -132,7 +146,7 @@ jobs:
           python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
           python -c "import tox; print(f'tox {tox.__version__}')"
       - name: Run tests
-        run: python -m tox -e ${{ matrix.tox_env }} -- -n=2 ${{ matrix.toxposargs }}
+        run: python -m tox -e ${{ matrix.tox_env }} -- -n=auto ${{ matrix.toxposargs }}
       - name: Upload coverage to codecov
         if: ${{ contains(matrix.tox_env, '-cov') }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

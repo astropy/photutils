@@ -2,7 +2,7 @@ name: Check PR change log
 
 on:
   pull_request:
-    types: [opened, synchronize, labeled, unlabeled]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,6 +15,7 @@ jobs:
   changelog_checker:
     name: Check if change log entry is correct
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.repository == 'astropy/photutils'
     steps:
       - uses: scientific-python/action-check-changelogfile@92735146b118b1dd2951cb4a45d60c2d8b47a153 # 0.5
