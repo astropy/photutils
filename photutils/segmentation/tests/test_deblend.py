@@ -13,9 +13,9 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 from scipy import ndimage as ndi
 
-from photutils.segmentation import SegmentationImage
+from photutils.segmentation import (SegmentationImage, deblend_sources,
+                                    detect_sources)
 from photutils.segmentation import deblend as deblend_module
-from photutils.segmentation import deblend_sources, detect_sources
 from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
                                                      deblend_source_stats)
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
