@@ -32,7 +32,7 @@ jobs:
     permissions:
       contents: none
 
-    uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@22ddf09dfabb443adddfb9f861b7d41a787d6b1a # v3.0.3
+    uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@8c9f6c4af6750aa4b26765e8c312164efc226dfd # v3.2.0
 
     if: |
       github.repository == 'astropy/photutils' &&
