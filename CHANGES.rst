@@ -19,9 +19,10 @@ Bug Fixes
     issue. [#2526]
 
   - Fixed a bug where ``ApertureStats.copy`` and ``copy.deepcopy`` of
-    an aperture could raise ``RuntimeError: dictionary changed size
-    during iteration`` when another thread accessed the properties of
-    the same object at the same time. [#2526]
+    an aperture, ``ApertureMask``, or ``AperturePhotometry`` object
+    could raise ``RuntimeError: dictionary changed size during
+    iteration`` when another thread accessed the properties of the
+    same object at the same time. [#2526]
 
 - ``photutils.detection``
 
@@ -30,7 +31,22 @@ Bug Fixes
     raise ``RuntimeError: dictionary changed size during iteration``
     when first called from multiple threads at once. [#2526]
 
+- ``photutils.profiles``
+
+  - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
+    ``CurveOfGrowth``, ``EnsquaredCurveOfGrowth``, or
+    ``EllipticalCurveOfGrowth`` object could raise ``RuntimeError:
+    dictionary changed size during iteration`` when another thread
+    accessed the properties of the same object at the same time.
+    [#2526]
+
 - ``photutils.psf``
+
+  - Fixed a bug where ``copy.deepcopy`` of an ``EPSFStar``,
+    ``EPSFStars``, or ``SourceGroups`` object could raise
+    ``RuntimeError: dictionary changed size during iteration`` when
+    another thread accessed the properties of the same object at the
+    same time. [#2526]
 
   - Fixed ``IterativePSFPhotometry`` with ``mode='all'`` and a
     ``local_bkg_estimator`` for data with units, which raised a
@@ -53,6 +69,13 @@ Bug Fixes
     ``SourceCatalog.copy`` could raise ``RuntimeError: dictionary
     changed size during iteration`` when another thread accessed the
     properties of the same object at the same time. [#2526]
+
+- ``photutils.utils``
+
+  - Fixed a bug where ``copy.deepcopy`` of a ``CutoutImage`` could
+    raise ``RuntimeError: dictionary changed size during iteration``
+    when another thread accessed the properties of the same object at
+    the same time. [#2526]
 
 API Changes
 ^^^^^^^^^^^

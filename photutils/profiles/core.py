@@ -15,6 +15,7 @@ from photutils.aperture._common import validate_mask_method
 from photutils.aperture.core import _update_method_subpixels_docstring
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._misc import deepcopy_instance
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmax, nansum
 
@@ -122,6 +123,10 @@ class ProfileBase(metaclass=abc.ABCMeta):
         # store, making the class safe for concurrent reads during
         # normalization changes.
         self.normalization_value = 1.0
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def _validate_radii(self, radii):
         """

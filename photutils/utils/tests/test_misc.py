@@ -152,6 +152,30 @@ def test_deepcopy_instance_custom_state(define_setstate):
         assert 'lock' not in result.__dict__
 
 
+def test_deepcopy_instance_custom_state_instance_dict():
+    """
+    Test that deepcopy_instance copies a custom state that is the
+    instance dict itself without changing the original instance.
+    """
+    class DictState(_DeepcopyInstance):
+        def __init__(self):
+            self.values = [1, 2]
+
+        def __getstate__(self):
+            return self.__dict__
+
+        def __setstate__(self, state):
+            state['restored'] = True
+            self.__dict__ = state
+
+    obj = DictState()
+    result = deepcopy(obj)
+    assert result.values == [1, 2]
+    assert result.values is not obj.values
+    assert result.restored
+    assert 'restored' not in obj.__dict__
+
+
 def test_get_version_info_import_error():
     """
     Test that _get_version_info returns None for packages that cannot

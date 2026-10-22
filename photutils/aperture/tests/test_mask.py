@@ -13,6 +13,7 @@ from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.ellipse import EllipticalAnnulus
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.rectangle import RectangularAnnulus
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 # Positions with no or partial overlap with a 50x50 array
 POSITIONS = [(-20, -20), (-20, 20), (20, -20), (60, 60)]
@@ -316,3 +317,12 @@ class TestAnnulusMasks:
         for aperture in apertures:
             for mask in aperture.to_mask(method=method):
                 assert mask.data.min() >= 0.0
+
+
+def test_concurrent_deepcopy():
+    """
+    Regression test that a shared ApertureMask can be deep copied while
+    other threads compute its cached properties.
+    """
+    aperture = CircularAperture((10.0, 10.0), r=4.0)
+    check_concurrent_deepcopy(aperture.to_mask)

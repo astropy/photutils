@@ -21,7 +21,8 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
-from photutils.utils._misc import _get_meta, get_cached_property_names
+from photutils.utils._misc import (_get_meta, deepcopy_instance,
+                                   get_cached_property_names)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
@@ -276,6 +277,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.default_columns = ()
 
         self.id = np.arange(len(self)) + 1
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def __repr__(self):
         params = ('n_sources',)

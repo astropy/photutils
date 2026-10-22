@@ -27,6 +27,7 @@ from photutils.aperture.tests.conftest import (NoBatchCircularAperture,
 from photutils.datasets import make_wcs
 from photutils.segmentation import SegmentationImage
 from photutils.utils._optional_deps import HAS_REGIONS
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 
 class TestAperturePhotometryParity:
@@ -1201,3 +1202,14 @@ class TestNThreads:
         assert 'n_threads=4' in repr(phot)
         assert 'n_threads=4' in phot.to_table().meta[
             'aperture_photometry_args']
+
+
+def test_concurrent_deepcopy():
+    """
+    Regression test that a shared AperturePhotometry object can be deep
+    copied while other threads compute its cached properties.
+    """
+    data = np.random.default_rng(0).normal(10.0, 1.0, (60, 60))
+    aperture = CircularAperture([(20.0, 20.0), (40.0, 35.0)], r=5.0)
+    check_concurrent_deepcopy(lambda: AperturePhotometry(
+        data, aperture, error=np.ones_like(data)))

@@ -15,6 +15,7 @@ from photutils.detection import DAOStarFinder
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_n_brightest)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 
 class TestStarFinderKernel:
@@ -681,6 +682,19 @@ class TestThreadSafety:
 
         assert all(result == results[0] for result in results)
         assert 'flux' in results[0]
+
+    def test_concurrent_deepcopy(self):
+        """
+        Regression test that a shared star-finder catalog can be deep
+        copied while other threads compute its cached properties.
+        """
+        cls = _make_minimal_catalog_class()
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[15, 12] = 8.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [12, 15]])
+        check_concurrent_deepcopy(lambda: cls(data, xypos, kernel))
 
 
 class TestStarFinderBaseCall:

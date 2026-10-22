@@ -54,10 +54,11 @@ def deepcopy_instance(obj, memo, cache_names=()):
 
     Otherwise the copy follows the `copy` module protocol. The slot
     values of a subclass that defines ``__slots__`` are copied, and a
-    subclass that defines ``__getstate__`` or ``__setstate__`` is
-    copied through those methods (without the one-step copies). A
-    cache dict that several objects share (e.g., a catalog and its
-    slices) is also shared by their copies.
+    class that defines ``__getstate__`` or ``__setstate__`` is copied
+    through those methods. In that case, only a state that is the
+    instance dict itself is copied in one step, and ``cache_names``
+    is not used. A cache dict that several objects share (e.g., a
+    catalog and its slices) is also shared by their copies.
 
     Parameters
     ----------
@@ -83,6 +84,9 @@ def deepcopy_instance(obj, memo, cache_names=()):
     state = obj.__getstate__()
     if (cls.__getstate__ is not object.__getstate__
             or hasattr(cls, '__setstate__')):
+        # A custom __getstate__ may also return the instance dict itself
+        if state is obj.__dict__:
+            state = dict(state)
         state = deepcopy(state, memo)
         if hasattr(result, '__setstate__'):
             result.__setstate__(state)

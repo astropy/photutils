@@ -9,6 +9,7 @@ import numpy as np
 from astropy.nddata import extract_array
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._misc import deepcopy_instance
 from photutils.utils._overlap import overlap_slices
 from photutils.utils._round import round_half_away
 
@@ -114,6 +115,10 @@ class CutoutImage:
                                               mode=mode)
         self.data = self._make_cutout(data)
         self.shape = self.data.shape
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def _make_cutout(self, data):
         """

@@ -25,6 +25,7 @@ from photutils.psf.epsf_stars import (EPSFStar, EPSFStars, LinkedEPSFStar,
                                       _prepare_uncertainty_info, extract_stars)
 from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import ImagePSF
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 
 @pytest.fixture
@@ -2197,3 +2198,19 @@ def test_epsfstars_array_conversion():
     arr = np.array(stars[0], copy=True)
     arr[0, 0] = -99.0
     assert stars[0].data[0, 0] == 0.0
+
+
+@pytest.mark.parametrize('container', [False, True])
+def test_concurrent_deepcopy(container):
+    """
+    Regression test that a shared EPSFStar or EPSFStars object can be
+    deep copied while other threads compute its cached properties.
+    """
+    data = np.random.default_rng(0).random((11, 11))
+
+    def make_obj():
+        stars = [EPSFStar(data.copy(), cutout_center=(5.0, 5.0),
+                          origin=(10 * i, 0)) for i in range(3)]
+        return EPSFStars(stars) if container else stars[0]
+
+    check_concurrent_deepcopy(make_obj)
