@@ -196,6 +196,7 @@ def test_nonfinite_and_masked_sources(scene):
                     equal_nan=True)
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 @pytest.mark.parametrize('kron_params', [(2.5, 1.4, 5.0), (2.5, 1.4)])
 def test_circular_fallback(scene, kron_params):
     # Zero semimajor and semiminor axes use the circle of minimum
@@ -225,6 +226,7 @@ def test_circular_fallback(scene, kron_params):
     assert_allclose(result, expected, rtol=1e-12, equal_nan=True)
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_oom_guard_and_off_image(scene):
     cat = make_catalog(scene)
     n_src = cat.n_labels

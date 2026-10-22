@@ -877,6 +877,7 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
                         n_markers_fallback=n_markers_fallback)
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 @pytest.mark.parametrize('contrast_method', ['basin', 'saddle'])
 @pytest.mark.parametrize('dtype', ['float64', 'float32', '>f4', 'int32'])
 @pytest.mark.parametrize('scene', ['blend', 'negmin', 'checkerboard',
@@ -1456,17 +1457,21 @@ def test_relabel_large_labels(n_threads, monkeypatch):
         msg = 'the compiled relabeling must not be used'
         raise AssertionError(msg)
 
-    monkeypatch.setattr(deblend_module, '_relabel_consecutive', fail)
-    result = deblend_sources(data, segm_large, 5, n_threads=n_threads)
-    assert_equal(result.data, expected.data)
-    assert result.data.dtype == segm_data.dtype
-    children = result.parent_to_deblended_labels[1 + offset]
-    assert_equal(children, result.labels)
-    assert children.dtype == segm_data.dtype
+    # The patch is undone at the end of each run so that the expected
+    # result above is always computed with the compiled relabeling.
+    with monkeypatch.context() as mp:
+        mp.setattr(deblend_module, '_relabel_consecutive', fail)
+        result = deblend_sources(data, segm_large, 5, n_threads=n_threads)
+        assert_equal(result.data, expected.data)
+        assert result.data.dtype == segm_data.dtype
+        children = result.parent_to_deblended_labels[1 + offset]
+        assert_equal(children, result.labels)
+        assert children.dtype == segm_data.dtype
 
-    raw = deblend_sources(data, segm_large, 5, relabel=False,
-                          n_threads=n_threads)
-    assert_equal(raw.labels, offset + 1 + np.arange(1, raw.n_labels + 1))
+        raw = deblend_sources(data, segm_large, 5, relabel=False,
+                              n_threads=n_threads)
+        assert_equal(raw.labels,
+                     offset + 1 + np.arange(1, raw.n_labels + 1))
 
 
 def test_relabel_large_labels_no_deblending(monkeypatch):
@@ -1698,6 +1703,7 @@ def test_contrast_method_default():
     assert_equal(result_default.data, result_basin.data)
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_saddle_deblend():
     """
     Test deblending with the saddle contrast criterion through the
@@ -1779,6 +1785,7 @@ def test_nonposmin_fallback_sinh():
     assert result_linear.n_labels == 1
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_python_path_connectivity_mismatch():
     """
     Test that the pure-Python reference path raises the same error
@@ -1970,6 +1977,7 @@ def test_nonposmin_astropy_user_warning():
                   & SEGMENTATION_FLAGS.DEBLEND_NON_POSITIVE_MIN)
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_n_markers_fallback_returns_none():
     """
     Test that deblend_source returns None when make_markers returns

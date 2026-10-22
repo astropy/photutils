@@ -308,7 +308,8 @@ class TestPSFDataProcessor:
         data, _, mask = basic_data
         processor = PSFDataProcessor(param_mapper, (7, 7))
 
-        result = processor.find_sources_if_needed(data, mask, init_params)
+        result = processor.find_sources_if_needed(data, mask,
+                                                  init_params.copy())
 
         assert result is not None
         assert 'id' in result.colnames

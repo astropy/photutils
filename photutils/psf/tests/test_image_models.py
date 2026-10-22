@@ -692,6 +692,7 @@ class TestImagePSF:
         assert model_copy2.x_0.fixed
         assert model_copy2.fixed == model_copy.fixed
 
+    @pytest.mark.iterations(1)
     @pytest.mark.parametrize('unpickled', [False, True])
     def test_copies_share_spline(self, spline_builds, unpickled):
         """

@@ -1546,7 +1546,7 @@ class TestDeblendMapsAfterRelabel:
         """
         Test that a removed deblended label is dropped from the maps.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.remove_label(2, relabel=relabel)
         children = [2, 3] if relabel else [3, 4]
         assert_equal(segm.deblended_labels, children)
@@ -1560,7 +1560,7 @@ class TestDeblendMapsAfterRelabel:
         Test that a parent with no deblended labels left is dropped
         from the maps.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.remove_labels([2, 3, 4])
         assert_equal(segm.labels, [1])
         assert segm.deblended_labels.size == 0
@@ -1594,7 +1594,7 @@ class TestDeblendMapsAfterRelabel:
         Test that the maps are empty when only a label that was not
         deblended is kept.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.keep_label(1, relabel=True)
         assert segm.deblended_labels.size == 0
         assert segm.deblended_label_to_parent == {}
@@ -1604,7 +1604,7 @@ class TestDeblendMapsAfterRelabel:
         """
         Test that merged deblended labels appear once in the maps.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.reassign_labels([2, 3], 4)
         assert_equal(segm.labels, [1, 4])
         assert_equal(segm.deblended_labels, [4])
@@ -1616,7 +1616,7 @@ class TestDeblendMapsAfterRelabel:
         Test that the deblended labels of a parent keep their order
         when two of them are merged.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.reassign_labels([2, 4], 9)
         assert_equal(segm.parent_to_deblended_labels[1], [9, 3])
         assert_equal(segm.deblended_labels, [3, 9])
@@ -1745,6 +1745,7 @@ def test_geojson_polygons_label_mismatch():
             _ = segm._geojson_polygons
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
 @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
 def test_polygons_empty_geopolys():
@@ -1787,6 +1788,7 @@ def test_convert_shapely_to_pathpatch_empty():
     assert result is None
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_convert_shapely_to_pathpatch_empty_geom_collection():

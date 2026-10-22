@@ -137,6 +137,11 @@ class TestSourceCatalog:
         self.mask[0:30, 0:30] = True
 
         self.wcs = make_wcs(self.data.shape)
+        # Set up the WCS once, before any test threads copy it. Before
+        # astropy 8.1 (astropy PR 19862), copying a WCS rewrites its
+        # undefined parameters in place, which corrupts concurrent copies
+        # while the parameters used by the transforms are still unset.
+        self.wcs.wcs.set()
         self.cat = SourceCatalog(self.data, self.segm, error=self.error,
                                  background=self.background, mask=self.mask,
                                  wcs=self.wcs, local_bkg_width=24)
@@ -160,7 +165,7 @@ class TestSourceCatalog:
             cat1 = self.cat.copy()
             cat2 = self.cat.copy()
 
-        props = self.cat.properties
+        props = cat1.properties
 
         # Add custom properties
         cat1.circular_photometry(5.0, name='circ5')
@@ -816,28 +821,29 @@ class TestSourceCatalog:
         """
         Test kron photometry.
         """
-        flux0, flux_err0 = self.cat.kron_photometry((2.5, 1.4))
-        assert_allclose(flux0, self.cat.kron_flux)
-        assert_allclose(flux_err0, self.cat.kron_flux_err)
+        cat = self.cat.copy()
+        flux0, flux_err0 = cat.kron_photometry((2.5, 1.4))
+        assert_allclose(flux0, cat.kron_flux)
+        assert_allclose(flux_err0, cat.kron_flux_err)
 
-        flux1, flux_err1 = self.cat.kron_photometry((1.0, 1.4), name='kron1')
-        flux2, flux_err2 = self.cat.kron_photometry((2.0, 1.4), name='kron2')
-        assert_allclose(flux1, self.cat.kron1_flux)
-        assert_allclose(flux_err1, self.cat.kron1_flux_err)
-        assert_allclose(flux2, self.cat.kron2_flux)
-        assert_allclose(flux_err2, self.cat.kron2_flux_err)
+        flux1, flux_err1 = cat.kron_photometry((1.0, 1.4), name='kron1')
+        flux2, flux_err2 = cat.kron_photometry((2.0, 1.4), name='kron2')
+        assert_allclose(flux1, cat.kron1_flux)
+        assert_allclose(flux_err1, cat.kron1_flux_err)
+        assert_allclose(flux2, cat.kron2_flux)
+        assert_allclose(flux_err2, cat.kron2_flux_err)
 
         assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
         assert np.all((flux_err2 > flux_err1)
                       | (np.isnan(flux_err2) & np.isnan(flux_err1)))
 
         # Test different min Kron radius
-        flux3, flux_err3 = self.cat.kron_photometry((2.5, 2.5))
+        flux3, flux_err3 = cat.kron_photometry((2.5, 2.5))
         assert np.all((flux3 > flux0) | (np.isnan(flux3) & np.isnan(flux0)))
         assert np.all((flux_err3 > flux_err0)
                       | (np.isnan(flux_err3) & np.isnan(flux_err0)))
 
-        obj = self.cat[1]
+        obj = cat[1]
         flux1, flux_err1 = obj.kron_photometry((1.0, 1.4), name='kron0')
         assert np.isscalar(flux1)
         assert np.isscalar(flux_err1)
@@ -850,34 +856,35 @@ class TestSourceCatalog:
 
         match = 'kron_params must be 1D'
         with pytest.raises(ValueError, match=match):
-            self.cat.kron_photometry(2.5)
+            cat.kron_photometry(2.5)
 
         match = r'kron_params\[0\] must be > 0'
         with pytest.raises(ValueError, match=match):
-            self.cat.kron_photometry((0.0, 1.4))
+            cat.kron_photometry((0.0, 1.4))
 
         match = r'kron_params\[1\] must be > 0'
         with pytest.raises(ValueError, match=match):
-            self.cat.kron_photometry((2.5, 0.0))
+            cat.kron_photometry((2.5, 0.0))
         with pytest.raises(ValueError, match=match):
-            self.cat.kron_photometry((2.5, 0.0, 1.5))
+            cat.kron_photometry((2.5, 0.0, 1.5))
 
     def test_circular_photometry(self):
         """
         Test circular photometry.
         """
-        flux1, flux_err1 = self.cat.circular_photometry(1.0, name='circ1')
-        flux2, flux_err2 = self.cat.circular_photometry(5.0, name='circ5')
-        assert_allclose(flux1, self.cat.circ1_flux)
-        assert_allclose(flux_err1, self.cat.circ1_flux_err)
-        assert_allclose(flux2, self.cat.circ5_flux)
-        assert_allclose(flux_err2, self.cat.circ5_flux_err)
+        cat = self.cat.copy()
+        flux1, flux_err1 = cat.circular_photometry(1.0, name='circ1')
+        flux2, flux_err2 = cat.circular_photometry(5.0, name='circ5')
+        assert_allclose(flux1, cat.circ1_flux)
+        assert_allclose(flux_err1, cat.circ1_flux_err)
+        assert_allclose(flux2, cat.circ5_flux)
+        assert_allclose(flux_err2, cat.circ5_flux_err)
 
         assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
         assert np.all((flux_err2 > flux_err1)
                       | (np.isnan(flux_err2) & np.isnan(flux_err1)))
 
-        obj = self.cat[1]
+        obj = cat[1]
         assert obj.isscalar
         flux1, flux_err1 = obj.circular_photometry(1.0, name='circ0')
         assert np.isscalar(flux1)
@@ -891,7 +898,7 @@ class TestSourceCatalog:
 
         # With "center" mode, tiny apertures that do not overlap any
         # center should return NaN
-        cat2 = self.cat.copy()
+        cat2 = cat.copy()
         cat2._set_semode()  # sets "center" mode
         flux1, flux_err1 = cat2.circular_photometry(0.1)
         assert np.all(np.isnan(flux1[2:4]))
@@ -899,13 +906,13 @@ class TestSourceCatalog:
 
         match = 'radius must be > 0'
         with pytest.raises(ValueError, match=match):
-            self.cat.circular_photometry(0.0)
+            cat.circular_photometry(0.0)
         with pytest.raises(ValueError, match=match):
-            self.cat.circular_photometry(-1.0)
+            cat.circular_photometry(-1.0)
         with pytest.raises(ValueError, match=match):
-            self.cat.make_circular_apertures(0.0)
+            cat.make_circular_apertures(0.0)
         with pytest.raises(ValueError, match=match):
-            self.cat.make_circular_apertures(-1.0)
+            cat.make_circular_apertures(-1.0)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plots(self):
@@ -1030,10 +1037,11 @@ class TestSourceCatalog:
         """
         Test flux_radius.
         """
-        radius1 = self.cat.flux_radius(0.1, name='flux_radius_r1')
-        radius2 = self.cat.flux_radius(0.5, name='flux_radius_r5')
-        assert_allclose(radius1, self.cat.flux_radius_r1)
-        assert_allclose(radius2, self.cat.flux_radius_r5)
+        cat = self.cat.copy()
+        radius1 = cat.flux_radius(0.1, name='flux_radius_r1')
+        radius2 = cat.flux_radius(0.5, name='flux_radius_r5')
+        assert_allclose(radius1, cat.flux_radius_r1)
+        assert_allclose(radius2, cat.flux_radius_r5)
         assert np.all((radius2 > radius1)
                       | (np.isnan(radius2) & np.isnan(radius1)))
 
@@ -1045,9 +1053,9 @@ class TestSourceCatalog:
 
         match = 'fraction must be > 0 and <= 1'
         with pytest.raises(ValueError, match=match):
-            radius = self.cat.flux_radius(0)
+            radius = cat.flux_radius(0)
         with pytest.raises(ValueError, match=match):
-            radius = self.cat.flux_radius(-1)
+            radius = cat.flux_radius(-1)
 
         cat = SourceCatalog(self.data - 50.0, self.segm, error=self.error,
                             background=self.background, mask=self.mask,
@@ -1545,6 +1553,10 @@ class TestSourceCatalog:
         cutouts = self.cat.make_cutouts(shape)
         assert cutouts[0] is None
 
+    # Remove this marker once the minimum required astropy version
+    # includes the fix for this race (astropy PR 20668).
+    @pytest.mark.thread_unsafe(
+        reason='reading ECSV is not thread-safe in astropy')
     def test_meta(self):
         """
         Test meta.
@@ -2136,6 +2148,8 @@ class TestSourceCatalogFlags:
         assert np.isfinite(cat.kron_flux_err[1])
         assert not cat.flags[1] & SEGMENTATION_FLAGS.KRON_UNDEFINED
 
+    @pytest.mark.thread_unsafe(
+        reason='unittest.mock.patch affects all threads')
     @pytest.mark.parametrize('circular', [False, True])
     def test_kron_undefined_oversized(self, circular):
         """
@@ -3018,6 +3032,7 @@ def test_centroid_quad_edge_cases():
     assert np.all(np.isfinite(cquad4))
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_kron_radius_max(gauss_101_catalog):
     """
     Test that measured kron_radius values exceeding the measurement
@@ -3049,6 +3064,7 @@ def test_kron_radius_max(gauss_101_catalog):
         assert np.isnan(cat2.flux_radius(0.5).value[0])
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_kron_photometry_oom_guard(gauss_101_catalog):
     """
     Test that _calc_kron_photometry returns NaN when the Kron aperture
@@ -3096,6 +3112,7 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
     assert np.all(np.isnan(cat4.kron_flux_err))
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_flux_radius_cache_not_mutated_by_centroid_win(gauss_101_data):
     """
     Test that calling centroid_win before flux_radius does not corrupt
@@ -3128,6 +3145,7 @@ def test_flux_radius_cache_not_mutated_by_centroid_win(gauss_101_data):
         assert np.all(np.isnan(result.value))
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_centroid_win_nan_when_flux_radius_nan(gauss_101_data):
     """
     Test that centroid_win returns NaN when flux_radius(0.5) is NaN
@@ -3188,6 +3206,7 @@ def float32_catalog_inputs():
     return data, segm, error, convolved_data
 
 
+@pytest.mark.thread_unsafe(reason='tracemalloc traces all threads')
 def test_release_cache_frees_memory(float32_catalog_inputs):
     """
     Test that release_cache frees the full-image working arrays,
@@ -3387,6 +3406,7 @@ class TestInputDtypes:
             self.assert_properties_close(self.numeric_properties(cat),
                                          props_ref)
 
+    @pytest.mark.thread_unsafe(reason='tracemalloc traces all threads')
     def test_float32_inputs_not_copied(self):
         """
         Test that C-contiguous float32 inputs and an int32 segmentation
@@ -3418,6 +3438,7 @@ class TestInputDtypes:
         assert current - start < 2 * data.size
         assert peak - start < 8 * data.size
 
+    @pytest.mark.thread_unsafe(reason='tracemalloc traces all threads')
     def test_big_endian_segmentation_image(self):
         """
         Test that a big-endian int32 segmentation image (e.g., read from
@@ -3443,6 +3464,7 @@ class TestInputDtypes:
         assert current - start < 6 * data.size
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_centroid_win_oom_guard(gauss_101_catalog):
     """
     Test that centroid_win returns NaN for sources whose half-light
@@ -3499,6 +3521,7 @@ def test_make_scalar(single_source_catalog):
     assert cat._make_scalar([7.0]) == [7.0]
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
     """
     Test that _flux_radius_optimizer_args gives a zero pixel count (and
@@ -3559,6 +3582,7 @@ def test_flux_radius_optimizer_args_subpixel_method(gauss_101_catalog):
     assert np.isfinite(r50.value[0])
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_measured_kron_radius_oom_guard(gauss_101_catalog):
     """
     Test that _measured_kron_radius returns NaN for sources whose
@@ -3586,6 +3610,7 @@ def test_measured_kron_radius_off_image(gauss_101_catalog):
     assert np.all(np.isnan(cat.kron_radius.value))
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_measured_kron_radius_circular_fallback(gauss_101_data):
     """
     Test _measured_kron_radius with the circular aperture fallback when
@@ -3615,6 +3640,7 @@ def test_measured_kron_radius_circular_fallback(gauss_101_data):
         assert np.isfinite(kr[0])
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
     """
     Test _measured_kron_radius returns NaN for the circular fallback
