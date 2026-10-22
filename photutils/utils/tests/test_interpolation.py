@@ -49,7 +49,7 @@ class TestShepardIDWInterpolator:
         """
         Test 2D IDW interpolation.
         """
-        pos = self.rng.random((1000, 2))
+        pos = np.random.default_rng(0).random((1000, 2))
         val = np.sin(pos[:, 0] + pos[:, 1])
         f = IDWInterp(pos, val)
         x = 0.5

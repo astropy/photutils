@@ -59,6 +59,8 @@ class TestAll:
 
 
 class TestHasAttributes:
+    @pytest.mark.thread_unsafe(
+        reason='unittest.mock.patch affects all threads')
     def test_installed_package_returns_true(self):
         """
         Test that a ``HAS_*`` attribute is `True` when the import
@@ -71,6 +73,8 @@ class TestHasAttributes:
         finally:
             _clear_cache('HAS_MATPLOTLIB')
 
+    @pytest.mark.thread_unsafe(
+        reason='unittest.mock.patch affects all threads')
     def test_import_error_returns_false(self):
         """
         Test that a ``HAS_*`` attribute is `False` when the import
@@ -85,6 +89,8 @@ class TestHasAttributes:
         finally:
             _clear_cache('HAS_MATPLOTLIB')
 
+    @pytest.mark.thread_unsafe(
+        reason='the threads clear a shared module-level cache')
     def test_result_is_bool(self):
         """
         Test that ``HAS_*`` attributes are `bool`.
@@ -97,6 +103,8 @@ class TestHasAttributes:
 
 
 class TestCaching:
+    @pytest.mark.thread_unsafe(
+        reason='the threads clear a shared module-level cache')
     def test_value_is_cached(self):
         """
         Test that the result of a ``HAS_*`` lookup is stored in the
@@ -109,6 +117,8 @@ class TestCaching:
         finally:
             _clear_cache('HAS_MATPLOTLIB')
 
+    @pytest.mark.thread_unsafe(
+        reason='unittest.mock.patch affects all threads')
     def test_cached_value_returned_without_reimport(self):
         """
         Test that a cached value is returned without calling

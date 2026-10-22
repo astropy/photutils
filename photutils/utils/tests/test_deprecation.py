@@ -32,6 +32,24 @@ def raw_data():
     return {'old': [3, 2, 1], 'old_b': [4, 5, 6], 'stable': [7, 8, 9]}
 
 
+@pytest.fixture
+def global_future_column_names():
+    """
+    Set the global ``photutils.future_column_names`` flag to `True`
+    for the duration of a test.
+
+    The flag is set and restored once, during setup and teardown on
+    the main thread, so the test is safe to run with
+    pytest-run-parallel.
+    """
+    import photutils
+
+    original = photutils.future_column_names
+    photutils.future_column_names = True
+    yield
+    photutils.future_column_names = original
+
+
 class TestDeprecatedColumn:
     """
     Tests for DeprecatedColumnTable and DeprecatedColumnQTable.
@@ -532,22 +550,16 @@ class TestUseFutureColumnNames:
                 raw_data, DEPRECATION_MAP)
             assert type(table3) is Table
 
+    @pytest.mark.usefixtures('global_future_column_names')
     def test_context_manager_disabled(self, raw_data):
         """
         Test that use_future_column_names(enabled=False) forces the
         deprecated table behavior even if the global flag is True.
         """
-        import photutils
-
-        original = photutils.future_column_names
-        try:
-            photutils.future_column_names = True
-            with use_future_column_names(enabled=False):
-                table = create_deprecated_table_from_data(
-                    raw_data, DEPRECATION_MAP)
-                assert type(table) is DeprecatedColumnTable
-        finally:
-            photutils.future_column_names = original
+        with use_future_column_names(enabled=False):
+            table = create_deprecated_table_from_data(
+                raw_data, DEPRECATION_MAP)
+            assert type(table) is DeprecatedColumnTable
 
     def test_restores_on_exception(self):
         """
