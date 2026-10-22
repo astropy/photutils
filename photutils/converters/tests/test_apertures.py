@@ -13,6 +13,13 @@ from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.converters.tests import examples
 from photutils.extension import PHOTUTILS_APERTURE_CONVERTERS
 
+# The asdf schema validator records the nodes it has already validated
+# in a single context shared by all threads, so concurrent writes and
+# reads can skip checks or report spurious validation errors. See
+# https://github.com/asdf-format/asdf/issues/2154.
+pytestmark = pytest.mark.thread_unsafe(
+    reason='asdf schema validation is not thread-safe')
+
 # Examples that take no rotation angle
 APERTURE_EXAMPLES = [
     examples.circular_aperture_single_pos,

@@ -1671,6 +1671,7 @@ def test_repr():
 
 def test_group_warning_threshold(test_data):
     data, error, sources = test_data
+    sources = sources.copy()
     sources['group_id'] = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2]
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)

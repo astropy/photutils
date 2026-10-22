@@ -21,6 +21,13 @@ from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.extension import PHOTUTILS_MANIFEST_URIS
 from photutils.psf import ImagePSF
 
+# The asdf schema validator records the nodes it has already validated
+# in a single context shared by all threads, so concurrent writes and
+# reads can skip checks or report spurious validation errors. See
+# https://github.com/asdf-format/asdf/issues/2154.
+pytestmark = pytest.mark.thread_unsafe(
+    reason='asdf schema validation is not thread-safe')
+
 # Matches the top-level YAML tag that opens a schema example.
 EXAMPLE_TAG_PATTERN = re.compile(r'!<([^>]+)>')
 
@@ -64,10 +71,16 @@ def _validate_on_read():
     tests in this module enable it explicitly. Setting it also avoids
     the ``AsdfFutureWarning`` that asdf emits when a file fails
     validation while the option is unset.
+
+    The option is set on the global configuration instead of in
+    ``asdf.config_context``, which is thread-local, so that it also
+    applies to the test threads of pytest-run-parallel.
     """
-    with asdf.config_context() as config:
-        config.validate_on_read = True
-        yield
+    config = get_config()
+    original = config.validate_on_read
+    config.validate_on_read = True
+    yield
+    config.validate_on_read = original
 
 
 def _load_resource(uri):

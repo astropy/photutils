@@ -12,6 +12,7 @@ from scipy.spatial import cKDTree
 from photutils.aperture import CircularAperture
 from photutils.utils import make_random_cmap
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._misc import deepcopy_instance
 from photutils.utils._repr import make_repr
 
 __all__ = ['SourceGrouper', 'SourceGroups']
@@ -104,6 +105,10 @@ class SourceGroups:
         self._unique_groups = unique_groups
         self._group_counts = counts
         self.n_groups = len(unique_groups)
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def __repr__(self):
         params = ['n_sources', 'n_groups']

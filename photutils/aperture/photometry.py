@@ -20,7 +20,7 @@ from photutils.aperture.flags import decode_aperture_flags
 from photutils.aperture.region_converters import region_to_aperture
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
-from photutils.utils._misc import _get_meta
+from photutils.utils._misc import _get_meta, deepcopy_instance
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
@@ -296,6 +296,10 @@ class AperturePhotometry:
             default_columns.append('sky_center')
         default_columns += ['flux', 'flux_err', 'area', 'flags']
         self.default_columns = default_columns
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def __repr__(self):
         return make_repr(self, self._repr_params)

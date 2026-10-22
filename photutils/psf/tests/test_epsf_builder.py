@@ -2123,6 +2123,8 @@ class TestEPSFBuilder:
         assert result.epsf is not None
         assert result.epsf.data.shape == (11, 11)
 
+    @pytest.mark.thread_unsafe(
+        reason='unittest.mock.patch affects all threads')
     def test_recenter_shift_increase(self, epsf_test_data):
         """
         Test early exit in _find_epsf_center when shift increases.

@@ -67,6 +67,7 @@ test = [
     'pytest-doctestplus >= 1.4',
     'pytest-filter-subpackage >= 0.2',
     'pytest-remotedata >= 0.4.1',
+    'pytest-run-parallel >= 0.10.0',
     'pytest-xdist >= 3.7',
     'tox >= 4.18',
 ]
@@ -147,6 +148,11 @@ addopts = [
     '--doctest-rst',
     '--strict-config',
     '--strict-markers',
+]
+markers = [
+    # Registered here so that the markers work without pytest-run-parallel
+    'thread_unsafe: run the test in a single thread with pytest-run-parallel',
+    'iterations(n): run the test n times per thread with pytest-run-parallel',
 ]
 log_level = 'INFO'
 log_cli_level = 'INFO'

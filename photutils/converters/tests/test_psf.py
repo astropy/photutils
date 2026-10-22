@@ -14,6 +14,13 @@ from photutils.converters.tests import examples
 from photutils.extension import PHOTUTILS_PSF_CONVERTERS
 from photutils.psf import STDPSFGrid
 
+# The asdf schema validator records the nodes it has already validated
+# in a single context shared by all threads, so concurrent writes and
+# reads can skip checks or report spurious validation errors. See
+# https://github.com/asdf-format/asdf/issues/2154.
+pytestmark = pytest.mark.thread_unsafe(
+    reason='asdf schema validation is not thread-safe')
+
 PSF_EXAMPLES = [
     examples.airy_disk_units,
     examples.airy_disk,

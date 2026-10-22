@@ -620,15 +620,19 @@ class TestSegmentationImage:
         """
         assert self.segm.shape == (6, 6)
 
-    def test_cached_properties_class_cache(self):
+    def test_cached_properties_class_attribute(self):
         """
-        Test that _cached_properties is cached on the class and shared
-        across instances.
+        Test that _cached_properties is a class attribute that is set
+        when the class is created, including for subclasses.
         """
-        segm2 = SegmentationImage(self.data.copy())
-        result1 = self.segm._cached_properties
-        result2 = segm2._cached_properties
-        assert result1 is result2
+        names = SegmentationImage._cached_properties
+        segm = SegmentationImage(self.data.copy())
+        assert segm._cached_properties is names
+        assert '_cached_properties' not in segm.__dict__
+        assert 'areas' in names
+        assert 'value' not in names
+        assert CustomSegm._cached_properties == tuple(sorted(
+            (*names, 'value')))
 
     def test_labels(self):
         """
@@ -1542,7 +1546,7 @@ class TestDeblendMapsAfterRelabel:
         """
         Test that a removed deblended label is dropped from the maps.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.remove_label(2, relabel=relabel)
         children = [2, 3] if relabel else [3, 4]
         assert_equal(segm.deblended_labels, children)
@@ -1556,7 +1560,7 @@ class TestDeblendMapsAfterRelabel:
         Test that a parent with no deblended labels left is dropped
         from the maps.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.remove_labels([2, 3, 4])
         assert_equal(segm.labels, [1])
         assert segm.deblended_labels.size == 0
@@ -1590,7 +1594,7 @@ class TestDeblendMapsAfterRelabel:
         Test that the maps are empty when only a label that was not
         deblended is kept.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.keep_label(1, relabel=True)
         assert segm.deblended_labels.size == 0
         assert segm.deblended_label_to_parent == {}
@@ -1600,7 +1604,7 @@ class TestDeblendMapsAfterRelabel:
         """
         Test that merged deblended labels appear once in the maps.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.reassign_labels([2, 3], 4)
         assert_equal(segm.labels, [1, 4])
         assert_equal(segm.deblended_labels, [4])
@@ -1612,7 +1616,7 @@ class TestDeblendMapsAfterRelabel:
         Test that the deblended labels of a parent keep their order
         when two of them are merged.
         """
-        segm = deblended_segm
+        segm = deblended_segm.copy()
         segm.reassign_labels([2, 4], 9)
         assert_equal(segm.parent_to_deblended_labels[1], [9, 3])
         assert_equal(segm.deblended_labels, [3, 9])
@@ -1741,6 +1745,7 @@ def test_geojson_polygons_label_mismatch():
             _ = segm._geojson_polygons
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
 @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
 def test_polygons_empty_geopolys():
@@ -1783,6 +1788,7 @@ def test_convert_shapely_to_pathpatch_empty():
     assert result is None
 
 
+@pytest.mark.thread_unsafe(reason='unittest.mock.patch affects all threads')
 @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 def test_convert_shapely_to_pathpatch_empty_geom_collection():
@@ -2687,14 +2693,47 @@ class TestThreadSafety:
             assert slices == expected.slices
             assert_equal(missing_labels, expected.missing_labels)
 
+    def test_concurrent_copy_and_property_access(self):
+        """
+        Regression test that a shared segmentation image can be copied
+        while other threads read its cached properties.
+
+        A deep copy iterates the instance dict. On a free-threaded build
+        this raised "dictionary changed size during iteration" when
+        another thread added a cached property at the same time.
+        """
+        names = ('labels', 'areas', 'missing_labels', 'max_label',
+                 'n_labels', 'is_consecutive', 'background_area', 'shape')
+        expected_segm = SegmentationImage(self.data.copy())
+        expected = {name: getattr(expected_segm, name) for name in names}
+
+        n_threads = 8
+        for _ in range(50):
+            segm = SegmentationImage(self.data.copy())
+            barrier = threading.Barrier(n_threads)
+
+            def worker(start, segm=segm, barrier=barrier):
+                barrier.wait()
+                result = []
+                for name in names[start:] + names[:start]:
+                    _ = getattr(segm, name)
+                    result.append((name, getattr(segm.copy(), name)))
+                return result
+
+            with ThreadPoolExecutor(max_workers=n_threads) as executor:
+                results = list(executor.map(worker, range(n_threads)))
+
+            for result in results:
+                for name, value in result:
+                    assert_equal(value, expected[name])
+
     def test_concurrent_cached_properties_introspection(self):
         """
-        Test concurrent first access of the class-level
-        _cached_properties introspection cache on a fresh subclass.
+        Test concurrent access of _cached_properties on instances of a
+        fresh subclass.
 
-        The lazy class-level cache is written without a lock. The race
-        is benign because the computed list is identical for every
-        thread.
+        The names are found when the class is created, so the threads
+        only read them.
         """
         class FreshSegm(SegmentationImage):
             pass

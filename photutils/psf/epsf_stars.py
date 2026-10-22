@@ -16,6 +16,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
 from photutils.psf.utils import _interpolate_missing_data
+from photutils.utils._misc import deepcopy_instance
 from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import as_pair
 from photutils.utils._wcs_helpers import (_low_level_wcs,
@@ -188,6 +189,10 @@ class EPSFStar:
         self._excluded_from_fit = False
         self._fit_error_status = 0  # 0: no error, >0: error during fitting
         self._fit_info = None
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def __array__(self, dtype=None, copy=None):
         """
@@ -461,6 +466,10 @@ class EPSFStars:
         Restore state from pickling.
         """
         self.__dict__ = d
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def __getattr__(self, attr):
         """

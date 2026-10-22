@@ -4,7 +4,6 @@ Tests for the AperturePhotometry class.
 """
 
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import patch
 
 import astropy.units as u
 import numpy as np
@@ -27,6 +26,7 @@ from photutils.aperture.tests.conftest import (NoBatchCircularAperture,
 from photutils.datasets import make_wcs
 from photutils.segmentation import SegmentationImage
 from photutils.utils._optional_deps import HAS_REGIONS
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 
 class TestAperturePhotometryParity:
@@ -579,18 +579,17 @@ class TestNonFiniteData:
         assert phot.decode_flags()[1] == ['non_finite_data']
 
     def test_mask_path_masks_nonfinite(self):
-        # Disable the batch Cython driver to exercise the slower
-        # mask-based code path (via a spec of None).
+        # Disable the batch Cython driver on this instance to exercise
+        # the slower mask-based code path (via a spec of None).
         aper = CircularAperture((12, 12), r=5)
+        aper._batch_shape_params = lambda: None
         data = np.ones((25, 25))
         data[12, 12] = np.nan
         data[11, 11] = np.inf
-        with patch.object(CircularAperture, '_batch_shape_params',
-                          lambda _self: None):
-            phot = AperturePhotometry(data, aper)
-            flux = phot.flux
-            flags = phot.flags
-            decoded = phot.decode_flags()[1]
+        phot = AperturePhotometry(data, aper)
+        flux = phot.flux
+        flags = phot.flags
+        decoded = phot.decode_flags()[1]
         assert np.isfinite(flux)
         assert_allclose(flux, aper.area_overlap(data) - 2)
         assert flags == APERTURE_FLAGS.NON_FINITE_DATA
@@ -1201,3 +1200,14 @@ class TestNThreads:
         assert 'n_threads=4' in repr(phot)
         assert 'n_threads=4' in phot.to_table().meta[
             'aperture_photometry_args']
+
+
+def test_concurrent_deepcopy():
+    """
+    Regression test that a shared AperturePhotometry object can be deep
+    copied while other threads compute its cached properties.
+    """
+    data = np.random.default_rng(0).normal(10.0, 1.0, (60, 60))
+    aperture = CircularAperture([(20.0, 20.0), (40.0, 35.0)], r=5.0)
+    check_concurrent_deepcopy(lambda: AperturePhotometry(
+        data, aperture, error=np.ones_like(data)))

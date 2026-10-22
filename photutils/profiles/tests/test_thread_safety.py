@@ -16,9 +16,12 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
+import pytest
 from numpy.testing import assert_equal
 
-from photutils.profiles import CurveOfGrowth, RadialProfile
+from photutils.profiles import (CurveOfGrowth, EllipticalCurveOfGrowth,
+                                EnsquaredCurveOfGrowth, RadialProfile)
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 N_THREADS = 8
 N_TOGGLES = 200
@@ -165,3 +168,18 @@ def test_concurrent_fit_access_during_normalize(profile_data):
             for amplitude, fwhm in future.result():
                 assert amplitude in (raw_amplitude, norm_amplitude)
                 assert fwhm == raw_fwhm
+
+
+@pytest.mark.parametrize('profile_class', [RadialProfile, CurveOfGrowth,
+                                           EnsquaredCurveOfGrowth,
+                                           EllipticalCurveOfGrowth])
+def test_concurrent_deepcopy(profile_data, profile_class):
+    """
+    Regression test that a shared profile can be deep copied while
+    other threads compute its cached properties.
+    """
+    xycen, data, error, _ = profile_data
+    sizes = np.arange(1, 30)
+    args = (0.5,) if profile_class is EllipticalCurveOfGrowth else ()
+    check_concurrent_deepcopy(lambda: profile_class(data, xycen, sizes,
+                                                    *args, error=error))

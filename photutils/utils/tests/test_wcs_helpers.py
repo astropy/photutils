@@ -23,7 +23,9 @@ from photutils.utils._wcs_helpers import (_frame_rotation,
                                           sky_shape_to_pixel_svd,
                                           sky_to_pixel_mean_scale,
                                           sky_to_pixel_svd_scales)
-from photutils.utils.tests.wcs_test_helpers import (WCS_CDELT_ARCSEC,
+from photutils.utils.tests.wcs_test_helpers import (SIP_THREAD_UNSAFE,
+                                                    SIP_WCS_PARAM,
+                                                    WCS_CDELT_ARCSEC,
                                                     WCS_CENTER, CountingWCS,
                                                     make_sip_wcs)
 
@@ -109,6 +111,26 @@ def test_compute_pixel_to_sky_jacobians_scale():
                     [[0.5, 0.0], [0.0, 0.5]], atol=1e-4)
 
 
+@pytest.fixture
+def sheared_wcs():
+    """
+    A sheared TAN WCS (see ``_make_sheared_wcs``).
+    """
+    return _make_sheared_wcs()
+
+
+@pytest.fixture
+def wcs(request):
+    """
+    The WCS fixture named by an indirect ``wcs`` parameter.
+
+    The named fixture is resolved here, during setup on the main
+    thread, because ``request.getfixturevalue`` is not thread-safe
+    inside a test body run by pytest-run-parallel.
+    """
+    return request.getfixturevalue(request.param)
+
+
 class TestMeanScale:
     """
     Tests for `sky_to_pixel_mean_scale` and `pixel_to_sky_mean_scale`.
@@ -144,6 +166,7 @@ class TestMeanScale:
         scale = pixel_to_sky_mean_scale(simple_wcs, center_xy_coord)
         assert_allclose(scale, WCS_CDELT_ARCSEC)
 
+    @SIP_THREAD_UNSAFE
     def test_sky_to_pixel_sip_scale(self, sip_wcs):
         """
         For a SIP WCS near the reference pixel, the mean scale should be
@@ -152,6 +175,7 @@ class TestMeanScale:
         _, scale = sky_to_pixel_mean_scale(sip_wcs, WCS_CENTER)
         assert_allclose(scale, 1.0 / WCS_CDELT_ARCSEC, rtol=1e-6)
 
+    @SIP_THREAD_UNSAFE
     def test_pixel_to_sky_sip_scale(self, sip_wcs):
         """
         For a SIP WCS near the reference pixel, the mean scale should be
@@ -160,15 +184,15 @@ class TestMeanScale:
         scale = pixel_to_sky_mean_scale(sip_wcs, (9.5, 9.5))
         assert_allclose(scale, WCS_CDELT_ARCSEC, rtol=1e-6)
 
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
-                                          'nonsquare_wcs', 'flipped_wcs',
-                                          'swapped_wcs', 'sip_wcs'])
-    def test_roundtrip_scale(self, wcs_name, request):
+    @pytest.mark.parametrize('wcs', ['simple_wcs', 'rotated_wcs',
+                                     'nonsquare_wcs', 'flipped_wcs',
+                                     'swapped_wcs', SIP_WCS_PARAM],
+                             indirect=True)
+    def test_roundtrip_scale(self, wcs):
         """
         Sky -> pixel mean_scale * pixel -> sky mean_scale must be
         exactly 1, even where the Jacobian is anisotropic.
         """
-        wcs = request.getfixturevalue(wcs_name)
         center_pix, s2p = sky_to_pixel_mean_scale(wcs, WCS_CENTER)
         p2s = pixel_to_sky_mean_scale(wcs, center_pix)
         assert_allclose(s2p * p2s, 1.0, rtol=1e-12)
@@ -258,57 +282,56 @@ class TestSVDShapeConversions:
         assert isinstance(h, (float, np.floating))
         assert isinstance(angle, Angle)
 
-    @pytest.mark.parametrize('wcs_name', ['sip_wcs', 'nonsquare_wcs',
-                                          'flipped_wcs'])
-    def test_pixel_to_sky_array_shapes(self, wcs_name, request):
+    @pytest.mark.parametrize('wcs', [SIP_WCS_PARAM, 'nonsquare_wcs',
+                                     'flipped_wcs'], indirect=True)
+    def test_pixel_to_sky_array_shapes(self, wcs):
         """
         Array widths and heights give the per-shape scalar results in
         one low-level WCS evaluation. The middle shape is circular, so
         the circular-input angle path is exercised as well.
         """
-        real_wcs = request.getfixturevalue(wcs_name)
         widths = np.array([10.0, 6.0, 4.0])
         heights = np.array([5.0, 6.0, 7.0])
-        wcs = CountingWCS(real_wcs)
-        w, h, angle = pixel_shape_to_sky_svd(wcs, (12.0, 7.0), widths,
+        counting_wcs = CountingWCS(wcs)
+        w, h, angle = pixel_shape_to_sky_svd(counting_wcs, (12.0, 7.0), widths,
                                              heights, 0.3)
-        assert wcs.n_pixel_to_world_values == 1
-        assert wcs.n_pixel_to_world == 0
+        assert counting_wcs.n_pixel_to_world_values == 1
+        assert counting_wcs.n_pixel_to_world == 0
         assert w.shape == h.shape == angle.shape == (3,)
         for i in range(3):
             w1, h1, a1 = pixel_shape_to_sky_svd(
-                real_wcs, (12.0, 7.0), widths[i], heights[i], 0.3)
+                wcs, (12.0, 7.0), widths[i], heights[i], 0.3)
             assert_allclose(w[i], w1, rtol=1e-12)
             assert_allclose(h[i], h1, rtol=1e-12)
             assert_allclose(angle[i].deg, a1.deg, atol=1e-10)
 
-    @pytest.mark.parametrize('wcs_name', ['sip_wcs', 'nonsquare_wcs',
-                                          'flipped_wcs'])
-    def test_sky_to_pixel_array_shapes(self, wcs_name, request):
+    @pytest.mark.parametrize('wcs', [SIP_WCS_PARAM, 'nonsquare_wcs',
+                                     'flipped_wcs'], indirect=True)
+    def test_sky_to_pixel_array_shapes(self, wcs):
         """
         Array widths and heights give the per-shape scalar results with
         one low-level WCS evaluation and, given the pixel position, no
         inversion.
         """
-        real_wcs = request.getfixturevalue(wcs_name)
         widths = np.array([1.0, 0.6, 0.4])
         heights = np.array([0.5, 0.6, 0.7])
-        pixcoord = tuple(float(v) for v in real_wcs.world_to_pixel(WCS_CENTER))
-        wcs = CountingWCS(real_wcs)
+        pixcoord = tuple(float(v) for v in wcs.world_to_pixel(WCS_CENTER))
+        counting_wcs = CountingWCS(wcs)
         center, w, h, angle = sky_shape_to_pixel_svd(
-            wcs, WCS_CENTER, widths, heights, 0.3, pixcoord=pixcoord)
-        assert wcs.n_pixel_to_world_values == 1
-        assert wcs.n_pixel_to_world == 0
-        assert wcs.n_world_to_pixel == 0
+            counting_wcs, WCS_CENTER, widths, heights, 0.3, pixcoord=pixcoord)
+        assert counting_wcs.n_pixel_to_world_values == 1
+        assert counting_wcs.n_pixel_to_world == 0
+        assert counting_wcs.n_world_to_pixel == 0
         assert w.shape == h.shape == angle.shape == (3,)
         for i in range(3):
             c1, w1, h1, a1 = sky_shape_to_pixel_svd(
-                real_wcs, WCS_CENTER, widths[i], heights[i], 0.3)
+                wcs, WCS_CENTER, widths[i], heights[i], 0.3)
             assert_allclose(w[i], w1, rtol=1e-12)
             assert_allclose(h[i], h1, rtol=1e-12)
             assert_allclose(angle[i].deg, a1.deg, atol=1e-10)
             assert_allclose(center, c1, atol=1e-10)
 
+    @SIP_THREAD_UNSAFE
     def test_shape_broadcasting(self, sip_wcs):
         """
         A scalar width broadcasts against an array of heights, and
@@ -384,6 +407,7 @@ class TestSVDShapeConversions:
         # Width should be smaller than height in sky coords too
         assert sw < sh
 
+    @SIP_THREAD_UNSAFE
     def test_sip_wcs_positive_sizes(self, sip_wcs):
         """
         Sizes should be positive for distorted WCS.
@@ -394,6 +418,7 @@ class TestSVDShapeConversions:
         assert sw > 0
         assert sh > 0
 
+    @SIP_THREAD_UNSAFE
     def test_sip_wcs_roundtrip(self, sip_wcs):
         """
         Round-trip with SIP WCS should recover the original ellipse.
@@ -695,6 +720,7 @@ class TestSVDScales:
         assert_allclose(smaj, 0.05 * 3600, rtol=1e-5)
         assert_allclose(smin, 0.03 * 3600, rtol=1e-5)
 
+    @SIP_THREAD_UNSAFE
     def test_scales_descending(self, sip_wcs):
         """
         The returned scales are singular values in descending order, so
@@ -705,14 +731,14 @@ class TestSVDScales:
         assert smaj_s >= smin_s
         assert smaj_p >= smin_p
 
-    @pytest.mark.parametrize('wcs_name', ['rotated_wcs', 'flipped_wcs'])
-    def test_sky_to_pixel_matches_projection(self, wcs_name, request):
+    @pytest.mark.parametrize('wcs', ['rotated_wcs', 'flipped_wcs'],
+                             indirect=True)
+    def test_sky_to_pixel_matches_projection(self, wcs):
         """
         A circular sky region converted with the SVD scales must match
         the true projection of the sky circle boundary, including the
         correct major-axis orientation and parity.
         """
-        wcs = request.getfixturevalue(wcs_name)
         radius = 5.0  # arcsec
         center, smaj, smin, pixel_angle = sky_to_pixel_svd_scales(
             wcs, WCS_CENTER)
@@ -900,6 +926,7 @@ class TestJacobianEvaluation:
     Tests for how the vectorized Jacobian evaluates the WCS.
     """
 
+    @SIP_THREAD_UNSAFE
     def test_flattens_inputs(self, sip_wcs):
         yy, xx = np.mgrid[2:5, 3:7].astype(float)
         jacs = compute_pixel_to_sky_jacobians(sip_wcs, xx, yy)
@@ -908,11 +935,13 @@ class TestJacobianEvaluation:
         assert jacs.shape == (12, 2, 2)
         assert_allclose(jacs, expected, rtol=1e-12)
 
+    @SIP_THREAD_UNSAFE
     def test_size_mismatch(self, sip_wcs):
         match = 'x and y must have the same size'
         with pytest.raises(ValueError, match=match):
             compute_pixel_to_sky_jacobians(sip_wcs, [1.0, 2.0], [1.0])
 
+    @SIP_THREAD_UNSAFE
     def test_single_low_level_wcs_call(self, sip_wcs):
         """
         Test that the vectorized Jacobian evaluation calls the WCS only
@@ -933,6 +962,7 @@ class TestJacobianEvaluation:
         lambda wcs, pixcoord: pixel_shape_to_sky_svd(wcs, pixcoord, 2.0, 1.0,
                                                      0.3),
     ], ids=['mean_scale', 'svd_scales', 'shape_svd'])
+    @SIP_THREAD_UNSAFE
     def test_pixel_to_sky_helpers_single_call(self, sip_wcs, func):
         pixcoord = (5.0, 12.0)
         expected = func(sip_wcs, pixcoord)
@@ -950,6 +980,7 @@ class TestJacobianEvaluation:
             else:
                 assert_allclose(value, expected_value, rtol=1e-12)
 
+    @SIP_THREAD_UNSAFE
     def test_world_axis_units(self, sip_wcs):
         """
         Test that the vectorized Jacobian evaluation respects the
@@ -970,11 +1001,11 @@ class TestJacobianEvaluation:
         jacs = compute_pixel_to_sky_jacobians(RadianWCS(sip_wcs), x, y)
         assert_allclose(jacs, expected, rtol=1e-12)
 
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
-                                          'nonsquare_wcs', 'flipped_wcs',
-                                          'swapped_wcs', 'sip_wcs'])
-    def test_agrees_with_separation_position_angle(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
+    @pytest.mark.parametrize('wcs', ['simple_wcs', 'rotated_wcs',
+                                     'nonsquare_wcs', 'flipped_wcs',
+                                     'swapped_wcs', SIP_WCS_PARAM],
+                             indirect=True)
+    def test_agrees_with_separation_position_angle(self, wcs):
         x = np.array([3.0, 9.5, 16.2])
         y = np.array([4.0, 9.5, 2.7])
         jacs = compute_pixel_to_sky_jacobians(wcs, x, y)
@@ -1047,15 +1078,14 @@ class TestCovarianceTransport:
     PIX_COV = np.array([[0.04, 0.01], [0.01, 0.09]])
     N_DRAW = 50_000
 
-    @pytest.mark.parametrize('wcs_name', ['sheared', 'swapped_wcs',
-                                          'sip_wcs'])
-    def test_scatter_matches_transport(self, wcs_name, request):
-        if wcs_name == 'sheared':
-            wcs = _make_sheared_wcs()
-            xy0 = np.array([50.0, 50.0])
-        else:
-            wcs = request.getfixturevalue(wcs_name)
-            xy0 = np.array([12.3, 7.6])
+    @pytest.mark.parametrize(('wcs', 'xy0'), [
+        pytest.param('sheared_wcs', (50.0, 50.0), id='sheared'),
+        pytest.param('swapped_wcs', (12.3, 7.6), id='swapped_wcs'),
+        pytest.param('sip_wcs', (12.3, 7.6), id='sip_wcs',
+                     marks=SIP_THREAD_UNSAFE),
+    ], indirect=['wcs'])
+    def test_scatter_matches_transport(self, wcs, xy0):
+        xy0 = np.array(xy0)
         jac = compute_pixel_to_sky_jacobians(wcs, *xy0)[0]
         sky_cov = jac @ self.PIX_COV @ jac.T
 
@@ -1085,11 +1115,11 @@ class TestMeanScaleClosedForm:
     singular values of the Jacobian.
     """
 
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
-                                          'nonsquare_wcs', 'flipped_wcs',
-                                          'swapped_wcs', 'sip_wcs'])
-    def test_pixel_to_sky_matches_svd(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
+    @pytest.mark.parametrize('wcs', ['simple_wcs', 'rotated_wcs',
+                                     'nonsquare_wcs', 'flipped_wcs',
+                                     'swapped_wcs', SIP_WCS_PARAM],
+                             indirect=True)
+    def test_pixel_to_sky_matches_svd(self, wcs):
         x = np.array([3.0, 9.5, 16.2])
         y = np.array([4.0, 9.5, 2.7])
         jacs = compute_pixel_to_sky_jacobians(wcs, x, y)
@@ -1127,18 +1157,19 @@ class TestKnownPixelPosition:
     def known(self, sip_wcs):
         return self._known(sip_wcs, 12.0, 7.0)
 
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
-    def test_mean_scale(self, wcs_name, request):
-        real_wcs = request.getfixturevalue(wcs_name)
-        skycoord, pixcoord = self._known(real_wcs, 12.0, 7.0)
-        center, scale = sky_to_pixel_mean_scale(real_wcs, skycoord)
-        wcs = CountingWCS(real_wcs)
-        center2, scale2 = sky_to_pixel_mean_scale(wcs, skycoord,
+    @pytest.mark.parametrize('wcs', ['simple_wcs', SIP_WCS_PARAM],
+                             indirect=True)
+    def test_mean_scale(self, wcs):
+        skycoord, pixcoord = self._known(wcs, 12.0, 7.0)
+        center, scale = sky_to_pixel_mean_scale(wcs, skycoord)
+        counting_wcs = CountingWCS(wcs)
+        center2, scale2 = sky_to_pixel_mean_scale(counting_wcs, skycoord,
                                                   pixcoord=pixcoord)
-        assert wcs.n_world_to_pixel == 0
+        assert counting_wcs.n_world_to_pixel == 0
         assert_allclose(center2, center, atol=1e-10)
         assert_allclose(scale2, scale, rtol=1e-12)
 
+    @SIP_THREAD_UNSAFE
     def test_svd_scales(self, sip_wcs, known):
         skycoord, pixcoord = known
         expected = sky_to_pixel_svd_scales(sip_wcs, skycoord)
@@ -1149,6 +1180,7 @@ class TestKnownPixelPosition:
         assert_allclose(result[1:3], expected[1:3], rtol=1e-12)
         assert_allclose(result[3].deg, expected[3].deg, atol=1e-10)
 
+    @SIP_THREAD_UNSAFE
     def test_shape_svd(self, sip_wcs, known):
         skycoord, pixcoord = known
         args = (2.0, 1.0, 0.3)
@@ -1161,6 +1193,7 @@ class TestKnownPixelPosition:
         assert_allclose(result[1:3], expected[1:3], rtol=1e-12)
         assert_allclose(result[3].deg, expected[3].deg, atol=1e-10)
 
+    @SIP_THREAD_UNSAFE
     def test_shape_svd_without_skycoord(self, sip_wcs, known):
         """
         Test that the angle is taken to be in the WCS frame when the
@@ -1218,6 +1251,12 @@ class _ConstantWCS(CountingWCS):
                                                np.zeros_like(y))
 
 
+# The tests in this class evaluate shared WCS fixtures where they are
+# undefined, which can crash astropy when done from several threads.
+# Fixed in astropy 8.1 (astropy PR 20423). Remove this marker when the
+# minimum required astropy version is 8.1 or later.
+@pytest.mark.thread_unsafe(
+    reason='astropy can crash when threads share a WCS that fails')
 class TestUndefinedWCS:
     """
     Tests of the helpers at a pixel position where the WCS is undefined.

@@ -4,7 +4,6 @@ Classes for a segmentation image and a single segment within a
 segmentation image.
 """
 
-import inspect
 import warnings
 from collections import defaultdict
 from copy import copy, deepcopy
@@ -19,6 +18,7 @@ from photutils.aperture.region_converters import _shapely_polygon_to_region
 from photutils.segmentation._label_stats import label_stats
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_positional_kwargs)
+from photutils.utils._misc import deepcopy_instance, get_cached_property_names
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
@@ -562,25 +562,12 @@ class SegmentationImage:
         """
         return self._data
 
-    @property
-    def _cached_properties(self):
-        """
-        A list of all class cached properties (even in superclasses).
-
-        The result is cached on the class to avoid repeated
-        introspection via `inspect.getmembers`.
-        """
-        cls = self.__class__
-        attr = '_cached_properties_cache'
-        # Subclasses get their own cached-property list
-        if attr not in cls.__dict__:
-            def is_cached_property(obj):
-                return isinstance(obj, cached_property)
-
-            setattr(cls, attr,
-                    [i[0] for i in inspect.getmembers(
-                        cls, predicate=is_cached_property)])
-        return getattr(cls, attr)
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # The cached-property names are found once, when the class is
+        # created, so the class is never modified while other threads
+        # may read it
+        cls._cached_properties = get_cached_property_names(cls)
 
     def _reset_cached_properties(self):
         for key in self._cached_properties:
@@ -1081,6 +1068,10 @@ class SegmentationImage:
             A deep copy of this object.
         """
         return deepcopy(self)
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def check_label(self, label):
         """
@@ -2976,6 +2967,11 @@ class SegmentationImage:
             warnings.warn(msg, AstropyUserWarning)
 
         return im, cbar_info
+
+
+# Subclasses get their names from __init_subclass__
+SegmentationImage._cached_properties = get_cached_property_names(
+    SegmentationImage)
 
 
 class Segment:

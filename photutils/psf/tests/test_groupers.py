@@ -10,6 +10,7 @@ from scipy.cluster.hierarchy import fclusterdata
 
 from photutils.psf import SourceGrouper, SourceGroups
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 
 class TestSourceGrouper:
@@ -921,3 +922,14 @@ class TestSourceGroups:
 
         assert result_ax is not None
         plt.close('all')
+
+
+def test_source_groups_concurrent_deepcopy():
+    """
+    Regression test that a shared SourceGroups object can be deep
+    copied while other threads compute its cached properties.
+    """
+    x = np.array([1.0, 2.0, 10.0, 11.0, 30.0])
+    y = np.array([1.0, 1.5, 10.0, 12.0, 30.0])
+    groups = np.array([1, 1, 2, 2, 3])
+    check_concurrent_deepcopy(lambda: SourceGroups(x, y, groups))

@@ -61,6 +61,11 @@ def stats_data(request):
     cls.data = make_100gaussians_image()
     cls.error = np.sqrt(np.abs(cls.data))
     cls.wcs = make_wcs(cls.data.shape)
+    # Set up the WCS once, before any test threads copy it. Before
+    # astropy 8.1 (astropy PR 19862), copying a WCS rewrites its
+    # undefined parameters in place, which corrupts concurrent copies
+    # while the parameters used by the transforms are still unset.
+    cls.wcs.wcs.set()
     cls.positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3))
     cls.aperture = CircularAperture(cls.positions, r=5)
 
@@ -206,15 +211,24 @@ class TestProperties(BaseApertureStatsData):
         assert apstats.x_centroid == 12.0
         assert apstats.y_centroid == 12.0
 
-    def test_cached_properties_class_cache(self):
+    def test_cached_properties_class_attribute(self):
         """
-        Test that _cached_properties is cached on the class and shared
-        across instances.
+        Test that _cached_properties is a class attribute that is set
+        when the class is created, including for subclasses.
         """
-        apstats2 = ApertureStats(self.data, self.aperture)
-        result1 = self.apstats1._cached_properties
-        result2 = apstats2._cached_properties
-        assert result1 is result2
+        class CustomStats(ApertureStats):
+            @cached_property
+            def custom(self):
+                return 1
+
+        names = ApertureStats._cached_properties
+        apstats = ApertureStats(self.data, self.aperture)
+        assert apstats._cached_properties is names
+        assert '_cached_properties' not in apstats.__dict__
+        assert 'sum' in names
+        assert 'custom' not in names
+        assert CustomStats._cached_properties == tuple(sorted(
+            (*names, 'custom')))
 
     def test_repr_str(self):
         assert repr(self.apstats1) == str(self.apstats1)
@@ -283,11 +297,10 @@ class TestSumMethod(BaseApertureStatsData):
         mask = aperture.to_mask(method='center').to_image(data.shape) > 0
 
         fast = ApertureStats(data, aperture, mask=mask)
-        with patch.object(ApertureStats, '_batch_inputs',
-                          property(lambda _: None)):
-            slow = ApertureStats(data, aperture, mask=mask)
-            slow_sum = slow.sum
-            slow_area = slow.sum_aper_area
+        slow = ApertureStats(data, aperture, mask=mask)
+        slow._batch_inputs = None  # force the mask-based path
+        slow_sum = slow.sum
+        slow_area = slow.sum_aper_area
 
         assert fast._fast_sum is not None
         assert fast.sum > 0
@@ -724,10 +737,6 @@ class TestInputValidation(BaseApertureStatsData):
         with pytest.raises(TypeError, match=match):
             ApertureStats(self.data, 10.0)
 
-        with (patch.dict(sys.modules, {'regions': None}),
-              pytest.raises(TypeError, match=match)):
-            ApertureStats(self.data, 10.0)
-
         match = 'sigma_clip must be a SigmaClip instance'
         with pytest.raises(TypeError, match=match):
             ApertureStats(self.data, self.aperture, sigma_clip=10)
@@ -743,6 +752,14 @@ class TestInputValidation(BaseApertureStatsData):
         match = 'data and error must have the same shape'
         with pytest.raises(ValueError, match=match):
             ApertureStats(self.data, self.aperture, error=np.ones((3, 3)))
+
+    @pytest.mark.thread_unsafe(
+        reason='patching sys.modules affects all threads')
+    def test_invalid_aperture_without_regions(self):
+        match = 'aperture must be an Aperture or Region object'
+        with (patch.dict(sys.modules, {'regions': None}),
+              pytest.raises(TypeError, match=match)):
+            ApertureStats(self.data, 10.0)
 
     @pytest.mark.parametrize('with_units', [True, False])
     def test_nddata_input(self, with_units):
@@ -826,17 +843,16 @@ class TestMaskPathParity(BaseApertureStatsData):
 
         # Force the mask-based path by disabling the batch-driver
         # inputs, which disables both the fast center-value gather
-        # and the fast sum path. Patching only ``_fast_gather`` is
+        # and the fast sum path. Overriding only ``_fast_gather`` is
         # insufficient because ``_fast_sum`` would still handle the
         # ``sum``, ``sum_err``, and ``sum_aper_area`` comparisons.
-        with patch.object(ApertureStats, '_batch_inputs',
-                          property(lambda _: None)):
-            slow = ApertureStats(self.data, aperture, error=self.error,
-                                 sigma_clip=sigma_clip)
-            assert slow._fast_gather is None
-            assert slow._fast_sum is None
-            slow_values = {prop: getattr(slow, prop)
-                           for prop in numeric_props}
+        slow = ApertureStats(self.data, aperture, error=self.error,
+                             sigma_clip=sigma_clip)
+        slow._batch_inputs = None  # force the mask-based path
+        assert slow._fast_gather is None
+        assert slow._fast_sum is None
+        slow_values = {prop: getattr(slow, prop)
+                       for prop in numeric_props}
 
         for prop in numeric_props:
             assert_allclose(getattr(fast, prop), slow_values[prop],
@@ -1398,15 +1414,15 @@ class TestSigmaClipBiweightStrings:
         sum1 = apstats1.sum
 
         # Force the mask-based fallback path.
-        monkeypatch.setattr(ApertureStats, '_fast_clip_spec',
-                            lambda _self: None)
-        apstats2 = ApertureStats(data, aper, sigma_clip=sigclip,
-                                 sum_method='exact')
-        assert apstats2._fast_clip_spec() is None
+        with monkeypatch.context() as mp:
+            mp.setattr(ApertureStats, '_fast_clip_spec', lambda _self: None)
+            apstats2 = ApertureStats(data, aper, sigma_clip=sigclip,
+                                     sum_method='exact')
+            assert apstats2._fast_clip_spec() is None
 
-        assert_allclose(mean1, apstats2.mean, rtol=1e-10)
-        assert_allclose(std1, apstats2.std, rtol=1e-10)
-        assert_allclose(sum1, apstats2.sum, rtol=1e-10)
+            assert_allclose(mean1, apstats2.mean, rtol=1e-10)
+            assert_allclose(std1, apstats2.std, rtol=1e-10)
+            assert_allclose(sum1, apstats2.sum, rtol=1e-10)
 
     def test_biweight_final_bounds_survivors(self):
         """
@@ -1684,9 +1700,12 @@ class TestBoundedMemory:
         with a small budget that forces block processing.
         """
         stats1 = ApertureStats(data, aper, **kwargs)
-        monkeypatch.setattr('photutils.aperture.stats._BLOCK_MAX_PIXELS',
-                            max_pixels)
-        stats2 = ApertureStats(data, aper, **kwargs)
+        # The budget is read when the object is created. Restoring it
+        # here keeps repeated calls (e.g., test iterations) independent.
+        with monkeypatch.context() as mp:
+            mp.setattr('photutils.aperture.stats._BLOCK_MAX_PIXELS',
+                       max_pixels)
+            stats2 = ApertureStats(data, aper, **kwargs)
         return stats1, stats2
 
     @pytest.mark.parametrize('n_threads', [1, 3])
@@ -1877,6 +1896,7 @@ class TestBoundedMemory:
         for prop in ('median', 'mean', 'sum'):
             assert_equal(getattr(stats1, prop), getattr(stats2, prop))
 
+    @pytest.mark.thread_unsafe(reason='tracemalloc traces all threads')
     def test_peak_memory(self):
         """
         Test that the peak memory is bounded by the block size instead
@@ -2021,6 +2041,7 @@ class TestInputDtypes:
         finally:
             tracemalloc.stop()
 
+    @pytest.mark.thread_unsafe(reason='tracemalloc traces all threads')
     def test_float32_inputs_not_copied(self):
         """
         Test that C-contiguous float32 inputs are used without making
@@ -2133,15 +2154,14 @@ class TestCenterCutoutParity:
         assert fast._fast_cutouts_center is not None
         fast_cutouts = self.get_cutouts(fast)
 
-        with patch.object(ApertureStats, '_batch_inputs',
-                          property(lambda _: None)):
-            slow = ApertureStats(data, aperture, **kwargs)
-            assert slow._fast_cutouts_center is None
-            # The mask-based path multiplies nonfinite data values by
-            # the boolean masks (NaN * 0), which emits a numpy
-            # RuntimeWarning
-            with np.errstate(invalid='ignore'):
-                slow_cutouts = self.get_cutouts(slow)
+        slow = ApertureStats(data, aperture, **kwargs)
+        slow._batch_inputs = None  # force the mask-based path
+        assert slow._fast_cutouts_center is None
+        # The mask-based path multiplies nonfinite data values by
+        # the boolean masks (NaN * 0), which emits a numpy
+        # RuntimeWarning
+        with np.errstate(invalid='ignore'):
+            slow_cutouts = self.get_cutouts(slow)
 
         for key in fast_cutouts:
             if not use_error and key == 'variance':
@@ -2173,10 +2193,9 @@ class TestCenterCutoutParity:
         assert fast._fast_cutouts_center is not None
         fast_data = fast.data_cutout
 
-        with patch.object(ApertureStats, '_batch_inputs',
-                          property(lambda _: None)):
-            slow = ApertureStats(data, aperture, **kwargs)
-            slow_data = slow.data_cutout
+        slow = ApertureStats(data, aperture, **kwargs)
+        slow._batch_inputs = None  # force the mask-based path
+        slow_data = slow.data_cutout
 
         self.assert_cutout_lists_equal(fast_data, slow_data)
 

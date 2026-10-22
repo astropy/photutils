@@ -3,6 +3,10 @@
 Tests for the core module.
 """
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -440,6 +444,34 @@ class TestApertureParameterMutation:
         assert aper._theta_rad == expected._theta_rad
         assert aper.to_pixel(tan_wcs) == expected.to_pixel(tan_wcs)
 
+    def test_concurrent_first_reassignment(self):
+        """
+        Test that the first parameter reassignments of instances of a
+        new aperture class are safe when made concurrently from multiple
+        threads.
+
+        Each reassignment resets the cached properties named by the
+        class. A new class is used for each round so that no per-class
+        state is left over from earlier rounds or tests.
+        """
+        n_threads = 8
+
+        def reassign(aper, barrier):
+            barrier.wait()
+            aper.r = 4.0
+            return aper.r
+
+        for i in range(200):
+            aperture_class = type(f'CircularAperture{i}',
+                                  (CircularAperture,), {})
+            apertures = [aperture_class(SCALAR_POS_20, r=3.0)
+                         for _ in range(n_threads)]
+            barrier = threading.Barrier(n_threads)
+            with ThreadPoolExecutor(max_workers=n_threads) as executor:
+                results = list(executor.map(reassign, apertures,
+                                            [barrier] * n_threads))
+            assert results == [4.0] * n_threads
+
 
 class TestApertureReprStr:
     """
@@ -525,6 +557,35 @@ class TestApertureIteration:
         aper = SkyCircularAperture(pos, r=1.0 * u.arcsec)
         aper_copy = aper.copy()
         assert aper == aper_copy
+
+    def test_concurrent_deepcopy(self):
+        """
+        Regression test that a shared aperture can be deep copied while
+        other threads read its cached properties.
+
+        A deep copy iterates the instance dict. On a free-threaded build
+        this raised "dictionary changed size during iteration" when
+        another thread added a cached property at the same time.
+        """
+        positions = np.random.default_rng(0).uniform(20, 80, (30, 2))
+        n_threads = 8
+        for _ in range(50):
+            aper = CircularAperture(positions, r=5.0)
+            names = aper._cached_properties
+            barrier = threading.Barrier(n_threads)
+
+            def worker(start, aper=aper, names=names, barrier=barrier):
+                barrier.wait()
+                copies = []
+                for name in names[start:] + names[:start]:
+                    _ = getattr(aper, name)
+                    copies.append(deepcopy(aper))
+                return copies
+
+            with ThreadPoolExecutor(max_workers=n_threads) as executor:
+                results = list(executor.map(worker, range(n_threads)))
+            for copies in results:
+                assert all(aper_copy == aper for aper_copy in copies)
 
 
 class TestApertureMetadata:

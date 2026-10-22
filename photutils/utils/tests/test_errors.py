@@ -259,6 +259,7 @@ def test_inputs_not_modified():
             assert_allclose(arr, copy, rtol=0)
 
 
+@pytest.mark.thread_unsafe(reason='tracemalloc traces all threads')
 def test_scalar_gain_memory():
     """
     Test that a scalar effective_gain is not expanded to a full-size

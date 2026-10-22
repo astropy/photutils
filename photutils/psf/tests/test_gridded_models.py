@@ -758,6 +758,9 @@ class TestGriddedPSFModel:
 
     @pytest.mark.parametrize('deepcopy', [False, True])
     def test_copy(self, psfmodel, deepcopy):
+        # A shallow copy shares its data array with the model, and the data
+        # are modified below, so use a model that this test owns.
+        psfmodel = psfmodel.deepcopy()
         flux = psfmodel.flux.value
         model_copy = psfmodel.deepcopy() if deepcopy else psfmodel.copy()
 
@@ -895,6 +898,7 @@ class TestGriddedPSFModel:
         assert_equal(self._evaluate_all_planes(psfmodel), values)
         assert spline_builds.count == len(psfmodel.data)
 
+    @pytest.mark.iterations(1)
     def test_zero_weight_planes_not_built(self, psfmodel, spline_builds):
         """
         Test that the spline of a bounding grid plane is not built when
@@ -967,6 +971,7 @@ class TestGriddedPSFModel:
         assert_equal(self._evaluate_all_planes(model),
                      self._evaluate_all_planes(psfmodel))
 
+    @pytest.mark.iterations(1)
     def test_deepcopy_copies_spline_cache(self, psfmodel, spline_builds):
         """
         Test that a deep copy gets its own copy of the spline cache, so
@@ -1035,6 +1040,7 @@ class TestGriddedPSFModel:
         assert new_model.lock is not model.lock
         assert new_model.data is model.data
 
+    @pytest.mark.iterations(1)
     def test_shallow_copy_shares_spline_cache(self, psfmodel, spline_builds):
         """
         Test that a shallow copy made with copy.copy shares the spline

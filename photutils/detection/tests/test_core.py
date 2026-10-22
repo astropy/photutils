@@ -15,6 +15,7 @@ from photutils.detection import DAOStarFinder
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_n_brightest)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 
 class TestStarFinderKernel:
@@ -254,16 +255,18 @@ class TestStarFinderCatalogBase:
                     'cutout_shape', 'default_columns')
         assert cat._get_init_attributes() == expected
 
-    def test_cached_properties_class_cache(self, make_catalog):
+    def test_cached_properties_class_attribute(self, make_catalog):
         """
-        Test that _cached_properties is cached on the class and shared
-        across instances.
+        Test that _cached_properties is a class attribute that is set
+        when the class is created, including for subclasses.
         """
-        cat1 = make_catalog()
-        cat2 = make_catalog()
-        result1 = cat1._cached_properties
-        result2 = cat2._cached_properties
-        assert result1 is result2
+        cat = make_catalog()
+        names = StarFinderCatalogBase._cached_properties
+        assert 'flux' in names
+        assert 'x_centroid' not in names
+        assert '_cached_properties' not in cat.__dict__
+        assert cat._cached_properties == tuple(sorted(
+            (*names, 'x_centroid', 'y_centroid')))
 
     def test_to_table_missing_default_columns(self, make_catalog):
         """
@@ -654,12 +657,11 @@ class TestThreadSafety:
 
     def test_concurrent_cached_properties_introspection(self):
         """
-        Test concurrent first access of the class-level
-        _cached_properties introspection cache on a fresh class.
+        Test concurrent access of _cached_properties on instances of a
+        fresh class.
 
-        The lazy class-level cache is written without a lock. The race
-        is benign because the computed list is identical for every
-        thread.
+        The names are found when the class is created, so the threads
+        only read them.
         """
         cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
@@ -680,6 +682,19 @@ class TestThreadSafety:
 
         assert all(result == results[0] for result in results)
         assert 'flux' in results[0]
+
+    def test_concurrent_deepcopy(self):
+        """
+        Regression test that a shared star-finder catalog can be deep
+        copied while other threads compute its cached properties.
+        """
+        cls = _make_minimal_catalog_class()
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[15, 12] = 8.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [12, 15]])
+        check_concurrent_deepcopy(lambda: cls(data, xypos, kernel))
 
 
 class TestStarFinderBaseCall:

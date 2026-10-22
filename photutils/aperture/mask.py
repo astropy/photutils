@@ -10,6 +10,7 @@ import astropy.units as u
 import numpy as np
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._misc import deepcopy_instance
 
 __all__ = ['ApertureMask']
 
@@ -37,6 +38,10 @@ class ApertureMask:
             msg = 'mask data and bounding box must have the same shape'
             raise ValueError(msg)
         self.bbox = bbox
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     @cached_property
     def _mask(self):

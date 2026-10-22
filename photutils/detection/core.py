@@ -8,7 +8,6 @@ that finds stars in an image.
 """
 
 import abc
-import inspect
 import math
 import warnings
 from functools import cached_property
@@ -22,7 +21,8 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
-from photutils.utils._misc import _get_meta
+from photutils.utils._misc import (_get_meta, deepcopy_instance,
+                                   get_cached_property_names)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
@@ -278,6 +278,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         self.id = np.arange(len(self)) + 1
 
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
+
     def __repr__(self):
         params = ('n_sources',)
         overrides = {'n_sources': len(self)}
@@ -346,25 +350,12 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                 'cutout_shape', 'default_columns')
 
-    @property
-    def _cached_properties(self):
-        """
-        Return all cached properties (even in superclasses).
-
-        The result is cached on the class to avoid repeated
-        introspection via `inspect.getmembers`.
-        """
-        cls = self.__class__
-        attr = '_cached_properties_cache'
-        # Subclasses get their own cached-property list
-        if attr not in cls.__dict__:
-            def is_cached_property(obj):
-                return isinstance(obj, cached_property)
-
-            setattr(cls, attr,
-                    [i[0] for i in inspect.getmembers(
-                        cls, predicate=is_cached_property)])
-        return getattr(cls, attr)
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # The cached-property names are found once, when the class is
+        # created, so the class is never modified while other threads
+        # may read it
+        cls._cached_properties = get_cached_property_names(cls)
 
     @property
     def _properties(self):
@@ -796,6 +787,11 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             canonical_column = _DEPRECATED_ATTRIBUTES.get(column, column)
             table[canonical_column] = values
         return table
+
+
+# Subclasses get their names from __init_subclass__
+StarFinderCatalogBase._cached_properties = get_cached_property_names(
+    StarFinderCatalogBase)
 
 
 class _StarFinderKernel:

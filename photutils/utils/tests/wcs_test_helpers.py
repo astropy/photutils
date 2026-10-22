@@ -10,6 +10,7 @@ plugin.
 
 import astropy.units as u
 import numpy as np
+import pytest
 from astropy.coordinates import SkyCoord
 from astropy.io.fits import Header
 from astropy.wcs import WCS
@@ -17,6 +18,17 @@ from astropy.wcs import WCS
 # WCS test constants
 WCS_CENTER = SkyCoord(100 * u.deg, 30 * u.deg)
 WCS_CDELT_ARCSEC = 0.1
+
+# Before astropy 8.1 (astropy PR 19862), concurrent transforms with one
+# shared SIP WCS can differ at the rtol=1e-12 level that some tests
+# check, so those tests run single-threaded with pytest-run-parallel.
+# Remove these markers when the minimum required astropy version is 8.1
+# or later.
+SIP_THREAD_UNSAFE = pytest.mark.thread_unsafe(
+    reason='astropy SIP WCS transforms are not thread-safe')
+
+# An indirect ``wcs`` parameter that names the shared SIP WCS fixture
+SIP_WCS_PARAM = pytest.param('sip_wcs', marks=SIP_THREAD_UNSAFE)
 
 
 def make_simple_wcs(skycoord, resolution, size, *, rotation_deg=0.0):

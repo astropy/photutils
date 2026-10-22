@@ -16,8 +16,9 @@ import numpy as np
 from astropy.stats import SigmaClip
 from numpy.testing import assert_equal
 
-from photutils.utils import ImageDepth, ShepardIDWInterpolator
+from photutils.utils import CutoutImage, ImageDepth, ShepardIDWInterpolator
 from photutils.utils._coords import make_random_xycoords
+from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
 
 N_THREADS = 8
 N_CALLS = 3
@@ -135,3 +136,12 @@ def test_concurrent_make_random_xycoords():
 
     for result in _run_concurrently(task, n_calls=10):
         assert_equal(result, expected)
+
+
+def test_concurrent_cutout_image_deepcopy():
+    """
+    Regression test that a shared CutoutImage can be deep copied while
+    other threads compute its cached properties.
+    """
+    data = np.arange(400.0).reshape(20, 20)
+    check_concurrent_deepcopy(lambda: CutoutImage(data, (8, 15), (5, 7)))
