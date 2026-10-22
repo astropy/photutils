@@ -5,6 +5,7 @@ Shared pytest fixtures and helpers for the aperture tests.
 
 import numpy as np
 import pytest
+from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 
 from photutils.aperture import CircularAperture
@@ -20,6 +21,23 @@ class NoBatchCircularAperture(CircularAperture):
     Cython driver (it is not decorated with
     ``_enable_batch_photometry``), forcing the mask-based code path.
     """
+
+
+@pytest.fixture(scope='session', autouse=True)
+def _create_skyoffset_frame():
+    """
+    Create the astropy ``SkyOffsetFrame`` class for ICRS before any
+    test runs.
+
+    The sky polygon apertures use ``SkyCoord.spherical_offsets_by``,
+    which creates and registers this class on first use. That
+    registration is not thread-safe on a free-threaded build, so
+    creating it here keeps those tests safe to run with
+    pytest-run-parallel. This fixture can be removed once the
+    minimum required astropy version includes the fix for this race
+    (astropy PR 20669).
+    """
+    SkyCoord(0, 0, unit='deg').skyoffset_frame()
 
 
 def make_scene():

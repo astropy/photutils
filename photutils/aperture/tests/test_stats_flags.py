@@ -421,10 +421,11 @@ class TestMaskPathParity:
                        {'ddof': 1}):
             fast = ApertureStats(data, aper, **kwargs)
             assert fast._batch_inputs is not None
-            with _force_mask_path():
-                slow = ApertureStats(data, aper, **kwargs)
-                assert slow._batch_inputs is None
-                assert_array_equal(fast.flags, slow.flags)
+            slow = ApertureStats(data, aper, **kwargs)
+            slow._batch_inputs = None  # force the mask-based path
+            assert_array_equal(fast.flags, slow.flags)
+            assert slow._fast_gather is None
+            assert slow._fast_sum is None
 
 
 class TestFlagsAPI:

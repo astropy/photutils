@@ -33,7 +33,7 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
-from photutils.utils.tests.wcs_test_helpers import CountingWCS
+from photutils.utils.tests.wcs_test_helpers import SIP_WCS_PARAM, CountingWCS
 
 # Module constants
 CENTER = SkyCoord(100 * u.deg, 30 * u.deg)
@@ -249,6 +249,18 @@ def galactic_wcs():
     wcs.wcs.ctype = ['GLON-TAN', 'GLAT-TAN']
 
     return wcs
+
+
+@pytest.fixture
+def wcs(request):
+    """
+    The WCS fixture named by an indirect ``wcs`` parameter.
+
+    The named fixture is resolved here, during setup on the main
+    thread, because ``request.getfixturevalue`` is not thread-safe
+    inside a test body run by pytest-run-parallel.
+    """
+    return request.getfixturevalue(request.param)
 
 
 @pytest.fixture
@@ -804,11 +816,10 @@ class TestCircleAsEllipse:
         assert_allclose(aper.a, aper.b, rtol=1e-8)
         assert_allclose(aper.a, circle.r, rtol=1e-8)
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
-    def test_pixel_ellipse_traces_sky_circle(self, wcs_name, request):
+    @pytest.mark.parametrize('wcs', ['sheared_wcs', 'sip_wcs'], indirect=True)
+    def test_pixel_ellipse_traces_sky_circle(self, wcs):
         # Every point on the pixel ellipse boundary must lie at the
         # circle radius from the center on the sky.
-        wcs = request.getfixturevalue(wcs_name)
         radius = 2 * u.arcsec
         sky = SkyCircularAperture(CENTER, r=radius)
         aper = sky.to_pixel(wcs, as_ellipse=True)
@@ -917,6 +928,12 @@ def strongly_sheared_wcs():
     return wcs
 
 
+# The inner-shape tests compare WCS transforms at rtol=1e-12, which
+# a shared SIP WCS does not meet when used from several threads before
+# astropy 8.1 (see SIP_WCS_PARAM)
+_INNER_SHAPE_WCS = ['sheared_wcs', SIP_WCS_PARAM, 'strongly_sheared_wcs']
+
+
 class TestAnnulusInnerShape:
     """
     Tests the conversion of an annulus whose inner shape has a different
@@ -928,10 +945,8 @@ class TestAnnulusInnerShape:
     conversion recovers the input.
     """
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
-                                          'strongly_sheared_wcs'])
-    def test_elliptical_pixel_to_sky(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
+    @pytest.mark.parametrize('wcs', _INNER_SHAPE_WCS, indirect=True)
+    def test_elliptical_pixel_to_sky(self, wcs):
         theta = 45 * u.deg
         annulus = EllipticalAnnulus(PIX_CENTER, a_in=2, a_out=4, b_out=2,
                                     b_in=1.5, theta=theta)
@@ -945,10 +960,8 @@ class TestAnnulusInnerShape:
         assert_quantity_allclose(sky.theta, sky_outer.theta,
                                  atol=1e-10 * u.deg)
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
-                                          'strongly_sheared_wcs'])
-    def test_elliptical_sky_to_pixel(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
+    @pytest.mark.parametrize('wcs', _INNER_SHAPE_WCS, indirect=True)
+    def test_elliptical_sky_to_pixel(self, wcs):
         theta = 30 * u.deg
         annulus = SkyEllipticalAnnulus(CENTER, a_in=1 * u.arcsec,
                                        a_out=2 * u.arcsec,
@@ -965,10 +978,8 @@ class TestAnnulusInnerShape:
         assert_quantity_allclose(pix.theta, pix_outer.theta,
                                  atol=1e-10 * u.deg)
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
-                                          'strongly_sheared_wcs'])
-    def test_rectangular_pixel_to_sky(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
+    @pytest.mark.parametrize('wcs', _INNER_SHAPE_WCS, indirect=True)
+    def test_rectangular_pixel_to_sky(self, wcs):
         theta = 45 * u.deg
         annulus = RectangularAnnulus(PIX_CENTER, w_in=2, w_out=4, h_out=2,
                                      h_in=1.5, theta=theta)
@@ -982,10 +993,8 @@ class TestAnnulusInnerShape:
         assert_quantity_allclose(sky.theta, sky_outer.theta,
                                  atol=1e-10 * u.deg)
 
-    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs',
-                                          'strongly_sheared_wcs'])
-    def test_rectangular_sky_to_pixel(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
+    @pytest.mark.parametrize('wcs', _INNER_SHAPE_WCS, indirect=True)
+    def test_rectangular_sky_to_pixel(self, wcs):
         theta = 30 * u.deg
         annulus = SkyRectangularAnnulus(CENTER, w_in=1 * u.arcsec,
                                         w_out=2 * u.arcsec,
@@ -1057,28 +1066,26 @@ class TestSingleWCSEvaluation:
     """
 
     @pytest.mark.parametrize(('aperture', 'kwargs'), _SKY_APERTURE_CASES)
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
-    def test_sky_to_pixel(self, aperture, kwargs, wcs_name, request):
-        real_wcs = request.getfixturevalue(wcs_name)
-        expected = aperture.to_pixel(real_wcs, **kwargs)
-        wcs = CountingWCS(real_wcs)
-        result = aperture.to_pixel(wcs, **kwargs)
-        assert wcs.n_world_to_pixel == 1
-        assert wcs.n_pixel_to_world_values == 1
-        assert wcs.n_pixel_to_world == 0
+    @pytest.mark.parametrize('wcs', ['simple_wcs', 'sip_wcs'], indirect=True)
+    def test_sky_to_pixel(self, aperture, kwargs, wcs):
+        expected = aperture.to_pixel(wcs, **kwargs)
+        counting_wcs = CountingWCS(wcs)
+        result = aperture.to_pixel(counting_wcs, **kwargs)
+        assert counting_wcs.n_world_to_pixel == 1
+        assert counting_wcs.n_pixel_to_world_values == 1
+        assert counting_wcs.n_pixel_to_world == 0
         assert type(result) is type(expected)
         assert_allclose(result.positions, expected.positions, atol=1e-8)
 
     @pytest.mark.parametrize('aperture', _PIXEL_APERTURE_CASES)
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
-    def test_pixel_to_sky(self, aperture, wcs_name, request):
-        real_wcs = request.getfixturevalue(wcs_name)
-        expected = aperture.to_sky(real_wcs)
-        wcs = CountingWCS(real_wcs)
-        result = aperture.to_sky(wcs)
-        assert wcs.n_world_to_pixel == 0
-        assert wcs.n_pixel_to_world == 1
-        assert wcs.n_pixel_to_world_values == 1
+    @pytest.mark.parametrize('wcs', ['simple_wcs', 'sip_wcs'], indirect=True)
+    def test_pixel_to_sky(self, aperture, wcs):
+        expected = aperture.to_sky(wcs)
+        counting_wcs = CountingWCS(wcs)
+        result = aperture.to_sky(counting_wcs)
+        assert counting_wcs.n_world_to_pixel == 0
+        assert counting_wcs.n_pixel_to_world == 1
+        assert counting_wcs.n_pixel_to_world_values == 1
         assert type(result) is type(expected)
         assert result.positions.separation(expected.positions).arcsec < 1e-9
 
@@ -1118,13 +1125,11 @@ class TestPositionFrameDiffersFromWCSFrame:
     between that frame and the WCS frame.
     """
 
-    @pytest.mark.parametrize(('position', 'wcs_name'),
-                             _frame_mismatch_params())
+    @pytest.mark.parametrize(('position', 'wcs'),
+                             _frame_mismatch_params(), indirect=['wcs'])
     @pytest.mark.parametrize('case', DIRECTED_CASES)
     @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
-    def test_sky_to_pixel_theta(self, position, wcs_name, case, theta_deg,
-                                request):
-        wcs = request.getfixturevalue(wcs_name)
+    def test_sky_to_pixel_theta(self, position, wcs, case, theta_deg):
         theta = theta_deg * u.deg
         sky = case['sky_cls'](position, **{**case['sky_kw'], 'theta': theta})
         pix = sky.to_pixel(wcs)
