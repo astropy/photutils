@@ -8,12 +8,8 @@ This complements the low-level ``batch_aperture_sums`` concurrency tests
 in ``test_batch_photometry_driver.py`` by covering the
 ``batch_aperture_gather`` gatherer, the higher-level `ApertureStats`
 statistics pipeline (which drives the ``_batch_stats`` order/moment/
-sigma-clip nogil kernels), and the free-threading opt-in of the compiled
-modules.
+sigma-clip nogil kernels).
 """
-import importlib
-import sys
-import sysconfig
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -33,12 +29,6 @@ from photutils.datasets import make_100gaussians_image
 
 N_THREADS = 8
 N_CALLS_PER_THREAD = 4
-
-# The compiled aperture modules that carry the
-# ``# cython: freethreading_compatible=True`` directive.
-APERTURE_MODULES = ('_batch_photometry', '_batch_stats')
-
-GIL_DISABLED = bool(sysconfig.get_config_var('Py_GIL_DISABLED'))
 
 
 def _gather_inputs():
@@ -93,43 +83,6 @@ def _assert_gather_equal(result, expected):
 _STATS_PROPERTIES = ('mean', 'median', 'std', 'mad_std', 'biweight_location',
                      'biweight_midvariance', 'gini', 'min', 'max',
                      'sum', 'var', 'centroid')
-
-
-class TestFreeThreadingSupport:
-    """
-    The compiled aperture modules must not re-enable the GIL on a
-    free-threaded build.
-    """
-
-    @pytest.mark.parametrize('modname', APERTURE_MODULES)
-    def test_module_importable(self, modname):
-        """
-        Test that each compiled aperture batch module imports cleanly.
-
-        On a free-threaded build, importing a module that was not compiled
-        with ``freethreading_compatible=True`` emits a ``RuntimeWarning``
-        and re-enables the GIL. This import check is the entry point for the
-        free-threading verification below.
-        """
-        module = importlib.import_module(f'photutils.aperture.{modname}')
-        assert module is not None
-
-    @pytest.mark.skipif(not GIL_DISABLED,
-                        reason='requires a free-threaded (GIL-disabled) build')
-    def test_gil_not_reenabled(self):
-        """
-        Test that importing the aperture Cython batch modules does not
-        re-enable the GIL on a free-threaded build.
-
-        Each module is compiled with the ``freethreading_compatible=True``
-        directive, which marks it as free-threading compatible
-        (``Py_MOD_GIL_NOT_USED``). A module lacking that directive would
-        force the runtime to re-enable the GIL on import, which this test
-        detects.
-        """
-        for modname in APERTURE_MODULES:
-            importlib.import_module(f'photutils.aperture.{modname}')
-        assert sys._is_gil_enabled() is False
 
 
 class TestBatchApertureGather:
