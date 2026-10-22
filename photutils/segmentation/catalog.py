@@ -5,7 +5,6 @@ segmentation image.
 """
 
 import functools
-import inspect
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -57,7 +56,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._flags import update_flag_docstring
-from photutils.utils._misc import _get_meta
+from photutils.utils._misc import _get_meta, get_cached_property_names
 from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
@@ -955,25 +954,12 @@ class SourceCatalog:
         cached_properties.sort()
         return cached_properties
 
-    @property
-    def _cached_properties(self):
-        """
-        A list of all class cached properties (even in superclasses).
-
-        The result is cached on the class to avoid repeated
-        introspection via `inspect.getmembers`.
-        """
-        cls = self.__class__
-        attr = '_cached_properties_cache'
-        # Subclasses get their own cached-property list
-        if attr not in cls.__dict__:
-            def is_cached_property(obj):
-                return isinstance(obj, cached_property)
-
-            setattr(cls, attr,
-                    [i[0] for i in inspect.getmembers(
-                        cls, predicate=is_cached_property)])
-        return getattr(cls, attr)
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # The cached-property names are found once, when the class is
+        # created, so the class is never modified while other threads
+        # may read it
+        cls._cached_properties = get_cached_property_names(cls)
 
     @staticmethod
     def _index_object_list(lst, index):
@@ -6011,6 +5997,10 @@ class SourceCatalog:
                                        mode=mode, fill_value=fill_value))
 
         return self._make_scalar(cutouts)
+
+
+# Subclasses get their names from __init_subclass__
+SourceCatalog._cached_properties = get_cached_property_names(SourceCatalog)
 
 
 def __getattr__(name):

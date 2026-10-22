@@ -3,7 +3,6 @@
 Tools for calculating properties of sources defined by an Aperture.
 """
 
-import inspect
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy, deepcopy
@@ -49,7 +48,7 @@ from photutils.morphology import gini as gini_func
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs)
-from photutils.utils._misc import _get_meta
+from photutils.utils._misc import _get_meta, get_cached_property_names
 from photutils.utils._moments import (centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
@@ -586,25 +585,12 @@ class ApertureStats:
             raise TypeError(msg)
         return aperture
 
-    @property
-    def _cached_properties(self):
-        """
-        A list of all class cached properties (even in superclasses).
-
-        The result is cached on the class to avoid repeated
-        introspection via `inspect.getmembers`.
-        """
-        cls = self.__class__
-        attr = '_cached_properties_cache'
-        # Subclasses get their own cached-property list
-        if attr not in cls.__dict__:
-            def is_cached_property(obj):
-                return isinstance(obj, cached_property)
-
-            setattr(cls, attr,
-                    [i[0] for i in inspect.getmembers(
-                        cls, predicate=is_cached_property)])
-        return getattr(cls, attr)
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # The cached-property names are found once, when the class is
+        # created, so the class is never modified while other threads
+        # may read it
+        cls._cached_properties = get_cached_property_names(cls)
 
     @property
     def properties(self):
@@ -3568,6 +3554,10 @@ class ApertureStats:
         """
         return self._finalize_value_stat(self._gini, gini_func,
                                          apply_unit=False)
+
+
+# Subclasses get their names from __init_subclass__
+ApertureStats._cached_properties = get_cached_property_names(ApertureStats)
 
 
 def __getattr__(name):

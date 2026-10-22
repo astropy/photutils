@@ -6,6 +6,7 @@ Tests for the catalog module.
 import threading
 import tracemalloc
 from concurrent.futures import ThreadPoolExecutor
+from functools import cached_property
 from io import StringIO
 from unittest.mock import patch
 
@@ -1204,15 +1205,24 @@ class TestSourceCatalog:
         for attr in attrs:
             assert attr in self.cat.properties
 
-    def test_cached_properties_class_cache(self):
+    def test_cached_properties_class_attribute(self):
         """
-        Test that _cached_properties is cached on the class and shared
-        across instances.
+        Test that _cached_properties is a class attribute that is set
+        when the class is created, including for subclasses.
         """
-        cat2 = SourceCatalog(self.data, self.segm)
-        result1 = self.cat._cached_properties
-        result2 = cat2._cached_properties
-        assert result1 is result2
+        class CustomCatalog(SourceCatalog):
+            @cached_property
+            def custom(self):
+                return 1
+
+        names = SourceCatalog._cached_properties
+        cat = SourceCatalog(self.data, self.segm)
+        assert cat._cached_properties is names
+        assert '_cached_properties' not in cat.__dict__
+        assert 'area' in names
+        assert 'custom' not in names
+        assert CustomCatalog._cached_properties == tuple(sorted(
+            (*names, 'custom')))
 
     def test_copy(self):
         """

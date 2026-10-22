@@ -4,11 +4,38 @@ Tests for the _misc module.
 """
 
 import builtins
+from functools import cached_property
 from unittest.mock import patch
 
 import pytest
 
-from photutils.utils._misc import _get_date, _get_meta, _get_version_info
+from photutils.utils._misc import (_get_date, _get_meta, _get_version_info,
+                                   get_cached_property_names)
+
+
+def test_get_cached_property_names():
+    """
+    Test that get_cached_property_names returns the sorted names of
+    the cached properties of a class, including inherited ones, and
+    not plain properties.
+    """
+    class Base:
+        @cached_property
+        def b_value(self):
+            return 1
+
+        @property
+        def plain(self):
+            return 2
+
+    class Derived(Base):
+        @cached_property
+        def a_value(self):
+            return 3
+
+    assert get_cached_property_names(Base) == ('b_value',)
+    assert get_cached_property_names(Derived) == ('a_value', 'b_value')
+    assert 'plain' not in get_cached_property_names(Derived)
 
 
 def test_get_version_info_import_error():

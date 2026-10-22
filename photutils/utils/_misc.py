@@ -1,11 +1,42 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Tools for getting the installed package versions and the current date
-and time for use in output metadata.
+and time for use in output metadata, and for finding the cached
+properties of a class.
 """
 
+import inspect
 import sys
 from datetime import UTC, datetime
+from functools import cached_property
+
+
+def get_cached_property_names(cls):
+    """
+    Return the names of the cached properties of a class, including
+    those inherited from its superclasses.
+
+    Classes store this result in a ``_cached_properties`` class
+    attribute when they are created (see ``__init_subclass__``).
+
+    The class is only read, never modified, so this function is safe
+    to call concurrently from multiple threads, including on
+    free-threaded Python builds.
+
+    Parameters
+    ----------
+    cls : type
+        The class to inspect.
+
+    Returns
+    -------
+    result : tuple of str
+        The sorted names of the `functools.cached_property` attributes
+        of ``cls``.
+    """
+    members = inspect.getmembers(
+        cls, predicate=lambda obj: isinstance(obj, cached_property))
+    return tuple(name for name, _ in members)
 
 
 def _get_version_info():

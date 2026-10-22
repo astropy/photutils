@@ -3,6 +3,9 @@
 Tests for the core module.
 """
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -439,6 +442,34 @@ class TestApertureParameterMutation:
         expected = aperture_class(position, theta=theta, **params)
         assert aper._theta_rad == expected._theta_rad
         assert aper.to_pixel(tan_wcs) == expected.to_pixel(tan_wcs)
+
+    def test_concurrent_first_reassignment(self):
+        """
+        Test that the first parameter reassignments of instances of a
+        new aperture class are safe when made concurrently from multiple
+        threads.
+
+        Each reassignment resets the cached properties named by the
+        class. A new class is used for each round so that no per-class
+        state is left over from earlier rounds or tests.
+        """
+        n_threads = 8
+
+        def reassign(aper, barrier):
+            barrier.wait()
+            aper.r = 4.0
+            return aper.r
+
+        for i in range(200):
+            aperture_class = type(f'CircularAperture{i}',
+                                  (CircularAperture,), {})
+            apertures = [aperture_class(SCALAR_POS_20, r=3.0)
+                         for _ in range(n_threads)]
+            barrier = threading.Barrier(n_threads)
+            with ThreadPoolExecutor(max_workers=n_threads) as executor:
+                results = list(executor.map(reassign, apertures,
+                                            [barrier] * n_threads))
+            assert results == [4.0] * n_threads
 
 
 class TestApertureReprStr:

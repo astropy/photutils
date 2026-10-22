@@ -10,6 +10,21 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed a race condition on free-threaded Python builds where the
+    first parameter reassignments of an aperture class made from
+    multiple threads at once could raise ``RuntimeError: dictionary
+    changed size during iteration``. ``ApertureStats`` had the same
+    issue. [#2526]
+
+- ``photutils.detection``
+
+  - Fixed a race condition on free-threaded Python builds where
+    ``DAOStarFinder``, ``IRAFStarFinder``, and ``StarFinder`` could
+    raise ``RuntimeError: dictionary changed size during iteration``
+    when first called from multiple threads at once. [#2526]
+
 - ``photutils.psf``
 
   - Fixed ``IterativePSFPhotometry`` with ``mode='all'`` and a
@@ -21,6 +36,13 @@ Bug Fixes
     ``init_params`` table with masked ``local_bkg`` values. Masked
     values are now handled as NaN, so they are not subtracted and the
     sources are flagged. [#2520]
+
+- ``photutils.segmentation``
+
+  - Fixed a race condition on free-threaded Python builds where
+    ``SegmentationImage`` and ``SourceCatalog`` could raise
+    ``RuntimeError: dictionary changed size during iteration`` when
+    first used from multiple threads at once. [#2526]
 
 API Changes
 ^^^^^^^^^^^

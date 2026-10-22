@@ -206,15 +206,24 @@ class TestProperties(BaseApertureStatsData):
         assert apstats.x_centroid == 12.0
         assert apstats.y_centroid == 12.0
 
-    def test_cached_properties_class_cache(self):
+    def test_cached_properties_class_attribute(self):
         """
-        Test that _cached_properties is cached on the class and shared
-        across instances.
+        Test that _cached_properties is a class attribute that is set
+        when the class is created, including for subclasses.
         """
-        apstats2 = ApertureStats(self.data, self.aperture)
-        result1 = self.apstats1._cached_properties
-        result2 = apstats2._cached_properties
-        assert result1 is result2
+        class CustomStats(ApertureStats):
+            @cached_property
+            def custom(self):
+                return 1
+
+        names = ApertureStats._cached_properties
+        apstats = ApertureStats(self.data, self.aperture)
+        assert apstats._cached_properties is names
+        assert '_cached_properties' not in apstats.__dict__
+        assert 'sum' in names
+        assert 'custom' not in names
+        assert CustomStats._cached_properties == tuple(sorted(
+            (*names, 'custom')))
 
     def test_repr_str(self):
         assert repr(self.apstats1) == str(self.apstats1)

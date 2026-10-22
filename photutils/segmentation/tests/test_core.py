@@ -620,15 +620,19 @@ class TestSegmentationImage:
         """
         assert self.segm.shape == (6, 6)
 
-    def test_cached_properties_class_cache(self):
+    def test_cached_properties_class_attribute(self):
         """
-        Test that _cached_properties is cached on the class and shared
-        across instances.
+        Test that _cached_properties is a class attribute that is set
+        when the class is created, including for subclasses.
         """
-        segm2 = SegmentationImage(self.data.copy())
-        result1 = self.segm._cached_properties
-        result2 = segm2._cached_properties
-        assert result1 is result2
+        names = SegmentationImage._cached_properties
+        segm = SegmentationImage(self.data.copy())
+        assert segm._cached_properties is names
+        assert '_cached_properties' not in segm.__dict__
+        assert 'areas' in names
+        assert 'value' not in names
+        assert CustomSegm._cached_properties == tuple(sorted(
+            (*names, 'value')))
 
     def test_labels(self):
         """
@@ -2689,12 +2693,11 @@ class TestThreadSafety:
 
     def test_concurrent_cached_properties_introspection(self):
         """
-        Test concurrent first access of the class-level
-        _cached_properties introspection cache on a fresh subclass.
+        Test concurrent access of _cached_properties on instances of a
+        fresh subclass.
 
-        The lazy class-level cache is written without a lock. The race
-        is benign because the computed list is identical for every
-        thread.
+        The names are found when the class is created, so the threads
+        only read them.
         """
         class FreshSegm(SegmentationImage):
             pass

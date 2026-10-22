@@ -4,7 +4,6 @@ Base aperture classes.
 """
 
 import abc
-import inspect
 import re
 import textwrap
 import warnings
@@ -36,6 +35,7 @@ from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._flags import define_flag_docstring
+from photutils.utils._misc import get_cached_property_names
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 
@@ -421,25 +421,12 @@ class Aperture(metaclass=abc.ABCMeta):
 
         return True
 
-    @property
-    def _cached_properties(self):
-        """
-        A list of all class cached properties (even in superclasses).
-
-        The result depends only on the class, so it is computed once
-        per class and cached (it is looked up on every aperture
-        parameter reassignment).
-        """
-        cls = self.__class__
-        cached = cls.__dict__.get('_cached_properties_cache')
-        if cached is None:
-            def is_cached_property(obj):
-                return isinstance(obj, cached_property)
-
-            cached = [i[0] for i in inspect.getmembers(
-                cls, predicate=is_cached_property)]
-            cls._cached_properties_cache = cached
-        return cached
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # The cached-property names are found once, when the class is
+        # created, so the class is never modified while other threads
+        # may read it
+        cls._cached_properties = get_cached_property_names(cls)
 
     def copy(self):
         """
@@ -478,6 +465,10 @@ class Aperture(metaclass=abc.ABCMeta):
         Whether the instance is scalar (i.e., a single position).
         """
         return self.shape == ()
+
+
+# Subclasses get their names from __init_subclass__
+Aperture._cached_properties = get_cached_property_names(Aperture)
 
 
 class _RotatableApertureMixin:
