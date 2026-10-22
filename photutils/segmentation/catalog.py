@@ -56,7 +56,8 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._flags import update_flag_docstring
-from photutils.utils._misc import _get_meta, get_cached_property_names
+from photutils.utils._misc import (_get_meta, deepcopy_instance,
+                                   get_cached_property_names)
 from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
@@ -1396,6 +1397,12 @@ class SourceCatalog:
             A deep copy of this object.
         """
         return deepcopy(self)
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties and cache entries
+        # while the copy runs
+        return deepcopy_instance(
+            self, memo, ('_flux_radius_cache', '_batch_arrays_cache'))
 
     def release_cache(self):
         """

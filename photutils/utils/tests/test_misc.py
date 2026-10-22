@@ -4,12 +4,16 @@ Tests for the _misc module.
 """
 
 import builtins
+import threading
+from copy import deepcopy
 from functools import cached_property
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from photutils.utils._misc import (_get_date, _get_meta, _get_version_info,
+                                   deepcopy_instance,
                                    get_cached_property_names)
 
 
@@ -36,6 +40,116 @@ def test_get_cached_property_names():
     assert get_cached_property_names(Base) == ('b_value',)
     assert get_cached_property_names(Derived) == ('a_value', 'b_value')
     assert 'plain' not in get_cached_property_names(Derived)
+
+
+def test_deepcopy_instance():
+    """
+    Test that deepcopy_instance deep copies the instance dict and the
+    named cache dicts, and keeps references back to the instance.
+    """
+    class Cached:
+        def __init__(self):
+            self.values = np.arange(3)
+            self.cache = {'a': np.ones(2)}
+            self.parent = self
+
+        def __deepcopy__(self, memo):
+            return deepcopy_instance(self, memo, ('cache',))
+
+        @cached_property
+        def total(self):
+            return self.values.sum()
+
+    obj = Cached()
+    _ = obj.total
+    result = deepcopy(obj)
+
+    assert type(result) is Cached
+    assert result.total == obj.total
+    assert result.parent is result
+    assert result.values is not obj.values
+    assert result.cache is not obj.cache
+    assert result.cache['a'] is not obj.cache['a']
+    result.cache['b'] = 1
+    assert 'b' not in obj.cache
+
+
+class _DeepcopyInstance:
+    """
+    Base class whose deep copies are made with deepcopy_instance.
+    """
+
+    def __deepcopy__(self, memo):
+        return deepcopy_instance(self, memo, getattr(self, 'cache_names',
+                                                     ()))
+
+
+def test_deepcopy_instance_shared_cache():
+    """
+    Test that a cache dict shared by several objects is also shared by
+    their copies.
+    """
+    class Cached(_DeepcopyInstance):
+        cache_names = ('cache',)
+
+        def __init__(self, cache):
+            self.cache = cache
+
+    cache = {'a': np.ones(2)}
+    obj1, obj2 = deepcopy([Cached(cache), Cached(cache)])
+    assert obj1.cache is obj2.cache
+    assert obj1.cache is not cache
+    assert obj1.cache['a'] is not cache['a']
+
+
+def test_deepcopy_instance_slots():
+    """
+    Test that deepcopy_instance copies the slot values of a subclass
+    that defines __slots__.
+    """
+    class Slotted(_DeepcopyInstance):
+        __slots__ = ('value',)
+
+    obj = Slotted()
+    obj.value = [1, 2]
+    obj.other = 3
+    result = deepcopy(obj)
+    assert result.value == [1, 2]
+    assert result.value is not obj.value
+    assert result.other == 3
+
+
+@pytest.mark.parametrize('define_setstate', [True, False])
+def test_deepcopy_instance_custom_state(define_setstate):
+    """
+    Test that deepcopy_instance copies a subclass that defines its own
+    state through its __getstate__ and __setstate__ methods.
+    """
+    class CustomState(_DeepcopyInstance):
+        def __init__(self):
+            self.values = [1, 2]
+            self.lock = threading.Lock()
+
+        def __getstate__(self):
+            state = self.__dict__.copy()
+            del state['lock']
+            return state
+
+    if define_setstate:
+        def setstate(self, state):
+            self.__dict__.update(state)
+            self.lock = threading.Lock()
+
+        CustomState.__setstate__ = setstate
+
+    obj = CustomState()
+    result = deepcopy(obj)
+    assert result.values == [1, 2]
+    assert result.values is not obj.values
+    if define_setstate:
+        assert result.lock is not obj.lock
+    else:
+        assert 'lock' not in result.__dict__
 
 
 def test_get_version_info_import_error():

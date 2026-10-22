@@ -2691,6 +2691,40 @@ class TestThreadSafety:
             assert slices == expected.slices
             assert_equal(missing_labels, expected.missing_labels)
 
+    def test_concurrent_copy_and_property_access(self):
+        """
+        Regression test that a shared segmentation image can be copied
+        while other threads read its cached properties.
+
+        A deep copy iterates the instance dict. On a free-threaded build
+        this raised "dictionary changed size during iteration" when
+        another thread added a cached property at the same time.
+        """
+        names = ('labels', 'areas', 'missing_labels', 'max_label',
+                 'n_labels', 'is_consecutive', 'background_area', 'shape')
+        expected_segm = SegmentationImage(self.data.copy())
+        expected = {name: getattr(expected_segm, name) for name in names}
+
+        n_threads = 8
+        for _ in range(50):
+            segm = SegmentationImage(self.data.copy())
+            barrier = threading.Barrier(n_threads)
+
+            def worker(start, segm=segm, barrier=barrier):
+                barrier.wait()
+                result = []
+                for name in names[start:] + names[:start]:
+                    _ = getattr(segm, name)
+                    result.append((name, getattr(segm.copy(), name)))
+                return result
+
+            with ThreadPoolExecutor(max_workers=n_threads) as executor:
+                results = list(executor.map(worker, range(n_threads)))
+
+            for result in results:
+                for name, value in result:
+                    assert_equal(value, expected[name])
+
     def test_concurrent_cached_properties_introspection(self):
         """
         Test concurrent access of _cached_properties on instances of a

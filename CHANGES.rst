@@ -18,6 +18,11 @@ Bug Fixes
     changed size during iteration``. ``ApertureStats`` had the same
     issue. [#2526]
 
+  - Fixed a bug where ``ApertureStats.copy`` and ``copy.deepcopy`` of
+    an aperture could raise ``RuntimeError: dictionary changed size
+    during iteration`` when another thread accessed the properties of
+    the same object at the same time. [#2526]
+
 - ``photutils.detection``
 
   - Fixed a race condition on free-threaded Python builds where
@@ -43,6 +48,11 @@ Bug Fixes
     ``SegmentationImage`` and ``SourceCatalog`` could raise
     ``RuntimeError: dictionary changed size during iteration`` when
     first used from multiple threads at once. [#2526]
+
+  - Fixed a bug where ``SegmentationImage.copy`` and
+    ``SourceCatalog.copy`` could raise ``RuntimeError: dictionary
+    changed size during iteration`` when another thread accessed the
+    properties of the same object at the same time. [#2526]
 
 API Changes
 ^^^^^^^^^^^

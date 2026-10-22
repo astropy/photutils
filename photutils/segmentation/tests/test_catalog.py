@@ -6,6 +6,7 @@ Tests for the catalog module.
 import threading
 import tracemalloc
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from functools import cached_property
 from io import StringIO
 from unittest.mock import patch
@@ -1234,6 +1235,22 @@ class TestSourceCatalog:
         assert 'kron_flux' not in cat2.__dict__
         tbl = cat2.to_table()
         assert len(tbl) == 7
+
+    def test_deepcopy_shares_batch_cache_with_slices(self):
+        """
+        Test that a deep copy of a catalog and one of its slices keeps
+        the full-image working-array cache shared between them.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        _ = cat.to_table()
+        sub = cat[1:3]
+        assert sub._batch_arrays_cache is cat._batch_arrays_cache
+
+        cat2, sub2 = deepcopy([cat, sub])
+        assert sub2._batch_arrays_cache is cat2._batch_arrays_cache
+        assert cat2._batch_arrays_cache is not cat._batch_arrays_cache
+        assert (cat2._batch_arrays_cache.keys()
+                == cat._batch_arrays_cache.keys())
 
     def test_data_dtype(self):
         """
@@ -2509,6 +2526,54 @@ class TestThreadSafety:
                 for i, value, radius in result:
                     assert_equal(value, expected[names[i]][1:3])
                     assert_equal(radius, expected_radius[i][1:3])
+
+    def test_concurrent_copy_and_property_access(self):
+        """
+        Regression test that a shared catalog can be copied while other
+        threads read its properties and call flux_radius.
+
+        A deep copy iterates the instance dict and the flux_radius and
+        batch-array caches. On a free-threaded build this raised
+        "dictionary changed size during iteration" when another thread
+        added a cached property or a cache entry at the same time.
+        """
+        names = ('segment_flux', 'centroid', 'kron_flux', 'area',
+                 'semimajor_axis', 'orientation', 'fwhm', 'gini',
+                 'perimeter', 'max_value', 'centroid_win', 'centroid_quad',
+                 'covariance', 'moments_central', 'kron_radius', 'flags')
+        expected_cat = SourceCatalog(self.data, self.segm)
+        expected = {name: np.asarray(getattr(expected_cat, name))
+                    for name in names}
+        fractions = np.linspace(0.2, 0.8, len(names))
+        expected_radius = [expected_cat.flux_radius(fraction).value
+                           for fraction in fractions]
+
+        n_threads = 8
+        for _ in range(30):
+            cat = SourceCatalog(self.data, self.segm)
+            barrier = threading.Barrier(n_threads)
+
+            def worker(start, cat=cat, barrier=barrier):
+                barrier.wait()
+                result = []
+                for i in range(start, start + len(names)):
+                    i %= len(names)
+                    name = names[i]
+                    _ = getattr(cat, name)
+                    _ = cat.flux_radius(fractions[i])
+                    obj = cat.copy()
+                    result.append((i, np.asarray(getattr(obj, name)),
+                                   obj.flux_radius(fractions[i]).value))
+                return result
+
+            with ThreadPoolExecutor(max_workers=n_threads) as executor:
+                results = list(executor.map(worker,
+                                            range(0, 2 * n_threads, 2)))
+
+            for result in results:
+                for i, value, radius in result:
+                    assert_equal(value, expected[names[i]])
+                    assert_equal(radius, expected_radius[i])
 
 
 def test_kron_params():

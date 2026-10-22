@@ -35,7 +35,7 @@ from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._flags import define_flag_docstring
-from photutils.utils._misc import get_cached_property_names
+from photutils.utils._misc import deepcopy_instance, get_cached_property_names
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 
@@ -441,6 +441,10 @@ class Aperture(metaclass=abc.ABCMeta):
         for param in list(self._params):
             params_copy[param] = deepcopy(getattr(self, param))
         return self.__class__(**params_copy)
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     @abc.abstractmethod
     def positions(self):

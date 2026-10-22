@@ -48,7 +48,8 @@ from photutils.morphology import gini as gini_func
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs)
-from photutils.utils._misc import _get_meta, get_cached_property_names
+from photutils.utils._misc import (_get_meta, deepcopy_instance,
+                                   get_cached_property_names)
 from photutils.utils._moments import (centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
@@ -777,6 +778,11 @@ class ApertureStats:
             A deep copy of this object.
         """
         return deepcopy(self)
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties and block-reduction
+        # results while the copy runs
+        return deepcopy_instance(self, memo, ('_block_cache',))
 
     @cached_property
     def _null_object(self):

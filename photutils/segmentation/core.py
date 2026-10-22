@@ -18,7 +18,7 @@ from photutils.aperture.region_converters import _shapely_polygon_to_region
 from photutils.segmentation._label_stats import label_stats
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_positional_kwargs)
-from photutils.utils._misc import get_cached_property_names
+from photutils.utils._misc import deepcopy_instance, get_cached_property_names
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
@@ -1068,6 +1068,10 @@ class SegmentationImage:
             A deep copy of this object.
         """
         return deepcopy(self)
+
+    def __deepcopy__(self, memo):
+        # Other threads may add cached properties while the copy runs
+        return deepcopy_instance(self, memo)
 
     def check_label(self, label):
         """

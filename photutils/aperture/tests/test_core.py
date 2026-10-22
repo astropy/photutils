@@ -5,6 +5,7 @@ Tests for the core module.
 
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 
 import astropy.units as u
 import numpy as np
@@ -556,6 +557,35 @@ class TestApertureIteration:
         aper = SkyCircularAperture(pos, r=1.0 * u.arcsec)
         aper_copy = aper.copy()
         assert aper == aper_copy
+
+    def test_concurrent_deepcopy(self):
+        """
+        Regression test that a shared aperture can be deep copied while
+        other threads read its cached properties.
+
+        A deep copy iterates the instance dict. On a free-threaded build
+        this raised "dictionary changed size during iteration" when
+        another thread added a cached property at the same time.
+        """
+        positions = np.random.default_rng(0).uniform(20, 80, (30, 2))
+        n_threads = 8
+        for _ in range(50):
+            aper = CircularAperture(positions, r=5.0)
+            names = aper._cached_properties
+            barrier = threading.Barrier(n_threads)
+
+            def worker(start, aper=aper, names=names, barrier=barrier):
+                barrier.wait()
+                copies = []
+                for name in names[start:] + names[:start]:
+                    _ = getattr(aper, name)
+                    copies.append(deepcopy(aper))
+                return copies
+
+            with ThreadPoolExecutor(max_workers=n_threads) as executor:
+                results = list(executor.map(worker, range(n_threads)))
+            for copies in results:
+                assert all(aper_copy == aper for aper_copy in copies)
 
 
 class TestApertureMetadata:
