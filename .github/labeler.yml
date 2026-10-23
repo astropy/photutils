@@ -149,6 +149,12 @@ infrastructure:
 no-changelog-entry-needed:
   - head-branch: '^pre-commit-ci-update-config$'
 
+releases:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/publish.yml'
+          - 'docs/development/releasing.rst'
+
 # Applied when the test configuration changes or when every changed file
 # is a test file. Almost every pull request touches the tests, so matching
 # any test file would label nearly all of them. The two rules are combined
