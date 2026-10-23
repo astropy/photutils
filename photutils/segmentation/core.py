@@ -2008,6 +2008,9 @@ class SegmentationImage:
             # for binary inputs (equivalent to a 2D maximum filter).
             return grey_dilation(mask, footprint=footprint)
 
+        # scipy.signal is slow to import, so it is imported only when needed
+        from scipy.signal import fftconvolve
+
         # Binary dilation is very slow, especially for large
         # footprints. The following is a faster implementation
         # using fast Fourier transforms (FFTs) that gives identical
@@ -2015,10 +2018,6 @@ class SegmentationImage:
         # "Dilation and Erosion of Gray Images with Spherical
         # Masks", J. Kukal, D. Majerova, A. Prochazka (Jan 2007).
         # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
-        # scipy.signal is slow to import, so it is imported only when
-        # needed.
-        from scipy.signal import fftconvolve
-
         return fftconvolve(mask, footprint, 'same') > 0.5
 
     @cached_property

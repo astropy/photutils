@@ -291,7 +291,7 @@ class BoundingBox:
         aperture : `~photutils.aperture.RectangularAperture`
             A rectangular aperture.
         """
-        # Prevent circular import
+        # Avoid a circular import with photutils.aperture.rectangle
         from photutils.aperture.rectangle import RectangularAperture
 
         xypos = self.center[::-1]  # xy order

@@ -312,7 +312,7 @@ def _fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     result : `~photutils.psf.PSFPhotometry`
         The PSF-fitting photometry results.
     """
-    # Prevent circular import
+    # Avoid a circular import with photutils.psf.photometry
     from photutils.psf.photometry import PSFPhotometry
 
     # Mask nonfinite values

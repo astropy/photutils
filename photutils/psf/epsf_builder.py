@@ -363,7 +363,7 @@ def _phase_uniformity_pvalue(centers, *, nbins=4):
         The p-value of the chi-square test of a uniform phase
         distribution, combining both axes.
     """
-    # scipy.stats is slow to import, so it is imported only when needed.
+    # scipy.stats is slow to import, so it is imported only when needed
     from scipy.stats import chi2 as chi2_dist
 
     chi2 = 0.0
@@ -2732,8 +2732,7 @@ class EPSFBuilder:
         weight_large = np.clip((radius - _WING_LARGE_START) / _WING_BLEND,
                                0.0, 1.0)
 
-        # scipy.signal is slow to import, so it is imported only when
-        # needed.
+        # scipy.signal is slow to import, so it is imported only when needed
         from scipy.signal import fftconvolve
 
         def box_fit(width):

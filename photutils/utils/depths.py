@@ -331,7 +331,7 @@ class ImageDepth:
             The magnitude limit, calculated from the flux limit and the
             input ``zeropoint``.
         """
-        # Prevent circular import
+        # Avoid a circular import with photutils.aperture
         from photutils.aperture import AperturePhotometry, CircularAperture
 
         if mask is None or not np.any(mask):

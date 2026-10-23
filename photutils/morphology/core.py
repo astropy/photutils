@@ -71,7 +71,7 @@ def data_properties(data, mask=None, background=None, wcs=None):
         If ``background`` is provided and is not a scalar or a 2D array
         with the same shape as ``data``.
     """
-    # Prevent circular import
+    # Avoid a circular import with photutils.segmentation
     from photutils.segmentation import SegmentationImage, SourceCatalog
 
     data_mask = None

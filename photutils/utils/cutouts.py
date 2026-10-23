@@ -202,7 +202,7 @@ class CutoutImage:
         slices : tuple of slice
             The slices for the bounding box.
         """
-        # Prevent circular import
+        # Avoid a circular import with photutils.aperture
         from photutils.aperture import BoundingBox
 
         return BoundingBox(ixmin=slices[1].start, ixmax=slices[1].stop,

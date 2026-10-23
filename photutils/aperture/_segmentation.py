@@ -147,7 +147,7 @@ def process_segmentation_inputs(segmentation_image, labels,
                "is not 'none'")
         raise ValueError(msg)
 
-    # Local import to avoid a circular import with photutils.segmentation
+    # Avoid a circular import with photutils.segmentation
     from photutils.segmentation import SegmentationImage
 
     if not isinstance(segmentation_image, SegmentationImage):

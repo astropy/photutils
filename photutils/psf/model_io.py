@@ -563,7 +563,8 @@ def stdpsf_reader(filename, detector_id=None):
     model : `~photutils.psf.GriddedPSFModel`
         The gridded ePSF model.
     """
-    from photutils.psf import GriddedPSFModel  # prevent circular import
+    # Avoid a circular import with photutils.psf.gridded_models
+    from photutils.psf import GriddedPSFModel
 
     grid_data = _read_stdpsf(filename)
 
@@ -640,7 +641,8 @@ def webbpsf_reader(filename):
     the STPSF ``calc_psf`` method returns. See :ref:`psf-image-models`
     for the measured errors and an example.
     """
-    from photutils.psf import GriddedPSFModel  # prevent circular import
+    # Avoid a circular import with photutils.psf.gridded_models
+    from photutils.psf import GriddedPSFModel
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', VerifyWarning)

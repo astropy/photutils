@@ -728,9 +728,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     # Perform centroiding
     if centroid_func is not None:
-        # Deferred because photutils.centroids loads scipy.optimize and
-        # scipy.interpolate, which add about 100 ms to importing
-        # photutils.detection
+        # photutils.centroids is slow to import because it loads
+        # scipy.optimize and scipy.interpolate, so it is imported only
+        # when needed
         from photutils.centroids import centroid_sources
 
         # When a footprint is provided, derive the centroid box_size

@@ -265,8 +265,7 @@ def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
     if not np.all(np.isfinite(coarse)):
         return _compute_areas_at_every_pixel(wcs, ny, nx)
 
-    # scipy.interpolate is slow to import, so it is imported only when
-    # needed.
+    # scipy.interpolate is slow to import, so it is imported only when needed
     from scipy.interpolate import RectBivariateSpline
 
     spline = RectBivariateSpline(grid_y, grid_x, coarse)
