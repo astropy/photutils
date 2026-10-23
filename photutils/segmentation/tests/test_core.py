@@ -493,6 +493,7 @@ class TestSegmentationImage:
         assert np.ma.count(self.segm.data_masked) == 18
         assert np.ma.count_masked(self.segm.data_masked) == 18
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segments(self):
         """
         Test segments.
@@ -523,6 +524,7 @@ class TestSegmentationImage:
         for prop in props:
             assert f'{prop}:' in repr(self.segm)
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segment_repr_str(self):
         """
         Test segment repr str.
@@ -543,6 +545,7 @@ class TestSegmentationImage:
         assert svg is not None
         assert isinstance(svg, str)
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segment_repr_svg_without_polygon(self):
         """
         Test _repr_svg_ returns None when polygon is None.
@@ -554,6 +557,7 @@ class TestSegmentationImage:
                               segment.area, polygon=None)
         assert seg_no_poly._repr_svg_() is None
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segment_array(self):
         """
         Test that Segment.__array__ returns the correct labeled cutout.
@@ -565,6 +569,7 @@ class TestSegmentationImage:
         # Only the label and 0 should appear
         assert set(np.unique(arr)) <= {0, segment.label}
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segment_data(self):
         """
         Test segment data.
@@ -572,6 +577,7 @@ class TestSegmentationImage:
         assert_allclose(self.segm.segments[3].data.shape, (3, 3))
         assert_allclose(np.unique(self.segm.segments[3].data), [0, 5])
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segment_make_cutout(self):
         """
         Test segment make cutout.
@@ -586,6 +592,7 @@ class TestSegmentationImage:
         assert np.ma.is_masked(cutout)
         assert_allclose(cutout.shape, (3, 3))
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segment_make_cutout_input(self):
         """
         Test segment make cutout input.
@@ -594,6 +601,7 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             self.segm.segments[0].make_cutout(np.arange(10))
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_segment_no_full_array_reference(self):
         """
         Test that Segment stores only a cutout copy, not a reference
@@ -2081,6 +2089,7 @@ class TestGetLabelMapping:
         assert_equal(mapping[label], expected[label])
 
 
+@pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
 class TestGetSegment:
     """
     Tests for get_segment and get_segments methods.
@@ -2754,6 +2763,7 @@ class TestThreadSafety:
         assert 'areas' in results[0]
 
 
+@pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
 def test_segment_deprecations(segm_data):
     segment_map = SegmentationImage(segm_data)
     segments = segment_map.segments
@@ -2975,6 +2985,7 @@ def _make_huge_label_pair(dtype):
     return SegmentationImage(data), SegmentationImage(huge)
 
 
+@pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
 @pytest.mark.parametrize('dtype', [np.int64, np.uint64])
 def test_huge_labels(dtype):
     """

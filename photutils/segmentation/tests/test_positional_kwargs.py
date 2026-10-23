@@ -77,6 +77,7 @@ class TestSegmentationImagePositionalKwargs:
         mask[0, 0] = True
         segm.remove_masked_labels(mask, partial_overlap=True)
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_make_cutout_positional_warns(self):
         segm = SegmentationImage(self.data.copy())
         segment = segm.segments[0]
@@ -85,6 +86,7 @@ class TestSegmentationImagePositionalKwargs:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             segment.make_cutout(data, True)  # noqa: FBT003
 
+    @pytest.mark.thread_unsafe(reason='rasterio is not thread-safe')
     def test_make_cutout_keyword_no_warning(self):
         segm = SegmentationImage(self.data.copy())
         segment = segm.segments[0]
