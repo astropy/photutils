@@ -144,6 +144,11 @@ infrastructure:
           - 'photutils/__init__.py'
           - 'pyproject.toml'
 
+# The pre-commit.ci autoupdate pull requests always use this branch name.
+# pre-commit.ci has no option to set labels itself.
+no-changelog-entry-needed:
+  - head-branch: '^pre-commit-ci-update-config$'
+
 # Applied when the test configuration changes or when every changed file
 # is a test file. Almost every pull request touches the tests, so matching
 # any test file would label nearly all of them. The two rules are combined
