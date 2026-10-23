@@ -10,6 +10,7 @@ import astropy.units as u
 import numpy as np
 from scipy.interpolate import PchipInterpolator
 
+from photutils.aperture import EllipticalAperture, RectangularAperture
 from photutils.aperture.core import _update_method_subpixels_docstring
 from photutils.profiles.core import ProfileBase
 
@@ -742,8 +743,6 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         A list of `~photutils.aperture.RectangularAperture` objects used
         to measure the profile.
         """
-        from photutils.aperture import RectangularAperture
-
         return [RectangularAperture(self.xycen, 2 * hs, 2 * hs)
                 for hs in self.half_sizes]
 
@@ -1095,8 +1094,6 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         A list of `~photutils.aperture.EllipticalAperture` objects used
         to measure the profile.
         """
-        from photutils.aperture import EllipticalAperture
-
         return [EllipticalAperture(self.xycen, a, a * self.axis_ratio,
                                    theta=self.theta)
                 for a in self.radii]

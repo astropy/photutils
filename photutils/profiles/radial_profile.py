@@ -12,6 +12,7 @@ from astropy.modeling.models import Gaussian1D, Moffat1D
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture import CircularAnnulus, CircularAperture
 from photutils.aperture.core import _update_method_subpixels_docstring
 from photutils.profiles.core import ProfileBase
 
@@ -326,9 +327,6 @@ class RadialProfile(ProfileBase):
         will be a `~photutils.aperture.CircularAperture` with radius
         equal to ``radii[1]``.
         """
-        # Prevent circular imports
-        from photutils.aperture import CircularAnnulus, CircularAperture
-
         apertures = []
         for i in range(len(self.radii) - 1):
             try:

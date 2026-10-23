@@ -11,6 +11,7 @@ import astropy.units as u
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture import CircularAperture
 from photutils.aperture._common import validate_mask_method
 from photutils.aperture.core import _update_method_subpixels_docstring
 from photutils.aperture.photometry import AperturePhotometry
@@ -234,8 +235,6 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         The first element may be `None`.
         """
-        from photutils.aperture import CircularAperture
-
         apertures = []
         for radius in self.radii:
             if radius <= 0.0:

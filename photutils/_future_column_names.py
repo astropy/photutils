@@ -9,6 +9,8 @@ anything from ``photutils.utils`` or any other heavy dependency.
 from contextlib import contextmanager
 from contextvars import ContextVar
 
+import photutils
+
 _SENTINEL = object()
 _future_column_names_var = ContextVar(
     'photutils_future_column_names', default=_SENTINEL,
@@ -27,8 +29,6 @@ def get_future_column_names():
     result : bool
         Whether future column names are enabled.
     """
-    import photutils
-
     val = _future_column_names_var.get()
     if val is not _SENTINEL:
         return val

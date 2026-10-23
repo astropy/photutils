@@ -8,6 +8,13 @@ from typing import ClassVar
 
 import numpy as np
 
+from photutils.aperture._batch_photometry import (FLAG_COL_MASKED,
+                                                  FLAG_COL_N_PIXELS,
+                                                  FLAG_COL_NONFINITE_DATA,
+                                                  FLAG_COL_NONFINITE_ERROR,
+                                                  FLAG_COL_SEG,
+                                                  FLAG_COL_UNCORRECTED,
+                                                  FLAG_COL_VALID)
 from photutils.utils._flags import (FlagDefinition, FlagRegistry, decode_flags,
                                     update_flag_docstring)
 
@@ -329,16 +336,6 @@ def _counts_to_flag_bits(flag_counts, overlap, w_out):
     flags : 1D `~numpy.ndarray` (int)
         The bitwise quality flags for each source.
     """
-    # Import here to avoid loading the compiled extension when only the
-    # registry or decoder is needed
-    from photutils.aperture._batch_photometry import (FLAG_COL_MASKED,
-                                                      FLAG_COL_N_PIXELS,
-                                                      FLAG_COL_NONFINITE_DATA,
-                                                      FLAG_COL_NONFINITE_ERROR,
-                                                      FLAG_COL_SEG,
-                                                      FLAG_COL_UNCORRECTED,
-                                                      FLAG_COL_VALID)
-
     flag_counts = np.atleast_2d(flag_counts)
     overlap = np.atleast_1d(overlap)
     w_out = np.atleast_1d(w_out)

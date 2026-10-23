@@ -8,6 +8,7 @@ import importlib.resources as importlib_resources
 from asdf.extension import ManifestExtension
 from asdf.resource import DirectoryResourceMapping
 
+from . import resources
 from .converters import _ASDF_ASTROPY_INSTALLED, apertures
 
 __all__ = [
@@ -97,8 +98,6 @@ def get_resource_mappings():
     mappings : list of `collections.abc.Mapping`
         The ASDF resource mappings for the schemas and the manifests.
     """
-    from . import resources
-
     resources_root = importlib_resources.files(resources)
 
     return [

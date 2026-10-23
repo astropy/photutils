@@ -15,6 +15,8 @@ from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
 from scipy.interpolate import make_interp_spline
 
+from photutils.psf.gridded_models import GriddedPSFModel
+from photutils.psf.image_models import ImagePSF
 from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._parameters import as_pair
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -403,9 +405,6 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     model : `photutils.psf.GriddedPSFModel`
         The gridded PSF model created from the input ePSFs.
     """
-    # Prevent circular imports
-    from photutils.psf import GriddedPSFModel, ImagePSF
-
     # Optional, to store fiducial from input if `grid_xypos` is None
     x_0s = []
     y_0s = []
