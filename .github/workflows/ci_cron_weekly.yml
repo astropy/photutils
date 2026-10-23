@@ -50,12 +50,12 @@ jobs:
             allow_failure: false
 
           # Run each test in several threads at once on a free-threaded
-          # build to catch thread-safety bugs. Astropy and pyerfa do not
-          # yet provide free-threaded wheels, so they are built from
-          # source.
+          # build to catch thread-safety bugs. Astropy, pyerfa, and
+          # regions do not yet provide free-threaded wheels, so they are
+          # built from source.
           - os: ubuntu-latest
             python: '3.14t'
-            tox_env: 'py314t-test-parallel'
+            tox_env: 'py314t-test-alldeps-parallel'
             toxposargs: ''
             allow_failure: false
 
