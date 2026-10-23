@@ -1,0 +1,159 @@
+# Labels applied to pull requests by .github/workflows/labeler.yml
+# https://github.com/actions/labeler
+#
+# Each subpackage label also matches its user guide and API reference
+# pages. The workflow only adds labels, so labels set by hand are kept.
+
+aperture:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/aperture/**'
+          - 'docs/user_guide/aperture.rst'
+          - 'docs/reference/aperture_api.rst'
+
+asdf_serialization:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/converters/**'
+          - 'photutils/resources/**'
+          - 'photutils/extension.py'
+          - 'docs/user_guide/asdf.rst'
+
+background:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/background/**'
+          - 'docs/user_guide/background.rst'
+          - 'docs/reference/background_api.rst'
+
+centroids:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/centroids/**'
+          - 'docs/user_guide/centroids.rst'
+          - 'docs/reference/centroids_api.rst'
+
+datasets:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/datasets/**'
+          - 'docs/user_guide/datasets.rst'
+          - 'docs/reference/datasets_api.rst'
+
+detection:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/detection/**'
+          - 'docs/user_guide/detection.rst'
+          - 'docs/reference/detection_api.rst'
+
+epsf_builder:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/psf/epsf_builder.py'
+          - 'photutils/psf/epsf_stars.py'
+          - 'photutils/psf/tests/test_epsf_builder.py'
+          - 'photutils/psf/tests/test_epsf_stars.py'
+          - 'docs/user_guide/epsf_building.rst'
+
+geometry:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/geometry/**'
+          - 'docs/user_guide/geometry.rst'
+          - 'docs/reference/geometry_api.rst'
+
+isophote:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/isophote/**'
+          - 'docs/user_guide/isophote.rst'
+          - 'docs/user_guide/isophote_faq.rst'
+          - 'docs/reference/isophote_api.rst'
+
+morphology:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/morphology/**'
+          - 'docs/user_guide/morphology.rst'
+          - 'docs/reference/morphology_api.rst'
+
+profiles:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/profiles/**'
+          - 'docs/user_guide/curves_of_growth.rst'
+          - 'docs/user_guide/radial_profiles.rst'
+          - 'docs/reference/profiles_api.rst'
+
+psf:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/psf/**'
+          - 'docs/user_guide/grouping.rst'
+          - 'docs/user_guide/psf.rst'
+          - 'docs/reference/psf_api.rst'
+
+psf_matching:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/psf_matching/**'
+          - 'photutils/psf/matching/**'
+          - 'docs/user_guide/psf_matching.rst'
+          - 'docs/reference/psf_matching_api.rst'
+
+segmentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/segmentation/**'
+          - 'docs/user_guide/segmentation.rst'
+          - 'docs/reference/segmentation_api.rst'
+
+utils:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'photutils/utils/**'
+          - 'docs/user_guide/utils.rst'
+          - 'docs/reference/utils_api.rst'
+
+dev-automation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - '.flake8'
+          - '.pre-commit-config.yaml'
+          - '.pycodestyle'
+          - '.readthedocs.yaml'
+          - 'codecov.yml'
+          - 'tox.ini'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - 'CODE_OF_CONDUCT.rst'
+          - 'CONTRIBUTING.rst'
+          - 'README.rst'
+
+infrastructure:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'scripts/**'
+          - '.gitignore'
+          - 'CITATION.cff'
+          - 'photutils/__init__.py'
+          - 'pyproject.toml'
+
+# Applied when the test configuration changes or when every changed file
+# is a test file. Almost every pull request touches the tests, so matching
+# any test file would label nearly all of them. The two rules are combined
+# with OR because they are options of the same changed-files entry.
+testing:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/ci_*.yml'
+          - '**/conftest.py'
+          - 'codecov.yml'
+          - 'tox.ini'
+      - any-glob-to-all-files:
+          - '**/tests/**'

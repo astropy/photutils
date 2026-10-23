@@ -1,0 +1,29 @@
+name: Label pull request
+
+# pull_request_target is needed to add labels to pull requests from
+# forks. It is safe here because the job never checks out or runs code
+# from the pull request. The labeler reads .github/labeler.yml from the
+# base branch.
+on: # zizmor: ignore[dangerous-triggers]
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+# github.ref is the base branch for pull_request_target, so the pull
+# request number keeps runs for different pull requests from canceling
+# each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  labeler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.repository == 'astropy/photutils'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
