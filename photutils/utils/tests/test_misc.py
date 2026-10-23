@@ -6,6 +6,7 @@ Tests for the _misc module.
 import builtins
 import threading
 from copy import deepcopy
+from datetime import UTC
 from functools import cached_property
 from unittest.mock import patch
 
@@ -203,7 +204,6 @@ def test_get_date_oserror_fallback(utc):
         mock_now.astimezone.side_effect = OSError('no timezone')
         mock_now.strftime.return_value = '2025-01-01 00:00:00'
         mock_dt.now.return_value = mock_now
-        from datetime import UTC
         mock_dt.UTC = UTC
         result = _get_date(utc=utc)
         assert isinstance(result, str)

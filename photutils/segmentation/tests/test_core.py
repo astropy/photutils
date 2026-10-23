@@ -18,6 +18,7 @@ from numpy.testing import assert_allclose, assert_equal
 from scipy.ndimage import find_objects
 
 import photutils.segmentation.core as segm_core
+from photutils.aperture import BoundingBox
 from photutils.segmentation._label_stats import label_stats
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.segmentation.deblend import deblend_sources
@@ -759,8 +760,6 @@ class TestSegmentationImage:
         Test that bbox returns correct bounding box coordinates for
         each label.
         """
-        from photutils.aperture import BoundingBox
-
         idx = self.segm.get_index(label)
         bbox = self.segm.bbox[idx]
         assert isinstance(bbox, BoundingBox)
@@ -1653,9 +1652,7 @@ def test_segments_no_rasterio(segm_data, monkeypatch):
     Test that segments property works without rasterio/shapely by
     creating Segment objects without polygon info.
     """
-    import photutils.segmentation.core as core_mod
-
-    monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+    monkeypatch.setattr(segm_core, 'HAS_RASTERIO', False)
 
     segm = SegmentationImage(segm_data)
     segments = segm.segments
@@ -2158,9 +2155,7 @@ class TestGetSegment:
         Test that get_segment returns polygon=None without
         rasterio/shapely.
         """
-        import photutils.segmentation.core as core_mod
-
-        monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+        monkeypatch.setattr(segm_core, 'HAS_RASTERIO', False)
 
         segm = SegmentationImage(self.data.copy())
         seg = segm.get_segment(1)
@@ -2297,9 +2292,7 @@ class TestGetPolygon:
         """
         Test that get_polygon returns None without rasterio/shapely.
         """
-        import photutils.segmentation.core as core_mod
-
-        monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+        monkeypatch.setattr(segm_core, 'HAS_RASTERIO', False)
         segm = SegmentationImage(self.data.copy())
         assert segm.get_polygon(1) is None
 

@@ -5,6 +5,7 @@ Tests for the stats module.
 
 import sys
 import tracemalloc
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 from unittest.mock import patch
 
@@ -1325,8 +1326,6 @@ class TestSigmaClipSharedInstance:
         property concurrently on the same instance gives the same
         results as the serial computation.
         """
-        from concurrent.futures import ThreadPoolExecutor
-
         rng = np.random.default_rng(0)
         n_src = 200
         ny = 51

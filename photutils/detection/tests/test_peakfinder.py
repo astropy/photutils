@@ -12,7 +12,7 @@ from scipy.spatial import cKDTree
 
 from photutils.centroids import centroid_com
 from photutils.datasets import make_gwcs, make_wcs
-from photutils.detection import find_peaks
+from photutils.detection import find_peaks, peakfinder
 from photutils.utils._optional_deps import HAS_GWCS
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -875,8 +875,6 @@ class TestFindPeaks:
 
         A sparse image of ones has many pairs of equal-valued peaks.
         """
-        from photutils.detection import peakfinder
-
         rng = np.random.default_rng(0)
         data = (rng.random((150, 150)) < 0.1).astype(float)
 

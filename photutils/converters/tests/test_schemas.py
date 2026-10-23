@@ -19,7 +19,7 @@ from numpy.testing import assert_array_equal
 
 from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.extension import PHOTUTILS_MANIFEST_URIS
-from photutils.psf import ImagePSF
+from photutils.psf import GriddedPSFModel, ImagePSF
 
 # The asdf schema validator records the nodes it has already validated
 # in a single context shared by all threads, so concurrent writes and
@@ -551,8 +551,6 @@ def test_optional_gridded_psf_model_params_use_defaults():
     required by its schema is read using the defaults of the model
     class.
     """
-    from photutils.psf import GriddedPSFModel
-
     model = _read_psf('gridded_psf_model',
                       REQUIRED_PSF_PARAMS['gridded_psf_model'])
     nddata = NDData(data=PSF_GRID_VALUES,

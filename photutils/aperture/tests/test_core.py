@@ -275,8 +275,6 @@ class TestPixelAperturePhotometry:
         Test that photometry raises ValueError when data and error
         have different units.
         """
-        import astropy.units as u
-
         match = 'they both must have the same units'
         with pytest.raises(ValueError, match=match):
             self.aper._photometry(
