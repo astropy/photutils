@@ -73,7 +73,7 @@ def _rectangular_polygon_offsets(half_x, half_y, theta):
     return corners @ rot_mat.T
 
 
-@deprecated('3.0', until='3.2')
+@deprecated('3.0', until='4.0')
 class RectangularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for rectangular or rectangular-annulus

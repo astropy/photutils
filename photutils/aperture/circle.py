@@ -74,7 +74,7 @@ def _circular_polygon_offsets(r, n_vertices):
     return np.column_stack([np.cos(theta), np.sin(theta)]) * r
 
 
-@deprecated('3.0', until='3.2')
+@deprecated('3.0', until='4.0')
 class CircularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for circular and circular-annulus

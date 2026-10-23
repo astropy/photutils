@@ -101,7 +101,7 @@ def _elliptical_polygon_offsets(a, b, theta, n_vertices, *, swap_axes=False):
                             x * sin_t + y * cos_t])
 
 
-@deprecated('3.0', until='3.2')
+@deprecated('3.0', until='4.0')
 class EllipticalMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for elliptical and elliptical-annulus
