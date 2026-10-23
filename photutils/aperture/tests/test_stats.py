@@ -715,6 +715,7 @@ class TestInputValidation(BaseApertureStatsData):
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_sky_region_without_wcs(self):
+        # regions is an optional dependency
         from regions import CircleSkyRegion
 
         region = CircleSkyRegion(SkyCoord(10.0, 30.0, unit='deg'),
@@ -1220,6 +1221,7 @@ class TestRegionInput:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_region_matches_aperture(self):
+        # regions is an optional dependency
         from regions import CirclePixelRegion, PixCoord
         region = CirclePixelRegion(center=PixCoord(5, 5), radius=3)
         aperture = CircularAperture((5, 5), r=3)

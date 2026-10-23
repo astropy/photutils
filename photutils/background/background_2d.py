@@ -1331,6 +1331,7 @@ class Background2D:
             `matplotlib.patches.Patch`, which is used to draw the box
             outlines. Used only if ``outlines`` is True.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         kwargs['color'] = color

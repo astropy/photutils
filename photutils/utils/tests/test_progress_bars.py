@@ -84,6 +84,8 @@ def test_dummy_tqdm_class():
             raise ImportError(name)
         return real_import(name, *args, **kwargs)
 
+    # Import and reload inside the patch so that the module sees tqdm
+    # as not installed
     with patch('builtins.__import__', side_effect=mock_import):
         import photutils.utils._progress_bars as pb_mod
         importlib.reload(pb_mod)

@@ -3779,6 +3779,7 @@ class TestIterationHistory:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_iterations_initial_epsf(self, stars):
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         builder = EPSFBuilder(oversampling=4, maxiters=2,
@@ -3829,6 +3830,7 @@ class TestIterationHistory:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_iterations(self, stars):
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         builder = EPSFBuilder(oversampling=4, maxiters=2,
@@ -4073,6 +4075,7 @@ def test_wing_smoothing_plot_iterations(epsf_test_data):
     all the iterations are plotted, and ``show_smoothed`` overrides
     that choice.
     """
+    # matplotlib is an optional dependency
     import matplotlib.pyplot as plt
 
     stars = extract_stars(epsf_test_data['nddata'],

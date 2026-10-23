@@ -29,6 +29,7 @@ def close_figures():
     """
     yield
 
+    # matplotlib is an optional dependency
     import matplotlib.pyplot as plt
     plt.close('all')
 
@@ -110,6 +111,7 @@ class TestPlotGrid:
         Test that a user-supplied axes is used and that its figure is
         returned.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig_in, ax = plt.subplots()

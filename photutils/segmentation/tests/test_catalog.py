@@ -920,6 +920,7 @@ class TestSourceCatalog:
         """
         Test plots.
         """
+        # matplotlib is an optional dependency
         from matplotlib.patches import Patch
 
         patches = self.cat.plot_circular_apertures(5.0)

@@ -42,6 +42,8 @@ class ImagePSFConverter(TransformConverterBase):
         }
 
     def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
+        # Deferred so that loading the asdf extension does not import
+        # photutils.psf
         from photutils.psf import ImagePSF
 
         return ImagePSF(
@@ -89,6 +91,8 @@ class GriddedPSFModelConverter(TransformConverterBase):
         return node
 
     def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
+        # Deferred so that loading the asdf extension does not import
+        # astropy.nddata or photutils.psf
         from astropy.nddata import NDData
 
         from photutils.psf import GriddedPSFModel
@@ -129,6 +133,8 @@ class STDPSFGridConverter(Converter):
         }
 
     def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
+        # Deferred so that loading the asdf extension does not import
+        # photutils.psf
         from photutils.psf import STDPSFGrid
 
         meta = dict(node['meta'])

@@ -1367,6 +1367,8 @@ class EPSFBuildResults:
         call. Alternatively, you can append a semicolon to the end of
         the function call to suppress the display of the return value.
         """
+        # matplotlib is an optional dependency, and astropy.visualization
+        # imports it
         import matplotlib.pyplot as plt
         from astropy.visualization import simple_norm
 

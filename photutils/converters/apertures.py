@@ -41,6 +41,8 @@ class _ApertureConverter(Converter):
         """
         Return the pixel or sky aperture class for ``positions``.
         """
+        # Deferred so that loading the asdf extension does not import
+        # photutils.aperture
         from photutils import aperture
 
         index = 1 if isinstance(positions, SkyCoord) else 0

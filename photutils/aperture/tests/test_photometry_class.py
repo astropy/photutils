@@ -1030,6 +1030,7 @@ class TestReprAndImmutability:
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class TestRegionInput:
     def test_region_matches_aperture(self):
+        # regions is an optional dependency
         from regions import CirclePixelRegion, PixCoord
 
         data = np.ones((40, 40), dtype=float)
@@ -1044,6 +1045,7 @@ class TestRegionInput:
         assert_allclose(phot.flux_err, ref.flux_err)
 
     def test_annulus_region(self):
+        # regions is an optional dependency
         from regions import CircleAnnulusPixelRegion, PixCoord
 
         data = np.ones((40, 40), dtype=float)

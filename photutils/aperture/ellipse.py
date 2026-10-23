@@ -289,6 +289,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
             single `~matplotlib.patches.Patch` is returned, otherwise a
             list of `~matplotlib.patches.Patch` is returned.
         """
+        # matplotlib is an optional dependency
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
@@ -511,6 +512,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
             single `~matplotlib.patches.Patch` is returned, otherwise a
             list of `~matplotlib.patches.Patch` is returned.
         """
+        # matplotlib is an optional dependency
         import matplotlib.patches as mpatches
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,

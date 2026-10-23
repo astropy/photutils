@@ -42,6 +42,7 @@ def make_random_cmap(n_colors=256, seed=None):
         msg = 'n_colors must be at least 1'
         raise ValueError(msg)
 
+    # matplotlib is an optional dependency
     from matplotlib import colors
 
     rng = np.random.default_rng(seed)

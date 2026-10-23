@@ -112,6 +112,7 @@ def region_to_aperture(region):
     >>> aperture
     <CircularAperture([10., 20.], r=5.0)>
     """
+    # regions is an optional dependency
     from regions import (CircleAnnulusPixelRegion, CircleAnnulusSkyRegion,
                          CirclePixelRegion, CircleSkyRegion,
                          EllipseAnnulusPixelRegion, EllipseAnnulusSkyRegion,
@@ -299,6 +300,7 @@ def aperture_to_region(aperture):
       <CirclePixelRegion(center=PixCoord(x=30.0, y=40.0), radius=5.0)>
     ])>
     """
+    # regions is an optional dependency
     from regions import Regions
 
     if not isinstance(aperture, Aperture):
@@ -329,6 +331,7 @@ def _scalar_aperture_to_region(aperture):
     region : `regions.Region`
         An equivalent `regions.Region` object.
     """
+    # regions is an optional dependency
     from regions import (CircleAnnulusPixelRegion, CircleAnnulusSkyRegion,
                          CirclePixelRegion, CircleSkyRegion,
                          EllipseAnnulusPixelRegion, EllipseAnnulusSkyRegion,
@@ -466,6 +469,7 @@ def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
     <PolygonPixelRegion(vertices=PixCoord(x=[1.0 3.0 2.0 1.0],
                                           y=[1.0 1.0 4.0 2.0]))>
     """
+    # regions and shapely are optional dependencies
     from regions import PixCoord, PolygonPixelRegion, Regions, RegionVisual
     from shapely import MultiPolygon, Polygon
 

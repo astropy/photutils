@@ -46,6 +46,7 @@ def add_progress_bar(iterable=None, *, desc=None, total=None, text=False):
     When tqdm is not installed, `None` is returned in this case and the
     caller must guard against it.
     """
+    # tqdm and ipywidgets are optional dependencies
     if HAS_TQDM:
         if text:
             from tqdm import tqdm

@@ -802,6 +802,7 @@ class TestSourceGroups:
         """
         Test basic plot functionality.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -815,6 +816,7 @@ class TestSourceGroups:
         """
         Test cmap string input.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -830,6 +832,7 @@ class TestSourceGroups:
         Test that the colors of a Colormap instance input are used for
         the groups.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
         from matplotlib import colormaps
 
@@ -854,6 +857,7 @@ class TestSourceGroups:
         """
         Test plot with label offset.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -868,6 +872,7 @@ class TestSourceGroups:
         """
         Test plot with custom styling kwargs.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -885,6 +890,7 @@ class TestSourceGroups:
         """
         Test that a user-supplied color overrides the group colors.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -899,6 +905,7 @@ class TestSourceGroups:
         """
         Test that user label_kwargs are merged with the defaults.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -916,6 +923,7 @@ class TestSourceGroups:
         """
         Test plot creates axes if none provided.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         result_ax = sample_groups['groups'].plot(radius=0.5)

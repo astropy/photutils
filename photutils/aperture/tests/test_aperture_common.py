@@ -98,6 +98,7 @@ class BaseTestPixelAperture(BaseTestAperture):
         """
         Test that plot returns a list of patches usable in a legend.
         """
+        # matplotlib is an optional dependency
         from matplotlib import pyplot as plt
         from matplotlib.patches import Patch
 
@@ -115,6 +116,7 @@ class BaseTestPixelAperture(BaseTestAperture):
         Test that plot returns a list containing a single patch for a
         scalar aperture.
         """
+        # matplotlib is an optional dependency
         from matplotlib.patches import Patch
 
         patches = self.aperture[0].plot()

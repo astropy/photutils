@@ -576,6 +576,7 @@ class ApertureStats:
     @staticmethod
     def _validate_aperture(aperture):
         try:
+            # regions is an optional dependency
             from regions import Region
             aper_types = (Aperture, Region)
         except ImportError:

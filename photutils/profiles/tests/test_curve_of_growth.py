@@ -274,6 +274,7 @@ class TestCurveOfGrowth:
         """
         Test the CurveOfGrowth plot methods with an input axes.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         xycen, data, error, _ = profile_data

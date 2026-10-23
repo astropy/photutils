@@ -1344,6 +1344,7 @@ class PixelAperture(Aperture):
         This preserves the cubic Bézier curves (CURVE4) of the aperture
         paths.
         """
+        # matplotlib is an optional dependency
         import matplotlib.path as mpath
 
         path_inner = patch_inner.get_path()
@@ -1445,6 +1446,7 @@ class PixelAperture(Aperture):
             A list of matplotlib patches for the plotted aperture. The
             patches can be used, for example, when adding a plot legend.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         if ax is None:

@@ -396,6 +396,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         lines : list of `~matplotlib.lines.Line2D`
             A list of lines representing the plotted data.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -451,6 +452,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             warnings.warn(msg, AstropyUserWarning)
             return None
 
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         if ax is None:
