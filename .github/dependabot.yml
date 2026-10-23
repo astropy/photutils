@@ -10,6 +10,11 @@ updates:
       interval: "monthly"
     cooldown:
       default-days: 7
+    # Custom labels replace the default ones, including the github_actions
+    # ecosystem label
+    labels:
+      - "dependencies"
+      - "no-changelog-entry-needed"
     groups:
       actions:
         patterns:
