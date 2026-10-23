@@ -275,6 +275,7 @@ class BoundingBox:
             ax.add_patch(bbox.as_artist(facecolor='none', edgecolor='white',
                          lw=2.0))
         """
+        # matplotlib is an optional dependency
         from matplotlib.patches import Rectangle
 
         return Rectangle(xy=(self.extent[0], self.extent[2]),

@@ -46,6 +46,7 @@ from bench_segmentation import N_PIXELS, THRESHOLD, make_inputs
 
 from photutils.segmentation import detect_sources, make_2dgaussian_kernel
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
+from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.deblend import _DeblendParams, deblend_sources
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils.exceptions import DeblendWarning
@@ -390,8 +391,6 @@ def bench_stages(*, size=1000, n_peaks=25, mode='exponential',
     final = deblender.apply_watershed(markers)
     n_final = len(np.unique(final[final > 0]))
     n_watershed = n_markers - n_final + 1
-
-    from photutils.segmentation._deblend_watershed import deblend_watershed
 
     data_neg = np.ascontiguousarray(-cutout, dtype=np.float64)
     connectivity = 8 if footprint[0, 0] else 4

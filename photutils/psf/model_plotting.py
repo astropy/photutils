@@ -115,6 +115,8 @@ class _ModelGridPlotter:
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
                   deltas=False, cmap='viridis', dividers=True,
                   divider_color='darkgray', divider_ls='-', figsize=None):
+        # matplotlib is an optional dependency, and astropy.visualization
+        # imports it
         import matplotlib.pyplot as plt
         from astropy.visualization import simple_norm
         from mpl_toolkits.axes_grid1 import make_axes_locatable

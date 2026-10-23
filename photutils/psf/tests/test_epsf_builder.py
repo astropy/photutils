@@ -16,12 +16,14 @@ from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
+import photutils.psf as psf_mod
+import photutils.psf.epsf_builder as epsf_builder_mod
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
                                  centroid_quadratic, centroid_symmetry)
 from photutils.datasets import make_model_image
 from photutils.psf import (CircularGaussianPRF, EPSFBuilder, EPSFBuildResults,
                            EPSFFitter, EPSFStar, EPSFStars, ImagePSF,
-                           extract_stars, make_psf_model_image)
+                           extract_stars, image_models, make_psf_model_image)
 from photutils.psf.epsf_builder import (_alias_filter_band,
                                         _CoordinateTransformer, _EPSFValidator,
                                         _measure_fwhm, _ProgressReporter,
@@ -854,16 +856,13 @@ class TestEPSFBuildResults:
         """
         Test that the old EPSFBuildResult name is a deprecated alias.
         """
-        from photutils import psf
-        from photutils.psf import epsf_builder
-
         match = 'EPSFBuildResult is deprecated'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
-            cls = psf.EPSFBuildResult
+            cls = psf_mod.EPSFBuildResult
         assert cls is EPSFBuildResults
 
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
-            cls = epsf_builder.EPSFBuildResult
+            cls = epsf_builder_mod.EPSFBuildResult
         assert cls is EPSFBuildResults
 
 
@@ -3329,16 +3328,14 @@ def test_alias_passband(monkeypatch, alias_passband, expected):
     The ``alias_passband`` keyword sets the passband of the alias
     low-pass filter, and `None` turns the filter off.
     """
-    from photutils.psf import epsf_builder
-
     calls = []
-    original = epsf_builder._suppress_alias_modes
+    original = epsf_builder_mod._suppress_alias_modes
 
     def recorder(data, oversampling, **kwargs):
         calls.append(kwargs.get('nu_pass'))
         return original(data, oversampling, **kwargs)
 
-    monkeypatch.setattr(epsf_builder, '_suppress_alias_modes', recorder)
+    monkeypatch.setattr(epsf_builder_mod, '_suppress_alias_modes', recorder)
 
     data = _make_gaussian_star_data()
     stars = EPSFStars([EPSFStar(data, cutout_center=(5.25, 5.25))])
@@ -3423,10 +3420,8 @@ def test_refinement_steps(monkeypatch):
     then refit. The refinement is skipped without the alias filter and for
     an oversampling factor less than 4.
     """
-    from photutils.psf import epsf_builder
-
     refine_flags = []
-    original = epsf_builder._suppress_alias_modes
+    original = epsf_builder_mod._suppress_alias_modes
 
     def recorder(data, oversampling, **kwargs):
         # Only the refinement filter has a stopband above one cycle
@@ -3434,7 +3429,7 @@ def test_refinement_steps(monkeypatch):
         refine_flags.append(max(kwargs['nu_stop']) > 1.0)
         return original(data, oversampling, **kwargs)
 
-    monkeypatch.setattr(epsf_builder, '_suppress_alias_modes', recorder)
+    monkeypatch.setattr(epsf_builder_mod, '_suppress_alias_modes', recorder)
 
     data = _make_gaussian_star_data()
     stars = EPSFStars([EPSFStar(data, cutout_center=(5.25, 5.25))])
@@ -3624,8 +3619,6 @@ def test_refinement_progress_bar(epsf_test_data, monkeypatch):
     starts after the progress bar of the building iterations is
     finished.
     """
-    from photutils.psf import epsf_builder
-
     bars = []
 
     class Bar:
@@ -3652,7 +3645,7 @@ def test_refinement_progress_bar(epsf_test_data, monkeypatch):
         bars.append(Bar(total, desc))
         return bars[-1]
 
-    monkeypatch.setattr(epsf_builder, 'add_progress_bar', add_progress_bar)
+    monkeypatch.setattr(epsf_builder_mod, 'add_progress_bar', add_progress_bar)
     stars = extract_stars(epsf_test_data['nddata'],
                           epsf_test_data['init_stars'][:10], size=11)
 
@@ -3786,6 +3779,7 @@ class TestIterationHistory:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_iterations_initial_epsf(self, stars):
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         builder = EPSFBuilder(oversampling=4, maxiters=2,
@@ -3836,6 +3830,7 @@ class TestIterationHistory:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_iterations(self, stars):
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         builder = EPSFBuilder(oversampling=4, maxiters=2,
@@ -4080,6 +4075,7 @@ def test_wing_smoothing_plot_iterations(epsf_test_data):
     all the iterations are plotted, and ``show_smoothed`` overrides
     that choice.
     """
+    # matplotlib is an optional dependency
     import matplotlib.pyplot as plt
 
     stars = extract_stars(epsf_test_data['nddata'],
@@ -4621,8 +4617,6 @@ def test_build_shares_spline_cache(epsf_test_data, monkeypatch):
     the model copies made for every star fit, so the number of spline
     constructions does not depend on the number of stars.
     """
-    from photutils.psf import image_models
-
     counts = []
     original = image_models.RectBivariateSpline
 

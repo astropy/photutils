@@ -19,15 +19,18 @@ from .photometry import *  # noqa: F401, F403
 from .simulation import *  # noqa: F401, F403
 from .utils import *  # noqa: F401, F403
 
+# Used by __getattr__ for the deprecated EPSFBuildResult alias
+from .epsf_builder import EPSFBuildResults
+
 
 def __getattr__(name):
     # EPSFBuildResult was renamed to EPSFBuildResults in 3.1.
     if name == 'EPSFBuildResult':
+        # Import here to keep these names out of the photutils.psf
+        # namespace
         import warnings
 
         from photutils.utils.exceptions import PhotutilsDeprecationWarning
-
-        from .epsf_builder import EPSFBuildResults
 
         msg = ('EPSFBuildResult is deprecated and will be removed in '
                'version 4.0. Use EPSFBuildResults instead.')

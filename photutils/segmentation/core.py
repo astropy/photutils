@@ -918,6 +918,7 @@ class SegmentationImage:
         if slc is None:
             return None
 
+        # rasterio and shapely are optional dependencies
         from rasterio.features import shapes
         from rasterio.transform import Affine
         from shapely import MultiPolygon
@@ -1160,6 +1161,7 @@ class SegmentationImage:
         if self.n_labels == 0:
             return None
 
+        # matplotlib is an optional dependency
         from matplotlib import colors
 
         cmap = make_random_cmap(n_colors=n_colors, seed=seed)
@@ -2044,6 +2046,7 @@ class SegmentationImage:
         the origin, which is not compatible with the pixel coordinates
         used in Photutils.
         """
+        # rasterio is an optional dependency
         from rasterio.features import shapes
         from rasterio.transform import Affine
 
@@ -2110,6 +2113,7 @@ class SegmentationImage:
         of the ``labels`` attribute. A `ValueError` is raised if the
         label values cannot be represented as 32-bit integers.
         """
+        # shapely is an optional dependency
         from shapely import MultiPolygon
         from shapely.geometry import shape
 
@@ -2200,6 +2204,7 @@ class SegmentationImage:
         Helper function to process a single Shapely ring (exterior or
         interior) into vertices and Matplotlib path codes.
         """
+        # matplotlib is an optional dependency
         from matplotlib import path
 
         coords = np.array(ring.coords)
@@ -2239,6 +2244,7 @@ class SegmentationImage:
             A Matplotlib PathPatch representing the geometry, or `None`
             if the geometry is empty.
         """
+        # matplotlib is an optional dependency
         from matplotlib import path
         from matplotlib.patches import PathPatch
 
@@ -2460,6 +2466,7 @@ class SegmentationImage:
             segm.imshow(figsize=(5, 5))
             segm.plot_patches(edgecolor='white', lw=2)
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -2539,6 +2546,7 @@ class SegmentationImage:
         'label' key. This can be used to identify the label of the
         region.
         """
+        # regions is an optional dependency
         from regions import Regions
 
         visual_kwargs = kwargs or None
@@ -2831,6 +2839,7 @@ class SegmentationImage:
             im = segm.imshow(ax=ax)
             fig.colorbar(im, ax=ax)
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -2929,6 +2938,7 @@ class SegmentationImage:
             fig, ax = plt.subplots()
             im, cbar_info = segm.imshow_map(ax=ax)
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
         from matplotlib.colors import ListedColormap
 

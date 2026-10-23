@@ -18,6 +18,7 @@ import pytest
 from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose, assert_array_equal
 
+import photutils.aperture.stats as stats_mod
 from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
                                                   SHAPE_CIRCULAR_ANNULUS,
                                                   SHAPE_ELLIPSE,
@@ -399,8 +400,6 @@ class TestApertureStatsThreadSafety:
         inside its getter. This test deadlocks instance B (until the
         timeout) if a class-level lock is ever reintroduced.
         """
-        import photutils.aperture.stats as stats_mod
-
         data = np.ones((50, 50))
         stats_a = ApertureStats(data, CircularAperture((25, 25), r=5.0))
         stats_b = ApertureStats(data, CircularAperture((30, 30), r=5.0))

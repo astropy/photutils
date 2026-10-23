@@ -5,6 +5,7 @@ Tests for the stats module.
 
 import sys
 import tracemalloc
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 from unittest.mock import patch
 
@@ -714,6 +715,7 @@ class TestInputValidation(BaseApertureStatsData):
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_sky_region_without_wcs(self):
+        # regions is an optional dependency
         from regions import CircleSkyRegion
 
         region = CircleSkyRegion(SkyCoord(10.0, 30.0, unit='deg'),
@@ -1219,6 +1221,7 @@ class TestRegionInput:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_region_matches_aperture(self):
+        # regions is an optional dependency
         from regions import CirclePixelRegion, PixCoord
         region = CirclePixelRegion(center=PixCoord(5, 5), radius=3)
         aperture = CircularAperture((5, 5), r=3)
@@ -1325,8 +1328,6 @@ class TestSigmaClipSharedInstance:
         property concurrently on the same instance gives the same
         results as the serial computation.
         """
-        from concurrent.futures import ThreadPoolExecutor
-
         rng = np.random.default_rng(0)
         n_src = 200
         ny = 51

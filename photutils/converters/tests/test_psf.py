@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from photutils.converters import _ASDF_ASTROPY_INSTALLED
+from photutils.converters import _ASDF_ASTROPY_INSTALLED, image_models
 from photutils.converters.image_models import GriddedPSFModelConverter
 from photutils.converters.tests import examples
 from photutils.extension import PHOTUTILS_PSF_CONVERTERS
@@ -212,8 +212,6 @@ def test_grid_structure_is_stored_outside_meta(example, converter_name,
     and STDPSFGrid keeps it in private attributes, so the converters
     normalize it to a single layout in the file.
     """
-    from photutils.converters import image_models
-
     obj, _ = example()
     converter = getattr(image_models, converter_name)()
     node = getattr(converter, method)(obj, None, None)

@@ -11,6 +11,7 @@ import astropy.units as u
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture import CircularAperture
 from photutils.aperture._common import validate_mask_method
 from photutils.aperture.core import _update_method_subpixels_docstring
 from photutils.aperture.photometry import AperturePhotometry
@@ -234,8 +235,6 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         The first element may be `None`.
         """
-        from photutils.aperture import CircularAperture
-
         apertures = []
         for radius in self.radii:
             if radius <= 0.0:
@@ -397,6 +396,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         lines : list of `~matplotlib.lines.Line2D`
             A list of lines representing the plotted data.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -452,6 +452,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             warnings.warn(msg, AstropyUserWarning)
             return None
 
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         if ax is None:

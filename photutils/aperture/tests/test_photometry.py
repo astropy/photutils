@@ -269,6 +269,7 @@ class TestCircleRegionPhotometry(BaseTestRegionPhotometry):
         """
         A circular region and the equivalent aperture.
         """
+        # regions is an optional dependency
         from regions import CirclePixelRegion, PixCoord
 
         r = 10.0
@@ -284,6 +285,7 @@ class TestCircleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
         """
         A circular annulus region and the equivalent aperture.
         """
+        # regions is an optional dependency
         from regions import CircleAnnulusPixelRegion, PixCoord
 
         r_in = 8.0
@@ -300,6 +302,7 @@ class TestEllipseRegionPhotometry(BaseTestRegionPhotometry):
         """
         An elliptical region and the equivalent aperture.
         """
+        # regions is an optional dependency
         from regions import EllipsePixelRegion, PixCoord
 
         a = 10.0
@@ -317,6 +320,7 @@ class TestEllipseAnnulusRegionPhotometry(BaseTestRegionPhotometry):
         """
         An elliptical annulus region and the equivalent aperture.
         """
+        # regions is an optional dependency
         from regions import EllipseAnnulusPixelRegion, PixCoord
 
         a_in = 5.0
@@ -339,6 +343,7 @@ class TestRectangleRegionPhotometry(BaseTestRegionPhotometry):
         """
         A rectangular region and the equivalent aperture.
         """
+        # regions is an optional dependency
         from regions import PixCoord, RectanglePixelRegion
 
         w = 8.0
@@ -356,6 +361,7 @@ class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
         """
         A rectangular annulus region and the equivalent aperture.
         """
+        # regions is an optional dependency
         from regions import PixCoord, RectangleAnnulusPixelRegion
 
         w_in = 8.0
@@ -490,6 +496,7 @@ class TestPlots:
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
     def test_plots(self, aperture_class, params):
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         aperture = aperture_class((20.0, 20.0), **params)
@@ -1008,6 +1015,7 @@ class TestInputValidation:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_unsupported_region_input(self):
+        # regions is an optional dependency
         from regions import LinePixelRegion, PixCoord
 
         region = LinePixelRegion(start=PixCoord(x=1, y=1),

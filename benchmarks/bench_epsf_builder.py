@@ -26,6 +26,9 @@ from bench_helpers import (add_memory_argument, parse_int_list,
 
 from photutils.datasets import make_model_image
 from photutils.psf import CircularGaussianPRF, EPSFBuilder, extract_stars
+from photutils.psf.epsf_builder import _suppress_alias_modes
+from photutils.psf.image_models import ImagePSF
+from photutils.utils._stats import nanmedian
 
 
 def make_stars(n_stars, *, fwhm=2.8, cutout_size=25, seed=0):
@@ -245,10 +248,6 @@ def bench_stages(*, n_stars=400, oversampling=2, fwhm=2.8, cutout_size=25,
     seed : int, optional
         The random number generator seed.
     """
-    from photutils.psf.epsf_builder import _suppress_alias_modes
-    from photutils.psf.image_models import ImagePSF
-    from photutils.utils._stats import nanmedian
-
     stars = make_stars(n_stars, fwhm=fwhm, cutout_size=cutout_size,
                        seed=seed)
     builder = make_builder(oversampling, maxiters=10)

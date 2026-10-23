@@ -240,6 +240,7 @@ class SourceGroups:
         ax : `~matplotlib.axes.Axes`
             The matplotlib axes object.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
         from matplotlib import colormaps
 

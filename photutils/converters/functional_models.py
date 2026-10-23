@@ -43,6 +43,8 @@ class _PSFModelConverter(TransformConverterBase):
         """
         Return the model class handled by this converter.
         """
+        # Deferred so that loading the asdf extension does not import
+        # photutils.psf
         from photutils import psf
 
         return getattr(psf, self.types[0].rsplit('.', 1)[-1])

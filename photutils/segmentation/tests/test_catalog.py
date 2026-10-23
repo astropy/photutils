@@ -21,6 +21,7 @@ from astropy.table import QTable
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 
+import photutils
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture)
 from photutils.background import Background2D, MedianBackground
@@ -919,6 +920,7 @@ class TestSourceCatalog:
         """
         Test plots.
         """
+        # matplotlib is an optional dependency
         from matplotlib.patches import Patch
 
         patches = self.cat.plot_circular_apertures(5.0)
@@ -1605,8 +1607,6 @@ class TestSourceCatalog:
         """
         Test meta with future_column_names enabled.
         """
-        import photutils
-
         monkeypatch.setattr(photutils, 'future_column_names', True)
 
         with pytest.warns(PhotutilsDeprecationWarning) as record:

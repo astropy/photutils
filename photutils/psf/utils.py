@@ -717,9 +717,6 @@ def _create_call_docstring(*, iterative=False):
         """
         Method decorator that updates the method's docstring.
         """
-        # Import PSF_FLAGS here to avoid circular imports
-        from .flags import PSF_FLAGS
-
         base_docstring = """
         Perform PSF photometry.
 

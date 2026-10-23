@@ -129,6 +129,7 @@ def make_gwcs(shape, galactic=False):
     <SkyCoord (ICRS): (ra, dec) in deg
         (197.89278975, -1.36561284)>
     """
+    # gwcs is an optional dependency
     from gwcs import coordinate_frames as cf
     from gwcs import wcs as gwcs_wcs
 

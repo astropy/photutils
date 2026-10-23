@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
 
+import photutils.utils._stats as stats_mod
 from photutils.utils._optional_deps import HAS_BOTTLENECK
 from photutils.utils._stats import (nanmax, nanmean, nanmedian, nanmin, nanstd,
                                     nansum, nanvar)
@@ -85,8 +86,6 @@ def test_nan_funcs_no_bottleneck():
     Test that the functions work when bottleneck is not available by
     reloading the module with HAS_BOTTLENECK mocked to False.
     """
-    import photutils.utils._stats as stats_mod
-
     try:
         with patch('photutils.utils._optional_deps.HAS_BOTTLENECK',
                    new=False):

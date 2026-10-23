@@ -18,6 +18,7 @@ from numpy.testing import assert_allclose, assert_equal
 from scipy.ndimage import find_objects
 
 import photutils.segmentation.core as segm_core
+from photutils.aperture import BoundingBox
 from photutils.segmentation._label_stats import label_stats
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.segmentation.deblend import deblend_sources
@@ -767,8 +768,6 @@ class TestSegmentationImage:
         Test that bbox returns correct bounding box coordinates for
         each label.
         """
-        from photutils.aperture import BoundingBox
-
         idx = self.segm.get_index(label)
         bbox = self.segm.bbox[idx]
         assert isinstance(bbox, BoundingBox)
@@ -1194,6 +1193,7 @@ class TestSegmentationImage:
         """
         Test imshow.
         """
+        # matplotlib is an optional dependency
         from matplotlib.image import AxesImage
 
         axim = self.segm.imshow(figsize=(5, 5))
@@ -1207,6 +1207,7 @@ class TestSegmentationImage:
         """
         Test imshow and imshow_map with an input axes and colormap.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -1225,6 +1226,7 @@ class TestSegmentationImage:
         """
         Test polygons.
         """
+        # shapely is an optional dependency
         from shapely import Polygon
 
         polygons = self.segm.polygons
@@ -1266,6 +1268,7 @@ class TestSegmentationImage:
         """
         Test regions.
         """
+        # regions is an optional dependency
         from regions import PolygonPixelRegion, Regions
 
         regions = self.segm.to_regions()
@@ -1299,6 +1302,7 @@ class TestSegmentationImage:
         """
         Test patches.
         """
+        # matplotlib is an optional dependency
         from matplotlib.patches import PathPatch
 
         patches = self.segm.to_patches(edgecolor='blue')
@@ -1335,6 +1339,7 @@ class TestSegmentationImage:
         Test that plot_patches returns the patches that were added to
         the axes.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         _, ax = plt.subplots()
@@ -1376,6 +1381,7 @@ class TestSegmentationImage:
         Test polygons, patches, and regions for segments that have holes
         and/or are noncontiguous.
         """
+        # matplotlib, regions, and shapely are optional dependencies
         from matplotlib.patches import PathPatch
         from regions import PolygonPixelRegion, Regions
         from shapely import MultiPolygon, Polygon
@@ -1661,9 +1667,7 @@ def test_segments_no_rasterio(segm_data, monkeypatch):
     Test that segments property works without rasterio/shapely by
     creating Segment objects without polygon info.
     """
-    import photutils.segmentation.core as core_mod
-
-    monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+    monkeypatch.setattr(segm_core, 'HAS_RASTERIO', False)
 
     segm = SegmentationImage(segm_data)
     segments = segm.segments
@@ -1741,6 +1745,7 @@ def test_geojson_polygons_label_mismatch():
 
     # Mock rasterio.features.shapes to return a wrong label
     def fake_shapes(_data, **_kwargs):
+        # shapely is an optional dependency
         from shapely import Polygon
         from shapely.geometry import mapping
 
@@ -1783,6 +1788,7 @@ def test_convert_shapely_to_pathpatch_empty():
     """
     Test _convert_shapely_to_pathpatch returns None for empty geometry.
     """
+    # shapely is an optional dependency
     from shapely import Point
 
     data = np.array([[0, 0, 0],
@@ -1804,6 +1810,7 @@ def test_convert_shapely_to_pathpatch_empty_geom_collection():
     Test _convert_shapely_to_pathpatch returns None for a non-Polygon
     geometry type that yields no polygons (empty all_vertices).
     """
+    # shapely is an optional dependency
     from shapely import GeometryCollection
 
     data = np.array([[0, 0, 0],
@@ -1860,6 +1867,7 @@ def test_imshow_map_no_labels():
     Test that imshow_map displays an image with no labels and returns
     no colorbar information.
     """
+    # matplotlib is an optional dependency
     from matplotlib.image import AxesImage
 
     segm = SegmentationImage(np.zeros((4, 5), dtype=int))
@@ -2153,6 +2161,7 @@ class TestGetSegment:
         Test that get_segment returns a MultiPolygon for a
         noncontiguous segment.
         """
+        # shapely is an optional dependency
         from shapely import MultiPolygon
 
         data = np.zeros((10, 10), dtype=int)
@@ -2167,9 +2176,7 @@ class TestGetSegment:
         Test that get_segment returns polygon=None without
         rasterio/shapely.
         """
-        import photutils.segmentation.core as core_mod
-
-        monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+        monkeypatch.setattr(segm_core, 'HAS_RASTERIO', False)
 
         segm = SegmentationImage(self.data.copy())
         seg = segm.get_segment(1)
@@ -2271,6 +2278,7 @@ class TestGetPolygon:
         """
         Test that get_polygon returns a Shapely geometry for each label.
         """
+        # shapely is an optional dependency
         from shapely import MultiPolygon, Polygon
 
         for label in self.segm.labels:
@@ -2306,9 +2314,7 @@ class TestGetPolygon:
         """
         Test that get_polygon returns None without rasterio/shapely.
         """
-        import photutils.segmentation.core as core_mod
-
-        monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+        monkeypatch.setattr(segm_core, 'HAS_RASTERIO', False)
         segm = SegmentationImage(self.data.copy())
         assert segm.get_polygon(1) is None
 
@@ -2316,6 +2322,7 @@ class TestGetPolygon:
         """
         Test that get_polygons returns a list in the correct order.
         """
+        # shapely is an optional dependency
         from shapely import MultiPolygon, Polygon
 
         labels = [7, 3, 1]
@@ -2378,6 +2385,7 @@ class TestGetPatch:
         """
         Test that get_patch returns a PathPatch for each label.
         """
+        # matplotlib is an optional dependency
         from matplotlib.patches import PathPatch
 
         for label in self.segm.labels:
@@ -2412,6 +2420,7 @@ class TestGetPatch:
         """
         Test that get_patches returns a list in the correct order.
         """
+        # matplotlib is an optional dependency
         from matplotlib.patches import PathPatch
 
         labels = [7, 3, 1]
@@ -2553,6 +2562,7 @@ class TestGetRegion:
         """
         Test that get_region returns a PolygonPixelRegion for each label.
         """
+        # regions is an optional dependency
         from regions import PolygonPixelRegion
 
         for label in self.segm.labels:
@@ -2597,6 +2607,7 @@ class TestGetRegion:
         Test that get_region returns a Regions object for a
         noncontiguous (MultiPolygon) segment.
         """
+        # regions is an optional dependency
         from regions import Regions
 
         data = np.zeros((10, 10), dtype=int)
@@ -2610,6 +2621,7 @@ class TestGetRegion:
         """
         Test that get_regions returns a list in the correct order.
         """
+        # regions is an optional dependency
         from regions import PolygonPixelRegion
 
         labels = [7, 3, 1]
@@ -2631,6 +2643,7 @@ class TestGetRegion:
         """
         Test that to_regions passes visual kwargs to the regions.
         """
+        # regions is an optional dependency
         from regions import PolygonPixelRegion
 
         regions = self.segm.to_regions(edgecolor='red', linewidth=2)

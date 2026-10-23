@@ -29,6 +29,7 @@ def test_deprecated_from_import():
     a deprecation warning.
     """
     with pytest.warns(PhotutilsDeprecationWarning, match=DEPRECATION_MATCH):
+        # The import itself emits the deprecation warning
         from photutils.psf.matching import resize_psf
     assert resize_psf is psf_matching.resize_psf
 

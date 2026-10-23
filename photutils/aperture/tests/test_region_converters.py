@@ -44,6 +44,7 @@ def image_2d_wcs():
 
 
 def compare_region_shapes(reg1, reg2):
+    # regions is an optional dependency
     from regions import PixCoord
 
     assert reg1.__class__ == reg2.__class__
@@ -68,6 +69,7 @@ class TestRegionApertureRoundTrip:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_circle(self, image_2d_wcs):
+        # regions is an optional dependency
         from regions import CirclePixelRegion, PixCoord
 
         region_shape = CirclePixelRegion(center=PixCoord(x=42, y=43),
@@ -94,6 +96,7 @@ class TestRegionApertureRoundTrip:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_ellipse(self, image_2d_wcs):
+        # regions is an optional dependency
         from regions import EllipsePixelRegion, PixCoord
 
         region_shape = EllipsePixelRegion(
@@ -152,6 +155,7 @@ class TestRegionApertureRoundTrip:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_rectangle(self, image_2d_wcs):
+        # regions is an optional dependency
         from regions import PixCoord, RectanglePixelRegion
 
         region_shape = RectanglePixelRegion(
@@ -211,6 +215,7 @@ class TestRegionApertureRoundTrip:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_circle_annulus(self, image_2d_wcs):
+        # regions is an optional dependency
         from regions import CircleAnnulusPixelRegion, PixCoord
 
         region_shape = CircleAnnulusPixelRegion(
@@ -251,6 +256,7 @@ class TestRegionApertureRoundTrip:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_ellipse_annulus(self, image_2d_wcs):
+        # regions is an optional dependency
         from regions import EllipseAnnulusPixelRegion, PixCoord
 
         region_shape = EllipseAnnulusPixelRegion(
@@ -347,6 +353,7 @@ class TestRegionApertureRoundTrip:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_rectangle_annulus(self, image_2d_wcs):
+        # regions is an optional dependency
         from regions import PixCoord, RectangleAnnulusPixelRegion
 
         region_shape = RectangleAnnulusPixelRegion(
@@ -441,6 +448,7 @@ class TestRegionApertureRoundTrip:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_polygon(self, image_2d_wcs):
+        # regions is an optional dependency
         from regions import PixCoord, PolygonPixelRegion
 
         # Counterclockwise simple (non-self-intersecting) quadrilateral.
@@ -475,6 +483,7 @@ class TestApertureToRegion:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_aperture_to_region(self):
+        # regions is an optional dependency
         from regions import Region, Regions
 
         xypos = [(10, 20), (30, 40), (50, 60), (70, 80)]
@@ -569,6 +578,7 @@ class TestShapelyConversions:
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_polygon_to_region(self):
+        # regions and shapely are optional dependencies
         from regions import PixCoord, PolygonPixelRegion
         from shapely import Polygon
 
@@ -591,6 +601,7 @@ class TestShapelyConversions:
         returning a Regions object containing one PolygonPixelRegion per
         polygon.
         """
+        # regions and shapely are optional dependencies
         from regions import Regions
         from shapely import MultiPolygon, Polygon
 
@@ -609,6 +620,7 @@ class TestInvalidInputs:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_invalid_inputs(self):
+        # regions is an optional dependency
         from regions import CirclePixelRegion, PixCoord
 
         aperture = CircularAperture((10, 12), r=4.2)

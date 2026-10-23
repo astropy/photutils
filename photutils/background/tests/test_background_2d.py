@@ -786,6 +786,7 @@ class TestBackground2D:
         Test the plot_meshes method with an input axes and no box
         outlines.
         """
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         bkg = Background2D(test_data, (25, 25))

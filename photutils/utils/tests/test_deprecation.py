@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from astropy.table import QTable, Table, TableMergeError, join, unique
 
+import photutils
 from photutils._future_column_names import (_future_column_names_var,
                                             use_future_column_names)
 from photutils.utils._deprecation import (DeprecatedColumnQTable,
@@ -42,8 +43,6 @@ def global_future_column_names():
     the main thread, so the test is safe to run with
     pytest-run-parallel.
     """
-    import photutils
-
     original = photutils.future_column_names
     photutils.future_column_names = True
     yield
@@ -410,12 +409,10 @@ class TestFutureColumnNames:
     """
 
     def setup_method(self):
-        import photutils
         self._original = photutils.future_column_names
         photutils.future_column_names = True
 
     def teardown_method(self):
-        import photutils
         photutils.future_column_names = self._original
 
     def test_from_data_returns_plain_table(self, raw_data):
@@ -508,8 +505,6 @@ class TestUseFutureColumnNames:
         Test that the global flag is unchanged after the context
         manager exits.
         """
-        import photutils
-
         original = photutils.future_column_names
         with use_future_column_names():
             pass
@@ -520,8 +515,6 @@ class TestUseFutureColumnNames:
         Test that outside the context manager, the global flag is
         respected and deprecated table behavior is used.
         """
-        import photutils
-
         assert not photutils.future_column_names
         with use_future_column_names():
             pass

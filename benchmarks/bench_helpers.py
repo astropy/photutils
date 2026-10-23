@@ -10,13 +10,17 @@ import sys
 import time
 import tracemalloc
 
+import astropy
 import numpy as np
+import scipy
 
+import photutils
 from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 EllipticalAnnulus, EllipticalAperture,
                                 PolygonAperture, RectangularAnnulus,
                                 RectangularAperture)
 from photutils.datasets import make_wcs
+from photutils.utils._optional_deps import HAS_BOTTLENECK
 
 # Whether time_best also reports the memory of each call (see
 # set_memory_mode)
@@ -144,12 +148,6 @@ def print_environment():
     """
     Print information about the runtime environment.
     """
-    import astropy
-    import scipy
-
-    import photutils
-    from photutils.utils._optional_deps import HAS_BOTTLENECK
-
     gil = getattr(sys, '_is_gil_enabled', lambda: True)()
     print(f'python {platform.python_version()} (GIL enabled: {gil}), '
           f'{os.cpu_count()} CPUs')

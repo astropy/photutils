@@ -215,6 +215,7 @@ class TestPlotting:
         assert_allclose(patch.get_height(), 18)
 
     def test_plot(self):
+        # matplotlib is an optional dependency
         from matplotlib.patches import Rectangle
         bbox = BoundingBox(1, 10, 2, 20)
         patch = bbox.plot()

@@ -111,6 +111,7 @@ class TestPolygonAperture(BaseTestAperture):
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self):
+        # matplotlib is an optional dependency
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -119,6 +120,7 @@ class TestPolygonAperture(BaseTestAperture):
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_returns_patches(self):
+        # matplotlib is an optional dependency
         from matplotlib.patches import Patch
 
         patches = self.aperture._to_patch()
@@ -853,6 +855,7 @@ class TestPolygonIndexing:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_to_patch_scalar(self):
+        # matplotlib is an optional dependency
         import matplotlib.patches as mpatches
         aper = PolygonAperture((0.0, 0.0), SQUARE_OFFSETS)
         patch = aper._to_patch()
@@ -946,6 +949,7 @@ class TestRegularPolygon:
 
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_matches_regions(self):
+        # regions is an optional dependency
         from regions import PixCoord, RegularPolygonPixelRegion
 
         for n in (3, 5, 6, 8):
