@@ -130,9 +130,6 @@ html_theme_options = {
          'type': 'fontawesome',
          },
     ],
-    # The theme counts page views only on astropy.org hosts, so the
-    # GoatCounter script would load on every page but never count.
-    'goatcounter_analytics_url': False,
     'pygments_dark_style': 'nord',
 }
 
