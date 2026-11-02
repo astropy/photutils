@@ -1998,15 +1998,25 @@ class CircularGaussianPRF(Fittable2DModel):
         y0 = y - y_0
         sigma = fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
-        dpix = 0.5
-        if isinstance(x0, u.Quantity):
-            dpix <<= x0.unit
+        if has_units := isinstance(x0, u.Quantity):
+            # A pixel has a size of one in the units of the positions.
+            # Plain arrays are passed to erf because scipy.special
+            # functions do not reliably accept Quantity inputs.
+            sigma = sigma.to_value(x0.unit)
+            y0 = y0.to_value(x0.unit)
+            x0 = x0.value
 
-        return (flux / 4.0
-                * ((erf((x0 + dpix) / (np.sqrt(2) * sigma))
-                    - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
-                   * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
-                      - erf((y0 - dpix) / (np.sqrt(2) * sigma)))))
+        dpix = 0.5
+        fraction = 0.25 * ((erf((x0 + dpix) / (np.sqrt(2) * sigma))
+                            - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
+                           * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
+                              - erf((y0 - dpix) / (np.sqrt(2) * sigma))))
+
+        if has_units:
+            # Inputs with units give an output with units
+            fraction <<= u.dimensionless_unscaled
+
+        return flux * fraction
 
     @staticmethod
     def fit_deriv(x, y, flux, x_0, y_0, fwhm):
@@ -2292,15 +2302,25 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         x0 = x - x_0
         y0 = y - y_0
 
-        dpix = 0.5
-        if isinstance(x0, u.Quantity):
-            dpix <<= x0.unit
+        if has_units := isinstance(x0, u.Quantity):
+            # A pixel has a size of one in the units of the positions.
+            # Plain arrays are passed to erf because scipy.special
+            # functions do not reliably accept Quantity inputs.
+            sigma = sigma.to_value(x0.unit)
+            y0 = y0.to_value(x0.unit)
+            x0 = x0.value
 
-        return (flux / 4.0
-                * ((erf((x0 + dpix) / (np.sqrt(2) * sigma))
-                    - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
-                   * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
-                      - erf((y0 - dpix) / (np.sqrt(2) * sigma)))))
+        dpix = 0.5
+        fraction = 0.25 * ((erf((x0 + dpix) / (np.sqrt(2) * sigma))
+                            - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
+                           * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
+                              - erf((y0 - dpix) / (np.sqrt(2) * sigma))))
+
+        if has_units:
+            # Inputs with units give an output with units
+            fraction <<= u.dimensionless_unscaled
+
+        return flux * fraction
 
     @staticmethod
     def fit_deriv(x, y, flux, x_0, y_0, sigma):
