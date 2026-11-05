@@ -12,7 +12,7 @@ from scipy.ndimage import label, maximum_filter
 from scipy.spatial import cKDTree
 
 from photutils.utils._deprecation import deprecated_renamed_argument
-from photutils.utils._misc import _get_meta
+from photutils.utils._misc import _get_meta, split_masked_array
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmin
@@ -414,7 +414,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     Parameters
     ----------
     data : array_like
-        The 2D array of the image.
+        The 2D array of the image. If ``data`` is a
+        `~numpy.ma.MaskedArray`, its mask is combined with the input
+        ``mask``.
 
     threshold : float, scalar `~astropy.units.Quantity` or array_like
         The data value or pixel-wise data values to be used
@@ -594,6 +596,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
                                       ('data', 'threshold', 'error'))
     data, threshold, error = arrays
     data = np.asanyarray(data)
+    data, mask = split_masked_array(data, mask)
 
     if data.size == 0:
         msg = 'data must not be empty'

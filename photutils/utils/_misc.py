@@ -2,8 +2,8 @@
 """
 Tools for getting the installed package versions and the current date
 and time for use in output metadata, for finding the cached properties
-of a class, and for deep copying instances that other threads may
-modify.
+of a class, for deep copying instances that other threads may modify,
+and for splitting a masked array into its data and mask.
 """
 
 import inspect
@@ -11,6 +11,8 @@ import sys
 from copy import deepcopy
 from datetime import UTC, datetime
 from functools import cached_property
+
+import numpy as np
 
 
 def get_cached_property_names(cls):
@@ -114,6 +116,51 @@ def deepcopy_instance(obj, memo, cache_names=()):
     for name, value in deepcopy(slots, memo).items():
         setattr(result, name, value)
     return result
+
+
+def split_masked_array(data, mask):
+    """
+    Split a `~numpy.ma.MaskedArray` into its plain data array and a
+    mask that combines its mask with an input mask.
+
+    Functions that pass ``data`` to `scipy` must use the plain array
+    because scipy 2.0 rejects `~numpy.ma.MaskedArray` inputs.
+
+    Parameters
+    ----------
+    data : array_like
+        The input data. Any input other than a `~numpy.ma.MaskedArray`
+        is returned unchanged with ``mask``.
+
+    mask : array_like of bool or `None`
+        The input mask, where `True` values indicate masked pixels.
+
+    Returns
+    -------
+    data : array_like
+        The plain data array of a `~numpy.ma.MaskedArray` input.
+        Otherwise the input ``data``.
+
+    mask : array_like of bool or `None`
+        The union of ``mask`` and the mask of a `~numpy.ma.MaskedArray`
+        input. Only ``mask`` is returned if ``data`` has no masked
+        values or if the shapes of ``mask`` and ``data`` differ, so that
+        the caller can report the shape mismatch.
+    """
+    if not isinstance(data, np.ma.MaskedArray):
+        return data, mask
+
+    data_mask = np.ma.getmaskarray(data)
+    data = np.ma.getdata(data)
+    if not np.any(data_mask):
+        return data, mask
+    if mask is None:
+        return data, data_mask
+
+    mask = np.asanyarray(mask, dtype=bool)
+    if mask.shape != data.shape:
+        return data, mask
+    return data, mask | data_mask
 
 
 def _get_version_info():

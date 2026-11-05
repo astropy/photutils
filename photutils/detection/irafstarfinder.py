@@ -16,6 +16,7 @@ from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
 from photutils.utils._convolution import _filter_data
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._misc import split_masked_array
 from photutils.utils._quantity_helpers import check_units, isscalar
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import (NoDetectionsWarning,
@@ -391,9 +392,12 @@ class IRAFStarFinder(StarFinderBase):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+                or `~astropy.units.Quantity`
             The 2D image array. The image should be
-            background-subtracted.
+            background-subtracted. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask is combined with the input
+            ``mask``.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
@@ -425,6 +429,8 @@ class IRAFStarFinder(StarFinderBase):
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
         """
+        data, mask = split_masked_array(data, mask)
+
         inputs = (data, self.threshold, self.peak_max)
         names = ('data', 'threshold', 'peak_max')
         check_units(inputs, names)

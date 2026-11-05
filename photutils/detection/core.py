@@ -56,8 +56,11 @@ class StarFinderBase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
-            The 2D image array.
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+                or `~astropy.units.Quantity`
+            The 2D image array. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask is combined with the input
+            ``mask``.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
@@ -180,8 +183,11 @@ class StarFinderBase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
-            The 2D image array.
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+                or `~astropy.units.Quantity`
+            The 2D image array. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask is combined with the input
+            ``mask``.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a

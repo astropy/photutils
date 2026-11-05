@@ -13,6 +13,7 @@ from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
 from photutils.utils._convolution import _filter_data
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._misc import split_masked_array
 from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -188,9 +189,12 @@ class StarFinder(StarFinderBase):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+                or `~astropy.units.Quantity`
             The 2D image array. The image should be
-            background-subtracted.
+            background-subtracted. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask is combined with the input
+            ``mask``.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
@@ -220,6 +224,8 @@ class StarFinder(StarFinderBase):
             `None` is returned if no stars are found or no stars meet
             the ``peak_max`` criterion.
         """
+        data, mask = split_masked_array(data, mask)
+
         # Validate the units
         check_units((data, self.threshold, self.peak_max),
                     ('data', 'threshold', 'peak_max'))
