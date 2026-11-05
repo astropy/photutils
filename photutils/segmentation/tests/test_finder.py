@@ -37,6 +37,19 @@ class TestSourceFinder:
         assert segm2.n_labels == 94
         assert np.all(segm1.data == segm2.data)
 
+    def test_masked_array(self):
+        """
+        Test that the mask of a MaskedArray input is used.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[:, :250] = True
+        finder = SourceFinder(n_pixels=self.n_pixels)
+        data_ma = np.ma.MaskedArray(self.convolved_data, mask=mask)
+        segm1 = finder(data_ma, self.threshold)
+        segm2 = finder(self.convolved_data, self.threshold, mask=mask)
+        assert segm1.n_labels < 94
+        assert_equal(segm1.data, segm2.data)
+
     def test_invalid_units(self):
         """
         Test invalid units.
