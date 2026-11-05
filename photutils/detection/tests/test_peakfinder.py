@@ -133,6 +133,43 @@ class TestFindPeaks:
         with pytest.raises(ValueError, match=match):
             find_peaks(data, 0.1, mask=np.ones((5, 5)))
 
+    def test_masked_array(self, data):
+        """
+        Test that the mask of a MaskedArray input is used.
+        """
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50, :] = True
+        tbl0 = find_peaks(data, 0.1, mask=mask)
+        tbl1 = find_peaks(np.ma.MaskedArray(data, mask=mask), 0.1)
+        assert len(tbl1) < len(find_peaks(data, 0.1))
+        assert_array_equal(tbl1, tbl0)
+
+    def test_masked_array_combined_mask(self, data):
+        """
+        Test that the mask of a MaskedArray input is combined with the
+        input mask.
+        """
+        mask1 = np.zeros(data.shape, dtype=bool)
+        mask1[0:30, :] = True
+        mask2 = np.zeros(data.shape, dtype=bool)
+        mask2[60:, :] = True
+        tbl0 = find_peaks(data, 0.1, mask=mask1 | mask2)
+        tbl1 = find_peaks(np.ma.MaskedArray(data, mask=mask1), 0.1,
+                          mask=mask2)
+        assert_array_equal(tbl1, tbl0)
+
+    def test_masked_array_maskshape(self, data):
+        """
+        Test that a mask shape that does not match a MaskedArray input
+        raises an error.
+        """
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50, :] = True
+        match = 'data and mask must have the same shape'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(np.ma.MaskedArray(data, mask=mask), 0.1,
+                       mask=np.ones((5, 5)))
+
     def test_thresholdshape(self, data):
         """
         Test if threshold shape doesn't match data shape.

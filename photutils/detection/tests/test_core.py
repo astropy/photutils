@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from photutils.detection import DAOStarFinder
+from photutils.detection import DAOStarFinder, IRAFStarFinder, StarFinder
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_n_brightest)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -734,3 +734,46 @@ def test_deprecated_default():
     result = '<deprecated>'
     assert repr(default) == result
     assert str(default) == result
+
+
+@pytest.fixture(name='star_finder', params=['dao', 'iraf', 'star'])
+def fixture_star_finder(request, kernel):
+    """
+    Fixture that provides each star finder class.
+    """
+    if request.param == 'dao':
+        return DAOStarFinder(threshold=1.0, fwhm=1.5)
+    if request.param == 'iraf':
+        return IRAFStarFinder(threshold=1.0, fwhm=1.5)
+    return StarFinder(1.0, kernel)
+
+
+class TestMaskedArrayInput:
+    """
+    Tests for star finders with a MaskedArray input.
+    """
+
+    def test_masked_array(self, data, star_finder):
+        """
+        Test that the mask of a MaskedArray input is used.
+        """
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50, :] = True
+        tbl0 = star_finder(data, mask=mask)
+        tbl1 = star_finder(np.ma.MaskedArray(data, mask=mask))
+        assert len(tbl1) < len(star_finder(data))
+        assert_array_equal(tbl1, tbl0)
+
+    def test_masked_array_combined_mask(self, data, star_finder):
+        """
+        Test that the mask of a MaskedArray input is combined with the
+        input mask.
+        """
+        mask1 = np.zeros(data.shape, dtype=bool)
+        mask1[0:30, :] = True
+        mask2 = np.zeros(data.shape, dtype=bool)
+        mask2[60:, :] = True
+        tbl0 = star_finder(data, mask=mask1 | mask2)
+        tbl1 = star_finder.find_stars(np.ma.MaskedArray(data, mask=mask1),
+                                      mask=mask2)
+        assert_array_equal(tbl1, tbl0)
