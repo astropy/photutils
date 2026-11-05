@@ -31,6 +31,12 @@ Bug Fixes
     raise ``RuntimeError: dictionary changed size during iteration``
     when first called from multiple threads at once. [#2526]
 
+  - Fixed ``DAOStarFinder``, ``IRAFStarFinder``, ``StarFinder``, and
+    ``find_peaks`` for ``numpy.ma.MaskedArray`` input, which raised a
+    ``TypeError`` with scipy 2.0. The mask of a ``MaskedArray`` input
+    is now combined with the input ``mask``. Previously, the star
+    finders ignored it. [#2536]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -69,6 +75,11 @@ Bug Fixes
     ``SourceCatalog.copy`` could raise ``RuntimeError: dictionary
     changed size during iteration`` when another thread accessed the
     properties of the same object at the same time. [#2526]
+
+  - Fixed ``detect_sources`` and ``SourceFinder`` for
+    ``numpy.ma.MaskedArray`` input, which raised a ``TypeError`` with
+    scipy 2.0. The mask of a ``MaskedArray`` input is now combined with
+    the input ``mask``. Previously, it was ignored. [#2536]
 
 - ``photutils.utils``
 
