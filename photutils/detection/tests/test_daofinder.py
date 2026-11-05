@@ -709,3 +709,29 @@ class TestDAOStarFinder:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
         assert finder.peak_max == 100.0
+
+    def test_masked_array(self, data):
+        """
+        Test DAOStarFinder with MaskedArray input data.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50] = True
+        data_ma = np.ma.MaskedArray(data, mask=mask)
+
+        tbl1 = finder(data, mask=mask)
+        tbl2 = finder(data_ma)
+        assert_array_equal(tbl1, tbl2)
+
+        # Additional mask combined
+        mask2 = np.zeros(data.shape, dtype=bool)
+        mask2[50:60] = True
+        tbl3 = finder(data, mask=(mask | mask2))
+        tbl4 = finder(data_ma, mask=mask2)
+        assert_array_equal(tbl3, tbl4)
+
+        # MaskedArray with no masked pixels
+        data_ma_nomask = np.ma.MaskedArray(data)
+        tbl5 = finder(data)
+        tbl6 = finder(data_ma_nomask)
+        assert_array_equal(tbl5, tbl6)

@@ -413,8 +413,10 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     Parameters
     ----------
-    data : array_like
-        The 2D array of the image.
+    data : array_like or `~numpy.ma.MaskedArray`
+        The 2D array of the image. If ``data`` is a
+        `~numpy.ma.MaskedArray`, its mask will be combined with the
+        input ``mask``.
 
     threshold : float, scalar `~astropy.units.Quantity` or array_like
         The data value or pixel-wise data values to be used
@@ -593,6 +595,11 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     arrays, unit = process_quantities((data, threshold, error),
                                       ('data', 'threshold', 'error'))
     data, threshold, error = arrays
+    if isinstance(data, np.ma.MaskedArray):
+        data_mask = np.ma.getmaskarray(data)
+        if np.any(data_mask):
+            mask = data_mask if mask is None else (mask | data_mask)
+        data = data.data
     data = np.asanyarray(data)
 
     if data.size == 0:

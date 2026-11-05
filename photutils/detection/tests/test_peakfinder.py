@@ -61,6 +61,30 @@ class TestFindPeaks:
         tbl1 = find_peaks(data, 0.1, box_size=3, mask=mask)
         assert len(tbl1) < len(tbl0)
 
+    def test_masked_array(self, data):
+        """
+        Test find_peaks with MaskedArray input data.
+        """
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50, :] = True
+        data_ma = np.ma.MaskedArray(data, mask=mask)
+        tbl1 = find_peaks(data, 0.1, box_size=3, mask=mask)
+        tbl2 = find_peaks(data_ma, 0.1, box_size=3)
+        assert_array_equal(tbl1, tbl2)
+
+        # Additional mask combined
+        mask2 = np.zeros(data.shape, dtype=bool)
+        mask2[50:60, :] = True
+        tbl3 = find_peaks(data, 0.1, box_size=3, mask=(mask | mask2))
+        tbl4 = find_peaks(data_ma, 0.1, box_size=3, mask=mask2)
+        assert_array_equal(tbl3, tbl4)
+
+        # MaskedArray with no masked pixels
+        data_ma_nomask = np.ma.MaskedArray(data)
+        tbl5 = find_peaks(data, 0.1, box_size=3)
+        tbl6 = find_peaks(data_ma_nomask, 0.1, box_size=3)
+        assert_array_equal(tbl5, tbl6)
+
     def test_mask_int(self, data):
         """
         Test that an integer mask gives the same result as a boolean

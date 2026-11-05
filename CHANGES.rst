@@ -26,6 +26,11 @@ Bug Fixes
 
 - ``photutils.detection``
 
+  - Fixed ``DAOStarFinder``, ``IRAFStarFinder``, ``StarFinder``, and
+    ``find_peaks`` so that ``numpy.ma.MaskedArray`` input data is
+    supported on SciPy 2.0. The mask of an input ``MaskedArray`` is now
+    automatically combined with the input ``mask``. [#2534]
+
   - Fixed a race condition on free-threaded Python builds where
     ``DAOStarFinder``, ``IRAFStarFinder``, and ``StarFinder`` could
     raise ``RuntimeError: dictionary changed size during iteration``

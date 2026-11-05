@@ -72,3 +72,16 @@ class TestFilterData:
         match = 'The kernel is not normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             _filter_data(self.data, kernel, check_normalization=True)
+
+    def test_filter_data_masked_array(self):
+        """
+        Test _filter_data with MaskedArray input data.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[10:20, 10:20] = True
+        data_ma = np.ma.MaskedArray(self.data, mask=mask)
+        filt_data = _filter_data(data_ma, self.kernel)
+        expected = _filter_data(self.data, self.kernel)
+        assert isinstance(filt_data, np.ndarray)
+        assert not isinstance(filt_data, np.ma.MaskedArray)
+        assert_allclose(filt_data, expected)

@@ -141,9 +141,12 @@ class StarFinder(StarFinderBase):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+        or `~astropy.units.Quantity`
             The 2D image array. The image should be
-            background-subtracted.
+            background-subtracted. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask will be combined with the
+            input ``mask``.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a
@@ -161,6 +164,17 @@ class StarFinder(StarFinderBase):
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
         if denom > 0:
             kernel = (kernel - np.sum(kernel) / kernel.size) / denom
+
+        if hasattr(data, 'unit') and isinstance(data.value, np.ma.MaskedArray):
+            data_mask = np.ma.getmaskarray(data.value)
+            if np.any(data_mask):
+                mask = data_mask if mask is None else (mask | data_mask)
+            data = data.value.data * data.unit
+        elif isinstance(data, np.ma.MaskedArray):
+            data_mask = np.ma.getmaskarray(data)
+            if np.any(data_mask):
+                mask = data_mask if mask is None else (mask | data_mask)
+            data = data.data
 
         convolved_data = _filter_data(data, kernel, mode='constant',
                                       fill_value=0.0,
@@ -188,9 +202,12 @@ class StarFinder(StarFinderBase):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+        or `~astropy.units.Quantity`
             The 2D image array. The image should be
-            background-subtracted.
+            background-subtracted. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask will be combined with the
+            input ``mask``.
 
         mask : 2D bool array, optional
             A boolean mask with the same shape as ``data``, where a

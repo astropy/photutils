@@ -22,8 +22,11 @@ def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
-        The 2D array of the image.
+    data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+        or `~astropy.units.Quantity`
+        The 2D array of the image. If ``data`` is a
+        `~numpy.ma.MaskedArray`, its unmasked data array is used for the
+        convolution.
 
     kernel : 2D array_like, `~astropy.convolution.Kernel2D`, or `None`
         The 2D kernel used to filter the input ``data``. Filtering the
@@ -67,6 +70,9 @@ def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
     if isinstance(data, Quantity):
         unit = data.unit
         data = data.value
+
+    if isinstance(data, np.ma.MaskedArray):
+        data = data.data
 
     # NOTE: if data is int and kernel is float, ndimage.convolve will
     # return an int image. If the data dtype is int, we make the data
