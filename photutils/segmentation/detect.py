@@ -14,6 +14,7 @@ from scipy.ndimage import label as ndi_label
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
+from photutils.utils._misc import split_masked_array
 from photutils.utils._parameters import (SigmaClipSentinelDefault,
                                          create_default_sigmaclip)
 from photutils.utils._quantity_helpers import check_units, process_quantities
@@ -327,10 +328,11 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
+    data : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
         The 2D array of the image. If filtering is desired, please input
         a convolved image. Pixels with NaN values are never included in
-        a source.
+        a source. If ``data`` is a `~numpy.ma.MaskedArray`, its mask is
+        combined with the input ``mask``.
 
     threshold : float or 2D `~numpy.ndarray`
         The data value or pixel-wise data values to be used for the
@@ -424,6 +426,7 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
         segment_map.imshow(ax=ax2)
         fig.tight_layout()
     """
+    data, mask = split_masked_array(data, mask)
     check_units((data, threshold), ('data', 'threshold'))
     _warn_negative_threshold(threshold)
 

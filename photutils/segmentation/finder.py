@@ -11,6 +11,7 @@ from photutils.segmentation.detect import detect_sources
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._misc import split_masked_array
 from photutils.utils._parameters import as_pair
 from photutils.utils._repr import make_repr
 
@@ -238,10 +239,11 @@ class SourceFinder:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
             The 2D array from which to detect sources. Typically, this
             array should be an image that has been convolved with a
-            smoothing kernel.
+            smoothing kernel. If ``data`` is a `~numpy.ma.MaskedArray`,
+            its mask is combined with the input ``mask``.
 
         threshold : 2D `~numpy.ndarray` or float
             The data value or pixel-wise data values (as an array) to be
@@ -281,6 +283,7 @@ class SourceFinder:
             nonpositive minimum data values or to "linear" due to too
             many potential deblended sources.
         """
+        data, mask = split_masked_array(data, mask)
         segment_img = detect_sources(data, threshold, self.n_pixels[0],
                                      mask=mask, connectivity=self.connectivity)
         if segment_img is None:

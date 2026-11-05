@@ -496,3 +496,32 @@ class TestDetectSources:
         match = 'mask must have the same shape as the input image'
         with pytest.raises(ValueError, match=match):
             detect_sources(self.data, 1.0, 1.0, mask=np.ones((5, 5)))
+
+    def test_masked_array(self):
+        """
+        Test that the mask of a MaskedArray input is used and combined
+        with the input mask.
+        """
+        data = np.zeros((11, 11))
+        data[3:8, 3:8] = 5.0
+        mask1 = np.zeros(data.shape, dtype=bool)
+        mask1[4:6, 4:6] = True
+        mask2 = np.zeros(data.shape, dtype=bool)
+        mask2[6, 3:8] = True
+        data_ma = np.ma.MaskedArray(data, mask=mask1)
+
+        segm1 = detect_sources(data_ma, 1.0, 1)
+        segm2 = detect_sources(data, 1.0, 1, mask=mask1)
+        assert segm1.areas[0] == 25 - mask1.sum()
+        assert_equal(segm1.data, segm2.data)
+
+        segm1 = detect_sources(data_ma, 1.0, 1, mask=mask2)
+        segm2 = detect_sources(data, 1.0, 1, mask=mask1 | mask2)
+        assert_equal(segm1.data, segm2.data)
+
+    def test_masked_array_no_masked_values(self):
+        """
+        Test a MaskedArray input without any masked values.
+        """
+        segm1 = detect_sources(np.ma.MaskedArray(self.data), 0.9, 2)
+        assert_equal(segm1.data, self.refdata)
