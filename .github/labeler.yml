@@ -14,8 +14,8 @@ aperture:
 asdf_serialization:
   - changed-files:
       - any-glob-to-any-file:
+          - 'photutils/asdf/**'
           - 'photutils/converters/**'
-          - 'photutils/resources/**'
           - 'photutils/extension.py'
           - 'docs/user_guide/asdf.rst'
 

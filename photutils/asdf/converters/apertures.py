@@ -6,7 +6,7 @@ Converters to and from the ASDF data format for photutils apertures.
 from asdf.extension import Converter
 from astropy.coordinates import SkyCoord
 
-from photutils.converters._utils import optional_params
+from photutils.asdf.converters._utils import optional_params
 
 __all__ = ['CircularAnnulusConverter',
            'CircularApertureConverter',

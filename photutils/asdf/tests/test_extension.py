@@ -13,13 +13,14 @@ import yaml
 from asdf import get_config
 from asdf.extension import Converter, ExtensionProxy, ManifestExtension
 
-import photutils.extension as extension_mod
-from photutils import converters
-from photutils.converters import _ASDF_ASTROPY_INSTALLED
-from photutils.extension import (PHOTUTILS_APERTURE_CONVERTERS,
-                                 PHOTUTILS_CONVERTERS, PHOTUTILS_MANIFEST_URIS,
-                                 PHOTUTILS_PSF_CONVERTERS, get_extensions,
-                                 get_resource_mappings)
+import photutils.asdf.extension as extension_mod
+from photutils.asdf import converters
+from photutils.asdf.converters import _ASDF_ASTROPY_INSTALLED
+from photutils.asdf.extension import (PHOTUTILS_APERTURE_CONVERTERS,
+                                      PHOTUTILS_CONVERTERS,
+                                      PHOTUTILS_MANIFEST_URIS,
+                                      PHOTUTILS_PSF_CONVERTERS, get_extensions,
+                                      get_resource_mappings)
 
 
 def _manifest_tags():

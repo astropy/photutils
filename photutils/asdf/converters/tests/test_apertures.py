@@ -9,9 +9,9 @@ from astropy import units as u
 from astropy.coordinates import Angle
 from numpy.testing import assert_array_equal
 
-from photutils.converters import _ASDF_ASTROPY_INSTALLED
-from photutils.converters.tests import examples
-from photutils.extension import PHOTUTILS_APERTURE_CONVERTERS
+from photutils.asdf.converters import _ASDF_ASTROPY_INSTALLED
+from photutils.asdf.converters.tests import examples
+from photutils.asdf.extension import PHOTUTILS_APERTURE_CONVERTERS
 
 # The asdf schema validator records the nodes it has already validated
 # in a single context shared by all threads, so concurrent writes and

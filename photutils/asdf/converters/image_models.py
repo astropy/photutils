@@ -9,7 +9,8 @@ from asdf.extension import Converter
 from asdf_astropy.converters.transform.core import (TransformConverterBase,
                                                     parameter_to_value)
 
-from photutils.converters._utils import add_parameter_bounds, optional_params
+from photutils.asdf.converters._utils import (add_parameter_bounds,
+                                              optional_params)
 
 __all__ = ['GriddedPSFModelConverter',
            'ImagePSFConverter',

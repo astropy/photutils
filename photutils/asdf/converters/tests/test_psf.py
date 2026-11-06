@@ -8,10 +8,10 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from photutils.converters import _ASDF_ASTROPY_INSTALLED, image_models
-from photutils.converters.image_models import GriddedPSFModelConverter
-from photutils.converters.tests import examples
-from photutils.extension import PHOTUTILS_PSF_CONVERTERS
+from photutils.asdf.converters import _ASDF_ASTROPY_INSTALLED, image_models
+from photutils.asdf.converters.image_models import GriddedPSFModelConverter
+from photutils.asdf.converters.tests import examples
+from photutils.asdf.extension import PHOTUTILS_PSF_CONVERTERS
 from photutils.psf import STDPSFGrid
 
 # The asdf schema validator records the nodes it has already validated
