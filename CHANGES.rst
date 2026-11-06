@@ -93,6 +93,15 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.asdf``
+
+  - The ASDF converters, extension, schemas, and manifests moved to the
+    new ``photutils.asdf`` subpackage. The ``photutils.converters``
+    and ``photutils.extension`` modules are deprecated and will be
+    removed in version 4.0. Use ``photutils.asdf.converters`` and
+    ``photutils.asdf.extension`` instead. The ASDF tags and schema URIs
+    are unchanged, so existing ASDF files remain readable. [#2540]
+
 
 3.1.1 (2026-10-16)
 ------------------

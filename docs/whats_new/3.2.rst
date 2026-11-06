@@ -30,6 +30,24 @@ API Changes
 New Deprecations
 ----------------
 
+ASDF Subpackage
+^^^^^^^^^^^^^^^
+
+The ASDF converters, extension, schemas, and manifests have moved to the
+new ``photutils.asdf`` subpackage. Importing from the old locations
+(``photutils.converters`` and ``photutils.extension``) is deprecated and
+will be removed in version 4.0. Update your imports::
+
+    # Old (deprecated)
+    from photutils.converters import CircularApertureConverter
+
+    # New
+    from photutils.asdf.converters import CircularApertureConverter
+
+Most users never import these modules directly, because ``asdf`` loads
+the photutils extension automatically. The ASDF tags and schema URIs are
+unchanged, so existing ASDF files remain readable.
+
 
 .. _whatsnew-3.2-breaking-changes:
 
