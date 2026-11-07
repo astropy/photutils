@@ -64,6 +64,7 @@ test = [
     'pytest-asdf-plugin',
     'pytest>=8.0',
     'pytest-astropy-header>=0.2.2',
+    'pytest-cov>=7.0',
     'pytest-doctestplus>=1.4',
     'pytest-filter-subpackage>=0.2',
     'pytest-remotedata>=0.4.1',
@@ -88,7 +89,7 @@ requires = [
     'cython>=3.1.2,<4',
     'extension-helpers>=1.4,<2',
     'numpy>=2.0',
-    'scipy>=1.15.0',
+    'scipy>=1.15',
     'setuptools>=77.0.1',
     'setuptools_scm>=8.2',
 ]
