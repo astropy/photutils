@@ -960,3 +960,39 @@ def test_decode_flags():
     # decode_psf_flags directly
     direct_decoded = decode_psf_flags(results['flags'])
     assert list(decoded_flags.values()) == direct_decoded
+
+
+@pytest.mark.parametrize('mode', ['new', 'all'])
+def test_masked_array(test_data, mode):
+    """
+    Test that the mask of a MaskedArray input is used and combined with
+    the input mask.
+    """
+    data, error, _ = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = IterativePSFPhotometry(psf_model, (5, 5), finder=finder,
+                                     grouper=SourceGrouper(10),
+                                     aperture_radius=4, mode=mode,
+                                     maxiters=2)
+
+    # Mask the left column and top row of the fit box of the source at
+    # ~(63, 49), but not its peak
+    mask1 = np.zeros(data.shape, dtype=bool)
+    mask1[:, :62] = True
+    mask2 = np.zeros(data.shape, dtype=bool)
+    mask2[51, 62:66] = True
+    data_ma = np.ma.MaskedArray(data, mask=mask1)
+
+    phot0 = psfphot(data, error=error, mask=mask1)
+    phot1 = psfphot(data_ma, error=error)
+    assert len(phot1) < len(psfphot(data, error=error))
+    assert np.any(phot1['n_pixels_fit'] == 20)
+    assert_equal(phot1['n_pixels_fit'], phot0['n_pixels_fit'])
+    assert_allclose(phot1['flux_fit'], phot0['flux_fit'])
+
+    phot0 = psfphot(data, error=error, mask=mask1 | mask2)
+    phot1 = psfphot(data_ma, error=error, mask=mask2)
+    assert np.any(phot1['n_pixels_fit'] == 16)
+    assert_equal(phot1['n_pixels_fit'], phot0['n_pixels_fit'])
+    assert_allclose(phot1['flux_fit'], phot0['flux_fit'])
