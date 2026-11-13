@@ -5,10 +5,12 @@ on:
     branches: ['main']
     paths:
       - '.github/workflows/**'
+      - '.github/dependabot.yml'
   push:
     branches: ['main']
     paths:
       - '.github/workflows/**'
+      - '.github/dependabot.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
