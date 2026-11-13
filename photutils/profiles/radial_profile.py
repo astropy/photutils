@@ -37,10 +37,13 @@ class RadialProfile(ProfileBase):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+    data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, or \
+            `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
         Nonfinite values (e.g., NaN or inf) in the ``data`` or
-        ``error`` array are automatically masked.
+        ``error`` array are automatically masked. If ``data`` is a
+        `~numpy.ma.MaskedArray`, its mask is combined with the input
+        ``mask``.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.

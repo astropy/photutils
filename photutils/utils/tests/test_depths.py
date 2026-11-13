@@ -64,6 +64,25 @@ class TestImageDepth:
         else:
             assert_quantity_allclose(limits[0], fluxlim)
 
+    def test_masked_array(self):
+        """
+        Test that the mask of a MaskedArray input is used and combined
+        with the input mask.
+        """
+        depth = ImageDepth(4, n_sigma=5.0, n_apertures=100, n_iters=2,
+                           mask_pad=5, seed=123, progress_bar=False)
+        mask2 = np.zeros(self.data.shape, dtype=bool)
+        mask2[:, :250] = True
+        data_ma = np.ma.MaskedArray(self.data, mask=mask2)
+
+        limits0 = depth(self.data, mask2)
+        limits1 = depth(data_ma, None)
+        assert_allclose(limits1, limits0)
+
+        limits0 = depth(self.data, self.mask | mask2)
+        limits1 = depth(data_ma, self.mask)
+        assert_allclose(limits1, limits0)
+
     def test_mask_none(self):
         """
         Test ImageDepth with mask=None.

@@ -35,7 +35,9 @@ from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._flags import define_flag_docstring
-from photutils.utils._misc import deepcopy_instance, get_cached_property_names
+from photutils.utils._misc import (deepcopy_instance,
+                                   get_cached_property_names,
+                                   split_masked_array)
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 
@@ -689,8 +691,10 @@ class PixelAperture(Aperture):
 
         Parameters
         ----------
-        data : `~numpy.ndarray` or `~astropy.units.Quantity`
-            A 2D array.
+        data : `~numpy.ndarray`, `~numpy.ma.MaskedArray`, or \
+                `~astropy.units.Quantity`
+            A 2D array. If ``data`` is a `~numpy.ma.MaskedArray`, its
+            mask is combined with the input ``mask``.
 
         mask : array_like (bool), optional
             A boolean mask with the same shape as ``data`` where a
@@ -715,6 +719,7 @@ class PixelAperture(Aperture):
         if self.isscalar:
             apermasks = (apermasks,)
 
+        data, mask = split_masked_array(data, mask)
         mask = _validate_mask(mask, data.shape)
 
         areas = []
@@ -1093,7 +1098,9 @@ class PixelAperture(Aperture):
         ----------
         data : array_like or `~astropy.units.Quantity` instance
             The 2D array on which to perform photometry. ``data`` should
-            be background subtracted.
+            be background subtracted. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask is combined with the input
+            ``mask``.
 
         error : array_like or `~astropy.units.Quantity`, optional
             The pixel-wise Gaussian 1-sigma errors of the input
@@ -1157,6 +1164,7 @@ class PixelAperture(Aperture):
               <flag_descriptions>
         """
         data = np.asanyarray(data)
+        data, mask = split_masked_array(data, mask)
         if data.ndim != 2:
             msg = 'data must be a 2D array'
             raise ValueError(msg)
@@ -1245,7 +1253,9 @@ class PixelAperture(Aperture):
         ----------
         data : array_like or `~astropy.units.Quantity` instance
             The 2D array on which to perform photometry. ``data`` should
-            be background subtracted.
+            be background subtracted. If ``data`` is a
+            `~numpy.ma.MaskedArray`, its mask is combined with the input
+            ``mask``.
 
         error : array_like or `~astropy.units.Quantity`, optional
             The pixel-wise Gaussian 1-sigma errors of the input

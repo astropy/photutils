@@ -374,6 +374,65 @@ class TestToTable:
             phot.to_table(columns=['id', 'sky_center'])
 
 
+@pytest.mark.parametrize('aperture_cls',
+                         [CircularAperture, NoBatchCircularAperture])
+class TestMaskedArrayInput:
+    """
+    Tests for aperture photometry with a MaskedArray input, on both the
+    batch and the mask-based code paths.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.data = np.ones((50, 50))
+        self.error = np.ones((50, 50))
+        self.mask = np.zeros(self.data.shape, dtype=bool)
+        self.mask[:, :25] = True
+        self.data_ma = np.ma.MaskedArray(self.data, mask=self.mask)
+        # The apertures are partly masked, fully masked, and unmasked
+        self.positions = [(25, 25), (10, 25), (40, 25)]
+
+    def test_aperture_photometry_class(self, aperture_cls):
+        """
+        Test that AperturePhotometry uses the mask of a MaskedArray
+        input for the flux, flux error, area, and flags.
+        """
+        aper = aperture_cls(self.positions, r=4)
+        phot0 = AperturePhotometry(self.data, aper, error=self.error,
+                                   mask=self.mask)
+        phot1 = AperturePhotometry(self.data_ma, aper, error=self.error)
+        assert phot1.flux[1] == 0.0
+        assert phot1.area[0] < aper.area * u.pix**2
+        for attr in ('flux', 'flux_err', 'area'):
+            assert_allclose(getattr(phot1, attr), getattr(phot0, attr))
+        assert_equal(phot1.flags, phot0.flags)
+
+    def test_aperture_photometry_func(self, aperture_cls):
+        """
+        Test that aperture_photometry uses the mask of a MaskedArray
+        input and combines it with the input mask.
+        """
+        aper = aperture_cls(self.positions, r=4)
+        mask2 = np.zeros(self.data.shape, dtype=bool)
+        mask2[25, 37:44] = True
+        tbl0 = aperture_photometry(self.data, aper, error=self.error,
+                                   mask=self.mask | mask2)
+        tbl1 = aperture_photometry(self.data_ma, aper, error=self.error,
+                                   mask=mask2)
+        for col in ('aperture_sum', 'aperture_sum_err'):
+            assert_allclose(tbl1[col], tbl0[col])
+
+    def test_area_overlap(self, aperture_cls):
+        """
+        Test that area_overlap uses the mask of a MaskedArray input.
+        """
+        aper = aperture_cls(self.positions, r=4)
+        area0 = aper.area_overlap(self.data, mask=self.mask)
+        area1 = aper.area_overlap(self.data_ma)
+        assert area1[1] == 0.0
+        assert_allclose(area1, area0)
+
+
 class TestFlagsAndArea:
     def test_area_matches_area_overlap(self):
         data = np.ones((25, 25), dtype=float)

@@ -14,6 +14,7 @@ from scipy.ndimage import binary_dilation
 from photutils.utils._coords import apply_separation
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_renamed_argument)
+from photutils.utils._misc import split_masked_array
 from photutils.utils._parameters import (SigmaClipSentinelDefault,
                                          create_default_sigmaclip)
 from photutils.utils._progress_bars import add_progress_bar
@@ -310,9 +311,11 @@ class ImageDepth:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, or \
+                `~astropy.units.Quantity`
             The 2D array, which should be in flux units (not surface
-            brightness units).
+            brightness units). If ``data`` is a `~numpy.ma.MaskedArray`,
+            its mask is combined with the input ``mask``.
 
         mask : 2D bool `~numpy.ndarray`
             A 2D mask array with the same shape as ``data`` where
@@ -334,6 +337,7 @@ class ImageDepth:
         # Avoid a circular import with photutils.aperture
         from photutils.aperture import AperturePhotometry, CircularAperture
 
+        data, mask = split_masked_array(data, mask)
         if mask is None or not np.any(mask):
             all_xycoords = self._make_all_coords_no_mask(data.shape)
         else:

@@ -26,6 +26,13 @@ Bug Fixes
     iteration`` when another thread accessed the properties of the
     same object at the same time. [#2526]
 
+  - Fixed ``AperturePhotometry``, ``aperture_photometry``, and
+    ``Aperture.area_overlap`` for ``numpy.ma.MaskedArray`` input. The
+    mask of a ``MaskedArray`` input is now combined with the input
+    ``mask``. Previously, only the aperture sums excluded its masked
+    pixels. The errors, areas, and flags did not, and a fully masked
+    aperture raised a ``MaskError``. [#2541]
+
 - ``photutils.detection``
 
   - Fixed a race condition on free-threaded Python builds where
@@ -48,6 +55,14 @@ Bug Fixes
     accessed the properties of the same object at the same time.
     [#2526]
 
+  - Fixed the profile classes for ``numpy.ma.MaskedArray`` input. The
+    mask of a ``MaskedArray`` input is now combined with the input
+    ``mask``. Previously, the masked pixels were included in the
+    ``RadialProfile`` area, which biased its profile low, and in the
+    ``RadialProfile`` ``data_radius`` and ``data_profile``. They were
+    also included in the profile errors of all profile classes.
+    [#2541]
+
 - ``photutils.psf``
 
   - Fixed a bug where ``copy.deepcopy`` of an ``EPSFStar``,
@@ -66,6 +81,11 @@ Bug Fixes
     values are now handled as NaN, so they are not subtracted and the
     sources are flagged. [#2520]
 
+  - Fixed ``PSFPhotometry`` and ``IterativePSFPhotometry`` for
+    ``numpy.ma.MaskedArray`` input, which raised an error. The mask of a
+    ``MaskedArray`` input is now combined with the input ``mask``.
+    [#2541]
+
 - ``photutils.segmentation``
 
   - Fixed a race condition on free-threaded Python builds where
@@ -83,12 +103,21 @@ Bug Fixes
     scipy 2.0. The mask of a ``MaskedArray`` input is now combined with
     the input ``mask``. Previously, it was ignored. [#2536]
 
+  - Fixed ``SourceCatalog`` for ``numpy.ma.MaskedArray`` ``data`` and
+    ``convolved_data`` inputs, whose masks were ignored. They are now
+    combined with the input ``mask``. [#2541]
+
 - ``photutils.utils``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``CutoutImage`` could
     raise ``RuntimeError: dictionary changed size during iteration``
     when another thread accessed the properties of the same object at
     the same time. [#2526]
+
+  - Fixed ``ImageDepth`` for ``numpy.ma.MaskedArray`` input, which
+    raised a ``MaskError`` or ignored its mask. The mask of a
+    ``MaskedArray`` input is now combined with the input ``mask``.
+    [#2541]
 
 API Changes
 ^^^^^^^^^^^

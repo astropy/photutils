@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.profiles import (CurveOfGrowth, EllipticalCurveOfGrowth,
                                 EnsquaredCurveOfGrowth, RadialProfile)
@@ -79,3 +79,24 @@ class TestProfileInputs:
             profile.normalize(method=method)
         assert profile.normalization_value == 1.0
         assert_allclose(profile.profile, expected)
+
+    def test_masked_array(self, profile_data, cls, kwargs):
+        """
+        Test that the mask of a MaskedArray input is used and combined
+        with the input mask.
+        """
+        xycen, data, error, mask = profile_data
+        radii = np.arange(1, 30)
+        mask2 = np.zeros(data.shape, dtype=bool)
+        mask2[45:50, 55:60] = True
+        data_ma = np.ma.MaskedArray(data, mask=mask)
+
+        profile0 = cls(data, xycen, radii, error=error, mask=mask | mask2,
+                       **kwargs)
+        profile1 = cls(data_ma, xycen, radii, error=error, mask=mask2,
+                       **kwargs)
+        assert type(profile1.mask) is np.ndarray
+        assert_equal(profile1.mask, profile0.mask)
+        for attr in ('area', 'profile', 'profile_error'):
+            assert_allclose(getattr(profile1, attr),
+                            getattr(profile0, attr))

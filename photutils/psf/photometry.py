@@ -30,6 +30,7 @@ from photutils.psf.utils import (_create_call_docstring,
                                  _validate_psf_model)
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._misc import split_masked_array
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
@@ -1756,6 +1757,8 @@ class PSFPhotometry(_ModelImageMixin):
             if isinstance(data, NDData):
                 self._check_nddata_kwargs(mask=mask, error=error)
                 data, mask, error = self._coerce_nddata(data)
+
+            data, mask = split_masked_array(data, mask)
 
             # Prepare all inputs for sources to be fit
             data, mask, error, init_params = self._prepare_fit_inputs(

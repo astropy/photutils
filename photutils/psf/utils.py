@@ -722,13 +722,15 @@ def _create_call_docstring(*, iterative=False):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`, `~astropy.units.Quantity`, or \
-                `~astropy.nddata.NDData`
+        data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
+                `~astropy.units.Quantity`, or `~astropy.nddata.NDData`
             The 2D array on which to perform photometry. Invalid data
-            values (i.e., NaN or inf) are automatically masked. If an
-            `~astropy.nddata.NDData` object is input, its ``data``,
-            ``mask``, ``uncertainty``, and ``unit`` attributes are used,
-            and the ``mask`` and ``error`` keywords must not be set.
+            values (i.e., NaN or inf) are automatically masked. If
+            ``data`` is a `~numpy.ma.MaskedArray`, its mask is combined
+            with the input ``mask``. If an `~astropy.nddata.NDData`
+            object is input, its ``data``, ``mask``, ``uncertainty``,
+            and ``unit`` attributes are used, and the ``mask`` and
+            ``error`` keywords must not be set.
 
         mask : 2D bool `~numpy.ndarray`, optional
             A boolean mask with the same shape as ``data``, where

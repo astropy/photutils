@@ -16,7 +16,7 @@ from photutils.aperture._common import validate_mask_method
 from photutils.aperture.core import _update_method_subpixels_docstring
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.utils._deprecation import deprecated_positional_kwargs
-from photutils.utils._misc import deepcopy_instance
+from photutils.utils._misc import deepcopy_instance, split_masked_array
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmax, nansum
 
@@ -31,10 +31,13 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+    data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, or \
+            `~astropy.units.Quantity`
         The 2D data array. The data should be background-subtracted.
         Nonfinite values (e.g., NaN or inf) in the ``data`` or
-        ``error`` array are automatically masked.
+        ``error`` array are automatically masked. If ``data`` is a
+        `~numpy.ma.MaskedArray`, its mask is combined with the input
+        ``mask``.
 
     xycen : tuple of 2 floats
         The ``(x, y)`` pixel coordinate of the source center.
@@ -94,6 +97,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
     def __init__(self, data, xycen, radii, *, error=None, mask=None,
                  method='exact', subpixels=5):
 
+        data, mask = split_masked_array(data, mask)
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
 

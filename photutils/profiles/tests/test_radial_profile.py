@@ -268,6 +268,20 @@ class TestRadialProfile:
             RadialProfile(data << unit, xycen, edge_radii, error=error,
                           mask=None)
 
+    def test_masked_array_data_profile(self, profile_data):
+        """
+        Test that the mask of a MaskedArray input is used for the raw
+        data profile.
+        """
+        xycen, data, _, mask = profile_data
+        edge_radii = np.arange(36)
+        rp0 = RadialProfile(data, xycen, edge_radii, mask=mask)
+        rp1 = RadialProfile(np.ma.MaskedArray(data, mask=mask), xycen,
+                            edge_radii)
+        assert type(rp1.data_profile) is np.ndarray
+        assert_equal(rp1.data_radius, rp0.data_radius)
+        assert_equal(rp1.data_profile, rp0.data_profile)
+
     def test_no_mutation(self, profile_data):
         """
         Test that input data, error, mask, and radii arrays are not

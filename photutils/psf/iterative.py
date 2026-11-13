@@ -16,6 +16,7 @@ from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.utils import _create_call_docstring
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._misc import split_masked_array
 from photutils.utils._parameters import as_pair
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -582,6 +583,8 @@ class IterativePSFPhotometry(_ModelImageMixin):
             data_, mask, error = PSFPhotometry._coerce_nddata(data)
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)
+
+        data, mask = split_masked_array(data, mask)
 
         # Reset results from previous runs
         self._reset_results()
