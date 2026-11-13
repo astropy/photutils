@@ -72,9 +72,10 @@ class AperturePhotometry:
         background-subtracted. If ``data`` is a `~astropy.units.Quantity`
         array, then ``error`` (if input) must also be a
         `~astropy.units.Quantity` array with the same units. Nonfinite
-        ``data`` values (NaN and inf) are automatically masked. See the
-        Notes section below for more information about
-        `~astropy.nddata.NDData` input.
+        ``data`` values (NaN and inf) are automatically masked. If
+        ``data`` is a `~numpy.ma.MaskedArray`, its mask is combined with
+        the input ``mask``. See the Notes section below for more
+        information about `~astropy.nddata.NDData` input.
 
     apertures : `~photutils.aperture.Aperture`, supported `regions.Region`, \
         list of `~photutils.aperture.Aperture` or `regions.Region`
@@ -607,8 +608,9 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         must also be a `~astropy.units.Quantity` array with the same
         units. Nonfinite ``data`` values (NaN and inf) are not masked
         automatically. An aperture that contains one has a nonfinite
-        sum. See the Notes section below for more information about
-        `~astropy.nddata.NDData` input.
+        sum. If ``data`` is a `~numpy.ma.MaskedArray`, its mask is
+        combined with the input ``mask``. See the Notes section below
+        for more information about `~astropy.nddata.NDData` input.
 
     apertures : `~photutils.aperture.Aperture`, supported `regions.Region`, \
         list of `~photutils.aperture.Aperture` or `regions.Region`
