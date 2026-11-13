@@ -58,10 +58,6 @@ for details.
     :target: https://anaconda.org/conda-forge/photutils
     :alt: Conda Latest Release
 
-.. |PyPI Downloads| image:: https://img.shields.io/pypi/dm/photutils?label=PyPI%20Downloads
-    :target: https://pypistats.org/packages/photutils
-    :alt: PyPI Downloads
-
 .. |Astropy| image:: https://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
     :target: https://www.astropy.org/
     :alt: Powered by Astropy
@@ -77,10 +73,6 @@ for details.
 .. |Codecov Status| image:: https://img.shields.io/codecov/c/github/astropy/photutils?logo=codecov
     :target: https://codecov.io/gh/astropy/photutils
     :alt: Coverage Status
-
-.. |Stable RTD Status| image:: https://img.shields.io/readthedocs/photutils/latest.svg?logo=read%20the%20docs&logoColor=white&label=Docs&version=stable
-    :target: https://photutils.readthedocs.io/en/stable/
-    :alt: Stable Documentation Status
 
 .. |Latest RTD Status| image:: https://img.shields.io/readthedocs/photutils/latest.svg?logo=read%20the%20docs&logoColor=white&label=Docs&version=latest
     :target: https://photutils.readthedocs.io/en/latest/
