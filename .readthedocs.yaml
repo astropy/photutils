@@ -1,16 +1,14 @@
 version: 2
 
 build:
-  os: ubuntu-22.04
+  os: ubuntu-24.04
   apt_packages:
     - graphviz
   tools:
     python: '3.14'
   jobs:
     post_checkout:
-      - git fetch --shallow-since=2023-05-01 || true
-    pre_install:
-      - git update-index --assume-unchanged docs/conf.py
+      - git fetch --shallow-since=2026-01-01 || true
 
 sphinx:
   builder: html
@@ -23,6 +21,5 @@ python:
       path: .
       extra_requirements:
         - docs
-        - all
 
 formats: []
