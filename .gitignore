@@ -1,77 +1,64 @@
 # Compiled files
+__pycache__
 *.py[cod]
 *.a
 *.o
 *.so
-*.whl
-__pycache__
 
-# Ignore .c files by default to avoid including generated code. If you want to
-# add a nongenerated .c extension, use `git add -f filename.c`.
+# Generated C source files
 *.c
 
-# Other generated files
+# Generated version file
 */version.py
-*/cython_version.py
-MANIFEST
+
+# Build and packaging
+build
+dist
+*.egg-info
+.eggs
+*.whl
+
+# Dependency pin files written by tox
 *oldest_deps*.txt
 requirements-min.txt
-htmlcov
-.coverage*
-.ipynb_checkpoints
+
+# Lock files
+uv.lock
+poetry.lock
+Pipfile
+Pipfile.lock
+
+# Testing and coverage
+.tox
 .pytest_cache
+.coverage*
+coverage.xml
+htmlcov
 
 # Sphinx
 docs/_build
 docs/api
 
-# Packages/installer info
-*.egg
-*.egg-info
-dist
-build
-eggs
-.eggs
-parts
-bin
-var
-sdist
-develop-eggs
-.installed.cfg
-distribute-*.tar.gz
-pip-wheel-metadata
+# Jupyter
+.ipynb_checkpoints
 
 # Virtual environments
 .venv
+venv
 
-# uv (Python package manager)
-uv.lock
-
-# pipenv
-Pipfile.lock
-Pipfile
-
-# poetry
-poetry.lock
-
-# Other
-.cache
-.tox
-.tmp
-.*.sw[op]
-*~
-dev/
-
-# Eclipse editor project files
+# Editors
+.idea
+.vscode
 .project
 .pydevproject
 .settings
+.*.sw[op]
+*~
 
-# PyCharm editor project files
-.idea
-
-# Visual Studio Code project files
-.vscode
-
-# Mac OSX
+# macOS
 .DS_Store
+
+# Local
+.cache
+.tmp
+/dev

@@ -122,7 +122,7 @@ def test_public_import():
     """
     Test that the public names are importable from the subpackage.
     """
-    import photutils.segmentation as seg_mod  # noqa: PLC0415
+    import photutils.segmentation as seg_mod
 
     assert hasattr(seg_mod, 'SEGMENTATION_FLAGS')
     assert hasattr(seg_mod, 'decode_segmentation_flags')

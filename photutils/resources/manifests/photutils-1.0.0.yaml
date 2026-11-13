@@ -1,3 +1,5 @@
+%YAML 1.1
+---
 id: asdf://astropy.org/photutils/manifests/photutils-1.0.0
 extension_uri: asdf://astropy.org/photutils/extensions/photutils-1.0.0
 title: Photutils extension 1.0.0
@@ -80,3 +82,4 @@ tags:
     schema_uri: asdf://astropy.org/photutils/schemas/psf/stdpsf_grid-1.0.0
     title: STDPSFGrid
     description: A grid of 2D ePSF models in the STDPSF format.
+...

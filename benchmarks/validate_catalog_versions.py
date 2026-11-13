@@ -248,7 +248,7 @@ def dump_catalog(catalog, prefix, out):
     for name in catalog.properties:
         try:
             value = getattr(catalog, name)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             out[f'{prefix}:{name}'] = f'ERROR: {exc!r}'
             continue
         plain = to_plain(value)

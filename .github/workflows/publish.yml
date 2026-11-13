@@ -46,7 +46,7 @@ jobs:
       upload_to_pypi: false
       save_artifacts: true
 
-      test_extras: test
+      test_extras: test,all
       test_command: pytest -p no:warnings --pyargs photutils
       targets: |
         # Linux wheels

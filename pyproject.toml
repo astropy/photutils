@@ -35,6 +35,7 @@ requires-python = '>=3.12'
 dependencies = [
     'astropy>=7.0',
     'numpy>=2.0',
+    'packaging>=24.2',
     'scipy>=1.15',
 ]
 
@@ -48,7 +49,7 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
-    'asdf>=3.3',
+    'asdf>=4.4',
     'asdf-astropy>=0.10',
     'bottleneck>=1.4',
     'gwcs>=0.22',
@@ -59,10 +60,10 @@ all = [
     'tqdm>=4.67',
 ]
 test = [
-    'asdf>=3.3',
+    'asdf>=4.4',
     'asdf-astropy>=0.10',
-    'pytest-asdf-plugin',
-    'pytest>=8.0',
+    'pytest>=9.0',
+    'pytest-asdf-plugin>=0.2.0',
     'pytest-astropy-header>=0.2.2',
     'pytest-cov>=7.0',
     'pytest-doctestplus>=1.4',
@@ -70,7 +71,6 @@ test = [
     'pytest-remotedata>=0.4.1',
     'pytest-run-parallel>=0.10.0',
     'pytest-xdist>=3.7',
-    'tox>=4.24',
 ]
 docs = [
     'photutils[all]',
@@ -82,6 +82,7 @@ docs = [
 dev = [
     'photutils[docs,test]',
     'pre-commit>=4.0',
+    'tox>=4.24',
 ]
 
 [build-system]
@@ -99,7 +100,7 @@ build-backend = 'setuptools.build_meta'
 use_extension_helpers = true
 
 [tool.setuptools_scm]
-write_to = 'photutils/version.py'
+version_file = 'photutils/version.py'
 
 [tool.setuptools]
 zip-safe = false
@@ -125,17 +126,34 @@ namespaces = false
     'data/*',
 ]
 
-[tool.pytest.ini_options]
-minversion = "8.0"
+[tool.pytest]
+minversion = "9.0"
 testpaths = [
     'photutils',
     'docs',
 ]
 norecursedirs = [
     'docs/_build',
-    'extern',
 ]
 astropy_header = true
+# Packages whose versions are shown in the pytest header. Keep this
+# list in sync with the dependencies and the "all" extra above.
+astropy_header_packages = [
+    'photutils',
+    'asdf',
+    'asdf_astropy',
+    'astropy',
+    'bottleneck',
+    'gwcs',
+    'matplotlib',
+    'numpy',
+    'packaging',
+    'rasterio',
+    'regions',
+    'scipy',
+    'shapely',
+    'tqdm',
+]
 doctest_plus = 'enabled'
 doctest_optionflags = [
     'ELLIPSIS',  # default
@@ -150,17 +168,16 @@ addopts = [
     '--strict-config',
     '--strict-markers',
 ]
-markers = [
-    # Registered here so that the markers work without pytest-run-parallel
-    'thread_unsafe: run the test in a single thread with pytest-run-parallel',
-    'iterations(n): run the test n times per thread with pytest-run-parallel',
-]
 log_level = 'INFO'
-log_cli_level = 'INFO'
 xfail_strict = true
 remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
+]
+markers = [
+    # Registered here so that the markers work without pytest-run-parallel
+    'thread_unsafe: run the test in a single thread with pytest-run-parallel',
+    'iterations(n): run the test n times per thread with pytest-run-parallel',
 ]
 asdf_schema_root = 'photutils/resources/schemas'
 asdf_schema_tests_enabled = true
@@ -169,17 +186,13 @@ asdf_schema_tests_enabled = true
 omit = [
     'photutils/__init__*',
     'photutils/**/conftest.py',
-    'photutils/**/setup*',
     'photutils/**/tests/*',
     'photutils/**/*.pyx',
-    'photutils/extern/*',
     'photutils/version*',
     '*/photutils/__init__*',
     '*/photutils/**/conftest.py',
-    '*/photutils/**/setup*',
     '*/photutils/**/tests/*',
     '*/photutils/**/*.pyx',
-    '*/photutils/extern/*',
     '*/photutils/version*',
 ]
 
@@ -196,11 +209,12 @@ skip_glob = [
 ]
 known_first_party = [
     'photutils',
-    'extension_helpers',
 ]
 use_parentheses = true
 
 [tool.black]
+# Exclude every file so that black never reformats the code if an
+# editor or another tool runs it. This project does not use black.
 force-exclude = """
 (
   .*
@@ -211,7 +225,8 @@ force-exclude = """
 skips = ['*_test.py', '*/test_*.py']
 
 [tool.cibuildwheel]
-# Explicitly skip free-threaded builds
+# Skip free-threaded builds. They cannot use the limited API, and
+# astropy does not provide free-threaded wheels to test them with.
 skip = ["cp*t-*"]
 environment = { EXTENSION_HELPERS_PY_LIMITED_API = "cp312" }
 
@@ -307,7 +322,6 @@ max-statements = 130
 
 [tool.ruff.lint]
 select = ['ALL']
-exclude = ["photutils/extern/*"]
 ignore = [
     'ANN',  # type annotations
     'B028',  # no-explicit-stacklevel (warnings)
@@ -331,7 +345,6 @@ ignore = [
     'PLW2901',  # redefined-loop-name
     'PTH',  # Pathlib usage
     'RUF015',  # unnecessary-iterable-allocation-for-first-element
-    'RUF100',  # unused-noqa
     'SLF001',  # private-member-access
 ]
 

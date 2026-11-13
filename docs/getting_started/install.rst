@@ -28,7 +28,7 @@ Photutils also optionally depends on other packages for some features:
   Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   GWCS object.
 
-* `asdf <https://asdf.readthedocs.io/>`_ 3.3 or later: Required to
+* `asdf <https://asdf.readthedocs.io/>`_ 4.4 or later: Required to
   serialize apertures and PSF models to the `Advanced Scientific Data
   Format (ASDF) <https://www.asdf-format.org/projects/asdf/en/latest/>`_
   format.
