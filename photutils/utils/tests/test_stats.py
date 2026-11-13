@@ -64,7 +64,7 @@ def test_nan_function_pickle(axis, func):
     nan_func = func[0]
     np_func = func[1]
     pickled_func = pickle.loads(  # noqa: S301
-        pickle.dumps(nan_func))  # noqa: S301  # nosec B301
+        pickle.dumps(nan_func))  # nosec B301
     data = np.arange(10).reshape(2, 5) ** 2
     result1 = nan_func(data, axis=axis)
     result2 = pickled_func(data, axis=axis)

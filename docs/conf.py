@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from sphinx_astropy.conf.v3 import *  # noqa: F403
-    from sphinx_astropy.conf.v3 import extensions  # noqa: E402
+    from sphinx_astropy.conf.v3 import extensions
 except ImportError:
     msg = ('The documentation requires the sphinx-astropy package to be '
            'installed. Please install the "docs" requirements.')
