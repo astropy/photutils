@@ -681,6 +681,39 @@ class TestSourceCatalog:
         cat2 = SourceCatalog(data, self.segm, mask=np.ma.nomask)
         assert cat1[0].x_centroid == cat2[0].x_centroid
 
+    def test_masked_array(self):
+        """
+        Test that the masks of MaskedArray data and convolved_data
+        inputs are used and combined with the input mask.
+        """
+        columns = ('x_centroid', 'y_centroid', 'area', 'segment_flux',
+                   'segment_flux_err', 'kron_flux', 'fwhm')
+        mask2 = np.zeros(self.data.shape, dtype=bool)
+        mask2[45:55, 45:60] = True
+        data_ma = np.ma.MaskedArray(self.data, mask=self.mask)
+
+        tbl0 = SourceCatalog(self.data, self.segm, error=self.error,
+                             mask=self.mask).to_table(columns=columns)
+        tbl1 = SourceCatalog(data_ma, self.segm,
+                             error=self.error).to_table(columns=columns)
+        tbl_nomask = SourceCatalog(self.data, self.segm,
+                                   error=self.error).to_table(columns=columns)
+        assert not np.allclose(tbl1['segment_flux'],
+                               tbl_nomask['segment_flux'], equal_nan=True)
+        for col in columns:
+            assert_allclose(tbl1[col], tbl0[col], equal_nan=True)
+
+        tbl0 = SourceCatalog(self.data, self.segm, error=self.error,
+                             mask=self.mask | mask2).to_table(columns=columns)
+        tbl1 = SourceCatalog(data_ma, self.segm, error=self.error,
+                             mask=mask2).to_table(columns=columns)
+        tbl2 = SourceCatalog(self.data, self.segm, convolved_data=data_ma,
+                             error=self.error, mask=mask2)
+        tbl2 = tbl2.to_table(columns=columns)
+        for col in columns:
+            assert_allclose(tbl1[col], tbl0[col], equal_nan=True)
+            assert_allclose(tbl2[col], tbl0[col], equal_nan=True)
+
     def test_repr_str(self):
         """
         Test repr str.

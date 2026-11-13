@@ -57,7 +57,8 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_renamed_argument)
 from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import (_get_meta, deepcopy_instance,
-                                   get_cached_property_names)
+                                   get_cached_property_names,
+                                   split_masked_array)
 from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
@@ -470,7 +471,8 @@ class SourceCatalog:
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
+    data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, or \
+            `~astropy.units.Quantity`
         The 2D array from which to calculate the source photometry and
         properties. If ``convolved_data`` is input, then a convolved
         version of ``data`` will be used instead of ``data`` to
@@ -478,13 +480,16 @@ class SourceCatalog:
         Source photometry is always measured from ``data``. For
         accurate source properties and photometry, ``data`` should be
         background-subtracted. Nonfinite ``data`` values (NaN and inf)
-        are automatically masked.
+        are automatically masked. If ``data`` is a
+        `~numpy.ma.MaskedArray`, its mask is combined with the input
+        ``mask``.
 
     segmentation_image : `~photutils.segmentation.SegmentationImage`
         A `~photutils.segmentation.SegmentationImage` object defining
         the sources.
 
-    convolved_data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+    convolved_data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, or \
+            `~astropy.units.Quantity`, optional
         The 2D array used to calculate the source centroid and
         morphological properties. Typically, ``convolved_data``
         should be the input ``data`` array convolved by the
@@ -508,7 +513,9 @@ class SourceCatalog:
         the ``mask`` keyword. It does not contribute to the errors of
         the isophotal centroid. To exclude such pixels from these
         properties, include them in the input ``mask`` (e.g.,
-        ``mask=~np.isfinite(data)``).
+        ``mask=~np.isfinite(data)``). If ``convolved_data`` is a
+        `~numpy.ma.MaskedArray`, its mask is combined with the input
+        ``mask``.
 
     error : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
         The total error array corresponding to the input ``data``
@@ -770,6 +777,9 @@ class SourceCatalog:
                  local_bkg_width=0, aperture_mask_method='correct',
                  kron_params=(2.5, 1.4, 0.0), detection_catalog=None,
                  n_threads=1, progress_bar=False):
+
+        data, mask = split_masked_array(data, mask)
+        convolved_data, mask = split_masked_array(convolved_data, mask)
 
         inputs = (data, convolved_data, error, background)
         names = ('data', 'convolved_data', 'error', 'background')
