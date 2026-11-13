@@ -4,7 +4,7 @@
 General
 ^^^^^^^
 
-- The minimum required asdf is now 4.4. [#2538]
+- The minimum required asdf is now 4.4. [#2539]
 
 New Features
 ^^^^^^^^^^^^
@@ -144,7 +144,7 @@ General
 
 - The minimum required Python is now 3.12. [#2366]
 
-- The minimum required astropy is now 7.0. [#2401]
+- The minimum required Astropy is now 7.0. [#2401]
 
 - The minimum required SciPy is now 1.15. [#2365]
 
@@ -1962,7 +1962,7 @@ General
 
 - The minimum required scikit-image is now 0.23. [#2115]
 
-- The minimum required astropy is now 6.1.4. [#2130]
+- The minimum required Astropy is now 6.1.4. [#2130]
 
 New Features
 ^^^^^^^^^^^^
@@ -3758,9 +3758,9 @@ API Changes
 General
 ^^^^^^^
 
-- The minimum required Numpy is now 1.21. [#1528]
+- The minimum required NumPy is now 1.21. [#1528]
 
-- The minimum required Scipy is now 1.7.0. [#1528]
+- The minimum required SciPy is now 1.7.0. [#1528]
 
 - The minimum required Matplotlib is now 3.5.0. [#1528]
 
@@ -4258,7 +4258,7 @@ General
 
 - The minimum required Python is now 3.8. [#1279]
 
-- The minimum required Numpy is now 1.18. [#1279]
+- The minimum required NumPy is now 1.18. [#1279]
 
 - The minimum required Astropy is now 5.0. [#1279]
 
@@ -4507,7 +4507,7 @@ API Changes
 General
 ^^^^^^^
 
-- The minimum required scipy version is 1.6.0 [#1239]
+- The minimum required scipy is now 1.6.0 [#1239]
 
 New Features
 ^^^^^^^^^^^^
@@ -4693,7 +4693,7 @@ API Changes
 General
 ^^^^^^^
 
-- The minimum required python version is 3.7. [#1120]
+- The minimum required python is now 3.7. [#1120]
 
 New Features
 ^^^^^^^^^^^^
@@ -4914,11 +4914,11 @@ Bug Fixes
 General
 ^^^^^^^
 
-- The minimum required python version is 3.6. [#952]
+- The minimum required python is now 3.6. [#952]
 
-- The minimum required astropy version is 4.0. [#1081]
+- The minimum required Astropy is now 4.0. [#1081]
 
-- The minimum required numpy version is 1.17. [#1079]
+- The minimum required numpy is now 1.17. [#1079]
 
 - Removed ``astropy-helpers`` and updated the package infrastructure
   as described in Astropy APE 17. [#915]
