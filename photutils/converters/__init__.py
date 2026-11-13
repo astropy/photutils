@@ -1,61 +1,33 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-ASDF converters.
+Deprecated location of the ASDF converters.
 
-The converters are defined only when the optional dependencies they
-need are installed. The aperture converters need only ``asdf``. The PSF
-converters are built on the ``asdf-astropy`` transform machinery, so
-they also need ``asdf-astropy``.
+.. deprecated:: 3.2
+    The ``photutils.converters`` subpackage is deprecated and will be
+    removed in version 4.0. Use ``photutils.asdf.converters`` instead.
 """
 
-from importlib.util import find_spec
+import warnings
 
-_ASDF_INSTALLED = find_spec('asdf') is not None
+from photutils.asdf import converters as _converters
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-# Because asdf-astropy imports asdf, it is unusable without it.
-_ASDF_ASTROPY_INSTALLED = (_ASDF_INSTALLED
-                           and find_spec('asdf_astropy') is not None)
+__all__ = list(_converters.__all__)
 
-__all__ = []
+_deprecation_msg = ('photutils.converters is deprecated (since version 3.2) '
+                    'and will be removed in version 4.0. Use '
+                    'photutils.asdf.converters instead.')
 
-if _ASDF_INSTALLED:
-    from .apertures import (CircularAnnulusConverter,
-                            CircularApertureConverter,
-                            EllipticalAnnulusConverter,
-                            EllipticalApertureConverter,
-                            PolygonApertureConverter,
-                            RectangularAnnulusConverter,
-                            RectangularApertureConverter)
 
-    __all__ += ['CircularAnnulusConverter',
-                'CircularApertureConverter',
-                'EllipticalAnnulusConverter',
-                'EllipticalApertureConverter',
-                'PolygonApertureConverter',
-                'RectangularAnnulusConverter',
-                'RectangularApertureConverter',
-                ]
+def __getattr__(name):
+    if name in __all__:
+        warnings.warn(_deprecation_msg, PhotutilsDeprecationWarning,
+                      stacklevel=2)
+        return getattr(_converters, name)
 
-if _ASDF_ASTROPY_INSTALLED:
-    from .functional_models import (AiryDiskPRFConverter, AiryDiskPSFConverter,
-                                    CircularGaussianPRFConverter,
-                                    CircularGaussianPSFConverter,
-                                    CircularGaussianSigmaPRFConverter,
-                                    GaussianPRFConverter, GaussianPSFConverter,
-                                    MoffatPRFConverter, MoffatPSFConverter)
-    from .image_models import (GriddedPSFModelConverter, ImagePSFConverter,
-                               STDPSFGridConverter)
+    msg = f'module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)
 
-    __all__ += ['AiryDiskPRFConverter',
-                'AiryDiskPSFConverter',
-                'CircularGaussianPRFConverter',
-                'CircularGaussianPSFConverter',
-                'CircularGaussianSigmaPRFConverter',
-                'GaussianPRFConverter',
-                'GaussianPSFConverter',
-                'GriddedPSFModelConverter',
-                'ImagePSFConverter',
-                'MoffatPRFConverter',
-                'MoffatPSFConverter',
-                'STDPSFGridConverter',
-                ]
+
+def __dir__():
+    return __all__

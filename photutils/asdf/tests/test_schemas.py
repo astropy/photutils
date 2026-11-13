@@ -17,8 +17,8 @@ from astropy import units as u
 from astropy.nddata import NDData
 from numpy.testing import assert_array_equal
 
-from photutils.converters import _ASDF_ASTROPY_INSTALLED
-from photutils.extension import PHOTUTILS_MANIFEST_URIS
+from photutils.asdf.converters import _ASDF_ASTROPY_INSTALLED
+from photutils.asdf.extension import PHOTUTILS_MANIFEST_URIS
 from photutils.psf import GriddedPSFModel, ImagePSF
 
 # The asdf schema validator records the nodes it has already validated

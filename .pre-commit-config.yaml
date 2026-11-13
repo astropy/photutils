@@ -108,7 +108,7 @@ repos:
         # comment and brace spacing rules are relaxed to match the
         # prettier output. Each file must have explicit document start
         # and end markers.
-        files: ^photutils/resources/.*\.yaml$
+        files: ^photutils/asdf/resources/.*\.yaml$
         args:
           - '-d'
           - |

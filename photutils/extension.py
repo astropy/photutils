@@ -1,109 +1,46 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-ASDF extension for photutils.
+Deprecated location of the ASDF extension.
+
+.. deprecated:: 3.2
+    The ``photutils.extension`` module is deprecated and will be removed
+    in version 4.0. Use ``photutils.asdf.extension`` instead.
 """
 
-import importlib.resources as importlib_resources
+import warnings
 
-from asdf.extension import ManifestExtension
-from asdf.resource import DirectoryResourceMapping
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-from . import resources
-from .converters import _ASDF_ASTROPY_INSTALLED, apertures
-
-__all__ = [
+# The names are resolved on access by __getattr__ below
+_MOVED_NAMES = (
     'PHOTUTILS_APERTURE_CONVERTERS',
     'PHOTUTILS_CONVERTERS',
     'PHOTUTILS_MANIFEST_URIS',
     'PHOTUTILS_PSF_CONVERTERS',
     'get_extensions',
     'get_resource_mappings',
-]
+)
 
-PHOTUTILS_APERTURE_CONVERTERS = [
-    apertures.CircularApertureConverter(),
-    apertures.CircularAnnulusConverter(),
-    apertures.EllipticalApertureConverter(),
-    apertures.EllipticalAnnulusConverter(),
-    apertures.PolygonApertureConverter(),
-    apertures.RectangularApertureConverter(),
-    apertures.RectangularAnnulusConverter(),
-]
+__all__ = list(_MOVED_NAMES)
 
-PHOTUTILS_PSF_CONVERTERS = []
-
-# The PSF converters are built on the asdf-astropy transform machinery.
-# asdf rejects an entire extension that contains a converter which does
-# not implement its interface, so registering the PSF converters when
-# asdf-astropy is missing would also disable the aperture converters,
-# which need only asdf.
-if _ASDF_ASTROPY_INSTALLED:
-    from .converters import functional_models, image_models
-
-    PHOTUTILS_PSF_CONVERTERS += [
-        functional_models.AiryDiskPRFConverter(),
-        functional_models.AiryDiskPSFConverter(),
-        functional_models.CircularGaussianPRFConverter(),
-        functional_models.CircularGaussianPSFConverter(),
-        functional_models.CircularGaussianSigmaPRFConverter(),
-        functional_models.GaussianPRFConverter(),
-        functional_models.GaussianPSFConverter(),
-        functional_models.MoffatPRFConverter(),
-        functional_models.MoffatPSFConverter(),
-        image_models.ImagePSFConverter(),
-        image_models.GriddedPSFModelConverter(),
-        image_models.STDPSFGridConverter(),
-    ]
-
-PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
+_deprecation_msg = ('photutils.extension is deprecated (since version 3.2) '
+                    'and will be removed in version 4.0. Use '
+                    'photutils.asdf.extension instead.')
 
 
-# The order here is important. asdf will prefer to use extensions
-# that occur earlier in the list.
-PHOTUTILS_MANIFEST_URIS = [
-    'asdf://astropy.org/photutils/manifests/photutils-1.0.0',
-]
+def __getattr__(name):
+    if name in __all__:
+        warnings.warn(_deprecation_msg, PhotutilsDeprecationWarning,
+                      stacklevel=2)
+
+        # The extension imports asdf, which is an optional dependency
+        from photutils.asdf import extension
+
+        return getattr(extension, name)
+
+    msg = f'module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)
 
 
-def get_extensions():
-    """
-    Get the photutils ASDF extensions.
-
-    This function is registered with the ``asdf.extensions`` entry
-    point.
-
-    Returns
-    -------
-    extensions : list of ``asdf.extension.ManifestExtension``
-        The ASDF extensions, one for each photutils manifest.
-    """
-    return [
-        ManifestExtension.from_uri(
-            uri,
-            converters=PHOTUTILS_CONVERTERS,
-        )
-        for uri in PHOTUTILS_MANIFEST_URIS
-    ]
-
-
-def get_resource_mappings():
-    """
-    Get the resource mappings for the photutils schemas and manifests.
-
-    This function is registered with the ``asdf.resource_mappings``
-    entry point.
-
-    Returns
-    -------
-    mappings : list of `collections.abc.Mapping`
-        The ASDF resource mappings for the schemas and the manifests.
-    """
-    resources_root = importlib_resources.files(resources)
-
-    return [
-        DirectoryResourceMapping(resources_root / 'schemas',
-                                 'asdf://astropy.org/photutils/schemas',
-                                 recursive=True),
-        DirectoryResourceMapping(resources_root / 'manifests',
-                                 'asdf://astropy.org/photutils/manifests'),
-    ]
+def __dir__():
+    return __all__

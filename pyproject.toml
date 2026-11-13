@@ -44,8 +44,8 @@ Homepage = 'https://github.com/astropy/photutils'
 Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.entry-points]
-'asdf.extensions' = {photutils = 'photutils.extension:get_extensions'}
-'asdf.resource_mappings' = {photutils = 'photutils.extension:get_resource_mappings'}
+'asdf.extensions' = {photutils = 'photutils.asdf.extension:get_extensions'}
+'asdf.resource_mappings' = {photutils = 'photutils.asdf.extension:get_resource_mappings'}
 
 [project.optional-dependencies]
 all = [
@@ -110,7 +110,7 @@ include-package-data = false
 namespaces = false
 
 [tool.setuptools.package-data]
-'photutils.resources' = [
+'photutils.asdf.resources' = [
     '**/*.yaml'
 ]
 'photutils.datasets' = [
@@ -179,7 +179,7 @@ markers = [
     'thread_unsafe: run the test in a single thread with pytest-run-parallel',
     'iterations(n): run the test n times per thread with pytest-run-parallel',
 ]
-asdf_schema_root = 'photutils/resources/schemas'
+asdf_schema_root = 'photutils/asdf/resources/schemas'
 asdf_schema_tests_enabled = true
 
 [tool.coverage.run]

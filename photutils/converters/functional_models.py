@@ -1,182 +1,34 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Converters to and from the ASDF format for photutils.psf.functional_models.
+Deprecated location of the ASDF functional PSF model converters.
+
+.. deprecated:: 3.2
+    The ``photutils.converters.functional_models`` module is deprecated
+    and will be removed in version 4.0. Use
+    ``photutils.asdf.converters.functional_models`` instead.
 """
 
-from asdf_astropy.converters.transform.core import (TransformConverterBase,
-                                                    parameter_to_value)
+import warnings
 
-from photutils.converters._utils import add_parameter_bounds, optional_params
+from photutils.asdf.converters import functional_models as _functional_models
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-__all__ = ['AiryDiskPRFConverter',
-           'AiryDiskPSFConverter',
-           'CircularGaussianPRFConverter',
-           'CircularGaussianPSFConverter',
-           'CircularGaussianSigmaPRFConverter',
-           'GaussianPRFConverter',
-           'GaussianPSFConverter',
-           'MoffatPRFConverter',
-           'MoffatPSFConverter',
-           ]
+__all__ = list(_functional_models.__all__)
+
+_deprecation_msg = ('photutils.converters.functional_models is deprecated '
+                    '(since version 3.2) and will be removed in version 4.0. '
+                    'Use photutils.asdf.converters.functional_models instead.')
 
 
-class _PSFModelConverter(TransformConverterBase):
-    """
-    Base class for the photutils PSF model converters.
+def __getattr__(name):
+    if name in __all__:
+        warnings.warn(_deprecation_msg, PhotutilsDeprecationWarning,
+                      stacklevel=2)
+        return getattr(_functional_models, name)
 
-    Subclasses name the model parameters that describe the profile.
-    ``flux``, ``x_0``, ``y_0``, and ``bbox_factor`` are common to every
-    model and are handled here.
-
-    Every parameter is written to the file. Those in
-    ``optional_model_params``, and ``bbox_factor``, may be absent when
-    reading, in which case the model class supplies its default. The
-    same holds for the model attributes in ``optional_attributes``,
-    which are not model parameters.
-    """
-
-    model_params = ()
-    optional_model_params = ()
-    optional_attributes = ()
-
-    def _model_class(self):
-        """
-        Return the model class handled by this converter.
-        """
-        # Deferred so that loading the asdf extension does not import
-        # photutils.psf
-        from photutils import psf
-
-        return getattr(psf, self.types[0].rsplit('.', 1)[-1])
-
-    def to_yaml_tree(self, obj, tag, ctx):
-        node = super().to_yaml_tree(obj, tag, ctx)
-        add_parameter_bounds(node, obj)
-        return node
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        names = ('flux', 'x_0', 'y_0', *self.model_params,
-                 *self.optional_model_params)
-        node = {name: parameter_to_value(getattr(model, name))
-                for name in names}
-        node['bbox_factor'] = model.bbox_factor
-        for name in self.optional_attributes:
-            node[name] = getattr(model, name)
-        return node
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        names = ('flux', 'x_0', 'y_0', *self.model_params)
-        params = {name: node[name] for name in names}
-
-        model = self._model_class()(
-            **params,
-            **optional_params(node, *self.optional_model_params,
-                              'bbox_factor', *self.optional_attributes),
-        )
-
-        # The file stores only the fixed=True entries and the bounds
-        # that are set, relative to a baseline of fixed=False and bounds
-        # of (None, None). The photutils models default their shape
-        # parameters to fixed=True with bounds set, so the constraints
-        # are reset to that baseline here. The caller then applies the
-        # stored constraints on top, which reconstructs the saved state
-        # exactly.
-        for name in model.param_names:
-            model.fixed[name] = False
-            model.bounds[name] = (None, None)
-
-        return model
+    msg = f'module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)
 
 
-class AiryDiskPRFConverter(_PSFModelConverter):
-    """
-    ASDF converter for AiryDiskPRF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/airy_disk_prf-*',)
-    types = ('photutils.psf.AiryDiskPRF',)
-    model_params = ('radius',)
-    optional_attributes = ('n_nodes',)
-
-
-class AiryDiskPSFConverter(_PSFModelConverter):
-    """
-    ASDF converter for AiryDiskPSF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/airy_disk_psf-*',)
-    types = ('photutils.psf.AiryDiskPSF',)
-    model_params = ('radius',)
-
-
-class CircularGaussianPRFConverter(_PSFModelConverter):
-    """
-    ASDF converter for CircularGaussianPRF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/circular_gaussian_prf-*',)
-    types = ('photutils.psf.CircularGaussianPRF',)
-    model_params = ('fwhm',)
-
-
-class CircularGaussianPSFConverter(_PSFModelConverter):
-    """
-    ASDF converter for CircularGaussianPSF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/circular_gaussian_psf-*',)
-    types = ('photutils.psf.CircularGaussianPSF',)
-    model_params = ('fwhm',)
-
-
-class CircularGaussianSigmaPRFConverter(_PSFModelConverter):
-    """
-    ASDF converter for CircularGaussianSigmaPRF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/circular_gaussian_sigma_prf-*',)
-    types = ('photutils.psf.CircularGaussianSigmaPRF',)
-    model_params = ('sigma',)
-
-
-class GaussianPRFConverter(_PSFModelConverter):
-    """
-    ASDF converter for GaussianPRF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/gaussian_prf-*',)
-    types = ('photutils.psf.GaussianPRF',)
-    model_params = ('x_fwhm', 'y_fwhm')
-    optional_model_params = ('theta',)
-
-
-class GaussianPSFConverter(_PSFModelConverter):
-    """
-    ASDF converter for GaussianPSF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/gaussian_psf-*',)
-    types = ('photutils.psf.GaussianPSF',)
-    model_params = ('x_fwhm', 'y_fwhm')
-    optional_model_params = ('theta',)
-
-
-class MoffatPRFConverter(_PSFModelConverter):
-    """
-    ASDF converter for MoffatPRF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/moffat_prf-*',)
-    types = ('photutils.psf.MoffatPRF',)
-    model_params = ('alpha', 'beta')
-    optional_attributes = ('n_nodes',)
-
-
-class MoffatPSFConverter(_PSFModelConverter):
-    """
-    ASDF converter for MoffatPSF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/moffat_psf-*',)
-    types = ('photutils.psf.MoffatPSF',)
-    model_params = ('alpha', 'beta')
+def __dir__():
+    return __all__

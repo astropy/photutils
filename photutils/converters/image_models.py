@@ -1,151 +1,34 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Converters to and from the ASDF format for photutils.psf.image_models
-and photutils.psf.gridded_models.
+Deprecated location of the ASDF image PSF model converters.
+
+.. deprecated:: 3.2
+    The ``photutils.converters.image_models`` module is deprecated and
+    will be removed in version 4.0. Use
+    ``photutils.asdf.converters.image_models`` instead.
 """
 
-import numpy as np
-from asdf.extension import Converter
-from asdf_astropy.converters.transform.core import (TransformConverterBase,
-                                                    parameter_to_value)
+import warnings
 
-from photutils.converters._utils import add_parameter_bounds, optional_params
+from photutils.asdf.converters import image_models as _image_models
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-__all__ = ['GriddedPSFModelConverter',
-           'ImagePSFConverter',
-           'STDPSFGridConverter',
-           ]
+__all__ = list(_image_models.__all__)
 
-
-class ImagePSFConverter(TransformConverterBase):
-    """
-    ASDF converter for ImagePSF.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/image_psf-*',)
-    types = ('photutils.psf.ImagePSF',)
-
-    def to_yaml_tree(self, obj, tag, ctx):
-        node = super().to_yaml_tree(obj, tag, ctx)
-        add_parameter_bounds(node, obj)
-        return node
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'data': model.data,
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'oversampling': model.oversampling,
-            'fill_value': model.fill_value,
-            'origin': model.origin,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        # Deferred so that loading the asdf extension does not import
-        # photutils.psf
-        from photutils.psf import ImagePSF
-
-        return ImagePSF(
-            # Wrapping "data" as an ndarray to ensure the data is
-            # properly converted from NDArrayType. This is necessary
-            # because the validation in ImagePSF happens before "data"
-            # is assigned.
-            data=np.array(node['data']),
-            **optional_params(node, 'flux', 'x_0', 'y_0', 'oversampling',
-                              'fill_value', 'origin'),
-        )
+_deprecation_msg = ('photutils.converters.image_models is deprecated (since '
+                    'version 3.2) and will be removed in version 4.0. Use '
+                    'photutils.asdf.converters.image_models instead.')
 
 
-class GriddedPSFModelConverter(TransformConverterBase):
-    """
-    ASDF converter for GriddedPSFModel.
-    """
+def __getattr__(name):
+    if name in __all__:
+        warnings.warn(_deprecation_msg, PhotutilsDeprecationWarning,
+                      stacklevel=2)
+        return getattr(_image_models, name)
 
-    tags = ('tag:astropy.org:photutils/psf/gridded_psf_model-*',)
-    types = ('photutils.psf.GriddedPSFModel',)
-
-    def to_yaml_tree(self, obj, tag, ctx):
-        node = super().to_yaml_tree(obj, tag, ctx)
-        add_parameter_bounds(node, obj)
-        return node
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        node = {
-            'data': model.data,
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'oversampling': model.oversampling,
-            'fill_value': model.fill_value,
-            'grid_xypos': model.grid_xypos,
-        }
-
-        # Preserve any additional meta items (e.g., 'STDPSF', 'detector',
-        # 'filter'). 'grid_xypos' and 'oversampling' are stored above.
-        node['meta'] = {
-            key: value for key, value in model.meta.items()
-            if key not in ('grid_xypos', 'oversampling')
-        }
-
-        return node
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        # Deferred so that loading the asdf extension does not import
-        # astropy.nddata or photutils.psf
-        from astropy.nddata import NDData
-
-        from photutils.psf import GriddedPSFModel
-
-        meta = dict(node['meta'])
-        meta['grid_xypos'] = node['grid_xypos']
-        meta['oversampling'] = node['oversampling']
-
-        nd_data = NDData(data=np.array(node['data']), meta=meta)
-
-        return GriddedPSFModel(
-            nddata=nd_data,
-            **optional_params(node, 'flux', 'x_0', 'y_0', 'fill_value'),
-        )
+    msg = f'module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)
 
 
-class STDPSFGridConverter(Converter):
-    """
-    ASDF converter for STDPSFGrid.
-    """
-
-    tags = ('tag:astropy.org:photutils/psf/stdpsf_grid-*',)
-    types = ('photutils.psf.STDPSFGrid',)
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        # The grid structure is stored as separate properties, as it is
-        # for GriddedPSFModel, leaving 'meta' for the remaining metadata
-        # (e.g., 'STDPSF', 'detector', 'filter'). STDPSFGrid consumes
-        # these three items when it is initialized, so they never appear
-        # in its meta attribute.
-        return {
-            'data': obj.data,
-            'grid_xypos': np.asarray(obj.grid_xypos),
-            'grid_shape': obj.grid_shape,
-            'oversampling': tuple(int(value)
-                                  for value in obj.oversampling),
-            'meta': dict(obj.meta),
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        # Deferred so that loading the asdf extension does not import
-        # photutils.psf
-        from photutils.psf import STDPSFGrid
-
-        meta = dict(node['meta'])
-        # Load the lazily-read grid positions into memory
-        meta['grid_xypos'] = np.asarray(node['grid_xypos'])
-        meta['grid_shape'] = node['grid_shape']
-        if 'oversampling' in node:
-            # The schema does not require this key. When it is absent
-            # the class supplies its default.
-            meta['oversampling'] = node['oversampling']
-
-        # Load the lazily-read data into memory so that the returned
-        # object remains usable after the file is closed
-        return STDPSFGrid._from_asdf(np.asarray(node['data']), meta)
+def __dir__():
+    return __all__

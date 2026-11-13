@@ -20,7 +20,7 @@ from photutils.psf import (AiryDiskPRF, AiryDiskPSF, CircularGaussianPRF,
                            MoffatPRF, MoffatPSF, STDPSFGrid)
 
 # The directory holding the STDPSF test files
-PSF_DATA_DIR = Path(__file__).resolve().parents[2] / 'psf' / 'tests' / 'data'
+PSF_DATA_DIR = Path(__file__).resolve().parents[3] / 'psf' / 'tests' / 'data'
 
 parameters = {
     'AiryDiskPRF': ['flux', 'x_0', 'y_0', 'radius', 'bbox_factor',
