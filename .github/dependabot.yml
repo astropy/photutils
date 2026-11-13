@@ -4,18 +4,18 @@
 version: 2
 updates:
   # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: ".github/workflows/"
+  - package-ecosystem: 'github-actions'
+    directory: '.github/workflows/'
     schedule:
-      interval: "monthly"
+      interval: 'monthly'
     cooldown:
       default-days: 7
     # Custom labels replace the default ones, including the github_actions
     # ecosystem label
     labels:
-      - "dependencies"
-      - "no-changelog-entry-needed"
+      - 'dependencies'
+      - 'no-changelog-entry-needed'
     groups:
       actions:
         patterns:
-          - "*"
+          - '*'

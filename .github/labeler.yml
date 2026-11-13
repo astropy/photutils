@@ -122,7 +122,6 @@ dev-automation:
           - '.github/**'
           - '.flake8'
           - '.pre-commit-config.yaml'
-          - '.pycodestyle'
           - '.readthedocs.yaml'
           - 'codecov.yml'
           - 'tox.ini'

@@ -1,3 +1,4 @@
 [flake8]
 max-line-length = 79
-exclude = extern
+# Ignoring W503 enforces line breaks before binary operators (W504)
+ignore = W503

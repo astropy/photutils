@@ -34,10 +34,10 @@ repos:
         # Replace double-quoted strings with single-quoted strings.
       - id: end-of-file-fixer
         # Makes sure files end in a newline and only a newline.
-        exclude: '.*(svg.*|extern.*)$'
+        exclude: '.*svg.*$'
       - id: trailing-whitespace
         # Trims trailing whitespace.
-        exclude: '.*(data.*|extern.*)$'
+        exclude: '.*data.*$'
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
@@ -55,7 +55,7 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.17.4'
+    rev: v0.17.4
     hooks:
       - id: ruff-check
         args: ['--fix', '--show-fixes']
@@ -70,20 +70,17 @@ repos:
     hooks:
       - id: isort
         name: isort (python)
-        additional_dependencies: [toml]
       - id: isort
         name: isort (cython)
         types: [cython]
-        additional_dependencies: [toml]
 
   - repo: https://github.com/PyCQA/flake8
     rev: 7.5.0
     hooks:
       - id: flake8
-        args: ['--ignore', 'E501,W503']
 
   - repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.22.0
+    rev: v0.22.1
     hooks:
       - id: cython-lint
 
@@ -96,13 +93,8 @@ repos:
     rev: v3.9.10
     hooks:
       - id: prettier
-        types_or: [css, rst, json, yaml, toml, markdown]
+        types_or: [css, json, yaml, markdown]
         args: ['--single-quote']
-        # Exclude codeql.yml and dependabot.yml
-        exclude: |
-          (?x)^(
-            (.*\/)?(codeql\.yml|dependabot\.yml)$
-          )
 
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
@@ -131,7 +123,6 @@ repos:
     rev: v1.11.0
     hooks:
       - id: numpydoc-validation
-        exclude: 'extern/'
 
   # TMP: disabled until new release (Python 3.14 support and without
   #      requiring untokenize) and various regressions are fixed
@@ -141,10 +132,9 @@ repos:
   #   hooks:
   #     - id: docformatter
   #       args: [--in-place, --config, ./pyproject.toml]
-  #       exclude: "extern/"
 
   - repo: https://github.com/sphinx-contrib/sphinx-lint
     rev: v1.0.2
     hooks:
       - id: sphinx-lint
-        exclude: '(docs/_build/|photutils/extern/)'
+        exclude: 'docs/_build/'
