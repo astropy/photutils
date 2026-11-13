@@ -35,6 +35,7 @@ requires-python = '>=3.12'
 dependencies = [
     'astropy>=7.0',
     'numpy>=2.0',
+    'packaging>=24.2',
     'scipy>=1.15',
 ]
 
@@ -48,7 +49,7 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
-    'asdf>=3.3',
+    'asdf>=4.4',
     'asdf-astropy>=0.10',
     'bottleneck>=1.4',
     'gwcs>=0.22',
@@ -59,10 +60,10 @@ all = [
     'tqdm>=4.67',
 ]
 test = [
-    'asdf>=3.3',
+    'asdf>=4.4',
     'asdf-astropy>=0.10',
-    'pytest-asdf-plugin',
     'pytest>=8.0',
+    'pytest-asdf-plugin>=0.2.0',
     'pytest-astropy-header>=0.2.2',
     'pytest-cov>=7.0',
     'pytest-doctestplus>=1.4',
@@ -70,7 +71,6 @@ test = [
     'pytest-remotedata>=0.4.1',
     'pytest-run-parallel>=0.10.0',
     'pytest-xdist>=3.7',
-    'tox>=4.24',
 ]
 docs = [
     'photutils[all]',
@@ -82,6 +82,7 @@ docs = [
 dev = [
     'photutils[docs,test]',
     'pre-commit>=4.0',
+    'tox>=4.24',
 ]
 
 [build-system]

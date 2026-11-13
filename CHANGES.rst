@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- The minimum required asdf is now 4.4. [#2538]
+
 New Features
 ^^^^^^^^^^^^
 
