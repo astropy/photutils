@@ -62,7 +62,7 @@ all = [
 test = [
     'asdf>=4.4',
     'asdf-astropy>=0.10',
-    'pytest>=8.0',
+    'pytest>=9.0',
     'pytest-asdf-plugin>=0.2.0',
     'pytest-astropy-header>=0.2.2',
     'pytest-cov>=7.0',
@@ -126,8 +126,8 @@ namespaces = false
     'data/*',
 ]
 
-[tool.pytest.ini_options]
-minversion = "8.0"
+[tool.pytest]
+minversion = "9.0"
 testpaths = [
     'photutils',
     'docs',
@@ -137,6 +137,24 @@ norecursedirs = [
     'extern',
 ]
 astropy_header = true
+# Packages whose versions are shown in the pytest header. Keep this
+# list in sync with the dependencies and the "all" extra above.
+astropy_header_packages = [
+    'photutils',
+    'asdf',
+    'asdf_astropy',
+    'astropy',
+    'bottleneck',
+    'gwcs',
+    'matplotlib',
+    'numpy',
+    'packaging',
+    'rasterio',
+    'regions',
+    'scipy',
+    'shapely',
+    'tqdm',
+]
 doctest_plus = 'enabled'
 doctest_optionflags = [
     'ELLIPSIS',  # default
@@ -151,17 +169,16 @@ addopts = [
     '--strict-config',
     '--strict-markers',
 ]
-markers = [
-    # Registered here so that the markers work without pytest-run-parallel
-    'thread_unsafe: run the test in a single thread with pytest-run-parallel',
-    'iterations(n): run the test n times per thread with pytest-run-parallel',
-]
 log_level = 'INFO'
-log_cli_level = 'INFO'
 xfail_strict = true
 remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
+]
+markers = [
+    # Registered here so that the markers work without pytest-run-parallel
+    'thread_unsafe: run the test in a single thread with pytest-run-parallel',
+    'iterations(n): run the test n times per thread with pytest-run-parallel',
 ]
 asdf_schema_root = 'photutils/resources/schemas'
 asdf_schema_tests_enabled = true
