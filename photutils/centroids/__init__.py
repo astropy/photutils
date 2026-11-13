@@ -3,5 +3,5 @@
 Subpackage containing tools for centroiding sources.
 """
 
-from .core import *  # noqa: F401, F403
-from .gaussian import *  # noqa: F401, F403
+from .core import *  # noqa: F403
+from .gaussian import *  # noqa: F403

@@ -338,7 +338,6 @@ ignore = [
 '__init__.py' = [
     'D104',  # undocumented-public-package
     'I',  # isort
-    'RUF100',  # flake8 needs the F401 noqa on star imports, ruff does not
 ]
 'conftest.py' = [
     'D103',  # undocumented-public-function
