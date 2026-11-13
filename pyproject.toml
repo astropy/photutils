@@ -100,7 +100,7 @@ build-backend = 'setuptools.build_meta'
 use_extension_helpers = true
 
 [tool.setuptools_scm]
-write_to = 'photutils/version.py'
+version_file = 'photutils/version.py'
 
 [tool.setuptools]
 zip-safe = false
@@ -134,7 +134,6 @@ testpaths = [
 ]
 norecursedirs = [
     'docs/_build',
-    'extern',
 ]
 astropy_header = true
 # Packages whose versions are shown in the pytest header. Keep this
@@ -187,17 +186,13 @@ asdf_schema_tests_enabled = true
 omit = [
     'photutils/__init__*',
     'photutils/**/conftest.py',
-    'photutils/**/setup*',
     'photutils/**/tests/*',
     'photutils/**/*.pyx',
-    'photutils/extern/*',
     'photutils/version*',
     '*/photutils/__init__*',
     '*/photutils/**/conftest.py',
-    '*/photutils/**/setup*',
     '*/photutils/**/tests/*',
     '*/photutils/**/*.pyx',
-    '*/photutils/extern/*',
     '*/photutils/version*',
 ]
 
@@ -214,11 +209,12 @@ skip_glob = [
 ]
 known_first_party = [
     'photutils',
-    'extension_helpers',
 ]
 use_parentheses = true
 
 [tool.black]
+# Exclude every file so that black never reformats the code if an
+# editor or another tool runs it. This project does not use black.
 force-exclude = """
 (
   .*
@@ -229,7 +225,8 @@ force-exclude = """
 skips = ['*_test.py', '*/test_*.py']
 
 [tool.cibuildwheel]
-# Explicitly skip free-threaded builds
+# Skip free-threaded builds. They cannot use the limited API, and
+# astropy does not provide free-threaded wheels to test them with.
 skip = ["cp*t-*"]
 environment = { EXTENSION_HELPERS_PY_LIMITED_API = "cp312" }
 
@@ -325,7 +322,6 @@ max-statements = 130
 
 [tool.ruff.lint]
 select = ['ALL']
-exclude = ["photutils/extern/*"]
 ignore = [
     'ANN',  # type annotations
     'B028',  # no-explicit-stacklevel (warnings)
