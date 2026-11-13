@@ -101,15 +101,31 @@ repos:
     hooks:
       - id: yamllint
         name: yamllint (ASDF resources)
-        # Prettier does not reach inside the block scalars that hold the
-        # schema examples, so the line length is enforced here. The tag
-        # and schema URIs cannot be wrapped, so a value that is a single
-        # long word is exempt.
+        # The rules extend the yamllint defaults. Prettier does not reach
+        # inside the block scalars that hold the schema examples, so the
+        # line length is enforced here. The tag and schema URIs cannot be
+        # wrapped, so a value that is a single long word is exempt. The
+        # comment and brace spacing rules are relaxed to match the
+        # prettier output. Each file must have explicit document start
+        # and end markers.
         files: ^photutils/resources/.*\.yaml$
         args:
           - '-d'
-          - '{rules: {line-length: {max: 79,
-            allow-non-breakable-inline-mappings: true}}}'
+          - |
+            extends: default
+            rules:
+              line-length:
+                max: 79
+                allow-non-breakable-inline-mappings: true
+              comments:
+                min-spaces-from-content: 1
+              braces:
+                max-spaces-inside: 1
+              document-start:
+                present: true
+                level: error
+              document-end:
+                present: true
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.3
