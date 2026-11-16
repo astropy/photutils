@@ -46,6 +46,19 @@ Bug Fixes
     is now combined with the input ``mask``. Previously, the star
     finders ignored it. [#2536]
 
+- ``photutils.isophote``
+
+  - Fixed the ``'bilinear'`` integration mode, which extrapolated
+    the sample value at points up to one pixel before the first pixel
+    center in x or y. These points are now skipped, as they already
+    were beyond the last pixel center. [#2543]
+
+  - Fixed the ``'nearest_neighbor'`` integration mode, which sampled
+    the pixel to the left of or below the nearest pixel for half of
+    the sample points. This offset the fitted ellipse centers by
+    about half a pixel in x and y. The last image row and column are
+    now also sampled. [#2543]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
