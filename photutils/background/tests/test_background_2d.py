@@ -1347,6 +1347,9 @@ class TestFastBoxStatistics:
         def rms_func(data, *, axis=None):
             return np.nanstd(data, axis=axis)
 
+        # An array M must have the shape of the box grid
+        m_array = np.ones((4, 4))
+
         unsupported = [
             {'sigma_clip': UnknownClip()},
             {'sigma_clip': SigmaClip(cenfunc=np.nanmedian)},
@@ -1355,10 +1358,10 @@ class TestFastBoxStatistics:
             {'bkg_estimator': MySExtractorBackground()},
             {'bkg_estimator': bkg_func},
             {'bkg_estimator':
-                BiweightLocationBackground(M=np.array([1.0]))},
+                BiweightLocationBackground(M=m_array)},
             {'bkg_rms_estimator': rms_func},
             {'bkg_rms_estimator':
-                BiweightScaleBackgroundRMS(M=np.array([1.0]))},
+                BiweightScaleBackgroundRMS(M=m_array)},
         ]
         for kwargs in unsupported:
             bkg = Background2D(test_data, (25, 25), **kwargs)
