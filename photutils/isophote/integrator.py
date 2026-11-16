@@ -147,14 +147,16 @@ class _NearestNeighborIntegrator(_Integrator):
     def integrate(self, radius, phi):
         self._r = radius
 
-        # Get image coordinates of (radius, phi) pixel
-        i = int(radius * math.cos(phi + self._geometry.pa)
-                + self._geometry.x0)
-        j = int(radius * math.sin(phi + self._geometry.pa)
-                + self._geometry.y0)
+        # Get image coordinates of (radius, phi) pixel. Pixel centers
+        # are at integer coordinates, so the nearest pixel is found by
+        # rounding.
+        i = math.floor(radius * math.cos(phi + self._geometry.pa)
+                       + self._geometry.x0 + 0.5)
+        j = math.floor(radius * math.sin(phi + self._geometry.pa)
+                       + self._geometry.y0 + 0.5)
 
         # ignore data point if outside image boundaries
-        if (i in self._i_range) and (j in self._j_range):
+        if (0 <= i < self._image.shape[1]) and (0 <= j < self._image.shape[0]):
             sample = self._image[j][i]
 
             if sample is not np.ma.masked:
@@ -177,8 +179,10 @@ class _BiLinearIntegrator(_Integrator):
         # Get image coordinates of (radius, phi) pixel
         x_ = radius * math.cos(phi + self._geometry.pa) + self._geometry.x0
         y_ = radius * math.sin(phi + self._geometry.pa) + self._geometry.y0
-        i = int(x_)
-        j = int(y_)
+        # Use floor so that points before the first pixel center are
+        # skipped instead of extrapolated.
+        i = math.floor(x_)
+        j = math.floor(y_)
         fx = x_ - i
         fy = y_ - j
 
