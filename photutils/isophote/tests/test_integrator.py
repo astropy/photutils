@@ -6,10 +6,13 @@ Tests for the integrator module.
 import numpy as np
 import pytest
 from astropy.io import fits
+from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 
 from photutils.datasets.load import _get_path
-from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
+from photutils.isophote.ellipse import Ellipse
+from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.integrator import (BILINEAR, INTEGRATORS, MEAN, MEDIAN,
                                            NEAREST_NEIGHBOR)
 from photutils.isophote.sample import EllipseSample
 
@@ -73,8 +76,8 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 225
         # intensities
-        assert_allclose(np.mean(s[2]), 201.1, atol=0.1)
-        assert_allclose(np.std(s[2]), 21.8, atol=0.1)
+        assert_allclose(np.mean(s[2]), 200.7, atol=0.1)
+        assert_allclose(np.std(s[2]), 21.6, atol=0.1)
         # radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
@@ -158,3 +161,69 @@ class TestMasked(TestData):
         assert_allclose(sample.sector_area, 12.4, atol=0.1)
         assert sample.total_points == 64
         assert sample.actual_points == 51
+
+
+def _sample_point(integrmode, data, x, y):
+    """
+    Sample a single image point using the given integrator.
+    """
+    geometry = EllipseGeometry(x, y, 1.0, 0.0, 0.0)
+    intensities = []
+    integrator = INTEGRATORS[integrmode](data, geometry, [], [], intensities)
+    integrator.integrate(0.0, 0.0)
+    return intensities
+
+
+@pytest.mark.parametrize(('x', 'y', 'expected'),
+                         [(0.5, 0.5, [5.0]),
+                          (0.0, 0.0, [0.0]),
+                          (0.99, 0.99, [9.9]),
+                          (-0.01, 0.5, []),
+                          (-0.5, 0.5, []),
+                          (-0.99, 0.5, []),
+                          (0.5, -0.5, [])])
+def test_bilinear_edges(x, y, expected):
+    """
+    Test that the bilinear integrator skips points that lie before
+    the first pixel center instead of extrapolating to them.
+    """
+    data = np.array([[0.0, 10.0], [0.0, 10.0]])
+    assert_allclose(_sample_point(BILINEAR, data, x, y), expected)
+
+
+@pytest.mark.parametrize(('x', 'y', 'expected'),
+                         [(0.0, 1.0, [0.0]),
+                          (0.3, 1.0, [0.0]),
+                          (0.7, 1.0, [10.0]),
+                          (1.7, 1.0, [20.0]),
+                          (2.7, 1.0, [30.0]),
+                          (3.3, 1.0, [30.0]),
+                          (-0.3, 1.0, [0.0]),
+                          (-0.7, 1.0, []),
+                          (3.7, 1.0, []),
+                          (1.0, -0.7, []),
+                          (1.0, 3.7, [])])
+def test_nearest_neighbor_pixel(x, y, expected):
+    """
+    Test that the nearest-neighbor integrator samples the pixel whose
+    center is nearest to the sample point.
+
+    Pixel centers are at integer coordinates.
+    """
+    data = np.tile(np.arange(4.0) * 10.0, (4, 1))
+    assert_allclose(_sample_point(NEAREST_NEIGHBOR, data, x, y), expected)
+
+
+@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR])
+def test_fit_center(integrmode):
+    """
+    Test that the fitted center of a symmetric source is not offset.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = Gaussian2D(100.0, 50.0, 50.0, 12.0, 8.0, theta=0.5)(xx, yy)
+    geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5)
+    ellipse = Ellipse(data, geometry=geometry)
+    isolist = ellipse.fit_image(integrmode=integrmode, sma0=10.0,
+                                maxsma=25.0)
+    assert_allclose(np.median(isolist.x0), 50.0, atol=0.05)
+    assert_allclose(np.median(isolist.y0), 50.0, atol=0.05)
