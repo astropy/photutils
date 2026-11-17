@@ -945,7 +945,8 @@ cdef inline int _clip_against_axis(double *xs_in, double *ys_in, int n_in,
             pc = sign * (py - bound)
         if pc >= 0.0:
             if sc < 0.0:
-                # entering: emit intersection, then point
+                # The edge enters the kept region, so emit the
+                # intersection and then the point
                 t = sc / (sc - pc)
                 xs_out[n_out] = sx + t * (px - sx)
                 ys_out[n_out] = sy + t * (py - sy)
@@ -954,7 +955,8 @@ cdef inline int _clip_against_axis(double *xs_in, double *ys_in, int n_in,
             ys_out[n_out] = py
             n_out += 1
         elif sc >= 0.0:
-            # leaving: emit intersection only
+            # The edge leaves the kept region, so emit only the
+            # intersection
             t = sc / (sc - pc)
             xs_out[n_out] = sx + t * (px - sx)
             ys_out[n_out] = sy + t * (py - sy)

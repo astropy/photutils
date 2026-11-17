@@ -1435,7 +1435,7 @@ class PSFResultsAssembler:
         y_col = self.param_mapper.fit_colnames['y']
         flux_col = self.param_mapper.fit_colnames['flux']
 
-        # n_pixels_fit smaller than full fit_shape region
+        # Fewer fitted pixels than the full fit_shape region
         flag1_mask = (results_tbl['n_pixels_fit']
                       < np.prod(self.fit_shape))
         flags[flag1_mask] |= PSF_FLAGS.N_PIXELS_FIT_PARTIAL

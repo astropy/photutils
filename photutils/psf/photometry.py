@@ -402,7 +402,8 @@ class _FitEngine:
             sum_abs_residuals[valid_idx] = float(np.abs(raw_residuals).sum())
             cen_idx = cen_index[valid_idx]
             if np.isfinite(cen_idx):
-                # cfit uses (data - model)
+                # The raw residuals are (model - data), but cfit uses
+                # (data - model), so negate them.
                 cen_residuals[valid_idx] = float(-raw_residuals[int(cen_idx)])
 
             # The reduced chi-squared needs errors and degrees of

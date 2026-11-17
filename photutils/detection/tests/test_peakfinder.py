@@ -559,8 +559,8 @@ class TestFindPeaks:
         data = np.zeros((20, 20))
         data[5:10, 8:11] = 10.0 * plateau
 
-        # the (2, 0) and (3, 1) plateau pixels are equally close to the
-        # centroid at (y, x) = (7/3, 2/3)
+        # The (2, 0) and (3, 1) plateau pixels are equally close to the
+        # centroid at (y, x) = (7/3, 2/3).
         tbl = find_peaks(data, 1.0, min_separation=3)
         assert len(tbl) == 1
         assert tbl['x_peak'][0] == 8
@@ -579,7 +579,7 @@ class TestFindPeaks:
         assert_array_equal(tbl['x_peak'], [12, 18])
         assert_array_equal(tbl['y_peak'], [12, 12])
 
-        # the two plateaus have the same size
+        # The two plateaus have the same size
         tbl = find_peaks(data, 1.0, min_separation=30, mask=mask)
         assert_array_equal(tbl['x_peak'], [12])
         assert_array_equal(tbl['y_peak'], [12])
@@ -940,7 +940,7 @@ class TestFindPeaks:
         xypos = np.transpose((tbl['x_peak'], tbl['y_peak']))
         assert len(cKDTree(xypos).query_pairs(radius)) == 0
 
-        # the peaks stay in row-major order
+        # The peaks stay in row-major order
         idx = np.lexsort((tbl['x_peak'], tbl['y_peak']))
         assert_array_equal(idx, np.arange(len(tbl)))
 

@@ -3839,7 +3839,7 @@ class TestIterationHistory:
         n_total = len(result.iteration_epsfs)
 
         fig = result.plot_iterations()
-        # two image panels and two colorbars per iteration
+        # Two image panels and two colorbars per iteration
         assert len(fig.axes) == 4 * n_total
         titles = [ax.get_title() for ax in fig.axes]
         assert 'Iteration 1 (build)' in titles
@@ -3908,7 +3908,7 @@ def _noisy_gaussian_epsf(fwhm=6.0, size=101, noise=0.002, seed=0):
     center = (size - 1) / 2
     sigma = fwhm / 2.3548
     model = np.exp(-((xx - center)**2 + (yy - center)**2) / (2 * sigma**2))
-    # add a slowly varying wing so that the wings are not zero
+    # Add a slowly varying wing so that the wings are not zero
     radius = np.hypot(xx - center, yy - center)
     model += 0.01 / (1 + (radius / 20.0)**2)
     rng = np.random.default_rng(seed)
@@ -3935,7 +3935,7 @@ def test_smooth_wings():
         rms_before = np.std((noisy - model)[wings])
         rms_after = np.std((result - model)[wings])
         assert rms_after < rms_before / factor
-        # no bias from the curvature of the wing profile
+        # No bias from the curvature of the wing profile
         assert abs(np.mean((result - model)[wings])) < 0.1 * rms_before
 
     # A noiseless ePSF is reproduced, to within the small effect of the
@@ -3968,7 +3968,7 @@ def test_smooth_wings_structure():
         result = builder._smooth_wings(model)
         assert_array_equal(result[radius <= 3.4 * fwhm],
                            model[radius <= 3.4 * fwhm])
-        # the sum, and so the normalization, is nearly unchanged
+        # The sum, and so the normalization, is nearly unchanged
         assert_allclose(result.sum(), model.sum(), rtol=1e-3)
         wings = (radius >= 6.2 * fwhm) & (radius <= 8.0 * fwhm)
         return (np.sqrt(np.mean((result - model)[wings]**2))
@@ -4090,7 +4090,7 @@ def test_wing_smoothing_plot_iterations(epsf_test_data):
         n_extra = int(wing_smoothing)
 
         fig = result.plot_iterations()
-        # two image panels and two colorbars per row
+        # Two image panels and two colorbars per row
         assert len(fig.axes) == 4 * (n_total + n_extra)
         assert_allclose(fig.get_size_inches(),
                         (7.0, 2.6 * (n_total + n_extra)))
