@@ -96,15 +96,15 @@ def _neighbor_sum(array):
 
     The center pixel is left out of the sum instead of being subtracted
     from it, so the sum of nonnegative values is exactly zero only if
-    all of the neighbors are zero.
+    all of the neighbors are zero. The sums of three adjacent pixels in
+    each row are shared by the rows above and below.
     """
-    ny, nx = array.shape
     padded = np.pad(array, 1)
-    result = np.zeros(array.shape)
-    for dy in range(3):
-        for dx in range(3):
-            if (dy, dx) != (1, 1):
-                result += padded[dy:dy + ny, dx:dx + nx]
+    row_sums = padded[:, :-2] + padded[:, 1:-1]
+    row_sums += padded[:, 2:]
+    result = row_sums[:-2] + row_sums[2:]
+    result += padded[1:-1, :-2]
+    result += padded[1:-1, 2:]
     return result
 
 
