@@ -391,7 +391,7 @@ class TestMakeMoransIMask:
                                    opening_iterations=0)
         assert_equal(mask2, mask)
 
-    @pytest.mark.parametrize('opening_iterations', [0, 1, 2, 3])
+    @pytest.mark.parametrize('opening_iterations', [0, 1, 2, 3, 8])
     @pytest.mark.parametrize('percent', [20.0, 50.0])
     @pytest.mark.parametrize('shape', [(300, 500), (30, 40)])
     def test_morphology(self, shape, percent, opening_iterations):

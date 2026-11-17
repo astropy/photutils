@@ -11,8 +11,7 @@ from functools import partial
 import numpy as np
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
-from scipy.ndimage import (binary_dilation, binary_erosion, label,
-                           uniform_filter1d)
+from scipy.ndimage import label, uniform_filter1d
 
 from photutils.utils._misc import split_masked_array
 
@@ -464,6 +463,61 @@ def _calc_threshold(stat, *, n_sigma, percent, patch_size):
     return center + n_sigma * std
 
 
+def _diamond_morphology(mask, radius, *, erode):
+    """
+    Erode or dilate a 2D boolean mask with a diamond of the given
+    radius.
+
+    The result is the same as ``radius`` iterations of
+    `scipy.ndimage.binary_erosion` (with ``border_value=1``) or
+    `scipy.ndimage.binary_dilation` with their default 3x3 cross
+    structuring element. The diamond is made of the horizontal segments
+    of half-width ``radius - abs(offset)`` at each row offset, and the
+    segments are grown one pixel at a time, which is much faster than
+    the iterations.
+
+    Parameters
+    ----------
+    mask : 2D bool `~numpy.ndarray`
+        The input mask.
+
+    radius : int
+        The radius of the diamond.
+
+    erode : bool
+        If `True`, erode the mask, treating the pixels outside of the
+        array as `True`. If `False`, dilate it, treating those pixels as
+        `False`.
+
+    Returns
+    -------
+    result : 2D bool `~numpy.ndarray`
+        The eroded or dilated mask.
+    """
+    n_rows, n_cols = mask.shape
+    func = np.logical_and if erode else np.logical_or
+    segments = np.pad(mask, radius, constant_values=erode)
+    cols = slice(radius, radius + n_cols)
+    result = None
+    for half_width in range(radius + 1):
+        if half_width > 0:
+            grown = segments.copy()
+            func(grown[:, 1:], segments[:, :-1], out=grown[:, 1:])
+            func(grown[:, :-1], segments[:, 1:], out=grown[:, :-1])
+            segments = grown
+
+        # Combine the segments in the rows at this offset above and
+        # below each row
+        offset = radius - half_width
+        for start in {radius - offset, radius + offset}:
+            rows = segments[start:start + n_rows, cols]
+            if result is None:
+                result = rows.copy()
+            else:
+                func(result, rows, out=result)
+    return result
+
+
 def _fill_holes(mask):
     """
     Fill the holes in a 2D boolean mask.
@@ -630,10 +684,9 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
         # eroded from those sides. Those pixels are then removed again,
         # and the result is limited to the flagged pixels.
         excluded = np.isnan(stat)
-        eroded = binary_erosion(source_mask | excluded,
-                                iterations=opening_iterations,
-                                border_value=1)
+        eroded = _diamond_morphology(source_mask | excluded,
+                                     opening_iterations, erode=True)
         eroded &= ~excluded
-        source_mask &= binary_dilation(eroded,
-                                       iterations=opening_iterations)
+        source_mask &= _diamond_morphology(eroded, opening_iterations,
+                                           erode=False)
     return source_mask
