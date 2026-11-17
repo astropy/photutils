@@ -113,7 +113,7 @@ def _collapse_plateaus(peak_mask, min_separation):
     return y_peaks[keep], x_peaks[keep], counts[idx[keep]]
 
 
-def _remove_tied_peaks(x_peaks, y_peaks, peak_values, min_separation,
+def _remove_tied_peaks(x_peaks, y_peaks, peak_values, min_separation, *,
                        n_pixels=None):
     """
     Remove equal-valued peaks that are too close to each other.

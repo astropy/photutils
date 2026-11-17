@@ -1412,7 +1412,8 @@ class SourceCatalog:
         # Other threads may add cached properties and cache entries
         # while the copy runs
         return deepcopy_instance(
-            self, memo, ('_flux_radius_cache', '_batch_arrays_cache'))
+            self, memo,
+            cache_names=('_flux_radius_cache', '_batch_arrays_cache'))
 
     def release_cache(self):
         """

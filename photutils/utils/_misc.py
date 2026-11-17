@@ -43,7 +43,7 @@ def get_cached_property_names(cls):
     return tuple(name for name, _ in members)
 
 
-def deepcopy_instance(obj, memo, cache_names=()):
+def deepcopy_instance(obj, memo, *, cache_names=()):
     """
     Return a deep copy of an instance whose attributes other threads
     may add to during the copy.

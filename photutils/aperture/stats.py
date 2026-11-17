@@ -783,7 +783,7 @@ class ApertureStats:
     def __deepcopy__(self, memo):
         # Other threads may add cached properties and block-reduction
         # results while the copy runs
-        return deepcopy_instance(self, memo, ('_block_cache',))
+        return deepcopy_instance(self, memo, cache_names=('_block_cache',))
 
     @cached_property
     def _null_object(self):
@@ -1474,7 +1474,7 @@ class ApertureStats:
             overlap=np.concatenate([g.overlap for g in gathers]),
             flag_counts=np.concatenate([g.flag_counts for g in gathers]))
 
-    def _threaded_reduction(self, func, buffers, starts, counts,
+    def _threaded_reduction(self, func, buffers, starts, counts, *,
                             per_source=()):
         """
         Run a per-source packed-buffer reduction, dividing the sources

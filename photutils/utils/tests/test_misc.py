@@ -55,7 +55,7 @@ def test_deepcopy_instance():
             self.parent = self
 
         def __deepcopy__(self, memo):
-            return deepcopy_instance(self, memo, ('cache',))
+            return deepcopy_instance(self, memo, cache_names=('cache',))
 
         @cached_property
         def total(self):
@@ -81,8 +81,8 @@ class _DeepcopyInstance:
     """
 
     def __deepcopy__(self, memo):
-        return deepcopy_instance(self, memo, getattr(self, 'cache_names',
-                                                     ()))
+        return deepcopy_instance(
+            self, memo, cache_names=getattr(self, 'cache_names', ()))
 
 
 def test_deepcopy_instance_shared_cache():
