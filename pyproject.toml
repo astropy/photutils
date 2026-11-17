@@ -127,7 +127,7 @@ namespaces = false
 ]
 
 [tool.pytest]
-minversion = "9.0"
+minversion = '9.0'
 testpaths = [
     'photutils',
     'docs',
@@ -227,8 +227,8 @@ skips = ['*_test.py', '*/test_*.py']
 [tool.cibuildwheel]
 # Skip free-threaded builds. They cannot use the limited API, and
 # astropy does not provide free-threaded wheels to test them with.
-skip = ["cp*t-*"]
-environment = { EXTENSION_HELPERS_PY_LIMITED_API = "cp312" }
+skip = ['cp*t-*']
+environment = { EXTENSION_HELPERS_PY_LIMITED_API = 'cp312' }
 
 [tool.repo-review]
 ignore = [
