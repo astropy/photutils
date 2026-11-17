@@ -216,6 +216,28 @@ class TestMakeMoransIMap:
         assert_equal(np.isnan(result), np.isnan(expected.T))
         assert_allclose(result, expected.T, atol=1e-5)
 
+    @pytest.mark.parametrize('strip_pixels', [1000, 25000])
+    def test_strips(self, monkeypatch, strip_pixels):
+        """
+        Test that the map does not depend on the strips of rows used to
+        calculate it.
+
+        The strips are as short as their overlap or 50 rows tall,
+        instead of the whole 300-row image.
+        """
+        rng = np.random.default_rng(8)
+        data = make_100gaussians_image()
+        data[100:120, 200:260] = np.nan
+        weights = rng.uniform(0.5, 2.0, data.shape)
+        mask = rng.random(data.shape) < 0.01
+        expected = make_morans_i_map(data, mask=mask, weights=weights)
+
+        monkeypatch.setattr('photutils.background.morans_i._STRIP_PIXELS',
+                            strip_pixels)
+        result = make_morans_i_map(data, mask=mask, weights=weights)
+        assert_equal(np.isnan(result), np.isnan(expected))
+        assert_allclose(result, expected, atol=1e-6)
+
     def test_patch_larger_than_image(self, small):
         data = small[:12, :9]
         result = make_morans_i_map(data, patch_size=21)

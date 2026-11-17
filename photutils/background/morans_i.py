@@ -43,6 +43,10 @@ _MAD_TO_STD = 1.482602218505602
 # faster than filtering along the columns
 _MIN_ROW_SUM_WIDTH = 256
 
+# The approximate number of pixels in each strip of rows used to
+# calculate the Moran's I map
+_STRIP_PIXELS = 2**20
+
 
 def _subsample(array):
     """
@@ -223,21 +227,70 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
             raise ValueError(msg)
         valid &= ~mask
 
-    if weights is None:
-        wts = valid.astype(float)
-    else:
+    if weights is not None:
         weights = np.asarray(weights, dtype=float)
         if weights.shape != data.shape:
             msg = 'weights must have the same shape as data'
             raise ValueError(msg)
         with np.errstate(invalid='ignore'):
             valid &= np.isfinite(weights) & (weights > 0)
-        wts = np.where(valid, weights, 0.0)
 
     # Subtract an approximate background level to limit the rounding
     # error of the box sums. The statistic does not depend on it.
     sample = _subsample(data)[_subsample(valid)]
     pedestal = float(np.median(sample)) if sample.size > 0 else 0.0
+
+    # The statistic of each pixel depends only on the pixels within
+    # this many rows of it, so the map is calculated in strips of rows
+    # that overlap by this many rows on each side. The strips limit the
+    # memory used by the intermediate arrays.
+    overlap = patch_size // 2 + 1
+    n_rows, n_cols = data.shape
+    strip_rows = max(overlap, _STRIP_PIXELS // n_cols)
+    result = np.empty(data.shape, dtype=np.float32)
+    for start in range(0, n_rows, strip_rows):
+        stop = min(start + strip_rows, n_rows)
+        lower = max(start - overlap, 0)
+        rows = slice(lower, min(stop + overlap, n_rows))
+        strip_weights = None if weights is None else weights[rows]
+        strip = _morans_i_strip(data[rows], valid[rows], strip_weights,
+                                pedestal=pedestal, patch_size=patch_size)
+        result[start:stop] = strip[start - lower:stop - lower]
+    return result
+
+
+def _morans_i_strip(data, valid, weights, *, pedestal, patch_size):
+    """
+    Calculate the Moran's I map of a strip of rows.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The strip of the image.
+
+    valid : 2D bool `~numpy.ndarray`
+        The valid pixels of the strip.
+
+    weights : 2D `~numpy.ndarray` or `None`
+        The weights of the strip, or `None` for equal weights.
+
+    pedestal : float
+        The value subtracted from the data.
+
+    patch_size : int
+        The side length in pixels of the square patch.
+
+    Returns
+    -------
+    result : 2D `~numpy.ndarray`
+        The float64 Moran's I map of the strip. The rows near the
+        edges of the strip are incorrect unless they are also edges of
+        the image.
+    """
+    if weights is None:
+        wts = valid.astype(float)
+    else:
+        wts = np.where(valid, weights, 0.0)
     values = np.zeros(data.shape)
     values[valid] = data[valid] - pedestal
 
@@ -291,7 +344,7 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
         result /= var
 
     result[~good] = np.nan
-    return result.astype(np.float32)
+    return result
 
 
 def _half_sample_mode(values):
