@@ -515,7 +515,9 @@ class Background2D:
 
         Boxes that are completely masked are always excluded.
         """
-        return (1 - (self.exclude_percentile / 100.0)) * self._box_n_pixels
+        # Multiply before dividing so that the threshold is exact when
+        # it is an integer (e.g., (1 - 0.41) * 100 is 59.00000000000001)
+        return self._box_n_pixels * (100.0 - self.exclude_percentile) / 100.0
 
     def _make_box_stats_spec(self):
         """

@@ -634,6 +634,25 @@ class TestBackground2D:
                          sigma_clip=None, mask=mask,
                          exclude_percentile=10.0)
 
+    def test_exclude_percentile_boundary_rounding(self):
+        """
+        Test that a box with exactly exclude_percentile percent masked
+        pixels is included for every integer percentage.
+
+        For a 100-pixel box, ``(1 - p / 100) * 100`` rounds slightly
+        above the exact number of unmasked pixels for some ``p`` (e.g.,
+        41), which would exclude the box.
+        """
+        data = np.ones((10, 10))
+        for percent in range(1, 100):
+            mask = np.zeros(data.size, dtype=bool)
+            mask[:percent] = True
+            bkg = Background2D(data, (10, 10), filter_size=(1, 1),
+                               sigma_clip=None,
+                               mask=mask.reshape(data.shape),
+                               exclude_percentile=float(percent))
+            assert bkg.n_pixels_mesh[0, 0] == 100 - percent
+
     def test_filter_threshold(self, test_data, bkg_mesh):
         """
         Test that the filter_threshold parameter filters the correct

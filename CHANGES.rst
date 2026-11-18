@@ -49,6 +49,11 @@ Bug Fixes
     ``mask``, in the same way as the mask of a ``MaskedArray`` input.
     Previously, the ``NDData`` mask was ignored. [#2547]
 
+  - Fixed ``Background2D`` so that a box with exactly
+    ``exclude_percentile`` percent of its pixels masked is always
+    included. Floating-point rounding excluded such boxes for some
+    percentages (e.g., 41%). [#2547]
+
 - ``photutils.detection``
 
   - Fixed a race condition on free-threaded Python builds where
