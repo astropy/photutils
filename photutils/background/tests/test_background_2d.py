@@ -1464,6 +1464,32 @@ class TestFastBoxStatistics:
         bkg = Background2D(data_nomask, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background_mesh, 1.0)
 
+    @pytest.mark.parametrize('nddata_class', [NDData, CCDData])
+    def test_nddata_mask(self, nddata_class):
+        """
+        Test that the mask of NDData input is respected and combined
+        with the input mask.
+        """
+        data_values = np.ones((100, 100))
+        data_values[0:25, 0:25] = 1e6
+        data_values[25:50, 25:50] = 1e6
+        data_mask = np.zeros(data_values.shape, dtype=bool)
+        data_mask[0:25, 0:25] = True
+        kwargs = {'unit': u.ct} if nddata_class is CCDData else {}
+        data = nddata_class(data_values, mask=data_mask, **kwargs)
+
+        mask = np.zeros(data_values.shape, dtype=bool)
+        mask[25:50, 25:50] = True
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask)
+        assert_allclose(np.asarray(bkg.background_mesh), 1.0)
+        assert bkg.n_pixels_mesh[0, 0] == 0
+        assert bkg.n_pixels_mesh[1, 1] == 0
+
+        # NDData without a mask
+        data = nddata_class(np.ones((100, 100)), **kwargs)
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1))
+        assert bkg.n_pixels_mesh[0, 0] == 625
+
 
 @pytest.mark.parametrize('dtype', [np.float32, np.float64])
 @pytest.mark.parametrize(('bkg_estimator', 'bkg_rms_estimator'),

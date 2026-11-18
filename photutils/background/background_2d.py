@@ -85,8 +85,9 @@ class Background2D:
     data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
             `~astropy.units.Quantity`, or `~astropy.nddata.NDData`
         The 2D array from which to estimate the background and/or
-        background RMS map. If ``data`` is a `~numpy.ma.MaskedArray`,
-        its mask is combined with the input ``mask``.
+        background RMS map. If ``data`` is a `~numpy.ma.MaskedArray` or
+        an `~astropy.nddata.NDData` with a ``mask``, its mask is
+        combined with the input ``mask``.
 
     box_size : int or array_like (int)
         The box size along each axis. If ``box_size`` is a scalar then
@@ -259,7 +260,12 @@ class Background2D:
             data = data.value
         elif isinstance(data, NDData):  # includes CCDData
             self._unit = data.unit
-            data = data.data
+            # An NDData mask is combined with the input mask below, in
+            # the same way as the mask of a masked array
+            if data.mask is not None:
+                data = np.ma.MaskedArray(data.data, mask=data.mask)
+            else:
+                data = data.data
         else:
             self._unit = None
 
