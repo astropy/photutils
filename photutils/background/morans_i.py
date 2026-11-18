@@ -58,7 +58,7 @@ _STRIP_PIXELS = 2**20
 
 def _subsample(array):
     """
-    Return a regularly-spaced subsample of a 2D array as a view.
+    Return a regularly spaced subsample of a 2D array as a view.
     """
     step = max(1, math.ceil(math.sqrt(array.size / _N_SAMPLES)))
     return array[::step, ::step]
@@ -199,10 +199,10 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     Returns
     -------
     result : 2D float32 `~numpy.ndarray`
-        The Moran's I map. A pixel is NaN if it is excluded, if none
-        of its eight nearest neighbors are usable, if fewer than 25% of
-        the pixels of a full patch are usable, or if the variance of
-        its patch is too small to be measured (see Notes).
+        The Moran's I map. A pixel is NaN if it is excluded, if none of
+        its eight nearest neighbors is usable, if the usable pixels make
+        up less than 25% of a full patch, or if the variance of its
+        patch is too small to be measured (see Notes).
 
     See Also
     --------
@@ -453,9 +453,10 @@ def _lower_std(values, center):
 
     The estimate is the median deviation of those values from
     ``center``, scaled to the standard deviation of a Gaussian
-    distribution. Unlike an RMS deviation, it is not affected by
-    outliers (e.g., the extreme negative values of the statistic next
-    to unmasked hot pixels) unless they are half of the values.
+    distribution. Unlike an RMS deviation, it changes only moderately
+    with outliers (e.g., the extreme negative values of the statistic
+    next to unmasked hot pixels) unless they make up at least half of
+    the values not above ``center``.
 
     Parameters
     ----------
@@ -487,8 +488,8 @@ def _calc_threshold(stat, *, n_sigma, percent, patch_size):
         The number of standard deviations above the background value.
 
     percent : float or `None`
-        The percentage of pixels to flag. If not `None`, it is used
-        instead of ``n_sigma``.
+        The percentage of the pixels with a finite value of ``stat`` to
+        flag. If not `None`, it is used instead of ``n_sigma``.
 
     patch_size : int
         The side length in pixels of the patch used for ``stat``.
@@ -496,7 +497,8 @@ def _calc_threshold(stat, *, n_sigma, percent, patch_size):
     Returns
     -------
     threshold : float or `None`
-        The threshold. `None` if ``stat`` has no finite values.
+        The threshold. `None` if the subsample of ``stat`` used to
+        estimate the threshold has no finite values.
     """
     sample = _subsample(stat)
     sample = sample[np.isfinite(sample)]
@@ -650,9 +652,10 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
         from the lowest peak of the distribution of the statistic, so
         it can be estimated even if most of the patches contain
         sources. A warning is raised if the background value cannot be
-        estimated, which happens if nearly all of the patches contain
-        sources or if the background changes strongly across each
-        patch. Ignored if ``percent`` is input.
+        estimated, for example because nearly all of the patches
+        contain sources or the background changes strongly across each
+        patch. It must be positive, even if ``percent`` is input, in
+        which case it is otherwise ignored.
 
     percent : float or `None`, optional
         The percentage of the pixels with a value of the statistic to
@@ -663,7 +666,7 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
         masked fraction differs somewhat because holes in the flagged
         regions are then filled and the binary opening removes small
         regions. For images with more than about one million pixels,
-        the threshold is calculated from a regularly-spaced subsample
+        the threshold is calculated from a regularly spaced subsample
         of the statistic, so the percentage is approximate.
 
     mask : 2D bool array_like, optional
@@ -728,9 +731,10 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
     ``exclude_percentile`` is increased to keep the boxes that are
     partly covered by the mask.
 
-    Excluded pixels are not included in the returned source mask, so a
-    bad-pixel mask must be combined with the source mask when it is
-    input to `~photutils.background.Background2D`.
+    Excluded pixels are not included in the returned source mask unless
+    they are enclosed by flagged pixels, so a bad-pixel mask must be
+    combined with the source mask when it is input to
+    `~photutils.background.Background2D`.
 
     >>> import numpy as np
     >>> bad_mask = np.zeros(data.shape, dtype=bool)
