@@ -24,7 +24,8 @@ def _slow_box_sum(array, size):
     return result
 
 
-def _reference_morans_i(data, patch_size, *, mask=None, weights=None):
+def _reference_morans_i(data, patch_size, *, n_box_passes=1, mask=None,
+                        weights=None):
     """
     Slow pure-NumPy reference for the sliding Moran's I statistic.
     """
@@ -58,11 +59,12 @@ def _reference_morans_i(data, patch_size, *, mask=None, weights=None):
 
     sums = [usable.astype(float), wts, wts * values, wts * values**2,
             wts * neighbor_mean, wts * values * neighbor_mean]
-    sums = [_slow_box_sum(array, patch_size) for array in sums]
+    for _ in range(n_box_passes):
+        sums = [_slow_box_sum(array, patch_size) for array in sums]
     count, sum_w, sum_x, sum_xx, sum_n, sum_xn = sums
 
     result = np.full(data.shape, np.nan)
-    good = usable & (count >= 0.25 * patch_size**2)
+    good = usable & (count >= 0.25 * patch_size**(2 * n_box_passes))
     with np.errstate(invalid='ignore', divide='ignore'):
         mean = sum_x / sum_w
         var = sum_xx / sum_w - mean**2
@@ -153,10 +155,68 @@ class TestMakeMoransIMap:
             result = make_morans_i_map(small, patch_size=7, weights=weights)
             assert_allclose(result, expected, atol=1e-5)
 
+    @pytest.mark.parametrize(('n_box_passes', 'box_size'),
+                             [(2, 7), (3, 5), (30, 3)])
+    def test_n_box_passes(self, small, n_box_passes, box_size):
+        """
+        Test repeated box passes against a slow reference with masked
+        pixels and weights.
+
+        The passes use the box that gives the kernel the effective
+        width of a patch of 9 pixels.
+        """
+        rng = np.random.default_rng(6)
+        weights = rng.uniform(0.5, 2.0, small.shape)
+        mask = np.zeros(small.shape, dtype=bool)
+        mask[10:14, 10:14] = True
+        mask[0:9, 42:] = True
+
+        result = make_morans_i_map(small, patch_size=9,
+                                   n_box_passes=n_box_passes)
+        expected = _reference_morans_i(small, box_size,
+                                       n_box_passes=n_box_passes)
+        assert np.any(np.isfinite(result))
+        assert_equal(np.isnan(result), np.isnan(expected))
+        assert_allclose(result, expected, atol=1e-5)
+
+        result = make_morans_i_map(small, patch_size=9, mask=mask,
+                                   weights=weights, n_box_passes=n_box_passes)
+        expected = _reference_morans_i(small, box_size, mask=mask,
+                                       weights=weights,
+                                       n_box_passes=n_box_passes)
+        assert_equal(np.isnan(result), np.isnan(expected))
+        assert_allclose(result, expected, atol=1e-5)
+
+    def test_n_box_passes_footprint(self, noise):
+        """
+        Test that repeated box passes extend the footprint of a bright
+        source beyond the square patch.
+        """
+        yy, xx = np.mgrid[:201, :251]
+        data = noise + 1000.0 * np.exp(-((xx - 120)**2 + (yy - 100)**2)
+                                       / 4.5)
+        single = make_morans_i_map(data, patch_size=11)
+        triple = make_morans_i_map(data, patch_size=11, n_box_passes=3)
+        assert_equal(make_morans_i_map(data, patch_size=11, n_box_passes=1),
+                     single)
+
+        # the single box ends 5 pixels from the source and the kernel
+        # of three passes (of a box of 7 pixels) ends 9 pixels from it
+        assert single[100, 120] > 0.5
+        assert triple[100, 120] > 0.5
+        assert abs(single[100, 132]) < 0.2
+        assert triple[100, 132] > 0.5
+        assert abs(triple[100, 140]) < 0.2
+
     def test_patch_larger_than_image(self, small):
         data = small[:12, :9]
         result = make_morans_i_map(data, patch_size=21)
         assert_allclose(result, _reference_morans_i(data, 21), atol=1e-5)
+
+        result = make_morans_i_map(data, patch_size=21, n_box_passes=2)
+        expected = _reference_morans_i(data, 15, n_box_passes=2)
+        assert_equal(np.isnan(result), np.isnan(expected))
+        assert_allclose(result, expected, atol=1e-5)
 
     def test_noise_and_source(self, noise):
         """
@@ -232,6 +292,11 @@ class TestMakeMoransIMap:
         match = 'weights must have the same shape as data'
         with pytest.raises(ValueError, match=match):
             make_morans_i_map(noise, weights=np.ones((3, 3)))
+
+        match = 'n_box_passes must be a positive integer'
+        for n_box_passes in (0, 1.5, True):
+            with pytest.raises(ValueError, match=match):
+                make_morans_i_map(noise, n_box_passes=n_box_passes)
 
     def test_masked_array(self, small):
         """
