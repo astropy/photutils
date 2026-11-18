@@ -46,7 +46,7 @@ background noise estimation. However, for most astronomical scenes these
 methods will also be biased by the presence of astronomical sources in
 the image.
 
-As an example, we load a synthetic image comprised of 100 sources with
+As an example, we load a synthetic image composed of 100 sources with
 a Gaussian-distributed background whose mean is 5 and standard
 deviation is 2::
 
@@ -115,10 +115,12 @@ Masking Sources
 ^^^^^^^^^^^^^^^
 
 An even better procedure is to exclude the sources in the image by
-masking them. This technique requires one to :ref:`identify the sources
-in the data <source_detection>`, which in turn depends on the background
-and background noise. Therefore, this method for estimating the
-background and background RMS requires an iterative procedure.
+masking them. Making a source mask from detected sources requires one
+to :ref:`identify the sources in the data <source_detection>`, which in
+turn depends on the background and background noise. Therefore, this
+method for estimating the background and background RMS requires an
+iterative procedure. The Moran's I source mask described in
+:ref:`morans_i_mask` does not require this iteration.
 
 One method to create a source mask is to use a
 :ref:`segmentation image <image_segmentation>`. Here we use the
@@ -129,7 +131,7 @@ generate a `~photutils.segmentation.SegmentationImage`. Finally, we use
 the :meth:`~photutils.segmentation.SegmentationImage.make_source_mask`
 method with a circular dilation footprint to create the source mask::
 
-    >>> from astropy.stats import sigma_clipped_stats, SigmaClip
+    >>> from astropy.stats import SigmaClip
     >>> from photutils.segmentation import detect_threshold, detect_sources
     >>> from photutils.utils import circular_footprint
     >>> sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
@@ -175,22 +177,23 @@ noise, and no iteration is needed::
     >>> print(np.array((mean, median, std)))  # doctest: +FLOAT_CMP
     [4.9990853  4.99195359 1.96672525]
 
-Pixels are flagged as sources where the statistic is more than
-``n_sigma`` standard deviations (3 by default) above its typical
+By default, pixels are flagged as sources where the statistic is more
+than ``n_sigma`` standard deviations (3 by default) above its typical
 background value. Both of those values are estimated from the map of
 the statistic itself. This matters for images with noise that is
 correlated between adjacent pixels (e.g., resampled or drizzled
 mosaics), where the statistic is significantly larger than zero even
 without sources. The background value is taken from the lowest peak of
 the distribution of the statistic, so it can be estimated even in
-crowded images where most of the patches contain sources. If nearly
-all of the patches contain sources, a warning is raised, and the
-``percent`` keyword or a smaller ``patch_size`` should be used
-instead. Alternatively, the ``percent`` keyword flags a fixed
-percentage of the image pixels, selecting those with the largest values
-of the statistic. Holes in the flagged regions are then filled, and a
-binary opening removes small isolated regions and rounds the corners of
-the remaining regions.
+crowded images where most of the patches contain sources.
+Alternatively, the ``percent`` keyword flags a fixed percentage of the
+image pixels, selecting those with the largest values of the statistic.
+If nearly all of the patches contain sources, the background value of
+the statistic cannot be estimated and a warning is raised. The
+``percent`` keyword or a smaller ``patch_size`` should then be used
+instead. In either case, holes in the flagged regions are filled, and a
+binary opening then removes small isolated regions and rounds the
+corners of the remaining regions.
 
 The map of the statistic can be calculated with the
 `~photutils.background.make_morans_i_map` function. Let's plot the
@@ -218,7 +221,8 @@ data, the Moran's I map, and the source mask:
     fig.tight_layout()
 
 The mask is intended to be used as the ``mask`` input to
-:class:`~photutils.background.Background2D` (see below). Large sources
+:class:`~photutils.background.Background2D` (see
+:ref:`background_2d_masking`). Large sources
 are masked out to a distance of approximately half the patch size
 beyond where they are detected.
 
@@ -250,11 +254,12 @@ Let's exclude a bad column of pixels::
     >>> bkg = Background2D(data, (50, 50), mask=source_mask | bad_mask,
     ...                    exclude_percentile=50.0)
 
-The source mask covers a large fraction of the image, so
-``exclude_percentile`` is increased to keep the boxes that are partly
-covered by the mask. `~photutils.background.Background2D` masks
-nonfinite data values automatically, so they do not need to be included
-in the combined mask.
+Because the source mask covers a large fraction of the image, the
+``exclude_percentile`` keyword is increased so that boxes that are
+partly covered by the mask are still used (see
+:ref:`background_2d_masking`). `~photutils.background.Background2D`
+masks nonfinite data values automatically, so they do not need to be
+included in the combined mask.
 
 Blank regions that are filled with a constant value instead of NaN
 (e.g., the zeros outside of the footprint of a mosaic) should also be
@@ -277,10 +282,13 @@ If the background or the background noise varies across the image,
 then you will generally want to generate a 2D image of the background
 and background RMS (or compute these values locally). This can be
 accomplished by applying the above techniques to subregions of the
-image. A common procedure is to use sigma-clipped statistics in each
-mesh of a grid that covers the input data to create a low-resolution
-background image. The final background or background RMS image can then
-be generated by interpolating the low-resolution image.
+image. A common procedure is to divide the input data into a grid of
+nonoverlapping boxes and to use sigma-clipped statistics in each box to
+create a low-resolution background image, in which each box gives one
+pixel, or mesh. The final background or background RMS image can then
+be generated by interpolating the low-resolution image. As with the
+scalar estimates above, the sources should be masked first (see
+:ref:`background_2d_masking`).
 
 Photutils provides the :class:`~photutils.background.Background2D`
 class to estimate the 2D background and background noise in an
@@ -294,69 +302,6 @@ that the data are covered by an integer number of boxes in both
 dimensions. If that is not the case, the image will be padded along
 the top and/or right edges.
 
-The background level in each of the meshes is calculated using
-the function or callable object (e.g., class instance) input via the
-``bkg_estimator`` keyword. Photutils provides several background
-classes that can be used:
-
-* `~photutils.background.MeanBackground`
-* `~photutils.background.MedianBackground`
-* `~photutils.background.ModeEstimatorBackground`
-* `~photutils.background.MMMBackground`
-* `~photutils.background.SExtractorBackground`
-* `~photutils.background.BiweightLocationBackground`
-
-The default is a `~photutils.background.SExtractorBackground` instance.
-For this method, the background in each mesh is calculated as ``(2.5 *
-median) - (1.5 * mean)``. However, if ``abs(mean - median) / std >=
-0.3`` then the ``median`` is used instead. If the standard deviation is
-zero then the ``mean`` is used.
-
-Likewise, the background RMS level in each mesh is calculated using the
-function or callable object input via the ``bkg_rms_estimator`` keyword.
-Photutils provides the following classes for this purpose:
-
-* `~photutils.background.StdBackgroundRMS`
-* `~photutils.background.MADStdBackgroundRMS`
-* `~photutils.background.BiweightScaleBackgroundRMS`
-
-For even more flexibility, users may input a custom function or callable
-object to the ``bkg_estimator`` and/or ``bkg_rms_estimator`` keywords.
-
-By default, the ``bkg_estimator`` and ``bkg_rms_estimator`` are
-applied to sigma-clipped data. Sigma clipping is defined by inputting
-a :class:`astropy.stats.SigmaClip` object to the ``sigma_clip``
-keyword. The default is to perform sigma clipping with ``sigma=3``
-and ``maxiters=10``. Sigma clipping can be turned off by setting
-``sigma_clip=None``.
-
-.. note::
-    `~astropy.stats.SigmaClip` instances store internal state while
-    clipping, so a single background or background RMS estimator
-    instance should not be called concurrently from multiple threads
-    when sigma clipping is enabled.
-
-After the background level has been determined in each of the boxes, the
-low-resolution background image can be median filtered, with a window
-size of ``filter_size``, to suppress local underestimates or overestimates
-(e.g., due to bright galaxies in a particular box). Likewise, the median
-filter can be applied only to those boxes where the background level is
-above a specified threshold (``filter_threshold``).
-
-The low-resolution background and background RMS images are resized to
-the original data size using spline interpolation via
-`scipy.ndimage.zoom`.
-
-.. note::
-    Prior to version 3.0, the interpolation method could
-    be customized via the ``interpolator`` keyword using
-    :class:`~photutils.background.BkgZoomInterpolator` or
-    :class:`~photutils.background.BkgIDWInterpolator` classes. These
-    are now deprecated. The ``BkgIDWInterpolator`` is not well-suited
-    for resizing images on a regular grid to larger sizes. It is
-    also significantly slower than the default interpolator based on
-    ``scipy.ndimage.zoom``.
-
 For this example, we will create a test image by adding a strong
 background gradient to the image defined above::
 
@@ -364,9 +309,14 @@ background gradient to the image defined above::
     >>> y, x = np.mgrid[:ny, :nx]
     >>> gradient = x * y / 5000.0
     >>> data2 = data + gradient
-    >>> norm = simple_norm(data2, 'sqrt', percent=99.5)  # doctest: +SKIP
-    >>> fig, ax = plt.subplots()  # doctest: +SKIP
-    >>> ax.imshow(data2, norm=norm, origin='lower')  # doctest: +SKIP
+
+Let's plot the image:
+
+.. doctest-skip::
+
+    >>> norm = simple_norm(data2, 'sqrt', percent=99.5)
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data2, norm=norm, origin='lower')
 
 .. plot::
 
@@ -422,7 +372,7 @@ Let's plot the source mask:
 Next, we create a `~photutils.background.Background2D` object
 using a box size of 15x15 and a 3x3 median filter, and we input the
 source mask with the ``mask`` keyword. We will estimate the background
-level in each mesh as the sigma-clipped median using an instance of
+level in each box as the sigma-clipped median using an instance of
 :class:`~photutils.background.MedianBackground`. Because the source
 mask covers a large fraction of the image, we also increase the
 ``exclude_percentile`` keyword so that boxes with up to half of their
@@ -601,11 +551,12 @@ Let's create a rotated image that has blank areas and plot it:
     norm = simple_norm(data3, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(data3, norm=norm, origin='lower')
-    ax.set_title('Data with added background gradient')
+    ax.set_title('Rotated data with blank regions')
 
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
-have no data. For this example, we set the ``fill_value`` to 0.0.
+have no data. For this example, we set ``fill_value`` to 0.0, which is
+also the default.
 For real data, one can usually create a coverage mask from a weight or
 noise image.
 
@@ -698,6 +649,119 @@ Finally, let's subtract the background from the image and plot it:
     ax.set_title('Background-subtracted Data')
 
 
+Plotting Meshes
+^^^^^^^^^^^^^^^
+
+The boxes that were used in generating the 2D background can be
+plotted on the original image using the
+:meth:`~photutils.background.Background2D.plot_meshes` method. Here we
+zoom in on the lower-left corner of the rotated image. Only the boxes
+that were used are shown, so the excluded boxes (e.g., those that are
+mostly masked) appear as gaps in the grid.
+
+.. doctest-skip::
+
+    >>> norm = simple_norm(data3, 'sqrt', percent=99.5)
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data3, norm=norm, origin='lower')
+    >>> bkg3.plot_meshes(outlines=True, marker='.', color='white', alpha=0.5)
+    >>> ax.set_xlim(0, 250)
+    >>> ax.set_ylim(0, 250)
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.visualization import simple_norm
+    from photutils.background import Background2D, make_morans_i_mask
+    from photutils.datasets import make_100gaussians_image
+    from scipy.ndimage import rotate
+
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient = x * y / 5000.0
+    data2 = data + gradient
+    data3 = rotate(data2, -45.0)
+    coverage_mask = (data3 == 0)
+    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
+    bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
+                        mask=mask3, coverage_mask=coverage_mask,
+                        fill_value=0.0, exclude_percentile=50.0)
+    norm = simple_norm(data3, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots()
+    ax.imshow(data3, norm=norm, origin='lower')
+    bkg3.plot_meshes(outlines=True, marker='.', color='white', alpha=0.5)
+    ax.set_xlim(0, 250)
+    ax.set_ylim(0, 250)
+
+
+Customizing the Estimate
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The background level in each box is calculated using
+the function or callable object (e.g., class instance) input via the
+``bkg_estimator`` keyword. Photutils provides several background
+classes that can be used:
+
+* `~photutils.background.MeanBackground`
+* `~photutils.background.MedianBackground`
+* `~photutils.background.ModeEstimatorBackground`
+* `~photutils.background.MMMBackground`
+* `~photutils.background.SExtractorBackground`
+* `~photutils.background.BiweightLocationBackground`
+
+The default is a `~photutils.background.SExtractorBackground` instance.
+For this method, the background in each box is calculated as ``(2.5 *
+median) - (1.5 * mean)``. However, if ``abs(mean - median) / std >=
+0.3`` then the ``median`` is used instead. If the standard deviation is
+zero then the ``mean`` is used.
+
+Likewise, the background RMS level in each box is calculated using the
+function or callable object input via the ``bkg_rms_estimator`` keyword.
+Photutils provides the following classes for this purpose:
+
+* `~photutils.background.StdBackgroundRMS`
+* `~photutils.background.MADStdBackgroundRMS`
+* `~photutils.background.BiweightScaleBackgroundRMS`
+
+For even more flexibility, users may input a custom function or callable
+object to the ``bkg_estimator`` and/or ``bkg_rms_estimator`` keywords.
+
+By default, the ``bkg_estimator`` and ``bkg_rms_estimator`` are
+applied to sigma-clipped data. Sigma clipping is defined by inputting
+a :class:`astropy.stats.SigmaClip` object to the ``sigma_clip``
+keyword. The default is to perform sigma clipping with ``sigma=3``
+and ``maxiters=10``. Sigma clipping can be turned off by setting
+``sigma_clip=None``.
+
+.. note::
+    `~astropy.stats.SigmaClip` instances store internal state while
+    clipping, so a single background or background RMS estimator
+    instance should not be called concurrently from multiple threads
+    when sigma clipping is enabled.
+
+After the background level has been determined in each of the boxes,
+the low-resolution background and background RMS images are median
+filtered, with a window size of ``filter_size`` (3x3 by default), to
+suppress local underestimates or overestimates (e.g., due to bright
+galaxies in a particular box). Setting ``filter_size=1`` turns the
+filtering off. The median filter can also be applied only to those
+boxes where the background level is above a specified threshold
+(``filter_threshold``).
+
+The low-resolution background and background RMS images are resized to
+the original data size using spline interpolation via
+`scipy.ndimage.zoom`.
+
+.. note::
+    The ``interpolator`` keyword and the
+    :class:`~photutils.background.BkgZoomInterpolator` and
+    :class:`~photutils.background.BkgIDWInterpolator` classes, which
+    were used to customize the interpolation, were deprecated in
+    version 3.0.
+
+
 Multithreading
 ^^^^^^^^^^^^^^
 
@@ -707,7 +771,9 @@ so a single instance is safe to share across threads and
 independent images can be processed concurrently, e.g., with a
 `~concurrent.futures.ThreadPoolExecutor`. The underlying sigma-clipping,
 statistics, and interpolation kernels release the Python global
-interpreter lock (GIL), so threads can effectively run in parallel:
+interpreter lock (GIL), so threads can effectively run in parallel.
+For example, to estimate the background of each image in a list of 2D
+arrays called ``images``:
 
 .. doctest-skip::
 
@@ -745,52 +811,6 @@ map, and the underlying interpolation releases the GIL):
     ...     rms_future = executor.submit(getattr, bkg, 'background_rms')
     ...     bkg_image = bkg_future.result()
     ...     rms_image = rms_future.result()
-
-
-Plotting Meshes
-^^^^^^^^^^^^^^^
-
-Finally, the meshes that were used in generating the 2D
-background can be plotted on the original image using the
-:meth:`~photutils.background.Background2D.plot_meshes` method. Here we
-zoom in on a small portion of the image to show the background meshes.
-Meshes without a center marker were excluded.
-
-.. doctest-skip::
-
-    >>> norm = simple_norm(data3, 'sqrt', percent=99.5)
-    >>> fig, ax = plt.subplots()
-    >>> ax.imshow(data3, norm=norm, origin='lower')
-    >>> bkg3.plot_meshes(outlines=True, marker='.', color='white', alpha=0.5)
-    >>> ax.set_xlim(0, 250)
-    >>> ax.set_ylim(0, 250)
-
-.. plot::
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from astropy.visualization import simple_norm
-    from photutils.background import Background2D, make_morans_i_mask
-    from photutils.datasets import make_100gaussians_image
-    from scipy.ndimage import rotate
-
-    data = make_100gaussians_image()
-    ny, nx = data.shape
-    y, x = np.mgrid[:ny, :nx]
-    gradient = x * y / 5000.0
-    data2 = data + gradient
-    data3 = rotate(data2, -45.0)
-    coverage_mask = (data3 == 0)
-    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
-    bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
-                        mask=mask3, coverage_mask=coverage_mask,
-                        fill_value=0.0, exclude_percentile=50.0)
-    norm = simple_norm(data3, 'sqrt', percent=99.5)
-    fig, ax = plt.subplots()
-    ax.imshow(data3, norm=norm, origin='lower')
-    bkg3.plot_meshes(outlines=True, marker='.', color='white', alpha=0.5)
-    ax.set_xlim(0, 250)
-    ax.set_ylim(0, 250)
 
 
 API Reference
