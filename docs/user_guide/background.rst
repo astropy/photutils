@@ -799,17 +799,28 @@ masked pixels for ``exclude_percentile``.
 Customizing the Estimate
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The background level in each box is calculated using
-the function or callable object (e.g., class instance) input via the
-``bkg_estimator`` keyword. Photutils provides several background
-classes that can be used:
+The pixel values in each box are first sigma clipped. Sigma clipping is
+defined by inputting a :class:`astropy.stats.SigmaClip` object to the
+``sigma_clip`` keyword. The default is to perform sigma clipping with
+``sigma=3`` and ``maxiters=10``. Sigma clipping can be turned off by
+setting ``sigma_clip=None``.
 
-* `~photutils.background.MeanBackground`
-* `~photutils.background.MedianBackground`
-* `~photutils.background.ModeEstimatorBackground`
-* `~photutils.background.MMMBackground`
-* `~photutils.background.SExtractorBackground`
-* `~photutils.background.BiweightLocationBackground`
+The background level in each box is then calculated from the remaining
+pixels using the function or callable object (e.g., class instance)
+input via the ``bkg_estimator`` keyword. Photutils provides several
+background classes that can be used:
+
+* `~photutils.background.MeanBackground`: the mean
+* `~photutils.background.MedianBackground`: the median
+* `~photutils.background.ModeEstimatorBackground`: a mode estimator of
+  the form ``(median_factor * median) - (mean_factor * mean)``, with
+  factors of 3 and 2 by default
+* `~photutils.background.MMMBackground`: the DAOPHOT MMM mode estimator,
+  ``(3 * median) - (2 * mean)``
+* `~photutils.background.SExtractorBackground`: the SourceExtractor
+  mode estimator (see below)
+* `~photutils.background.BiweightLocationBackground`: the biweight
+  location
 
 The default is a `~photutils.background.SExtractorBackground` instance.
 For this method, the background in each box is calculated as ``(2.5 *
@@ -821,25 +832,35 @@ Likewise, the background RMS level in each box is calculated using the
 function or callable object input via the ``bkg_rms_estimator`` keyword.
 Photutils provides the following classes for this purpose:
 
-* `~photutils.background.StdBackgroundRMS`
-* `~photutils.background.MADStdBackgroundRMS`
-* `~photutils.background.BiweightScaleBackgroundRMS`
+* `~photutils.background.StdBackgroundRMS`: the standard deviation
+* `~photutils.background.MADStdBackgroundRMS`: the standard deviation
+  estimated from the median absolute deviation
+* `~photutils.background.BiweightScaleBackgroundRMS`: the biweight
+  scale
 
-For even more flexibility, users may input a custom function or callable
+The default is a `~photutils.background.StdBackgroundRMS` instance. For
+even more flexibility, users may input a custom function or callable
 object to the ``bkg_estimator`` and/or ``bkg_rms_estimator`` keywords.
 
-By default, the ``bkg_estimator`` and ``bkg_rms_estimator`` are
-applied to sigma-clipped data. Sigma clipping is defined by inputting
-a :class:`astropy.stats.SigmaClip` object to the ``sigma_clip``
-keyword. The default is to perform sigma clipping with ``sigma=3``
-and ``maxiters=10``. Sigma clipping can be turned off by setting
-``sigma_clip=None``.
+Any sigma clipping that is defined on the estimator instances
+themselves (e.g., ``MedianBackground(sigma_clip=SigmaClip(sigma=2.0))``)
+is ignored. Use the ``sigma_clip`` keyword of
+`~photutils.background.Background2D` instead, which applies the same
+clipping to both estimators. For example, to use the MMM background,
+the MAD-based background RMS, and a 2.5-sigma clip::
 
-.. note::
-    `~astropy.stats.SigmaClip` instances store internal state while
-    clipping, so a single background or background RMS estimator
-    instance should not be called concurrently from multiple threads
-    when sigma clipping is enabled.
+    >>> from photutils.background import MADStdBackgroundRMS, MMMBackground
+    >>> bkg_mmm = Background2D(data2, (15, 15), mask=mask,
+    ...                        exclude_percentile=50.0,
+    ...                        sigma_clip=SigmaClip(sigma=2.5),
+    ...                        bkg_estimator=MMMBackground(),
+    ...                        bkg_rms_estimator=MADStdBackgroundRMS())
+
+With a good source mask, the choice of estimator matters little. For
+the image with the gradient above, the median, MMM, and SourceExtractor
+estimators all give a negligible bias under the sources (less than
+0.005), and their RMS errors of the background differ by only about
+0.02.
 
 After the background level has been determined in each of the boxes,
 the low-resolution background and background RMS images are median
@@ -865,19 +886,62 @@ the original data size using cubic spline interpolation via
 Multithreading
 ^^^^^^^^^^^^^^
 
-`~photutils.background.Background2D` instances are immutable
-after construction (aside from internal lazy-attribute caches),
-so a single instance is safe to share across threads and
-independent images can be processed concurrently, e.g., with a
-`~concurrent.futures.ThreadPoolExecutor`. The underlying sigma-clipping,
-statistics, and interpolation kernels release the Python global
-interpreter lock (GIL), so threads can effectively run in parallel.
-For example, to estimate the background of each image in a list of 2D
-arrays called ``images``:
+The work done by `~photutils.background.Background2D` can be
+multithreaded by setting the ``n_threads`` keyword, which parallelizes
+both the box statistics and the interpolation of the low-resolution
+meshes to the full-size maps returned by the ``background`` and
+``background_rms`` properties. The box statistics are identical to the
+single-threaded computation and the full-size maps are identical up to
+floating-point rounding. The parallel interpolation requires scipy 1.16
+or later. With older versions, only the box statistics are computed in
+parallel. If a custom ``bkg_estimator`` or ``bkg_rms_estimator``
+callable is input, it must be thread-safe:
+
+.. doctest-skip::
+
+    >>> bkg = Background2D(data2, (15, 15), mask=mask,
+    ...                    exclude_percentile=50.0, n_threads=4)
+
+Multithreading is most beneficial for large images. For the small
+example image above, the gain is negligible. For a 4096 x 4096 image
+with 64 x 64 boxes, four threads make both the creation of the object
+and the calculation of the background map about three times faster.
+
+Each access to the ``background`` or ``background_rms`` property
+recalculates its map, which can take longer than creating the object.
+Store the map in a variable if it is needed more than once:
+
+.. doctest-skip::
+
+    >>> bkg_image = bkg.background
+
+When both maps are needed, they can also be computed concurrently,
+because the underlying interpolation releases the Python global
+interpreter lock (GIL). This roughly halves the time to compute both
+maps, also with ``n_threads > 1`` as long as there are enough CPU cores
+for both sets of threads (``2 * n_threads``):
 
 .. doctest-skip::
 
     >>> from concurrent.futures import ThreadPoolExecutor
+    >>> with ThreadPoolExecutor(max_workers=2) as executor:
+    ...     bkg_future = executor.submit(getattr, bkg, 'background')
+    ...     rms_future = executor.submit(getattr, bkg, 'background_rms')
+    ...     bkg_image = bkg_future.result()
+    ...     rms_image = rms_future.result()
+
+`~photutils.background.Background2D` instances are not modified after
+construction, except for cached properties, which are safe to compute
+from several threads. A single instance can therefore be shared across
+threads, and independent images can be processed concurrently, e.g.,
+with a `~concurrent.futures.ThreadPoolExecutor`. The underlying
+sigma-clipping, statistics, and interpolation kernels release the GIL,
+so the threads can effectively run in parallel. For example, to
+estimate the background of each image in a list of 2D arrays called
+``images``:
+
+.. doctest-skip::
+
     >>> from photutils.background import Background2D, make_morans_i_mask
     >>> def estimate_background(data):
     ...     mask = make_morans_i_mask(data)
@@ -886,31 +950,18 @@ arrays called ``images``:
     >>> with ThreadPoolExecutor() as executor:
     ...     backgrounds = list(executor.map(estimate_background, images))
 
-In addition, the work done by `~photutils.background.Background2D`
-itself can be multithreaded by setting the ``n_threads`` keyword,
-which parallelizes both the box statistics and the interpolation
-of the low-resolution meshes to the full-size maps returned by the
-``background`` and ``background_rms`` properties. The box statistics are
-identical to the single-threaded computation and the full-size maps are
-identical up to floating-point rounding. This is most beneficial for
-large images:
+For four 2048 x 2048 images, four threads roughly double the throughput
+of this example.
 
-.. doctest-skip::
-
-    >>> bkg = Background2D(data2, (15, 15), mask=mask,
-    ...                    exclude_percentile=50.0, n_threads=4)
-
-Finally, when both the background and background RMS maps are needed,
-they can be computed concurrently (each property access recalculates its
-map, and the underlying interpolation releases the GIL):
-
-.. doctest-skip::
-
-    >>> with ThreadPoolExecutor(max_workers=2) as executor:
-    ...     bkg_future = executor.submit(getattr, bkg, 'background')
-    ...     rms_future = executor.submit(getattr, bkg, 'background_rms')
-    ...     bkg_image = bkg_future.result()
-    ...     rms_image = rms_future.result()
+.. note::
+    `~astropy.stats.SigmaClip` instances store internal state while
+    clipping. `~photutils.background.Background2D` gives each of its
+    own threads a copy, but a single `~astropy.stats.SigmaClip`
+    instance should not be shared by
+    `~photutils.background.Background2D` objects that are created
+    concurrently in different threads. Likewise, a background or
+    background RMS estimator instance with sigma clipping enabled
+    should not be called concurrently from multiple threads.
 
 
 API Reference
