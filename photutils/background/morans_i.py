@@ -26,6 +26,10 @@ _N_SAMPLES = 1_000_000
 # regions of constant data.
 _VARIANCE_FLOOR = 1.0e-10
 
+# The minimum image width for which the running sum over whole rows is
+# faster than filtering along the columns
+_MIN_ROW_SUM_WIDTH = 256
+
 
 def _subsample(array):
     """
@@ -54,11 +58,36 @@ def _box_sum(array, size, *, n_passes=1):
     The box sum is applied ``n_passes`` times.
     """
     for _ in range(n_passes):
-        array = uniform_filter1d(array, size, axis=0, mode='constant')
-        array *= size
+        if array.shape[1] >= _MIN_ROW_SUM_WIDTH:
+            array = _row_sum(array, size)
+        else:
+            array = uniform_filter1d(array, size, axis=0, mode='constant')
+            array *= size
         uniform_filter1d(array, size, axis=1, mode='constant', output=array)
         array *= size
     return array
+
+
+def _row_sum(array, size):
+    """
+    Return the sum of the ``size`` rows centered on each row of a 2D
+    array, with zeros outside of the array.
+
+    The running sum adds and subtracts whole rows, which is much faster
+    than filtering along the columns of a wide C-contiguous array.
+    """
+    half = size // 2
+    n_rows = array.shape[0]
+    result = np.empty_like(array)
+    running = array[:half + 1].sum(axis=0)
+    result[0] = running
+    for row in range(1, n_rows):
+        if row + half < n_rows:
+            running += array[row + half]
+        if row > half:
+            running -= array[row - half - 1]
+        result[row] = running
+    return result
 
 
 def _neighbor_sum(array):

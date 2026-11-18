@@ -187,6 +187,37 @@ class TestMakeMoransIMap:
         assert_equal(np.isnan(result), np.isnan(expected))
         assert_allclose(result, expected, atol=1e-5)
 
+    @pytest.mark.parametrize(('n_box_passes', 'box_size'), [(1, 7), (2, 5)])
+    def test_reference_wide(self, n_box_passes, box_size):
+        """
+        Test a wide image and its transpose against a slow reference.
+
+        The box sums of images that are at least 256 pixels wide add
+        and subtract whole rows, and the box sums of narrower images
+        filter along the columns.
+        """
+        rng = np.random.default_rng(7)
+        data = rng.normal(0.0, 1.0, (30, 300))
+        data[10:20, 100:130] += 4.0
+        weights = rng.uniform(0.5, 2.0, data.shape)
+        mask = rng.random(data.shape) < 0.01
+
+        result = make_morans_i_map(data, patch_size=7,
+                                   n_box_passes=n_box_passes, mask=mask,
+                                   weights=weights)
+        expected = _reference_morans_i(data, box_size,
+                                       n_box_passes=n_box_passes, mask=mask,
+                                       weights=weights)
+        assert np.any(np.isfinite(result))
+        assert_equal(np.isnan(result), np.isnan(expected))
+        assert_allclose(result, expected, atol=1e-5)
+
+        result = make_morans_i_map(data.T, patch_size=7,
+                                   n_box_passes=n_box_passes, mask=mask.T,
+                                   weights=weights.T)
+        assert_equal(np.isnan(result), np.isnan(expected.T))
+        assert_allclose(result, expected.T, atol=1e-5)
+
     def test_n_box_passes_footprint(self, noise):
         """
         Test that repeated box passes extend the footprint of a bright
