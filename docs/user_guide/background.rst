@@ -222,6 +222,15 @@ The mask is intended to be used as the ``mask`` input to
 are masked out to a distance of approximately half the patch size
 beyond where they are detected.
 
+The statistic responds to how much the pixel values vary within each
+patch, not to how bright they are. The faint outer regions of very
+extended sources change little across a patch, so they may not be
+flagged even where they are well above the noise. For images with such
+sources, a larger ``patch_size`` can be used, which also enlarges the
+masked regions of all of the other sources, or the Moran's I mask can
+be combined with a detection-based source mask, such as the
+segmentation-based mask described above.
+
 Bad pixels can be excluded from the statistic with the ``mask`` keyword
 of `~photutils.background.make_morans_i_mask`, and the pixels can be
 weighted (e.g., by an inverse-variance map) with the ``weights``
