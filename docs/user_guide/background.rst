@@ -247,14 +247,7 @@ The statistic has a square footprint around each source because the
 patch is square. The default number of iterations of the binary opening
 (``opening_iterations``) is set from the patch size so that the opening
 rounds the corners of the masked regions without enlarging them and
-without removing detected sources. Alternatively, the ``n_box_passes``
-keyword tapers the patch toward its edges while keeping its effective
-width, which gives the masked regions softer edges and masks bright
-sources out to larger distances. The tapered patch flags faint compact
-sources in smaller regions, so fewer opening iterations are used by
-default with it::
-
-    >>> mask = make_morans_i_mask(data, n_box_passes=3)
+without removing detected sources.
 
 
 2D Background and Noise Estimation

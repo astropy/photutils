@@ -52,32 +52,18 @@ def _subsample(array):
     return array[::step, ::step]
 
 
-def _box_size(patch_size, n_box_passes):
-    """
-    Return the side length of the box whose repeated box filter has the
-    same variance as a single box of ``patch_size`` pixels.
-
-    The result is an odd integer of at least 3.
-    """
-    width = math.sqrt((patch_size**2 - 1) / n_box_passes + 1)
-    return max(3, 2 * round((width - 1) / 2) + 1)
-
-
-def _box_sum(array, size, *, n_passes=1):
+def _box_sum(array, size):
     """
     Return the sum of a 2D array in a square box centered on each
     pixel, with zeros outside of the array.
-
-    The box sum is applied ``n_passes`` times.
     """
-    for _ in range(n_passes):
-        if array.shape[1] >= _MIN_ROW_SUM_WIDTH:
-            array = _row_sum(array, size)
-        else:
-            array = uniform_filter1d(array, size, axis=0, mode='constant')
-            array *= size
-        uniform_filter1d(array, size, axis=1, mode='constant', output=array)
+    if array.shape[1] >= _MIN_ROW_SUM_WIDTH:
+        array = _row_sum(array, size)
+    else:
+        array = uniform_filter1d(array, size, axis=0, mode='constant')
         array *= size
+    uniform_filter1d(array, size, axis=1, mode='constant', output=array)
+    array *= size
     return array
 
 
@@ -122,8 +108,7 @@ def _neighbor_sum(array):
     return result
 
 
-def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
-                      weights=None):
+def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     """
     Calculate a map of the Moran's I spatial autocorrelation statistic.
 
@@ -153,15 +138,6 @@ def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
         statistic, while large patches lose spatial resolution. The
         standard deviation of the statistic for uncorrelated noise is
         approximately ``0.5 / patch_size``.
-
-    n_box_passes : int, optional
-        The number of box-filter passes that make the patch kernel. For
-        the default of 1, all of the pixels in the square patch
-        contribute equally. For larger values, the pixels are weighted
-        by a kernel that tapers smoothly toward its edges and
-        approaches a Gaussian (see Notes). The kernel has the same
-        effective width as the square patch of ``patch_size`` pixels,
-        but it extends farther from its center.
 
     mask : 2D bool array_like, optional
         A boolean mask with the same shape as ``data``, where `True`
@@ -193,32 +169,16 @@ def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
 
     .. math::
 
-        I = \\frac{\\sum_i k_i w_i (x_i - \\bar{x}) (n_i - \\bar{n})}
-            {\\sum_i k_i w_i (x_i - \\bar{x})^2}
+        I = \\frac{\\sum_i w_i (x_i - \\bar{x}) (n_i - \\bar{n})}
+            {\\sum_i w_i (x_i - \\bar{x})^2}
 
     where :math:`n_i` is the weighted mean of the usable pixels among
-    the eight nearest neighbors of pixel :math:`i`, :math:`k_i` is the
-    patch kernel, and :math:`\\bar{x}` and :math:`\\bar{n}` are the
-    means of :math:`x_i` and :math:`n_i` over the patch, weighted by
-    :math:`k_i w_i`. This is the global Moran's I statistic with
-    row-standardized weights. The neighbor means use all of the image
-    pixels, including those just outside of the patch. Patches are
-    truncated at the image edges.
-
-    The patch kernel :math:`k_i` is 1 for ``n_box_passes=1``. For
-    larger values it is a smaller square box convolved with itself
-    ``n_box_passes`` times, which is the same as box filtering each of
-    the sums that many times before they are combined. The side length
-    of the box is the odd integer nearest to ``sqrt((patch_size**2 - 1)
-    / n_box_passes + 1)`` (but at least 3), which gives the kernel the
-    same variance as the square patch. The kernel is ``n_box_passes``
-    times the box side length, minus ``n_box_passes - 1``, pixels wide.
-    For example, ``patch_size=21`` with ``n_box_passes=3`` uses a box
-    of 13 pixels and a kernel that is 37 pixels wide. A compact
-    bright source dominates every patch that it falls in, so a patch
-    with equal weights gives the statistic a flat square footprint
-    around the source. A tapered kernel gives a footprint with softer
-    edges whose size increases with the brightness of the source.
+    the eight nearest neighbors of pixel :math:`i`, and :math:`\\bar{x}`
+    and :math:`\\bar{n}` are the means of :math:`x_i` and :math:`n_i`
+    over the patch, weighted by :math:`w_i`. This is the global Moran's
+    I statistic with row-standardized weights. The neighbor means use
+    all of the image pixels, including those just outside of the patch.
+    Patches are truncated at the image edges.
 
     Noise that is correlated between adjacent pixels (e.g., in
     resampled or drizzled images) has a positive Moran's I even without
@@ -253,12 +213,6 @@ def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
             or not isinstance(patch_size, (int, np.integer))
             or patch_size <= 3 or patch_size % 2 == 0):
         msg = 'patch_size must be an odd integer larger than 3'
-        raise ValueError(msg)
-
-    if (isinstance(n_box_passes, bool)
-            or not isinstance(n_box_passes, (int, np.integer))
-            or n_box_passes < 1):
-        msg = 'n_box_passes must be a positive integer'
         raise ValueError(msg)
 
     valid = np.isfinite(data)
@@ -307,12 +261,8 @@ def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
     wtd_sq_values = np.multiply(values, wtd_values, out=values)
     del values
 
-    box_size = _box_size(patch_size, n_box_passes)
-    patch_sum = partial(_box_sum, size=box_size, n_passes=n_box_passes)
-
-    # The sum of the patch kernel is the number of pixels in a full
-    # patch
-    min_count = _MIN_PATCH_FRACTION * box_size**(2 * n_box_passes)
+    patch_sum = partial(_box_sum, size=patch_size)
+    min_count = _MIN_PATCH_FRACTION * patch_size**2
     sum_wts = patch_sum(wts)
     # Without input weights, the weights are 1 for the usable pixels
     # and 0 otherwise, so their patch sum is the number of usable pixels
@@ -480,9 +430,8 @@ def _fill_holes(mask):
     return ~keep[labels]
 
 
-def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
-                       percent=None, mask=None, weights=None,
-                       opening_iterations=None):
+def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
+                       mask=None, weights=None, opening_iterations=None):
     """
     Make a source mask using the Moran's I spatial autocorrelation
     statistic.
@@ -509,13 +458,6 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
         the statistic. It must be an odd integer larger than 3. Sources
         are masked out to a distance of approximately half the patch
         size beyond where they are detected.
-
-    n_box_passes : int, optional
-        The number of box-filter passes that make the patch kernel (see
-        `make_morans_i_map`). Values larger than 1 taper the patch toward
-        its edges while keeping its effective width, which softens the
-        square shape of the masked regions and masks bright sources
-        out to larger distances.
 
     n_sigma : float, optional
         The number of standard deviations above the background value of
@@ -565,15 +507,11 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
         Regions are not eroded from the image edges or from pixels
         where the statistic is undefined (e.g., masked pixels or
         regions with too few usable pixels). If `None`,
-        ``patch_size // 2 - 2`` iterations are used for
-        ``n_box_passes=1`` and 2 iterations are used otherwise. For
-        ``n_box_passes=1``, a detected source is flagged in a region at
-        least as wide as the patch, so the default keeps the sources
-        while rounding the square shape that the patch gives their
-        regions. Larger values remove compact sources. A tapered patch
-        already gives rounder regions, and it flags faint compact
-        sources in regions that are too small to survive a large
-        opening. Set to 0 to skip this step.
+        ``patch_size // 2 - 2`` iterations are used. A detected source
+        is flagged in a region at least as wide as the patch, so the
+        default keeps the sources while rounding the square shape that
+        the patch gives their regions. Larger values remove compact
+        sources. Set to 0 to skip this step.
 
     Returns
     -------
@@ -622,15 +560,14 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
         msg = 'opening_iterations must be a nonnegative integer'
         raise ValueError(msg)
 
-    stat = make_morans_i_map(data, patch_size=patch_size,
-                             n_box_passes=n_box_passes, mask=mask,
+    stat = make_morans_i_map(data, patch_size=patch_size, mask=mask,
                              weights=weights)
     threshold = _calc_threshold(stat, n_sigma=n_sigma, percent=percent,
                                 patch_size=patch_size)
     if threshold is None:
         return np.zeros(stat.shape, dtype=bool)
     if opening_iterations is None:
-        opening_iterations = patch_size // 2 - 2 if n_box_passes == 1 else 2
+        opening_iterations = patch_size // 2 - 2
 
     source_mask = _fill_holes(stat > threshold)
     if opening_iterations > 0:
