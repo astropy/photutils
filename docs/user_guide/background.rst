@@ -157,9 +157,8 @@ method with a circular dilation footprint to create the source mask::
     >>> print(np.array((mean, median, std)))
     [5.00257401 4.99641799 1.97009566]
 
-The source detection and masking procedure can be iterated further. Even
-with one iteration we are within 0.2% of the true background value and
-1.5% of the true background RMS.
+Even with a single pass, we are within 0.1% of the true background value
+and 1.5% of the true background RMS.
 
 
 .. _morans_i_mask:
@@ -183,7 +182,7 @@ sources, have larger values.
 The statistic does not change if a constant is added to the data or if
 the data are multiplied by a constant. The source mask therefore does
 not depend on the background level or on the amplitude of the background
-noise, and no iteration is needed::
+noise::
 
     >>> from photutils.background import make_morans_i_mask
     >>> mask = make_morans_i_mask(data)
@@ -431,12 +430,13 @@ Let's plot the source mask:
     ax.imshow(mask, origin='lower', cmap='gray')
     ax.set_title('Source Mask')
 
-Next, we create a `~photutils.background.Background2D` object
-using a box size of 15x15 and a 3x3 median filter, and we input the
-source mask with the ``mask`` keyword. We will estimate the background
-level in each box as the sigma-clipped median using an instance of
-:class:`~photutils.background.MedianBackground`. Because the source
-mask covers a large fraction of the image, we also increase the
+Next, we create a `~photutils.background.Background2D` object using a
+box size of 15x15 and a 3x3 median filter, and we input the source mask
+with the ``mask`` keyword. We will estimate the background level in each
+box as the sigma-clipped median using an instance of
+:class:`~photutils.background.MedianBackground` (see
+:ref:`background_2d_customizing` for the other estimators). Because the
+source mask covers a large fraction of the image, we also increase the
 ``exclude_percentile`` keyword so that boxes with up to half of their
 pixels masked are used (see :ref:`background_2d_masking` below)::
 
@@ -453,12 +453,12 @@ boxes in the last column are only 5 pixels wide. They are excluded,
 and the background there is extrapolated from the neighboring boxes.
 
 The 2D background and background RMS images are retrieved using the
-``background`` and ``background_rms`` attributes, respectively, on the
+``background`` and ``background_rms`` properties, respectively, on the
 returned object. The low-resolution versions of these images are stored
-in the ``background_mesh`` and ``background_rms_mesh`` attributes,
-respectively. The global median value of the low-resolution background
-and background RMS image can be accessed with the ``background_median``
-and ``background_rms_median`` attributes, respectively::
+in the ``background_mesh`` and ``background_rms_mesh`` properties,
+respectively. The global median values of the low-resolution background
+and background RMS images can be accessed with the ``background_median``
+and ``background_rms_median`` properties, respectively::
 
     >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
     10.617739548341078
@@ -546,8 +546,8 @@ compared to about 0.1 a few boxes farther in.
 
 .. _background_2d_masking:
 
-Masking
-^^^^^^^
+Masking Sources and Bad Pixels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Masks can be input into `~photutils.background.Background2D` with two
 keywords, ``mask`` and ``coverage_mask``. The ``coverage_mask`` keyword
@@ -556,9 +556,9 @@ is described in :ref:`background_2d_blank_regions`.
 The ``mask`` keyword excludes pixels, such as sources and bad pixels,
 from the background statistics. The masked pixels still receive
 background and background RMS values in the output maps, which are
-interpolated from the surrounding boxes. Sigma clipping alone removes only the
-bright parts of the sources. Their fainter outer regions remain in the
-boxes and bias the background estimate high, especially near the
+interpolated from the surrounding boxes. Sigma clipping alone removes
+only the bright parts of the sources. Their fainter outer regions remain
+in the boxes and bias the background estimate high, especially near the
 sources. Because the true background of the example image is known (a
 level of 5 plus the gradient), we can measure that bias under the
 sources for the estimates made with and without the source mask::
@@ -597,6 +597,7 @@ should not be increased more than needed.
 Bad pixels can be included in ``mask`` as well. They should also be
 excluded when the source mask is made, and then combined with it, as
 shown in :ref:`morans_i_mask`.
+
 
 .. _background_2d_blank_regions:
 
@@ -796,6 +797,8 @@ masked pixels for ``exclude_percentile``.
     ax.set_title('Background Meshes (Lower-left Corner)')
 
 
+.. _background_2d_customizing:
+
 Customizing the Estimate
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -895,7 +898,7 @@ single-threaded computation and the full-size maps are identical up to
 floating-point rounding. The parallel interpolation requires scipy 1.16
 or later. With older versions, only the box statistics are computed in
 parallel. If a custom ``bkg_estimator`` or ``bkg_rms_estimator``
-callable is input, it must be thread-safe:
+callable is input, it must be thread-safe. For example:
 
 .. doctest-skip::
 
@@ -903,8 +906,8 @@ callable is input, it must be thread-safe:
     ...                    exclude_percentile=50.0, n_threads=4)
 
 Multithreading is most beneficial for large images. For the small
-example image above, the gain is negligible. For a 4096 x 4096 image
-with 64 x 64 boxes, four threads make both the creation of the object
+example image above, the gain is negligible. For a 4096x4096 image
+with 64x64 boxes, four threads make both the creation of the object
 and the calculation of the background map about three times faster.
 
 Each access to the ``background`` or ``background_rms`` property
@@ -950,8 +953,8 @@ estimate the background of each image in a list of 2D arrays called
     >>> with ThreadPoolExecutor() as executor:
     ...     backgrounds = list(executor.map(estimate_background, images))
 
-For four 2048 x 2048 images, four threads roughly double the throughput
-of this example.
+For four 2048x2048 images, processing the images in parallel roughly
+doubles the throughput of this example.
 
 .. note::
     `~astropy.stats.SigmaClip` instances store internal state while
