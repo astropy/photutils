@@ -16,6 +16,34 @@ smaller improvements and bug fixes, which are described in the full
    :depth: 2
 
 
+Source Masks from the Moran's I Statistic
+=========================================
+
+The new `~photutils.background.make_morans_i_mask`
+function makes a source mask from the `Moran's I
+<https://en.wikipedia.org/wiki/Moran%27s_I>`_ spatial autocorrelation
+statistic, which measures how strongly each pixel is correlated
+with its neighbors within a small patch of the image. Background
+noise gives a low value, while sources, including their faint
+outer regions, give a high value. The statistic does not depend
+on the background level or on the amplitude of the noise, so the
+mask can be made before the background is known and then input to
+`~photutils.background.Background2D`::
+
+    >>> from photutils.background import Background2D, make_morans_i_mask
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> data = make_100gaussians_image()
+    >>> mask = make_morans_i_mask(data)
+    >>> bkg = Background2D(data, (50, 50), mask=mask, filter_size=(3, 3))
+
+The threshold is set relative to the typical value of the statistic
+in the image, so it adapts to images with correlated noise such as
+resampled mosaics. The map of the statistic itself is available from the
+new `~photutils.background.make_morans_i_map` function.
+
+See :ref:`morans_i_mask` for more details.
+
+
 Dependency Version Updates
 ==========================
 
