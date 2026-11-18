@@ -24,7 +24,7 @@ def _slow_box_sum(array, size):
     return result
 
 
-def _reference_morans_i(data, patch_size, *, mask=None):
+def _reference_morans_i(data, patch_size, *, mask=None, weights=None):
     """
     Slow pure-NumPy reference for the sliding Moran's I statistic.
     """
@@ -32,7 +32,11 @@ def _reference_morans_i(data, patch_size, *, mask=None):
     valid = np.isfinite(data)
     if mask is not None:
         valid &= ~mask
-    wts = valid.astype(float)
+    if weights is None:
+        weights = np.ones(data.shape)
+    with np.errstate(invalid='ignore'):
+        valid &= np.isfinite(weights) & (weights > 0)
+    wts = np.where(valid, weights, 0.0)
     values = np.where(valid, data, 0.0)
     ny, nx = data.shape
 
@@ -113,6 +117,42 @@ class TestMakeMoransIMap:
         assert np.isnan(result[30, 40])
         assert np.isnan(result[0, 49])
 
+    def test_weights(self, small):
+        """
+        Test weighted data against a slow reference, including pixels
+        that are excluded by their weights.
+        """
+        rng = np.random.default_rng(5)
+        weights = rng.uniform(0.1, 3.0, small.shape)
+        weights[3, 4] = 0.0
+        weights[20, 30] = -1.0
+        weights[25, 10] = np.nan
+        weights[30:34, 20:24] = 0.0
+        weights[31, 21] = 0.3  # no neighbors with a positive weight
+        mask = np.zeros(small.shape, dtype=bool)
+        mask[10:14, 10:14] = True
+
+        result = make_morans_i_map(small, patch_size=7, mask=mask,
+                                   weights=weights)
+        expected = _reference_morans_i(small, 7, mask=mask, weights=weights)
+        assert_equal(np.isnan(result), np.isnan(expected))
+        assert_allclose(result, expected, atol=1e-5)
+        for idx in ((3, 4), (20, 30), (25, 10), (31, 21), (11, 11)):
+            assert np.isnan(result[idx])
+        assert not np.allclose(result, make_morans_i_map(small, patch_size=7),
+                               atol=1e-3, equal_nan=True)
+
+    def test_weights_scale(self, small):
+        """
+        Test that the result does not depend on the weight scale and
+        that equal weights match the unweighted result.
+        """
+        expected = make_morans_i_map(small, patch_size=7)
+        for scale in (1.0, 1.0e-12, 3.0e12):
+            weights = np.full(small.shape, scale)
+            result = make_morans_i_map(small, patch_size=7, weights=weights)
+            assert_allclose(result, expected, atol=1e-5)
+
     def test_patch_larger_than_image(self, small):
         data = small[:12, :9]
         result = make_morans_i_map(data, patch_size=21)
@@ -188,6 +228,10 @@ class TestMakeMoransIMap:
         match = 'mask must have the same shape as data'
         with pytest.raises(ValueError, match=match):
             make_morans_i_map(noise, mask=np.zeros((3, 3), dtype=bool))
+
+        match = 'weights must have the same shape as data'
+        with pytest.raises(ValueError, match=match):
+            make_morans_i_map(noise, weights=np.ones((3, 3)))
 
     def test_masked_array(self, small):
         """

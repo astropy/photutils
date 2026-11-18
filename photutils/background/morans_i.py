@@ -66,7 +66,7 @@ def _neighbor_sum(array):
     return result
 
 
-def make_morans_i_map(data, *, patch_size=21, mask=None):
+def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     """
     Calculate a map of the Moran's I spatial autocorrelation statistic.
 
@@ -101,6 +101,14 @@ def make_morans_i_map(data, *, patch_size=21, mask=None):
         A boolean mask with the same shape as ``data``, where `True`
         values indicate pixels that are excluded (e.g., bad pixels).
 
+    weights : 2D array_like, optional
+        The weights of the pixels, with the same shape as ``data``
+        (e.g., an inverse-variance map). The patch means, the patch
+        variance, and the neighbor means are then weighted. Pixels with
+        a nonfinite or nonpositive weight are excluded. The statistic
+        does not change if the weights are multiplied by a positive
+        constant. If `None`, all of the pixels have the same weight.
+
     Returns
     -------
     result : 2D float32 `~numpy.ndarray`
@@ -110,20 +118,21 @@ def make_morans_i_map(data, *, patch_size=21, mask=None):
 
     Notes
     -----
-    For a patch with pixel values :math:`x_i`, the statistic is
+    For a patch with pixel values :math:`x_i` and pixel weights
+    :math:`w_i`, the statistic is
 
     .. math::
 
-        I = \\frac{\\sum_i (x_i - \\bar{x}) (n_i - \\bar{n})}
-            {\\sum_i (x_i - \\bar{x})^2}
+        I = \\frac{\\sum_i w_i (x_i - \\bar{x}) (n_i - \\bar{n})}
+            {\\sum_i w_i (x_i - \\bar{x})^2}
 
-    where :math:`n_i` is the mean of the usable pixels among the eight
-    nearest neighbors of pixel :math:`i`, and :math:`\\bar{x}` and
-    :math:`\\bar{n}` are the means of :math:`x_i` and :math:`n_i` over
-    the patch. This is the global Moran's I statistic with
-    row-standardized weights. The neighbor means use all of the image
-    pixels, including those just outside of the patch. Patches are
-    truncated at the image edges.
+    where :math:`n_i` is the weighted mean of the usable pixels among
+    the eight nearest neighbors of pixel :math:`i`, and :math:`\\bar{x}`
+    and :math:`\\bar{n}` are the means of :math:`x_i` and :math:`n_i`
+    over the patch, weighted by :math:`w_i`. This is the global Moran's
+    I statistic with row-standardized weights. The neighbor means use
+    all of the image pixels, including those just outside of the patch.
+    Patches are truncated at the image edges.
 
     Noise that is correlated between adjacent pixels (e.g., in
     resampled or drizzled images) has a positive Moran's I even without
@@ -167,7 +176,16 @@ def make_morans_i_map(data, *, patch_size=21, mask=None):
             raise ValueError(msg)
         valid &= ~mask
 
-    wts = valid.astype(float)
+    if weights is None:
+        wts = valid.astype(float)
+    else:
+        weights = np.asarray(weights, dtype=float)
+        if weights.shape != data.shape:
+            msg = 'weights must have the same shape as data'
+            raise ValueError(msg)
+        with np.errstate(invalid='ignore'):
+            valid &= np.isfinite(weights) & (weights > 0)
+        wts = np.where(valid, weights, 0.0)
 
     # Subtract an approximate background level to limit the rounding
     # error of the box sums. The statistic does not depend on it.
@@ -199,10 +217,11 @@ def make_morans_i_map(data, *, patch_size=21, mask=None):
     patch_sum = partial(_box_sum, size=patch_size)
     min_count = _MIN_PATCH_FRACTION * patch_size**2
     sum_wts = patch_sum(wts)
-    # The weights are 1 for the usable pixels and 0 otherwise, so their
-    # patch sum is the number of usable pixels
-    good = usable & (np.rint(sum_wts) >= min_count)
-    del usable
+    # Without input weights, the weights are 1 for the usable pixels
+    # and 0 otherwise, so their patch sum is the number of usable pixels
+    count = sum_wts if weights is None else patch_sum(usable.astype(float))
+    good = usable & (np.rint(count) >= min_count)
+    del usable, count
 
     with np.errstate(invalid='ignore', divide='ignore'):
         mean = patch_sum(wtd_values)
