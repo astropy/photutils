@@ -385,17 +385,56 @@ background gradient to the image defined above::
     ax.imshow(data2, norm=norm, origin='lower')
     ax.set_title('Data with added background gradient')
 
-We start by creating a `~photutils.background.Background2D` object
-using a box size of 15x15 and a 3x3 median filter. We will estimate
-the background level in each mesh as the sigma-clipped median using an
-instance of :class:`~photutils.background.MedianBackground`::
+The sources in the image would bias the background estimate high, so
+we first make a source mask with the
+`~photutils.background.make_morans_i_mask` function (see
+:ref:`morans_i_mask`). It does not require an estimate of the
+background, so it can be applied directly to the image with the
+gradient::
+
+    >>> from photutils.background import make_morans_i_mask
+    >>> mask = make_morans_i_mask(data2)
+
+Let's plot the source mask:
+
+.. doctest-skip::
+
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(mask, origin='lower', cmap='gray')
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from photutils.background import make_morans_i_mask
+    from photutils.datasets import make_100gaussians_image
+
+    data = make_100gaussians_image()
+    ny, nx = data.shape
+    y, x = np.mgrid[:ny, :nx]
+    gradient = x * y / 5000.0
+    data2 = data + gradient
+    mask = make_morans_i_mask(data2)
+    fig, ax = plt.subplots()
+    ax.imshow(mask, origin='lower', cmap='gray')
+    ax.set_title('Source Mask')
+
+Next, we create a `~photutils.background.Background2D` object
+using a box size of 15x15 and a 3x3 median filter, and we input the
+source mask with the ``mask`` keyword. We will estimate the background
+level in each mesh as the sigma-clipped median using an instance of
+:class:`~photutils.background.MedianBackground`. Because the source
+mask covers a large fraction of the image, we also increase the
+``exclude_percentile`` keyword so that boxes with up to half of their
+pixels masked are used (see :ref:`background_2d_masking` below)::
 
     >>> from astropy.stats import SigmaClip
     >>> from photutils.background import Background2D, MedianBackground
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg_estimator = MedianBackground()
     >>> bkg = Background2D(data2, (15, 15), filter_size=(3, 3),
-    ...                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
+    ...                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,
+    ...                    mask=mask, exclude_percentile=50.0)
 
 
 The 2D background and background RMS images are retrieved using the
@@ -406,10 +445,10 @@ respectively. The global median value of the low-resolution background
 and background RMS image can be accessed with the ``background_median``
 and ``background_rms_median`` attributes, respectively::
 
-    >>> print(bkg.background_median)
-    10.822232525276007
+    >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
+    10.617739548341078
     >>> print(round(bkg.background_rms_median, 4))
-    2.0367
+    1.9815
 
 Let's plot the background image:
 
@@ -423,7 +462,8 @@ Let's plot the background image:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.stats import SigmaClip
-    from photutils.background import Background2D, MedianBackground
+    from photutils.background import (Background2D, MedianBackground,
+                                      make_morans_i_mask)
     from photutils.datasets import make_100gaussians_image
 
     data = make_100gaussians_image()
@@ -431,10 +471,12 @@ Let's plot the background image:
     y, x = np.mgrid[:ny, :nx]
     gradient = x * y / 5000.0
     data2 = data + gradient
+    mask = make_morans_i_mask(data2)
     sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
     bkg = Background2D(data2, (15, 15), filter_size=(3, 3),
-                       sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
+                       sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,
+                       mask=mask, exclude_percentile=50.0)
     fig, ax = plt.subplots()
     ax.imshow(bkg.background, origin='lower')
     ax.set_title('Estimated Background')
@@ -454,7 +496,8 @@ and the background-subtracted image:
     import numpy as np
     from astropy.stats import SigmaClip
     from astropy.visualization import simple_norm
-    from photutils.background import Background2D, MedianBackground
+    from photutils.background import (Background2D, MedianBackground,
+                                      make_morans_i_mask)
     from photutils.datasets import make_100gaussians_image
 
     data = make_100gaussians_image()
@@ -462,10 +505,12 @@ and the background-subtracted image:
     y, x = np.mgrid[:ny, :nx]
     gradient = x * y / 5000.0
     data2 = data + gradient
+    mask = make_morans_i_mask(data2)
     sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
     bkg = Background2D(data2, (15, 15), filter_size=(3, 3),
-                       sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
+                       sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,
+                       mask=mask, exclude_percentile=50.0)
     data2_sub = data2 - bkg.background
     norm = simple_norm(data2_sub, 'sqrt', percent=99.9)
     fig, ax = plt.subplots()
@@ -473,14 +518,53 @@ and the background-subtracted image:
     ax.set_title('Background-subtracted Data')
 
 
+.. _background_2d_masking:
+
 Masking
 ^^^^^^^
 
-Masks can also be input into `~photutils.background.Background2D`. The
-``mask`` keyword can be used to mask sources or bad pixels in the image
-prior to estimating the background levels.
+Masks can be input into `~photutils.background.Background2D` with two
+keywords, ``mask`` and ``coverage_mask``.
 
-Additionally, the ``coverage_mask`` keyword can be used to mask blank
+The ``mask`` keyword excludes pixels, such as sources and bad pixels,
+from the background statistics. Sigma clipping alone removes only the
+bright parts of the sources. Their fainter outer regions remain in the
+boxes and bias the background estimate high, especially near the
+sources. Because the true background of the example image is known (a
+level of 5 plus the gradient), we can measure that bias under the
+sources for the estimates made with and without the source mask::
+
+    >>> bkg_nomask = Background2D(data2, (15, 15), filter_size=(3, 3),
+    ...                           sigma_clip=sigma_clip,
+    ...                           bkg_estimator=bkg_estimator)
+    >>> background = 5.0 + gradient
+    >>> bias = bkg_nomask.background[mask] - background[mask]
+    >>> print(round(np.mean(bias), 3))
+    0.329
+    >>> bias = bkg.background[mask] - background[mask]
+    >>> print(round(np.mean(bias), 4))
+    -0.0001
+
+Without the source mask, the background under the sources is
+overestimated by about 0.33, which is about 16% of the background noise.
+With the source mask, the bias is negligible.
+
+A box is excluded from the low-resolution background map if more than
+``exclude_percentile`` percent of its pixels are masked (10 by
+default), including the pixels removed by sigma clipping. The
+background in an excluded box is interpolated from the neighboring
+boxes. The Moran's I mask covers each source out to approximately half
+the patch size beyond where it is detected, so in this example more
+than half of the 15x15 boxes have more than 10% of their pixels in the
+source mask. Setting ``exclude_percentile=50`` keeps the boxes in which
+at least half of the pixels remain, which still leaves more than 100
+pixels for the statistics of each box.
+
+Bad pixels can be included in ``mask`` as well. They should also be
+excluded when the source mask is made, and then combined with it, as
+shown in :ref:`morans_i_mask`.
+
+The ``coverage_mask`` keyword can be used to mask blank
 regions without data coverage (e.g., from a rotated image or an image
 from a mosaic). Otherwise, the data values in the regions without
 coverage (usually zeros or NaNs) will adversely affect the background
@@ -522,17 +606,26 @@ Let's create a rotated image that has blank areas and plot it:
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
 have no data. For this example, we set the ``fill_value`` to 0.0.
-For real data, one can usually create a coverage mask from a weight
-or noise image. In this example we also increase the value of the
-``exclude_percentile`` keyword to include more boxes around the edge of
-the rotated image:
+For real data, one can usually create a coverage mask from a weight or
+noise image.
+
+The coverage mask must also be input as the ``mask`` keyword of
+`~photutils.background.make_morans_i_mask`, so that the blank regions
+are excluded from the statistic. Otherwise, in this example every
+pixel with data would be flagged as a source. The
+excluded pixels are not flagged as sources, so the source mask and
+the coverage mask are input separately into
+`~photutils.background.Background2D`. As in the example above, we
+set ``exclude_percentile`` to 50.0, which also keeps more boxes around
+the edges of the rotated image:
 
 .. doctest-skip::
 
     >>> coverage_mask = (data3 == 0)
+    >>> mask3 = make_morans_i_mask(data3, mask=coverage_mask)
     >>> bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
-    ...                     coverage_mask=coverage_mask, fill_value=0.0,
-    ...                     exclude_percentile=50.0)
+    ...                     mask=mask3, coverage_mask=coverage_mask,
+    ...                     fill_value=0.0, exclude_percentile=50.0)
 
 Note that the ``coverage_mask`` is applied to the output background
 image (values assigned to ``fill_value``):
@@ -548,7 +641,7 @@ image (values assigned to ``fill_value``):
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.visualization import simple_norm
-    from photutils.background import Background2D
+    from photutils.background import Background2D, make_morans_i_mask
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
 
@@ -559,9 +652,10 @@ image (values assigned to ``fill_value``):
     data2 = data + gradient
     data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
+    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
-                        coverage_mask=coverage_mask, fill_value=0.0,
-                        exclude_percentile=50.0)
+                        mask=mask3, coverage_mask=coverage_mask,
+                        fill_value=0.0, exclude_percentile=50.0)
     norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(bkg3.background, norm=norm, origin='lower')
@@ -582,7 +676,7 @@ Finally, let's subtract the background from the image and plot it:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.visualization import simple_norm
-    from photutils.background import Background2D
+    from photutils.background import Background2D, make_morans_i_mask
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
 
@@ -593,18 +687,15 @@ Finally, let's subtract the background from the image and plot it:
     data2 = data + gradient
     data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
+    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
-                        coverage_mask=coverage_mask, fill_value=0.0,
-                        exclude_percentile=50.0)
+                        mask=mask3, coverage_mask=coverage_mask,
+                        fill_value=0.0, exclude_percentile=50.0)
     data_sub = data3 - bkg3.background
     norm = simple_norm(data_sub, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(data_sub, norm=norm, origin='lower')
     ax.set_title('Background-subtracted Data')
-
-If there is any small residual background still present in the image,
-the background subtraction can be improved by masking the sources
-and/or through further iterations.
 
 
 Multithreading
@@ -621,9 +712,11 @@ interpreter lock (GIL), so threads can effectively run in parallel:
 .. doctest-skip::
 
     >>> from concurrent.futures import ThreadPoolExecutor
-    >>> from photutils.background import Background2D
+    >>> from photutils.background import Background2D, make_morans_i_mask
     >>> def estimate_background(data):
-    ...     return Background2D(data, (25, 25)).background
+    ...     mask = make_morans_i_mask(data)
+    ...     return Background2D(data, (25, 25), mask=mask,
+    ...                         exclude_percentile=50.0).background
     >>> with ThreadPoolExecutor() as executor:
     ...     backgrounds = list(executor.map(estimate_background, images))
 
@@ -638,7 +731,8 @@ large images:
 
 .. doctest-skip::
 
-    >>> bkg = Background2D(data2, (15, 15), n_threads=4)
+    >>> bkg = Background2D(data2, (15, 15), mask=mask,
+    ...                    exclude_percentile=50.0, n_threads=4)
 
 Finally, when both the background and background RMS maps are needed,
 they can be computed concurrently (each property access recalculates its
@@ -676,7 +770,7 @@ Meshes without a center marker were excluded.
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.visualization import simple_norm
-    from photutils.background import Background2D
+    from photutils.background import Background2D, make_morans_i_mask
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
 
@@ -687,9 +781,10 @@ Meshes without a center marker were excluded.
     data2 = data + gradient
     data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
+    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
-                        coverage_mask=coverage_mask, fill_value=0.0,
-                        exclude_percentile=50.0)
+                        mask=mask3, coverage_mask=coverage_mask,
+                        fill_value=0.0, exclude_percentile=50.0)
     norm = simple_norm(data3, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(data3, norm=norm, origin='lower')
