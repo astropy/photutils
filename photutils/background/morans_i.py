@@ -11,7 +11,8 @@ from functools import partial
 import numpy as np
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
-from scipy.ndimage import label, uniform_filter1d
+from scipy.ndimage import (binary_dilation, binary_erosion, label,
+                           uniform_filter1d)
 
 from photutils.utils._misc import split_masked_array
 
@@ -480,14 +481,16 @@ def _fill_holes(mask):
 
 
 def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
-                       percent=None, mask=None, weights=None):
+                       percent=None, mask=None, weights=None,
+                       opening_iterations=None):
     """
     Make a source mask using the Moran's I spatial autocorrelation
     statistic.
 
     Pixels are flagged as sources where the Moran's I statistic of the
     surrounding patch of pixels (see `make_morans_i_map`) is above a
-    threshold. Holes in the flagged regions are then filled.
+    threshold. Holes in the flagged regions are then filled and small
+    isolated regions are removed.
 
     The mask can be made before the background is known because the
     statistic does not depend on the background level or on the
@@ -533,7 +536,8 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
         used instead of ``n_sigma``. This percentage of the pixels is
         flagged even if the image contains no sources. The final
         masked fraction differs somewhat because holes in the flagged
-        regions are then filled.
+        regions are then filled and the binary opening removes small
+        regions.
 
     mask : 2D bool array_like, optional
         A boolean mask with the same shape as ``data``, where `True`
@@ -552,6 +556,24 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
         with the same shape as ``data`` (e.g., an inverse-variance
         map). Pixels with a nonfinite or nonpositive weight are
         excluded. If `None`, all of the pixels have the same weight.
+
+    opening_iterations : int or `None`, optional
+        The number of iterations of the binary opening that is applied
+        to the mask. The opening removes flagged regions that are
+        narrower than about twice this number of pixels and rounds the
+        corners of the remaining regions, without enlarging them.
+        Regions are not eroded from the image edges or from pixels
+        where the statistic is undefined (e.g., masked pixels or
+        regions with too few usable pixels). If `None`,
+        ``patch_size // 2 - 2`` iterations are used for
+        ``n_box_passes=1`` and 2 iterations are used otherwise. For
+        ``n_box_passes=1``, a detected source is flagged in a region at
+        least as wide as the patch, so the default keeps the sources
+        while rounding the square shape that the patch gives their
+        regions. Larger values remove compact sources. A tapered patch
+        already gives rounder regions, and it flags faint compact
+        sources in regions that are too small to survive a large
+        opening. Set to 0 to skip this step.
 
     Returns
     -------
@@ -593,6 +615,12 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
     if percent is not None and not 0 < percent < 100:
         msg = 'percent must be between 0 and 100 (exclusive)'
         raise ValueError(msg)
+    if (opening_iterations is not None
+            and (isinstance(opening_iterations, bool)
+                 or not isinstance(opening_iterations, (int, np.integer))
+                 or opening_iterations < 0)):
+        msg = 'opening_iterations must be a nonnegative integer'
+        raise ValueError(msg)
 
     stat = make_morans_i_map(data, patch_size=patch_size,
                              n_box_passes=n_box_passes, mask=mask,
@@ -601,5 +629,21 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
                                 patch_size=patch_size)
     if threshold is None:
         return np.zeros(stat.shape, dtype=bool)
+    if opening_iterations is None:
+        opening_iterations = patch_size // 2 - 2 if n_box_passes == 1 else 2
 
-    return _fill_holes(stat > threshold)
+    source_mask = _fill_holes(stat > threshold)
+    if opening_iterations > 0:
+        # Pixels outside of the image and pixels without a value of the
+        # statistic (e.g., masked regions) are taken as flagged for the
+        # erosion, so that the regions of sources next to them are not
+        # eroded from those sides. Those pixels are then removed again,
+        # and the result is limited to the flagged pixels.
+        excluded = np.isnan(stat)
+        eroded = binary_erosion(source_mask | excluded,
+                                iterations=opening_iterations,
+                                border_value=1)
+        eroded &= ~excluded
+        source_mask &= binary_dilation(eroded,
+                                       iterations=opening_iterations)
+    return source_mask
