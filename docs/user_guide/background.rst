@@ -321,7 +321,7 @@ Blank regions that are filled with a constant value instead of NaN
 excluded with the ``mask`` keyword. The step at the edges of such a
 region is otherwise flagged as a source, and the hole filling then
 flags everything that those edges enclose, which can be the whole
-image.
+image (see :ref:`background_2d_blank_regions`).
 
 The pixels can also be weighted with the ``weights`` keyword (e.g., by
 an inverse-variance map). The patch means, the patch variance, and the
@@ -349,12 +349,20 @@ class to estimate the 2D background and background noise in an
 astronomical image. :class:`~photutils.background.Background2D`
 requires the size of the box (``box_size``) in which to estimate the
 background. Selecting the box size requires some care by the user.
-The box size should generally be larger than the typical size of
-sources in the image, but small enough to encapsulate any background
-variations. For best results, the box size should also be chosen so
-that the data are covered by an integer number of boxes in both
-dimensions. If that is not the case, the image will be padded along
-the top and/or right edges.
+The box size should be small enough to follow the background
+variations. If the sources are not masked, it should also be larger
+than the typical size of the sources, so that no box is dominated by a
+source. With a source mask, a box that is mostly covered by sources is
+excluded instead, so smaller boxes can be used, as long as each box
+keeps enough unmasked pixels for its statistics.
+
+For best results, the box size should also be chosen so that the data
+are covered by an integer number of boxes in both dimensions. If that
+is not the case, the boxes along the top and/or right edges are only
+partly filled with data. The missing area counts as masked pixels for
+the ``exclude_percentile`` keyword (see :ref:`background_2d_masking`),
+so a narrow edge box is excluded and the background there is
+extrapolated from the neighboring boxes.
 
 For this example, we will create a test image by adding a strong
 background gradient to the image defined above::
@@ -440,6 +448,9 @@ pixels masked are used (see :ref:`background_2d_masking` below)::
     ...                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,
     ...                    mask=mask, exclude_percentile=50.0)
 
+The image is 500 pixels wide, which is not a multiple of 15, so the
+boxes in the last column are only 5 pixels wide. They are excluded,
+and the background there is extrapolated from the neighboring boxes.
 
 The 2D background and background RMS images are retrieved using the
 ``background`` and ``background_rms`` attributes, respectively, on the
@@ -453,6 +464,11 @@ and ``background_rms_median`` attributes, respectively::
     10.617739548341078
     >>> print(round(bkg.background_rms_median, 4))
     1.9815
+
+For comparison, the true background of the example image has a median
+of 10.56, and the true noise is 2. The background RMS image can be
+used, for example, as the per-pixel noise when setting a source
+detection threshold (see :ref:`source_detection`).
 
 Let's plot the background image:
 
@@ -521,6 +537,12 @@ and the background-subtracted image:
     ax.imshow(data2_sub, norm=norm, origin='lower')
     ax.set_title('Background-subtracted Data')
 
+The background is extrapolated beyond the centers of the outermost
+boxes, so it is less accurate near the edges of the image. In this
+example, where the gradient is steepest at the right edge, the
+background in the last 5 columns is underestimated by about 0.6,
+compared to about 0.1 a few boxes farther in.
+
 
 .. _background_2d_masking:
 
@@ -528,10 +550,13 @@ Masking
 ^^^^^^^
 
 Masks can be input into `~photutils.background.Background2D` with two
-keywords, ``mask`` and ``coverage_mask``.
+keywords, ``mask`` and ``coverage_mask``. The ``coverage_mask`` keyword
+is described in :ref:`background_2d_blank_regions`.
 
 The ``mask`` keyword excludes pixels, such as sources and bad pixels,
-from the background statistics. Sigma clipping alone removes only the
+from the background statistics. The masked pixels still receive
+background and background RMS values in the output maps, which are
+interpolated from the surrounding boxes. Sigma clipping alone removes only the
 bright parts of the sources. Their fainter outer regions remain in the
 boxes and bias the background estimate high, especially near the
 sources. Because the true background of the example image is known (a
@@ -551,7 +576,10 @@ sources for the estimates made with and without the source mask::
 
 Without the source mask, the background under the sources is
 overestimated by about 0.33, which is about 16% of the background noise.
-With the source mask, the bias is negligible.
+With the source mask, the bias is negligible. Away from the image edges
+(excluding the outermost row and column of boxes), the RMS error of the
+background also decreases, from about 0.24 to about 0.20. Over the
+whole image, the error is dominated by the extrapolation at the edges.
 
 A box is excluded from the low-resolution background map if more than
 ``exclude_percentile`` percent of its pixels are masked (10 by
@@ -562,20 +590,29 @@ the patch size beyond where it is detected, so in this example more
 than half of the 15x15 boxes have more than 10% of their pixels in the
 source mask. Setting ``exclude_percentile=50`` keeps the boxes in which
 at least half of the pixels remain, which still leaves more than 100
-pixels for the statistics of each box.
+pixels for the statistics of each box. A larger value admits boxes with
+fewer pixels, whose estimates are noisier, so ``exclude_percentile``
+should not be increased more than needed.
 
 Bad pixels can be included in ``mask`` as well. They should also be
 excluded when the source mask is made, and then combined with it, as
 shown in :ref:`morans_i_mask`.
 
-The ``coverage_mask`` keyword can be used to mask blank
-regions without data coverage (e.g., from a rotated image or an image
-from a mosaic). Otherwise, the data values in the regions without
-coverage (usually zeros or NaNs) will adversely affect the background
-statistics. Unlike ``mask``, ``coverage_mask`` is applied to the output
-background and background RMS maps. The ``fill_value`` keyword defines
-the value assigned in the output background and background RMS maps
-where the input ``coverage_mask`` is `True`.
+.. _background_2d_blank_regions:
+
+Images With Blank Regions
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``coverage_mask`` keyword can be used to mask blank regions
+without data coverage (e.g., from a rotated image or an image from a
+mosaic). If such regions contain zeros (or another constant fill
+value), they bias the background statistics unless they are masked.
+NaN values are masked automatically, but the output background and
+background RMS maps would still contain interpolated values in the
+regions without data. Unlike ``mask``, ``coverage_mask`` is applied to
+the output background and background RMS maps. The ``fill_value``
+keyword defines the value assigned in the output background and
+background RMS maps where the input ``coverage_mask`` is `True`.
 
 Let's create a rotated image that has blank areas and plot it:
 
@@ -610,19 +647,19 @@ Let's create a rotated image that has blank areas and plot it:
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
 have no data. For this example, we set ``fill_value`` to 0.0, which is
-also the default.
-For real data, one can usually create a coverage mask from a weight or
-noise image.
+also the default. For real data, one can usually create a coverage mask
+from a weight or noise image.
 
-The coverage mask must also be input as the ``mask`` keyword of
+Because the blank regions in this example contain zeros, the coverage
+mask must also be input as the ``mask`` keyword of
 `~photutils.background.make_morans_i_mask`, so that the blank regions
-are excluded from the statistic. Otherwise, in this example every
-pixel with data would be flagged as a source. The
-excluded pixels are not flagged as sources, so the source mask and
-the coverage mask are input separately into
-`~photutils.background.Background2D`. As in the example above, we
-set ``exclude_percentile`` to 50.0, which also keeps more boxes around
-the edges of the rotated image:
+are excluded from the statistic. Otherwise, every pixel with data would
+be flagged as a source. Blank regions that contain NaN
+values are excluded automatically. The excluded pixels are not flagged
+as sources, so the source mask and the coverage mask are input
+separately into `~photutils.background.Background2D`. As in the example
+above, we set ``exclude_percentile`` to 50.0, which also keeps more
+boxes around the edges of the rotated image:
 
 .. doctest-skip::
 
@@ -632,8 +669,8 @@ the edges of the rotated image:
     ...                     mask=mask3, coverage_mask=coverage_mask,
     ...                     fill_value=0.0, exclude_percentile=50.0)
 
-Note that the ``coverage_mask`` is applied to the output background
-image (values assigned to ``fill_value``):
+Let's plot the background image, in which the regions without
+coverage are set to ``fill_value``:
 
 .. doctest-skip::
 
@@ -664,8 +701,7 @@ image (values assigned to ``fill_value``):
     norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(bkg3.background, norm=norm, origin='lower')
-    ax.set_title('Estimated Background')
-
+    ax.set_title('Estimated Background (Rotated Image)')
 
 Finally, let's subtract the background from the image and plot it:
 
@@ -700,25 +736,32 @@ Finally, let's subtract the background from the image and plot it:
     norm = simple_norm(data_sub, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(data_sub, norm=norm, origin='lower')
-    ax.set_title('Background-subtracted Data')
+    ax.set_title('Background-subtracted Data (Rotated Image)')
 
 
 Plotting Meshes
 ^^^^^^^^^^^^^^^
 
 The boxes that were used in generating the 2D background can be
-plotted on the original image using the
-:meth:`~photutils.background.Background2D.plot_meshes` method. Here we
-zoom in on the lower-left corner of the rotated image. Only the boxes
-that were used are shown, so the excluded boxes (e.g., those that are
-mostly masked) appear as gaps in the grid.
+plotted on the input image using the
+:meth:`~photutils.background.Background2D.plot_meshes` method. With
+``outlines=True``, each box is outlined, and a marker shows its center.
+Only the boxes that were used are shown, so the excluded boxes appear
+as gaps in the grid. Here we zoom in on the lower-left corner of the
+rotated image and outline the source mask in orange. The gaps line up
+with the masked sources, where more than half of the pixels of a box
+are masked. Boxes along the edge of the blank region are excluded for
+the same reason, because the pixels without coverage also count as
+masked pixels for ``exclude_percentile``.
 
 .. doctest-skip::
 
     >>> norm = simple_norm(data3, 'sqrt', percent=99.5)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data3, norm=norm, origin='lower')
-    >>> bkg3.plot_meshes(outlines=True, marker='.', color='white', alpha=0.5)
+    >>> ax.contour(mask3, levels=[0.5], colors='orange', linewidths=1)
+    >>> bkg3.plot_meshes(ax=ax, outlines=True, marker='.', color='white',
+    ...                  alpha=0.5)
     >>> ax.set_xlim(0, 250)
     >>> ax.set_ylim(0, 250)
 
@@ -745,9 +788,12 @@ mostly masked) appear as gaps in the grid.
     norm = simple_norm(data3, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(data3, norm=norm, origin='lower')
-    bkg3.plot_meshes(outlines=True, marker='.', color='white', alpha=0.5)
+    ax.contour(mask3, levels=[0.5], colors='orange', linewidths=1)
+    bkg3.plot_meshes(ax=ax, outlines=True, marker='.', color='white',
+                     alpha=0.5)
     ax.set_xlim(0, 250)
     ax.set_ylim(0, 250)
+    ax.set_title('Background Meshes (Lower-left Corner)')
 
 
 Customizing the Estimate
@@ -805,7 +851,7 @@ boxes where the background level is above a specified threshold
 (``filter_threshold``).
 
 The low-resolution background and background RMS images are resized to
-the original data size using spline interpolation via
+the original data size using cubic spline interpolation via
 `scipy.ndimage.zoom`.
 
 .. note::
