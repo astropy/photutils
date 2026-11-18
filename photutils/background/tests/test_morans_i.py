@@ -7,8 +7,10 @@ import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
+from scipy.ndimage import binary_dilation, binary_fill_holes, uniform_filter
 
-from photutils.background import make_morans_i_map
+from photutils.background import make_morans_i_map, make_morans_i_mask
+from photutils.datasets import make_100gaussians_image
 
 
 def _slow_box_sum(array, size):
@@ -72,6 +74,25 @@ def _reference_morans_i(data, patch_size, *, n_box_passes=1, mask=None,
         stat = (sum_xn / sum_w - mean * sum_n / sum_w) / var
     result[good] = stat[good]
     return result
+
+
+def _crowded_image(n_sources, *, seed=0):
+    """
+    Make a 256x256 image of Gaussian sources on uncorrelated noise.
+
+    Returns the image and the noiseless source model.
+    """
+    rng = np.random.default_rng(seed)
+    data = rng.normal(0.0, 1.0, (256, 256))
+    yy, xx = np.mgrid[:256, :256]
+    model = np.zeros(data.shape)
+    for _ in range(n_sources):
+        xcen, ycen = rng.uniform(0, 256, 2)
+        amplitude = rng.uniform(2.0, 50.0)
+        sigma = rng.uniform(1.5, 6.0)
+        model += amplitude * np.exp(-((xx - xcen)**2 + (yy - ycen)**2)
+                                    / (2.0 * sigma**2))
+    return data + model, model
 
 
 @pytest.fixture(name='noise')
@@ -354,3 +375,185 @@ class TestMakeMoransIMap:
         original = data.copy()
         make_morans_i_map(data)
         assert_equal(data, original)
+
+
+class TestMakeMoransIMask:
+    def test_correlated_noise(self):
+        """
+        Test that correlated noise, which has a large positive Moran's
+        I everywhere, is not masked with the default threshold.
+        """
+        rng = np.random.default_rng(3)
+        data = uniform_filter(rng.normal(0.0, 1.0, (301, 301)), 2)
+        assert np.median(make_morans_i_map(data)) > 0.3
+        mask = make_morans_i_mask(data)
+        assert np.mean(mask) < 0.01
+
+    def test_sources(self):
+        data = make_100gaussians_image()
+        mask = make_morans_i_mask(data)
+        assert mask.dtype == bool
+        assert 0.05 < np.mean(mask) < 0.5
+
+        # The brightest pixels are sources
+        assert np.all(mask[data > np.percentile(data, 99.5)])
+
+        # The unmasked pixels are consistent with the true background
+        # (mean of 5 and standard deviation of 2)
+        assert_allclose(np.mean(data[~mask]), 5.0, atol=0.2)
+        assert np.mean(data[mask]) > 6.0
+
+    def test_percent(self):
+        data = make_100gaussians_image()
+        mask = make_morans_i_mask(data, percent=35.0)
+        assert 0.34 < np.mean(mask) < 0.40
+
+        # percent takes precedence over n_sigma
+        mask2 = make_morans_i_mask(data, n_sigma=100.0, percent=35.0)
+        assert_equal(mask2, mask)
+
+    @pytest.mark.parametrize('percent', [20.0, 50.0])
+    @pytest.mark.parametrize('shape', [(300, 500), (30, 40)])
+    def test_morphology(self, shape, percent):
+        """
+        Test the hole filling against SciPy.
+        """
+        data = make_100gaussians_image()[:shape[0], :shape[1]]
+        mask = make_morans_i_mask(data, percent=percent)
+
+        stat = make_morans_i_map(data)
+        threshold = np.percentile(stat[np.isfinite(stat)], 100.0 - percent)
+        expected = binary_fill_holes(stat > threshold)
+        assert np.any(expected)
+        assert_equal(mask, expected)
+
+    def test_fill_holes(self):
+        """
+        Test that the hole of a ring-shaped source is filled.
+        """
+        rng = np.random.default_rng(4)
+        data = rng.normal(0.0, 1.0, (301, 301))
+        yy, xx = np.mgrid[:301, :301]
+        radius = np.hypot(xx - 150, yy - 150)
+        ring = (radius > 90) & (radius < 110)
+        data[ring] += rng.normal(0.0, 30.0, (301, 301))[ring] + 50.0
+        mask = make_morans_i_mask(data, patch_size=5, percent=15.0)
+        assert np.all(mask[radius < 100])
+        assert not mask[0, 0]
+
+        stat = make_morans_i_map(data, patch_size=5)
+        threshold = np.percentile(stat[np.isfinite(stat)], 85.0)
+        assert not np.all((stat > threshold)[radius < 100])
+        assert_equal(mask, binary_fill_holes(stat > threshold))
+
+    def test_weights_and_n_box_passes(self):
+        """
+        Test that the weights and the number of box passes are used
+        for the statistic.
+        """
+        data = make_100gaussians_image()
+        rng = np.random.default_rng(7)
+        weights = rng.uniform(0.2, 5.0, data.shape)
+        weights[100:140, 200:260] = 0.0
+        mask = make_morans_i_mask(data, patch_size=11, n_box_passes=2,
+                                  percent=30.0, weights=weights)
+        assert not np.any(mask[105:135, 205:255])
+
+        stat = make_morans_i_map(data, patch_size=11, n_box_passes=2,
+                                 weights=weights)
+        threshold = np.percentile(stat[np.isfinite(stat)], 70.0)
+        expected = binary_fill_holes(stat > threshold)
+        assert_equal(mask, expected)
+        assert not np.array_equal(
+            mask, make_morans_i_mask(data, patch_size=11, percent=30.0))
+
+    def test_n_sigma(self):
+        data = make_100gaussians_image()
+        low = make_morans_i_mask(data, n_sigma=3.0)
+        high = make_morans_i_mask(data, n_sigma=20.0)
+        assert np.sum(high) < np.sum(low)
+        assert np.all(low[high])
+
+    def test_n_sigma_crowded(self):
+        """
+        Test that sources are masked in a field where most of the
+        patches contain sources.
+
+        The median of the statistic is then a source value, so it
+        cannot be used as the background value.
+        """
+        data, model = _crowded_image(60)
+        stat = make_morans_i_map(data)
+        assert np.median(stat) > 0.3
+        mask = make_morans_i_mask(data)
+        assert np.mean(mask) > 0.5
+        assert np.all(mask[model > 2.0])
+
+    def test_n_sigma_hot_pixels(self):
+        """
+        Test that unmasked hot pixels do not prevent the sources away
+        from them from being masked.
+
+        The patches next to a hot pixel have extreme negative values of
+        the statistic, which must not inflate the estimated scatter of
+        the background values. A hot pixel still dominates the statistic
+        of the patches that contain it.
+        """
+        data, model = _crowded_image(20)
+        expected = make_morans_i_mask(data)
+        rng = np.random.default_rng(13)
+        hot = np.zeros(data.shape, dtype=bool)
+        hot[tuple(rng.integers(0, 256, (2, 10)))] = True
+        data[hot] = 1.0e5
+        assert np.nanmin(make_morans_i_map(data)) < -10.0
+
+        mask = make_morans_i_mask(data)
+        far = ~binary_dilation(hot, np.ones((43, 43), dtype=bool))
+        assert np.all(mask[far & (model > 2.0)])
+        assert np.mean(mask[far] != expected[far]) < 0.02
+
+    def test_mask(self):
+        """
+        Test that the input mask is excluded from the statistic and is
+        not itself flagged as a source.
+        """
+        data = make_100gaussians_image()
+        bad = np.zeros(data.shape, dtype=bool)
+        bad[:, 250:] = True
+        data[bad] = 1.0e10
+        mask = make_morans_i_mask(data, mask=bad)
+        assert not np.any(mask[bad])
+        assert np.any(mask[~bad])
+
+    def test_masked_array(self):
+        """
+        Test that the mask of a MaskedArray input is excluded from the
+        statistic.
+        """
+        data = make_100gaussians_image()
+        bad = np.zeros(data.shape, dtype=bool)
+        bad[:, 250:] = True
+        data[bad] = 1.0e10
+        expected = make_morans_i_mask(data, mask=bad)
+        assert_equal(make_morans_i_mask(np.ma.MaskedArray(data, mask=bad)),
+                     expected)
+
+    def test_no_valid_pixels(self):
+        mask = make_morans_i_mask(np.full((50, 50), np.nan))
+        assert mask.dtype == bool
+        assert not np.any(mask)
+
+    def test_inputs(self, noise):
+        match = 'n_sigma must be a positive number'
+        for n_sigma in (0.0, -1.0, np.nan):
+            with pytest.raises(ValueError, match=match):
+                make_morans_i_mask(noise, n_sigma=n_sigma)
+
+        match = 'percent must be between 0 and 100'
+        for percent in (-1.0, 0.0, 100.0, 150.0):
+            with pytest.raises(ValueError, match=match):
+                make_morans_i_mask(noise, percent=percent)
+
+        match = 'patch_size must be an odd integer'
+        with pytest.raises(ValueError, match=match):
+            make_morans_i_mask(noise, patch_size=20)

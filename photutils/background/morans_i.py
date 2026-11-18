@@ -9,11 +9,11 @@ from functools import partial
 
 import numpy as np
 from astropy.units import Quantity
-from scipy.ndimage import uniform_filter1d
+from scipy.ndimage import label, uniform_filter1d
 
 from photutils.utils._misc import split_masked_array
 
-__all__ = ['make_morans_i_map']
+__all__ = ['make_morans_i_map', 'make_morans_i_mask']
 
 # The minimum fraction of a full patch that must be usable pixels
 _MIN_PATCH_FRACTION = 0.25
@@ -25,6 +25,10 @@ _N_SAMPLES = 1_000_000
 # value are treated as constant. This rejects rounding residuals in
 # regions of constant data.
 _VARIANCE_FLOOR = 1.0e-10
+
+# The ratio of the standard deviation to the median absolute deviation
+# of a Gaussian distribution
+_MAD_TO_STD = 1.482602218505602
 
 # The minimum image width for which the running sum over whole rows is
 # faster than filtering along the columns
@@ -169,6 +173,10 @@ def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
         than 25% of the pixels of a full patch are usable, or if its
         patch has zero variance.
 
+    See Also
+    --------
+    make_morans_i_mask
+
     Notes
     -----
     For a patch with pixel values :math:`x_i` and pixel weights
@@ -206,7 +214,8 @@ def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
     Noise that is correlated between adjacent pixels (e.g., in
     resampled or drizzled images) has a positive Moran's I even without
     sources. The statistic should then be compared to its typical value
-    over the image instead of to zero.
+    over the image instead of to zero, as is done by
+    `make_morans_i_mask`.
 
     Examples
     --------
@@ -324,3 +333,250 @@ def make_morans_i_map(data, *, patch_size=21, n_box_passes=1, mask=None,
 
     result[~good] = np.nan
     return result.astype(np.float32)
+
+
+def _half_sample_mode(values):
+    """
+    Calculate the half-sample mode of a 1D array.
+
+    The mode is found by repeatedly keeping the shortest interval that
+    contains half of the values (Bickel & Fruhwirth 2006).
+
+    Parameters
+    ----------
+    values : 1D `~numpy.ndarray`
+        The values. Must not be empty.
+
+    Returns
+    -------
+    mode : float
+        The half-sample mode.
+    """
+    values = np.sort(values)
+    while values.size > 3:
+        n_half = (values.size + 1) // 2
+        widths = values[n_half - 1:] - values[:values.size - n_half + 1]
+        start = int(np.argmin(widths))
+        values = values[start:start + n_half]
+    return float(np.median(values))
+
+
+def _lower_std(values, center):
+    """
+    Estimate the standard deviation of the values from the values that
+    are not above ``center``.
+
+    The estimate is the median deviation of those values from
+    ``center``, scaled to the standard deviation of a Gaussian
+    distribution. Unlike an RMS deviation, it is not affected by
+    outliers (e.g., the extreme negative values of the statistic next
+    to unmasked hot pixels) unless they are half of the values.
+
+    Parameters
+    ----------
+    values : 1D `~numpy.ndarray`
+        The values. At least one value must not be above ``center``.
+
+    center : float
+        The center value.
+
+    Returns
+    -------
+    std : float
+        The estimated standard deviation.
+    """
+    lower = values[values <= center]
+    return _MAD_TO_STD * float(np.median(center - lower))
+
+
+def _calc_threshold(stat, *, n_sigma, percent):
+    """
+    Calculate the Moran's I threshold above which pixels are sources.
+
+    Parameters
+    ----------
+    stat : 2D `~numpy.ndarray`
+        The Moran's I map.
+
+    n_sigma : float
+        The number of standard deviations above the background value.
+
+    percent : float or `None`
+        The percentage of pixels to flag. If not `None`, it is used
+        instead of ``n_sigma``.
+
+    Returns
+    -------
+    threshold : float or `None`
+        The threshold. `None` if ``stat`` has no finite values.
+    """
+    sample = _subsample(stat)
+    sample = sample[np.isfinite(sample)]
+    if sample.size == 0:
+        return None
+
+    if percent is not None:
+        return np.percentile(sample, 100.0 - percent)
+
+    # Sources only increase the statistic, so the background values
+    # form the lowest peak of its distribution. The median is a source
+    # value if most of the patches contain sources, but the values
+    # below the median still peak at the background value unless
+    # nearly all of the patches contain sources. The mode of those
+    # values is then refined with the median of the values near it,
+    # which removes the bias of the mode for pure noise. The scatter
+    # of the background values is measured robustly from the values
+    # below the background value, because those values also include
+    # the extreme negative values next to any unmasked hot pixels. The
+    # center is a median of some of the values, so at least one value
+    # is not above it.
+    center = _half_sample_mode(sample[sample <= np.median(sample)])
+    std = _lower_std(sample, center)
+    for _ in range(2):
+        center = float(np.median(sample[np.abs(sample - center)
+                                        <= 3.0 * std]))
+        std = _lower_std(sample, center)
+
+    return center + n_sigma * std
+
+
+def _fill_holes(mask):
+    """
+    Fill the holes in a 2D boolean mask.
+
+    The holes are the connected regions of `False` values that do not
+    touch the edges of the array, with the same connectivity as
+    `scipy.ndimage.binary_fill_holes`. Labeling the regions is much
+    faster than the iterative dilation of that function.
+    """
+    labels, n_labels = label(~mask)
+    keep = np.zeros(n_labels + 1, dtype=bool)
+    for edge in (labels[0], labels[-1], labels[:, 0], labels[:, -1]):
+        keep[edge] = True
+
+    # The True values of the input mask have the label 0
+    keep[0] = False
+    return ~keep[labels]
+
+
+def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
+                       percent=None, mask=None, weights=None):
+    """
+    Make a source mask using the Moran's I spatial autocorrelation
+    statistic.
+
+    Pixels are flagged as sources where the Moran's I statistic of the
+    surrounding patch of pixels (see `make_morans_i_map`) is above a
+    threshold. Holes in the flagged regions are then filled.
+
+    The mask can be made before the background is known because the
+    statistic does not depend on the background level or on the
+    amplitude of the background noise. It is intended to be used as the
+    ``mask`` input to `~photutils.background.Background2D`.
+
+    Parameters
+    ----------
+    data : 2D array_like or `~astropy.units.Quantity`
+        The 2D image. Nonfinite values (NaN and inf) are excluded. If
+        ``data`` is a `~numpy.ma.MaskedArray`, its mask is combined
+        with the input ``mask``.
+
+    patch_size : int, optional
+        The side length in pixels of the square patch used to calculate
+        the statistic. It must be an odd integer larger than 3. Sources
+        are masked out to a distance of approximately half the patch
+        size beyond where they are detected.
+
+    n_box_passes : int, optional
+        The number of box-filter passes that make the patch kernel (see
+        `make_morans_i_map`). Values larger than 1 taper the patch toward
+        its edges while keeping its effective width, which softens the
+        square shape of the masked regions and masks bright sources
+        out to larger distances.
+
+    n_sigma : float, optional
+        The number of standard deviations above the background value of
+        the statistic at which pixels are flagged as sources. The
+        background value and its standard deviation are estimated from
+        the statistic map itself, so the threshold adapts to noise that
+        is correlated between pixels. The background value is taken
+        from the lowest peak of the distribution of the statistic, so
+        it can be estimated even if most of the patches contain
+        sources. Ignored if ``percent`` is input.
+
+    percent : float or `None`, optional
+        The percentage of the pixels with a value of the statistic to
+        flag as sources, selecting the pixels with the largest values.
+        It must be larger than 0 and smaller than 100. If input, it is
+        used instead of ``n_sigma``. This percentage of the pixels is
+        flagged even if the image contains no sources. The final
+        masked fraction differs somewhat because holes in the flagged
+        regions are then filled.
+
+    mask : 2D bool array_like, optional
+        A boolean mask with the same shape as ``data``, where `True`
+        values indicate pixels that are excluded from the statistic
+        (e.g., bad pixels). These pixels are not flagged as sources
+        unless they are enclosed by flagged pixels, so this mask
+        should be combined with the returned source mask (e.g.,
+        ``source_mask | mask``) when it is input to
+        `~photutils.background.Background2D`. Bad pixels with
+        extreme values (e.g., hot pixels) should be excluded, because
+        such a pixel dominates the statistic of every patch that
+        contains it, which hides the sources near it.
+
+    weights : 2D array_like, optional
+        The weights of the pixels used to calculate the statistic,
+        with the same shape as ``data`` (e.g., an inverse-variance
+        map). Pixels with a nonfinite or nonpositive weight are
+        excluded. If `None`, all of the pixels have the same weight.
+
+    Returns
+    -------
+    source_mask : 2D bool `~numpy.ndarray`
+        The source mask, where `True` values indicate source pixels.
+
+    See Also
+    --------
+    make_morans_i_map
+    photutils.segmentation.SegmentationImage.make_source_mask
+
+    Examples
+    --------
+    >>> from photutils.background import Background2D, make_morans_i_mask
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> data = make_100gaussians_image()
+    >>> mask = make_morans_i_mask(data)
+    >>> bkg = Background2D(data, (50, 50), mask=mask, filter_size=(3, 3),
+    ...                    exclude_percentile=50.0)
+
+    The source mask covers a large fraction of the image, so
+    ``exclude_percentile`` is increased to keep the boxes that are
+    partly covered by the mask.
+
+    Excluded pixels are not included in the returned source mask, so a
+    bad-pixel mask must be combined with the source mask when it is
+    input to `~photutils.background.Background2D`.
+
+    >>> import numpy as np
+    >>> bad_mask = np.zeros(data.shape, dtype=bool)
+    >>> bad_mask[:, 300] = True
+    >>> source_mask = make_morans_i_mask(data, mask=bad_mask)
+    >>> bkg = Background2D(data, (50, 50), mask=source_mask | bad_mask,
+    ...                    filter_size=(3, 3), exclude_percentile=50.0)
+    """
+    if not n_sigma > 0:
+        msg = 'n_sigma must be a positive number'
+        raise ValueError(msg)
+    if percent is not None and not 0 < percent < 100:
+        msg = 'percent must be between 0 and 100 (exclusive)'
+        raise ValueError(msg)
+
+    stat = make_morans_i_map(data, patch_size=patch_size,
+                             n_box_passes=n_box_passes, mask=mask,
+                             weights=weights)
+    threshold = _calc_threshold(stat, n_sigma=n_sigma, percent=percent)
+    if threshold is None:
+        return np.zeros(stat.shape, dtype=bool)
+
+    return _fill_holes(stat > threshold)
