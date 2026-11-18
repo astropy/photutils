@@ -6,6 +6,7 @@ Tests for the morans_i module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 from scipy.ndimage import binary_dilation, binary_fill_holes, uniform_filter
 
@@ -488,6 +489,32 @@ class TestMakeMoransIMask:
         mask = make_morans_i_mask(data)
         assert np.mean(mask) > 0.5
         assert np.all(mask[model > 2.0])
+
+    def test_n_sigma_no_background(self):
+        """
+        Test that a warning is raised if the background value of the
+        statistic cannot be estimated.
+        """
+        data, _ = _crowded_image(150)
+        match = 'background value of the Moran'
+        with pytest.warns(AstropyUserWarning, match=match):
+            make_morans_i_mask(data)
+
+        # No warning is raised with a fixed percentage
+        make_morans_i_mask(data, percent=50.0)
+
+    def test_n_sigma_strong_gradient(self):
+        """
+        Test that a warning is raised for a background that changes
+        strongly across each patch.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(5.0, 2.0, (300, 500))
+        yy, xx = np.mgrid[:300, :500]
+        data += xx * yy / 1000.0
+        match = 'background changes strongly'
+        with pytest.warns(AstropyUserWarning, match=match):
+            make_morans_i_mask(data)
 
     def test_n_sigma_hot_pixels(self):
         """

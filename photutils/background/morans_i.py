@@ -5,10 +5,12 @@ autocorrelation statistic.
 """
 
 import math
+import warnings
 from functools import partial
 
 import numpy as np
 from astropy.units import Quantity
+from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import label, uniform_filter1d
 
 from photutils.utils._misc import split_masked_array
@@ -25,6 +27,12 @@ _N_SAMPLES = 1_000_000
 # value are treated as constant. This rejects rounding residuals in
 # regions of constant data.
 _VARIANCE_FLOOR = 1.0e-10
+
+# The standard deviation of the statistic for uncorrelated noise is
+# about 0.5 / patch_size. Noise that is strongly correlated between
+# adjacent pixels increases it by up to about a factor of 2. A larger
+# ratio than this means that the background could not be measured.
+_MAX_STD_RATIO = 4.0
 
 # The ratio of the standard deviation to the median absolute deviation
 # of a Gaussian distribution
@@ -389,7 +397,7 @@ def _lower_std(values, center):
     return _MAD_TO_STD * float(np.median(center - lower))
 
 
-def _calc_threshold(stat, *, n_sigma, percent):
+def _calc_threshold(stat, *, n_sigma, percent, patch_size):
     """
     Calculate the Moran's I threshold above which pixels are sources.
 
@@ -404,6 +412,9 @@ def _calc_threshold(stat, *, n_sigma, percent):
     percent : float or `None`
         The percentage of pixels to flag. If not `None`, it is used
         instead of ``n_sigma``.
+
+    patch_size : int
+        The side length in pixels of the patch used for ``stat``.
 
     Returns
     -------
@@ -436,6 +447,15 @@ def _calc_threshold(stat, *, n_sigma, percent):
         center = float(np.median(sample[np.abs(sample - center)
                                         <= 3.0 * std]))
         std = _lower_std(sample, center)
+
+    if std > _MAX_STD_RATIO * 0.5 / patch_size:
+        msg = ("The background value of the Moran's I statistic could "
+               'not be estimated, probably because nearly all of the '
+               'patches contain sources or the background changes '
+               'strongly across each patch. The source mask may be '
+               'incomplete. Use the percent keyword or a smaller '
+               'patch_size instead.')
+        warnings.warn(msg, AstropyUserWarning)
 
     return center + n_sigma * std
 
@@ -502,7 +522,9 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
         is correlated between pixels. The background value is taken
         from the lowest peak of the distribution of the statistic, so
         it can be estimated even if most of the patches contain
-        sources. Ignored if ``percent`` is input.
+        sources. A warning is raised if nearly all of the patches
+        contain sources, because the background value then cannot be
+        estimated. Ignored if ``percent`` is input.
 
     percent : float or `None`, optional
         The percentage of the pixels with a value of the statistic to
@@ -575,7 +597,8 @@ def make_morans_i_mask(data, *, patch_size=21, n_box_passes=1, n_sigma=3.0,
     stat = make_morans_i_map(data, patch_size=patch_size,
                              n_box_passes=n_box_passes, mask=mask,
                              weights=weights)
-    threshold = _calc_threshold(stat, n_sigma=n_sigma, percent=percent)
+    threshold = _calc_threshold(stat, n_sigma=n_sigma, percent=percent,
+                                patch_size=patch_size)
     if threshold is None:
         return np.zeros(stat.shape, dtype=bool)
 
