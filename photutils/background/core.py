@@ -5,6 +5,8 @@ any dimension.
 """
 
 import abc
+import re
+import textwrap
 import warnings
 
 import numpy as np
@@ -42,15 +44,26 @@ _SIGMA_CLIP_PARAM_DOC = (
 )
 
 
+_SIGMA_CLIP_PLACEHOLDER_RE = re.compile(r'^([ \t]*)<sigma_clip_param>[ \t]*$',
+                                        re.MULTILINE)
+
+
 def _insert_sigma_clip_doc(cls):
     """
     Class decorator that replaces the ``<sigma_clip_param>`` placeholder
     in a class docstring with the shared ``sigma_clip`` parameter
     description.
+
+    The description is indented to match the placeholder line. On
+    Python 3.12, class docstrings are not dedented at compile time, so
+    a replacement without the indentation of the placeholder would
+    leave the description lines at the same indentation as the
+    parameter name.
     """
-    cls.__doc__ = cls.__doc__.replace(
-        '<sigma_clip_param>', _SIGMA_CLIP_PARAM_DOC,
-    )
+    def replace(match):
+        return textwrap.indent(_SIGMA_CLIP_PARAM_DOC, match.group(1))
+
+    cls.__doc__ = _SIGMA_CLIP_PLACEHOLDER_RE.sub(replace, cls.__doc__)
     return cls
 
 

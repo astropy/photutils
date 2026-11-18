@@ -3,6 +3,8 @@
 Tests for the core module.
 """
 
+import inspect
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -752,3 +754,18 @@ class TestFastFlatClip:
         bkg1 = MeanBackground(sigma_clip=sigma_clip)
         bkg2 = MeanBackground(sigma_clip=SigmaClip(sigma=2.5, maxiters=10))
         assert_allclose(bkg1(self.data), bkg2(self.data), rtol=1e-12)
+
+
+@pytest.mark.parametrize('estimator_class',
+                         BACKGROUND_CLASSES + BACKGROUND_RMS_CLASSES)
+def test_sigma_clip_docstring(estimator_class):
+    """
+    Test that the shared ``sigma_clip`` parameter description is
+    inserted into the class docstring with the indentation of the
+    parameter section.
+    """
+    doc = inspect.getdoc(estimator_class)
+    assert '<sigma_clip_param>' not in doc
+    expected = ('sigma_clip : `~astropy.stats.SigmaClip` or `None`, '
+                'optional\n    A `~astropy.stats.SigmaClip` object')
+    assert expected in doc

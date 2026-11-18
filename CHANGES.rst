@@ -54,6 +54,10 @@ Bug Fixes
     included. Floating-point rounding excluded such boxes for some
     percentages (e.g., 41%). [#2547]
 
+  - Fixed the indentation of the ``sigma_clip`` parameter description
+    in the docstrings of the background and background RMS estimator
+    classes on Python 3.12. [#2547]
+
 - ``photutils.detection``
 
   - Fixed a race condition on free-threaded Python builds where
