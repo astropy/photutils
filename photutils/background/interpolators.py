@@ -51,13 +51,13 @@ class _BkgZoomInterpolator:
 
     clip : bool, optional
         Whether to clip the output to the range of values in the
-        input image. This is enabled by default, since higher order
+        input image. This is enabled by default, since higher-order
         interpolation may produce values outside the given input range.
 
     Notes
     -----
     When resizing the mesh to the full image size, the samples are
-    considered as the centers of regularly-spaced grid elements (i.e.,
+    considered as the centers of regularly spaced grid elements (i.e.,
     `~scipy.ndimage.zoom` ``grid_mode`` is True). The outer pixel edges
     of the mesh and of the output image are therefore aligned, instead
     of the centers of their corner pixels.
@@ -110,7 +110,7 @@ class _BkgZoomInterpolator:
         data : 2D `~numpy.ndarray`
             The low-resolution 2D mesh array.
 
-        zoom_factor : tuple of int
+        zoom_factor : array_like of int
             The integer zoom factor along each axis.
 
         n_threads : int
@@ -241,13 +241,13 @@ class BkgZoomInterpolator(_BkgZoomInterpolator):
 
     clip : bool, optional
         Whether to clip the output to the range of values in the
-        input image. This is enabled by default, since higher order
+        input image. This is enabled by default, since higher-order
         interpolation may produce values outside the given input range.
 
     Notes
     -----
     When resizing the mesh to the full image size, the samples are
-    considered as the centers of regularly-spaced grid elements (i.e.,
+    considered as the centers of regularly spaced grid elements (i.e.,
     `~scipy.ndimage.zoom` ``grid_mode`` is True). The outer pixel edges
     of the mesh and of the output image are therefore aligned, instead
     of the centers of their corner pixels.
@@ -271,8 +271,8 @@ class BkgIDWInterpolator:
     Parameters
     ----------
     leafsize : int, optional
-        The number of points at which the k-d tree algorithm switches
-        over to brute-force. ``leafsize`` must be positive. See
+        The number of points at which the KD-tree algorithm switches
+        over to brute force. ``leafsize`` must be positive. See
         `scipy.spatial.cKDTree` for further information. The default
         is 10.
 
@@ -310,12 +310,12 @@ class BkgIDWInterpolator:
             The low-resolution 2D mesh array.
 
         **kwargs : dict
-            Keyword arguments supplied by `Background2D`. The
-            ``shape`` (output image shape), ``dtype`` (output dtype),
-            ``mesh_yxcen`` (the (y, x) centers of the included mesh
-            boxes), and ``mesh_nan_mask`` (mask of the excluded mesh
-            boxes) keys are required. Only the included mesh boxes are
-            used for the interpolation.
+            Keyword arguments supplied by `Background2D`. The ``shape``
+            (output image shape), ``dtype`` (output dtype for a constant
+            mesh), ``mesh_yxcen`` (the (y, x) centers of the included
+            mesh boxes), and ``mesh_nan_mask`` (mask of the excluded
+            mesh boxes) keys are required. Only the included mesh boxes
+            are used for the interpolation.
 
         Returns
         -------

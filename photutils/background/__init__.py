@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Subpackage containing tools for estimating the background and background
-RMS in an image.
+RMS in an image, and for making source masks.
 """
 
 from .background_2d import *  # noqa: F403

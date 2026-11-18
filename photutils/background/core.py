@@ -99,15 +99,15 @@ def _validate_sigma_clip(sigma_clip):
 
 def _use_fast_flat_clip(sigma_clip):
     """
-    Whether an ``axis=None`` sigma clip can be routed through astropy's
-    fast C implementation.
+    Return whether an ``axis=None`` sigma clip can be routed through
+    astropy's fast C implementation.
 
-    astropy versions before 8.1 dispatch ``axis=None`` clipping to a
-    slower Python code path even when the ``cenfunc`` and ``stdfunc``
-    options are supported by the fast C implementation, which requires
-    an axis in those versions. When this function returns `True`,
-    `_prepare_data` instead clips the raveled data along ``axis=0`` to
-    use the fast C path.
+    astropy versions before 8.1 send ``axis=None`` clipping to a slower
+    Python code path because their dispatch to the fast C implementation
+    requires an explicit axis. This happens even when the ``cenfunc``
+    and ``stdfunc`` options are supported by the C implementation. When
+    this function returns `True`, `_prepare_data` instead clips the
+    raveled data along ``axis=0`` to use the fast C path.
 
     This function and the raveled clip in `_prepare_data` can be
     removed when photutils requires astropy >= 8.1, which uses the fast
@@ -153,9 +153,14 @@ def _prepare_data(sigma_clip, data, axis):
     Returns
     -------
     data : `~numpy.ndarray`
-        The prepared data array, with masked or clipped values replaced
-        by NaN. The input is returned unchanged if it is not a masked
-        array and sigma clipping is disabled.
+        The prepared data array. With sigma clipping and ``axis`` not
+        `None`, the array has the input shape and the clipped and masked
+        values are replaced by NaN. With sigma clipping and
+        ``axis=None``, the array may be 1D, holding either the raveled
+        data with clipped values replaced by NaN or only the unclipped
+        values. Without sigma clipping, a `~numpy.ma.MaskedArray` input
+        is returned as a `~numpy.ndarray` with masked values replaced by
+        NaN, and any other input is returned unchanged.
     """
     if sigma_clip is not None:
         if axis is None and _use_fast_flat_clip(sigma_clip):
@@ -278,29 +283,40 @@ class BackgroundBase(_BackgroundCommonBase, abc.ABC):
 
         Parameters
         ----------
-        data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            The array for which to calculate the background value.
+        data : array_like, `~numpy.ma.MaskedArray`, or \
+                `~astropy.units.Quantity`
+            The array for which to calculate the background value. NaN
+            values are ignored. If sigma clipping is enabled, an
+            `~astropy.utils.exceptions.AstropyUserWarning` is emitted
+            when ``data`` contains unmasked NaN or inf values.
 
         axis : int, tuple of int, or `None`, optional
             The array axis along which the background is calculated. If
             `None`, then the entire array is used.
 
         masked : bool, optional
-            If `True`, then a `~numpy.ma.MaskedArray` is returned. If
-            `False`, then a `~numpy.ndarray` is returned, where masked
-            values have a value of NaN. The default is `False`.
+            If `True`, an array result is returned as a
+            `~numpy.ma.MaskedArray` with NaN values masked. If `False`,
+            an array result is returned as a `~numpy.ndarray`, where
+            values that could not be calculated (e.g., all values along
+            the axis are masked, NaN, or clipped) are NaN. A scalar
+            result is returned as a NumPy floating-point scalar in
+            either case. The default is `False`.
 
         Returns
         -------
         result : float, `~numpy.ndarray`, or `~numpy.ma.MaskedArray`
-            The calculated background value. If ``masked`` is
-            `False`, then a `~numpy.ndarray` is returned, otherwise a
-            `~numpy.ma.MaskedArray` is returned. A scalar result is
-            always returned as a NumPy floating-point scalar. The
-            result is ``float32`` or ``float64``, depending on the
-            dtype of the input data and on the sigma clipping. For
-            example, sigma-clipped integer data give a ``float32``
-            result.
+            The calculated background value. An array result is a
+            `~numpy.ndarray` if ``masked`` is `False` or a
+            `~numpy.ma.MaskedArray` if ``masked`` is `True`. A scalar
+            result is always returned as a NumPy floating-point scalar.
+            The result dtype depends on the estimator, on the dtype of
+            the input data, and on the sigma clipping. Floating-point
+            input keeps its dtype. Integer input gives a ``float32``
+            result with sigma clipping and a ``float64`` result without
+            it. The biweight estimators always return a ``float64``
+            result. If ``data`` is a `~astropy.units.Quantity`, the
+            result is a `~astropy.units.Quantity` with the same unit.
         """
 
 
@@ -328,29 +344,40 @@ class BackgroundRMSBase(_BackgroundCommonBase, abc.ABC):
 
         Parameters
         ----------
-        data : `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-            The array for which to calculate the background RMS value.
+        data : array_like, `~numpy.ma.MaskedArray`, or \
+                `~astropy.units.Quantity`
+            The array for which to calculate the background RMS value. NaN
+            values are ignored. If sigma clipping is enabled, an
+            `~astropy.utils.exceptions.AstropyUserWarning` is emitted
+            when ``data`` contains unmasked NaN or inf values.
 
         axis : int, tuple of int, or `None`, optional
             The array axis along which the background RMS is calculated.
             If `None`, then the entire array is used.
 
         masked : bool, optional
-            If `True`, then a `~numpy.ma.MaskedArray` is returned. If
-            `False`, then a `~numpy.ndarray` is returned, where masked
-            values have a value of NaN. The default is `False`.
+            If `True`, an array result is returned as a
+            `~numpy.ma.MaskedArray` with NaN values masked. If `False`,
+            an array result is returned as a `~numpy.ndarray`, where
+            values that could not be calculated (e.g., all values along
+            the axis are masked, NaN, or clipped) are NaN. A scalar
+            result is returned as a NumPy floating-point scalar in
+            either case. The default is `False`.
 
         Returns
         -------
         result : float, `~numpy.ndarray`, or `~numpy.ma.MaskedArray`
-            The calculated background RMS value. If ``masked`` is
-            `False`, then a `~numpy.ndarray` is returned, otherwise a
-            `~numpy.ma.MaskedArray` is returned. A scalar result is
-            always returned as a NumPy floating-point scalar. The
-            result is ``float32`` or ``float64``, depending on the
-            dtype of the input data and on the sigma clipping. For
-            example, sigma-clipped integer data give a ``float32``
-            result.
+            The calculated background RMS value. An array result is a
+            `~numpy.ndarray` if ``masked`` is `False` or a
+            `~numpy.ma.MaskedArray` if ``masked`` is `True`. A scalar
+            result is always returned as a NumPy floating-point scalar.
+            The result dtype depends on the estimator, on the dtype of
+            the input data, and on the sigma clipping. Floating-point
+            input keeps its dtype. Integer input gives a ``float32``
+            result with sigma clipping and a ``float64`` result without
+            it. The biweight estimators always return a ``float64``
+            result. If ``data`` is a `~astropy.units.Quantity`, the
+            result is a `~astropy.units.Quantity` with the same unit.
         """
 
 
@@ -451,10 +478,12 @@ class ModeEstimatorBackground(BackgroundBase):
     Parameters
     ----------
     median_factor : float, optional
-        The multiplicative factor for the median value. Defaults to 3.
+        The multiplicative factor for the median value. The default is
+        3.0.
 
     mean_factor : float, optional
-        The multiplicative factor for the mean value. Defaults to 2.
+        The multiplicative factor for the mean value. The default is
+        2.0.
 
     <sigma_clip_param>
 
@@ -508,11 +537,13 @@ class ModeEstimatorBackground(BackgroundBase):
 @_insert_sigma_clip_doc
 class MMMBackground(ModeEstimatorBackground):
     """
-    Class to calculate the background in an array using the DAOPHOT MMM
-    algorithm.
+    Class to calculate the background in an array using the mode
+    estimator of the DAOPHOT MMM algorithm.
 
     The background is calculated using a mode estimator of the form
-    ``(3 * median) - (2 * mean)``.
+    ``(3 * median) - (2 * mean)``. The estimator is applied to the
+    (sigma-clipped) data. The full iterative DAOPHOT MMM sky-fitting
+    procedure is not implemented.
 
     Parameters
     ----------
@@ -630,12 +661,14 @@ class BiweightLocationBackground(BackgroundBase):
     Parameters
     ----------
     c : float, optional
-        Tuning constant for the biweight estimator. Default value is
+        Tuning constant for the biweight estimator. The default is
         6.0.
 
-    M : float or `None`, optional
-        The location estimate about which the biweight is computed. If
-        `None` (default), the median of the input data is used.
+    M : float, `~numpy.ndarray`, or `None`, optional
+        The location estimate about which the biweight is computed. An
+        array must have the shape of the result, which is the shape of
+        ``data`` with ``axis`` removed. If `None`, the median of the
+        input data (along ``axis``) is used. The default is `None`.
 
     <sigma_clip_param>
 
@@ -793,12 +826,14 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     Parameters
     ----------
     c : float, optional
-        Tuning constant for the biweight estimator. Default value is
+        Tuning constant for the biweight estimator. The default is
         9.0.
 
-    M : float or `None`, optional
-        The location estimate about which the biweight is computed. If
-        `None` (default), the median of the input data is used.
+    M : float, `~numpy.ndarray`, or `None`, optional
+        The location estimate about which the biweight is computed. An
+        array must have the shape of the result, which is the shape of
+        ``data`` with ``axis`` removed. If `None`, the median of the
+        input data (along ``axis``) is used. The default is `None`.
 
     <sigma_clip_param>
 

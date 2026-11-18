@@ -27,13 +27,15 @@ class LocalBackground:
     Parameters
     ----------
     inner_radius : float
-        The inner radius of the circular annulus in pixels.
+        The inner radius of the circular annulus in pixels. It must be
+        positive.
 
     outer_radius : float
-        The outer radius of the circular annulus in pixels.
+        The outer radius of the circular annulus in pixels. It must be
+        larger than ``inner_radius``.
 
     bkg_estimator : callable, optional
-        A callable object (a function or e.g., an instance of any
+        A callable object (a function or, e.g., an instance of any
         `~photutils.background.BackgroundBase` subclass) used to
         estimate the background in each aperture. The callable object
         must take in a 1D `~numpy.ndarray`. Nonfinite data values are
@@ -43,16 +45,16 @@ class LocalBackground:
 
     n_threads : int, optional
         The number of threads to use to measure the local backgrounds.
-        The default is 1 (no multithreading). The value is passed
-        through to the internal `~photutils.aperture.ApertureStats`
-        computation, which divides the annulus positions into chunks
-        that are processed concurrently, producing results identical
-        to the single-threaded computation. Multithreading is used
-        only when ``bkg_estimator`` is an instance of one of the
-        photutils background or background RMS estimator classes (not
-        a subclass), and for the biweight estimators only with their
-        default ``c`` and ``M``. Any other callable uses the serial
-        per-aperture loop.
+        It must be a positive integer. The default is 1 (no
+        multithreading). The value is passed through to the internal
+        `~photutils.aperture.ApertureStats` computation, which
+        divides the annulus positions into chunks that are processed
+        concurrently, producing results identical to the single-threaded
+        computation. Multithreading is used only when ``bkg_estimator``
+        is an instance of one of the photutils background or background
+        RMS estimator classes (not a subclass), and for the biweight
+        estimators only with their default ``c`` and ``M``. Any other
+        callable uses the serial per-aperture loop.
 
     Examples
     --------
@@ -226,7 +228,8 @@ class LocalBackground:
         ----------
         x, y : float or 1D array_like of float
             The aperture center (x, y) position(s) at which to create
-            the annulus aperture.
+            the annulus aperture. ``x`` and ``y`` must have the same
+            shape.
 
         Returns
         -------
@@ -271,7 +274,8 @@ class LocalBackground:
 
         x, y : float or 1D array_like of float
             The aperture center (x, y) position(s) at which to measure
-            the local background.
+            the local background. ``x`` and ``y`` must have the same
+            shape.
 
         mask : 2D bool `~numpy.ndarray`, optional
             A boolean mask with the same shape as ``data`` where a
