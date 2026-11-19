@@ -18,6 +18,27 @@ New Features
     background noise to be known, so it can be used as the ``mask``
     input to ``Background2D``. [#2545]
 
+- ``photutils.isophote``
+
+  - Improved the performance of the isophote fits. The
+    ``'bilinear'`` and ``'nearest_neighbor'`` integrators now sample
+    the whole elliptical path at once, the ``'mean'`` and ``'median'``
+    integrators select the pixels of each sector at once, and masked
+    images are no longer indexed pixel by pixel. ``Ellipse.fit_image``
+    is ~3x faster for the ``'bilinear'`` and ``'nearest_neighbor'``
+    modes, ~1.7x faster for the ``'mean'`` and ``'median'`` modes, and
+    ~25x faster for masked images with the ``'bilinear'`` mode.
+    [#2551]
+
+  - The harmonic fits of the isophote fitter now use linear least
+    squares instead of an iterative nonlinear fitter. The fitted
+    harmonic coefficients and their covariance matrices are now
+    exact, which slightly changes the fitted isophotes. [#2551]
+
+  - The ellipse model kernel used by ``build_ellipse_model`` now
+    releases the GIL, so models can be built in parallel threads.
+    [#2551]
+
 Bug Fixes
 ^^^^^^^^^
 
