@@ -28,7 +28,7 @@ PA = np.deg2rad(10.0)
 
 # Build off-center test data. It's fine to have a single np array to use
 # in all tests that need it, but do not use a single instance of
-# EllipseGeometry. The code may eventually modify it's contents. The safe
+# EllipseGeometry. The code may eventually modify its contents. The safe
 # bet is to build it wherever it's needed. The cost is negligible.
 OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.0e-12,
                                 seed=0)
@@ -80,7 +80,7 @@ class TestEllipse:
         assert len(isophote_list) > 1
         assert isinstance(isophote_list[0], Isophote)
 
-        # Verify that the list is properly sorted in sem-major axis length
+        # Verify that the list is properly sorted in semimajor axis length.
         assert isophote_list[-1] > isophote_list[0]
 
         # The fit should stop when too many sample points fall outside
@@ -95,10 +95,10 @@ class TestEllipse:
         isophote_list = ellipse.fit_image(linear=True, step=2.0,
                                           maxsma=80.0)
 
-        # Verify that the list is properly sorted in sem-major axis length
+        # Verify that the list is properly sorted in semimajor axis length.
         assert isophote_list[-1] > isophote_list[0]
 
-        # Difference in sma between successive isohpotes must be constant
+        # Difference in sma between successive isophotes must be constant.
         step = isophote_list[-1].sma - isophote_list[-2].sma
         assert math.isclose((isophote_list[-2].sma - isophote_list[-3].sma),
                             step, rel_tol=0.01)

@@ -65,7 +65,7 @@ from photutils.isophote.integrator import BILINEAR
 def test_regression(name):
     """
     NOTE: The original code in SPP won't create the right table
-    for the MEAN integration moder, so use the screen output
+    for the MEAN integration mode, so use the screen output
     at synth_table_mean.txt to compare results visually with
     synth_table_mean.fits.
     """
