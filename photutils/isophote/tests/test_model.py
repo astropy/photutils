@@ -143,6 +143,23 @@ def test_model_pa_wrap():
     assert np.max(residual) < 0.01
 
 
+def test_model_fill():
+    """
+    Test that only the pixels with no contribution from any isophote
+    are set to the fill value.
+    """
+    data = make_test_image(nx=200, ny=200, seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=30.0)
+
+    # Model pixels with a zero intensity must not be filled.
+    for isophote in isolist:
+        isophote.intens = 0.0
+    model = build_ellipse_model(data.shape, isolist, fill=np.nan)
+    assert model[100, 100] == 0.0
+    assert np.isnan(model[0, 0])
+    assert np.all(model[np.isfinite(model)] == 0.0)
+
+
 def test_model_harmonics():
     """
     Test that high harmonics are included in build_ellipse_model.

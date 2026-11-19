@@ -142,13 +142,16 @@ def build_ellipse_model(
         **kwargs_harm,
     )
 
-    # zero weight values must be set to 1.0
-    weight[np.where(weight <= 0.0)] = 1.0
+    # Pixels with no contribution from any isophote have zero weight.
+    # Their weight is set to 1.0 for the normalization and their value
+    # is set to the fill value.
+    empty = weight <= 0.0
+    weight[empty] = 1.0
 
     # Normalize.
     result /= weight
 
     # Fill value
-    result[np.where(result == 0.0)] = fill
+    result[empty] = fill
 
     return result
