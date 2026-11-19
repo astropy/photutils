@@ -203,6 +203,47 @@ class TestEllipse:
         assert geometry.x0 == 250.0
         assert geometry.y0 == 260.0
 
+    def test_nonfinite_values(self):
+        """
+        Test that nonfinite values are excluded from the fits, like
+        masked pixels.
+        """
+        isolist = Ellipse(self.data).fit_image(maxsma=60.0)
+
+        data = self.data.copy()
+        data[256, 294:296] = np.nan  # on the sma ~38 isophote
+        data[250, 240] = np.inf
+        match = 'Input image contains nonfinite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            ellipse = Ellipse(data)
+        isolist_nan = ellipse.fit_image(maxsma=60.0)
+        assert_allclose(isolist_nan.sma, isolist.sma)
+        assert_allclose(isolist_nan.intens, isolist.intens, rtol=1e-4)
+        assert np.all(np.isfinite(isolist_nan.tflux_e[1:]))
+        assert np.all(np.isfinite(isolist_nan.tflux_c[1:]))
+
+        masked = np.ma.masked_invalid(data)
+        isolist_masked = Ellipse(masked).fit_image(maxsma=60.0)
+        assert_allclose(isolist_masked.intens, isolist_nan.intens)
+
+    def test_nonfinite_center(self):
+        """
+        Test a nonfinite central pixel.
+
+        The central pixel intensity is NaN, and the innermost isophotes,
+        whose samples all include the central pixel, are not fitted.
+        """
+        data = self.data.copy()
+        data[256, 256] = np.nan
+        match = 'Input image contains nonfinite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            ellipse = Ellipse(data)
+        isolist = ellipse.fit_image(maxsma=20.0)
+        assert isolist[0].sma == 0
+        assert np.isnan(isolist[0].intens)
+        assert isolist[0].n_data == 0
+        assert np.all(np.isfinite(isolist.intens[1:]))
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)

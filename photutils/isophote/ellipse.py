@@ -36,7 +36,9 @@ class Ellipse:
     Parameters
     ----------
     image : 2D `~numpy.ndarray`
-        The image array.
+        The image array. Masked pixels (if ``image`` is a
+        `~numpy.ma.MaskedArray`) and nonfinite (NaN or infinity)
+        values are excluded from the fits.
     geometry : `~photutils.isophote.EllipseGeometry` instance or `None`, \
             optional
         The optional geometry that describes the first
@@ -175,6 +177,12 @@ class Ellipse:
     def __init__(self, image, geometry=None,
                  threshold=None):  # noqa: ARG002
         self.image = image
+
+        data = np.ma.getdata(image)
+        if np.any(~np.isfinite(data) & ~np.ma.getmaskarray(image)):
+            msg = ('Input image contains nonfinite (NaN or infinity) '
+                   'values, which are excluded from the fits.')
+            warnings.warn(msg, AstropyUserWarning)
 
         if geometry is not None:
             self._geometry = geometry

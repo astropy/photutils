@@ -173,13 +173,13 @@ class Isophote:
             self.n_data = sample.actual_points
             self.n_flag = sample.total_points - sample.actual_points
 
-            # flux contained inside ellipse and circle
+            # Flux contained inside ellipse and circle
             (self.tflux_e, self.tflux_c, self.npix_e,
              self.npix_c) = self._compute_fluxes()
 
             self._compute_errors()
 
-            # deviations from a perfect ellipse
+            # Deviations from a perfect ellipse
             (self.a3, self.b3, self.a3_err,
              self.b3_err) = self._compute_deviations(sample, 3)
             (self.a4, self.b4, self.a4_err,
@@ -294,19 +294,21 @@ class Isophote:
         imax = min(xsize, int(x0 + sma + 0.5) + 1)
         jmax = min(ysize, int(y0 + sma + 0.5) + 1)
 
-        # Integrate
+        # Integrate.
         if (jmax - jmin > 1) and (imax - imin) > 1:
             y, x = np.mgrid[jmin:jmax, imin:imax]
             radius, angle = self.sample.geometry.to_polar(x, y)
             radius_e = self.sample.geometry.radius(angle)
 
             midx = (radius <= sma)
-            values = self.sample.image[y[midx], x[midx]]
+            # Exclude masked and nonfinite pixels.
+            values = np.ma.masked_invalid(self.sample.image[y[midx], x[midx]])
             tflux_c = np.ma.sum(values)
             npix_c = np.ma.count(values)
 
             midx2 = (radius <= radius_e)
-            values = self.sample.image[y[midx2], x[midx2]]
+            values = np.ma.masked_invalid(
+                self.sample.image[y[midx2], x[midx2]])
             tflux_e = np.ma.sum(values)
             npix_e = np.ma.count(values)
         else:
@@ -326,7 +328,7 @@ class Isophote:
         the raw data.
         """
         try:
-            # upper (third and fourth) harmonics
+            # Upper (third and fourth) harmonics
             up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.values[0],
                                                            sample.values[2],
                                                            n)
@@ -345,7 +347,7 @@ class Isophote:
 
             ce = np.sqrt(np.diag(up_covariance))
 
-            # this comes from the old code. Likely it was based on
+            # This comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
             # it here without too much thought.
             gre = (self.gradient_rel_err
@@ -377,7 +379,7 @@ class Isophote:
             eps = self.sample.geometry.eps
             pa = self.sample.geometry.pa
 
-            # parameter errors result from direct projection of
+            # Parameter errors result from direct projection of
             # coefficient errors. These showed to be the error estimators
             # that best convey the errors measured in Monte Carlo
             # experiments (see Busko 1996, ASPC 101, 139).
@@ -462,8 +464,8 @@ class CentralPixel(Isophote):
 
         self.intens = sample.mean
 
-        # some values are set to zero to ease certain tasks
-        # such as model building and plotting magnitude errors
+        # Some values are set to zero to ease certain tasks
+        # such as model building and plotting magnitude errors.
         self.rms = None
         self.int_err = 0.0
         self.pix_stddev = None
@@ -947,7 +949,7 @@ def _get_properties(isophote_list):
     properties = {}
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
-        # Exclude the sample property
+        # Exclude the sample property.
         if isinstance(p_type, property) and 'sample' not in an_item:
             properties[str(an_item)] = str(an_item)
     return properties

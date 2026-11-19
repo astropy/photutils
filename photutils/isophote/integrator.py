@@ -10,7 +10,7 @@ import numpy as np
 __all__ = ['BILINEAR', 'INTEGRATORS', 'MEAN', 'MEDIAN', 'NEAREST_NEIGHBOR']
 
 
-# integration modes
+# Integration modes
 NEAREST_NEIGHBOR = 'nearest_neighbor'
 BILINEAR = 'bilinear'
 MEAN = 'mean'
@@ -52,7 +52,7 @@ class _Integrator:
         self._radii = radii
         self._intensities = intensities
 
-        # for bounds checking
+        # For bounds checking
         self._i_range = range(self._image.shape[1] - 1)
         self._j_range = range(self._image.shape[0] - 1)
 
@@ -159,7 +159,8 @@ class _NearestNeighborIntegrator(_Integrator):
         if (0 <= i < self._image.shape[1]) and (0 <= j < self._image.shape[0]):
             sample = self._image[j][i]
 
-            if sample is not np.ma.masked:
+            # Skip masked and nonfinite pixels.
+            if sample is not np.ma.masked and math.isfinite(sample):
                 self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
@@ -202,7 +203,9 @@ class _BiLinearIntegrator(_Integrator):
                           + self._image[j][i + 1] * fx * qy
                           + self._image[j + 1][i + 1] * fy * fx)
 
-                self._store_results(phi, radius, sample)
+                # skip samples that include nonfinite pixels
+                if math.isfinite(sample):
+                    self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
         return 1.0 / self._r
@@ -218,7 +221,7 @@ class _AreaIntegrator(_Integrator):
     def __init__(self, image, geometry, angles, radii, intensities):
         super().__init__(image, geometry, angles, radii, intensities)
 
-        # build auxiliary bilinear integrator to be used when
+        # Build auxiliary bilinear integrator to be used when
         # sector areas contain a too small number of valid pixels.
         self._bilinear_integrator = INTEGRATORS[BILINEAR](image, geometry,
                                                           angles, radii,
@@ -232,23 +235,23 @@ class _AreaIntegrator(_Integrator):
 
         self._sector_area = self._geometry.sector_area
 
-        # step in polar angle to be used by caller next time
+        # Step in polar angle to be used by caller next time
         # when updating the current polar angle `phi` to point
         # to the next sector.
         self._phistep = self._geometry.sector_angular_width
 
-        # define rectangular image area that encompasses the elliptical
+        # Define rectangular image area that encompasses the elliptical
         # sector. We have to account for rounding of pixel indices.
         i1 = int(min(vertex_x)) - 1
         j1 = int(min(vertex_y)) - 1
         i2 = int(max(vertex_x)) + 1
         j2 = int(max(vertex_y)) + 1
 
-        # polar angle limits for this sector
+        # Polar angle limits for this sector
         phi1, phi2 = self._geometry.polar_angle_sector_limits()
 
-        # ignore data point if the elliptical sector lies
-        # partially, or totally, outside image boundaries
+        # Ignore data point if the elliptical sector lies
+        # partially, or totally, outside image boundaries.
         if ((i1 in self._i_range) and (j1 in self._j_range)
                 and (i2 in self._i_range) and (j2 in self._j_range)):
             # Scan rectangular image area, compute sample value.
@@ -276,7 +279,8 @@ class _AreaIntegrator(_Integrator):
                         if rp < r2 and rp >= r1:
                             # update accumulator with pixel value
                             pix_value = self._image[j][i]
-                            if pix_value is not np.ma.masked:
+                            if (pix_value is not np.ma.masked
+                                    and math.isfinite(pix_value)):
                                 accumulator, n_pixels = self.accumulate(
                                     pix_value, accumulator)
 

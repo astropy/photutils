@@ -163,3 +163,20 @@ def test_find_center_near_edge(x0, y0):
     geometry.find_center(data, verbose=False)
     assert abs(geometry.x0 - x0) <= 3
     assert abs(geometry.y0 - y0) <= 3
+
+
+def test_find_center_nonfinite():
+    """
+    Test that nonfinite values are excluded by find_center.
+    """
+    data = make_test_image(nx=100, ny=100, x0=50, y0=50, sma=10.0,
+                           noise=1.0, seed=0)
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry.find_center(data, verbose=False)
+
+    data[49, 48] = np.nan
+    data[51, 53] = np.inf
+    geometry_nan = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry_nan.find_center(data, verbose=False)
+    assert geometry_nan.x0 == geometry.x0
+    assert geometry_nan.y0 == geometry.y0

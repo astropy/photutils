@@ -36,7 +36,9 @@ class EllipseSample:
     Parameters
     ----------
     image : 2D `~numpy.ndarray`
-        The input image.
+        The input image. Masked pixels (if ``image`` is a
+        `~numpy.ma.MaskedArray`) and nonfinite (NaN or infinity) values
+        are excluded from the sample.
     sma : float
         The semimajor axis length in pixels.
     x0, y0 : float, optional
@@ -447,7 +449,9 @@ class CentralEllipseSample(EllipseSample):
             keyword is ignored in this subclass.
         """
         s = self.extract()
-        self.mean = s[2][0]
+
+        # The central pixel may be masked or nonfinite.
+        self.mean = s[2][0] if self.actual_points > 0 else np.nan
 
         self.gradient = None
         self.gradient_err = None
@@ -463,7 +467,7 @@ class CentralEllipseSample(EllipseSample):
         integrator.integrate(0.0, 0.0)
 
         self.total_points = 1
-        self.actual_points = 1
+        self.actual_points = len(intensities)
 
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
