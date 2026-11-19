@@ -45,6 +45,25 @@ new `~photutils.background.make_morans_i_map` function.
 See :ref:`morans_i_mask` for more details.
 
 
+Isophote Fitting Improvements
+=============================
+
+The elliptical isophote fits of `~photutils.isophote.Ellipse` are now
+about 5 times faster, and about 70 times faster for masked images.
+Nonfinite (NaN or infinity) image values are now excluded from the
+fits, like masked pixels.
+
+Several differences from the STSDAS ``ellipse`` task that
+`photutils.isophote` is based on were also fixed. They include the
+convergence criterion, the ``maxgerr`` stopping criterion, the radius
+where the local intensity gradient is measured, and the starting
+geometry of the inward fits. Because of these fixes, the fitted
+isophotes differ slightly from those of previous versions. The fits
+of noisy images typically need a few more iterations and extend to
+larger semimajor axis lengths. See the :ref:`changelog` for the
+complete list of fixes.
+
+
 Dependency Version Updates
 ==========================
 

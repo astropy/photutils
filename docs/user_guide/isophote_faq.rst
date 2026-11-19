@@ -203,8 +203,11 @@ number of both artificial and real galaxy images. It was found that
 very flattened galaxy images (ellipticity ~ 0.7) cannot be detected by
 such a simple algorithm. By increasing the threshold value the object
 locator becomes stricter, in the sense that it will not detect faint
-objects. The threshold is set with the ``threshold`` keyword of
-:meth:`~photutils.isophote.EllipseGeometry.find_center`. The
-`~photutils.isophote.Ellipse` class does not run the object locator, so
-it uses the center coordinates of the input
-`~photutils.isophote.EllipseGeometry` instance as they are.
+objects. With a threshold value >> 1, the center coordinates are not
+modified.
+
+The `~photutils.isophote.Ellipse` class does not run the object
+locator. To use it, call the
+:meth:`~photutils.isophote.EllipseGeometry.find_center` method of the
+`~photutils.isophote.EllipseGeometry` instance before it is input to
+`~photutils.isophote.Ellipse`.
