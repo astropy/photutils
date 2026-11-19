@@ -128,10 +128,16 @@ class EllipseGeometry:
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
         as a relative value (when ``linear_growth=False``). The default
-        is 0.1.
+        is 0.1. When the geometry is input to
+        `~photutils.isophote.Ellipse`, this value is replaced by the
+        ``step`` keyword of its ``fit_image`` and ``fit_isophote``
+        methods.
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
-        `False`.
+        `False`. When the geometry is input to
+        `~photutils.isophote.Ellipse`, this value is used unless the
+        ``linear`` keyword of its ``fit_image`` and ``fit_isophote``
+        methods is set.
     fix_center : bool, optional
         Keep center of ellipse fixed during fit? The default is False.
     fix_pa : bool, optional
@@ -416,7 +422,8 @@ class EllipseGeometry:
         -------
         sma1, sma2 : float
             The smaller and larger values of semimajor axis length that
-            define the annulus bounding ellipses.
+            define the annulus bounding ellipses. The smaller value is
+            never negative.
         """
         if self.linear_growth:
             a1 = self.sma - self.astep / 2.0
@@ -425,7 +432,9 @@ class EllipseGeometry:
             a1 = self.sma * (1.0 - self.astep / 2.0)
             a2 = self.sma * (1.0 + self.astep / 2.0)
 
-        return a1, a2
+        # The annulus extends to the center if the step is larger than
+        # twice the semimajor axis length.
+        return max(a1, 0.0), a2
 
     def polar_angle_sector_limits(self):
         """
