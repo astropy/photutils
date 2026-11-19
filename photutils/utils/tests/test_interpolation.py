@@ -271,6 +271,20 @@ class TestShepardIDWInterpolator:
         f = IDWInterp(coords, values)
         assert_allclose(f([0, 0], n_neighbors=n_neighbors), 3.0)
 
+    def test_tied_neighbors_many(self):
+        """
+        Test that all of the equidistant data points are used when
+        there are many more of them than ``n_neighbors``.
+        """
+        ring = np.array([[1, 2], [2, 1], [2, -1], [1, -2],
+                         [-1, -2], [-2, -1], [-2, 1], [-1, 2]])
+        far = np.array([[10, 10], [11, 10], [10, 11], [11, 11],
+                        [12, 10], [10, 12], [12, 12], [12, 11]])
+        coords = np.vstack([ring, far])
+        values = np.concatenate([np.arange(8.0), np.full(8, 100.0)])
+        f = IDWInterp(coords, values)
+        assert_allclose(f([0, 0], n_neighbors=2), 3.5)
+
     def test_tied_neighbors_order(self):
         """
         Test that the result does not depend on the order of the data

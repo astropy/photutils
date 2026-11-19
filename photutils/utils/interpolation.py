@@ -226,29 +226,46 @@ class ShepardIDWInterpolator:
         distances, idx : 2D `~numpy.ndarray`
             The distances to the neighbors of each position in
             increasing order and the indices of those neighbors. The
-            arrays have at least ``n_neighbors`` columns. The neighbors
-            that are farther than the last nearest neighbor (column
-            ``n_neighbors - 1``) are not used. Missing neighbors have
-            an infinite distance.
+            arrays have at least ``n_neighbors`` columns. The entries
+            that are not used have an infinite distance.
         """
-        # Query one more neighbor than needed and keep increasing the
-        # number while the last one is still at the same distance as
-        # the last nearest neighbor
+        # All of the data points are neighbors
+        if self.n_coords <= n_neighbors:
+            return self.kdtree.query(positions, k=n_neighbors, eps=eps)
+
+        # Query one more neighbor than needed to find the positions
+        # where it is at the same distance as the last nearest neighbor
+        distances, idx = self.kdtree.query(positions, k=n_neighbors + 1,
+                                           eps=eps)
+        tied = distances[:, n_neighbors] == distances[:, n_neighbors - 1]
+        distances = distances[:, :n_neighbors]
+        idx = idx[:, :n_neighbors]
+        if not np.any(tied):
+            return distances, idx
+
+        # Query more neighbors for those positions only, doubling the
+        # number until the last one is farther than the last nearest
+        # neighbor
+        tied_positions = positions[tied]
+        last_dist = distances[tied, -1:]
         n_query = n_neighbors + 1
         while True:
-            n_query = max(n_neighbors, min(n_query, self.n_coords))
-            distances, idx = self.kdtree.query(positions, k=n_query, eps=eps)
-            last_dist = distances[:, -1]
-            tied = (np.isfinite(last_dist)
-                    & (last_dist == distances[:, n_neighbors - 1]))
-            if n_query >= self.n_coords or not np.any(tied):
+            n_query = min(2 * n_query, self.n_coords)
+            tied_distances, tied_idx = self.kdtree.query(
+                tied_positions, k=n_query, eps=eps)
+            used = tied_distances <= last_dist
+            if n_query == self.n_coords or not np.any(used[:, -1]):
                 break
-            n_query *= 2
 
-        # Remove the columns that are not used for any position
-        used = distances <= distances[:, n_neighbors - 1:n_neighbors]
-        n_used = int(np.max(np.sum(used, axis=1), initial=n_neighbors))
-        return distances[:, :n_used], idx[:, :n_used]
+        n_used = int(np.max(np.sum(used, axis=1)))
+        tied_distances[~used] = np.inf
+        all_distances = np.full((len(positions), n_used), np.inf)
+        all_idx = np.zeros((len(positions), n_used), dtype=idx.dtype)
+        all_distances[:, :n_neighbors] = distances
+        all_idx[:, :n_neighbors] = idx
+        all_distances[tied] = tied_distances[:, :n_used]
+        all_idx[tied] = tied_idx[:, :n_used]
+        return all_distances, all_idx
 
     @deprecated_renamed_argument('reg', 'regularization', '3.0',
                                  until='4.0')
@@ -370,14 +387,11 @@ class ShepardIDWInterpolator:
         if dtype is None:
             dtype = self.values.dtype
 
-        # distances and idx have shape (n_positions, n_neighbors). Mask
+        # distances and idx have at least n_neighbors columns. Mask
         # for valid (finite) distances. Invalid entries arise when
-        # n_neighbors exceeds the number of known data points.
+        # n_neighbors exceeds the number of known data points and for
+        # the columns that are used only for other positions.
         valid = np.isfinite(distances)
-
-        # Exclude the extra neighbors that are farther than the last
-        # nearest neighbor
-        valid &= distances <= distances[:, n_neighbors - 1:n_neighbors]
 
         # Replace nonfinite distances and out-of-bound indices with
         # safe values so that vectorized indexing and arithmetic do not
