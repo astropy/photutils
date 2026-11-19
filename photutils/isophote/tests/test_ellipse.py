@@ -4,6 +4,7 @@ Tests for the ellipse module.
 """
 
 import math
+from concurrent.futures import ThreadPoolExecutor
 
 import astropy.units as u
 import numpy as np
@@ -11,7 +12,7 @@ import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.datasets import make_noise_image
 from photutils.datasets.load import _get_path
@@ -285,6 +286,35 @@ class TestEllipse:
         # All isophotes are extracted in noniterative mode.
         isolist = ellipse.fit_image(sma0=10.0, maxsma=20.0, maxrit=0.0)
         assert np.all(isolist.stop_code[isolist.sma > 0] == 4)
+
+    def test_fit_image_threads(self):
+        """
+        Test that concurrent fit_image calls on the same Ellipse
+        instance, with different parameters, give the same results as
+        serial calls.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        kwargs_list = [{}, {'fix_center': True},
+                       {'fix_pa': True, 'linear': True, 'step': 5.0},
+                       {'fix_eps': True}]
+        expected = [ellipse.fit_image(maxsma=40.0, **kwargs)
+                    for kwargs in kwargs_list]
+
+        n_repeats = 2
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [executor.submit(ellipse.fit_image, maxsma=40.0,
+                                       **kwargs)
+                       for kwargs in kwargs_list * n_repeats]
+            results = [future.result() for future in futures]
+
+        for idx, result in enumerate(results):
+            isolist = expected[idx % len(kwargs_list)]
+            for name in ('sma', 'intens', 'x0', 'y0', 'eps', 'pa'):
+                assert_array_equal(getattr(result, name),
+                                   getattr(isolist, name))
+        assert not np.any(geometry.fix)
+        assert not geometry.linear_growth
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
