@@ -167,6 +167,28 @@ class TestEllipse:
             assert_allclose(radii, isophote.sample.geometry.radius(angles),
                             rtol=1e-10)
 
+    def test_first_inward_isophote(self):
+        """
+        Test that the first inward isophote starts from the geometry of
+        the first fitted isophote instead of the last (outermost) one.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        isolist = ellipse.fit_image(maxsma=40.0)
+
+        first = isolist.get_closest(10.0)
+        assert first.sma == 10.0
+        sma = 10.0 / 1.1
+        step = 1.0 / 1.1 - 1.0
+        expected = ellipse.fit_isophote(sma, step=step,
+                                        isophote_list=[first])
+        isophote = isolist.get_closest(sma)
+        assert isophote.sma == expected.sma
+        assert isophote.x0 == expected.x0
+        assert isophote.y0 == expected.y0
+        assert isophote.eps == expected.eps
+        assert isophote.pa == expected.pa
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)

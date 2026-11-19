@@ -429,6 +429,10 @@ class Ellipse:
             minit_a = 2 * minit if first_isophote else minit
             first_isophote = False
 
+            # The geometry of the last fitted isophote is the initial
+            # guess for the next one.
+            if isophote_list:
+                geometry = isophote_list[-1].sample.geometry
             isophote = self._fit_isophote(geometry, sma, step=step,
                                           conver=conver, minit=minit_a,
                                           maxit=maxit, fflag=fflag,
@@ -507,9 +511,12 @@ class Ellipse:
             if maxsma and sma >= maxsma:
                 break
 
-        # reset sma so as to go inwards.
+        # Reset sma so as to go inwards. As in the STSDAS ellipse task,
+        # the first inward isophote starts from the geometry of the
+        # first isophote, which is the closest one in sma.
         first_isophote = isophote_list[0]
         sma, step = first_isophote.sample.geometry.reset_sma(step)
+        geometry = first_isophote.sample.geometry
 
         # Now, go from initial sma inwards towards center.
         while True:
@@ -534,6 +541,7 @@ class Ellipse:
             # Reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
+            geometry = isophote.sample.geometry
 
             # Figure out the next sma. If it exceeded the user-defined
             # minimum, or is too small, bail out from this loop.
@@ -689,7 +697,13 @@ class Ellipse:
             The fitted isophote. The fitted isophote is also appended to
             the input list input to the ``isophote_list`` parameter.
         """
-        return self._fit_isophote(self._geometry, sma, step=step,
+        # If available, geometry from last fitted isophote will be
+        # used as initial guess for next isophote.
+        geometry = self._geometry
+        if isophote_list:
+            geometry = isophote_list[-1].sample.geometry
+
+        return self._fit_isophote(geometry, sma, step=step,
                                   conver=conver, minit=minit, maxit=maxit,
                                   fflag=fflag, sclip=sclip, n_clip=n_clip,
                                   integrmode=integrmode, linear=linear,
@@ -703,15 +717,9 @@ class Ellipse:
         Fit a single isophote, starting from the input geometry.
 
         See `fit_isophote` for a description of the parameters. The
-        input ``geometry`` is the initial guess when ``isophote_list``
-        is empty. Otherwise, the geometry of the last isophote in
-        ``isophote_list`` is used.
+        input ``geometry`` is the initial guess. If ``isophote_list``
+        is not `None`, a valid fitted isophote is appended to it.
         """
-        # If available, geometry from last fitted isophote will be
-        # used as initial guess for next isophote.
-        if isophote_list:
-            geometry = isophote_list[-1].sample.geometry
-
         # Do the fit.
         if noniterate or (maxrit and sma > maxrit):
             isophote = self._non_iterative(sma, step, linear, geometry,
