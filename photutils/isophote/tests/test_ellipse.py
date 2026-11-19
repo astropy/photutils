@@ -5,6 +5,7 @@ Tests for the ellipse module.
 
 import math
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -243,6 +244,15 @@ class TestEllipse:
         assert np.isnan(isolist[0].intens)
         assert isolist[0].n_data == 0
         assert np.all(np.isfinite(isolist.intens[1:]))
+
+    def test_invalid_image(self):
+        match = 'image must not be a Quantity array'
+        with pytest.raises(TypeError, match=match):
+            Ellipse(self.data * u.Jy)
+
+        match = 'image must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            Ellipse(self.data[0])
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)

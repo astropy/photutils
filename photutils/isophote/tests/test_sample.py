@@ -3,6 +3,7 @@
 Tests for the sample module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 
@@ -108,3 +109,13 @@ def test_zero_inner_sma(integrmode):
     sample.update(fixed_parameters=DEFAULT_FIX)
     assert sample.actual_points > 0
     assert np.isfinite(sample.mean)
+
+
+def test_invalid_image():
+    match = 'image must not be a Quantity array'
+    with pytest.raises(TypeError, match=match):
+        EllipseSample(DATA * u.Jy, 10.0)
+
+    match = 'image must be a 2D array'
+    with pytest.raises(ValueError, match=match):
+        EllipseSample(DATA[0], 10.0)

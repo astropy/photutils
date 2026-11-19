@@ -16,7 +16,8 @@ from photutils.isophote.fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG,
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
-from photutils.isophote.sample import CentralEllipseSample, EllipseSample
+from photutils.isophote.sample import (CentralEllipseSample, EllipseSample,
+                                       _validate_image)
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
@@ -176,6 +177,7 @@ class Ellipse:
     @deprecated_renamed_argument('threshold', None, '3.2', until='4.0')
     def __init__(self, image, geometry=None,
                  threshold=None):  # noqa: ARG002
+        _validate_image(image)
         self.image = image
 
         data = np.ma.getdata(image)

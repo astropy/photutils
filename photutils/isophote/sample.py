@@ -5,6 +5,7 @@ Tools for sampling data along an elliptical path.
 
 import copy
 
+import astropy.units as u
 import numpy as np
 
 from photutils.isophote.geometry import EllipseGeometry
@@ -21,6 +22,32 @@ _DEPRECATED_SAMPLE_ATTRIBUTES = {
 }
 
 __all__ = ['EllipseSample']
+
+
+def _validate_image(image):
+    """
+    Validate the input image for the isophote fitting tools.
+
+    Parameters
+    ----------
+    image : 2D `~numpy.ndarray`
+        The input image.
+
+    Raises
+    ------
+    TypeError
+        If ``image`` is a `~astropy.units.Quantity` array.
+
+    ValueError
+        If ``image`` is not a 2D array.
+    """
+    if isinstance(image, u.Quantity):
+        msg = ('image must not be a Quantity array. Input the image '
+               'values without units, e.g., image.value.')
+        raise TypeError(msg)
+    if np.ndim(image) != 2:
+        msg = 'image must be a 2D array'
+        raise ValueError(msg)
 
 
 class EllipseSample:
@@ -110,6 +137,7 @@ class EllipseSample:
                  position_angle=0.0, sclip=3.0, n_clip=0,
                  linear_growth=False,
                  integrmode='bilinear', geometry=None):
+        _validate_image(image)
         self.image = image
         self.integrmode = integrmode
 
