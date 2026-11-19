@@ -1841,12 +1841,14 @@ class ApertureStats:
             read by the quality flags are filled, and those columns
             have the same meaning as in the batch drivers.
         """
-        # Use a local copy of the SigmaClip instance because SigmaClip
-        # stores internal state on the instance during calls. This
-        # method is reachable from two different cached properties (the
-        # center- and sum-footprint cutouts), which do not share a lock,
-        # so calling a shared instance from multiple threads could
-        # silently corrupt the results.
+        # Use a local copy of the SigmaClip instance because, in astropy
+        # versions before 8.1, SigmaClip stores internal state on the
+        # instance during calls. This method is reachable from two
+        # different cached properties (the center- and sum-footprint
+        # cutouts), which do not share a lock, so calling a shared
+        # instance from multiple threads could silently corrupt the
+        # results. The copy can be removed when astropy >= 8.1 is
+        # required.
         sigma_clip = copy(self.sigma_clip)
 
         data_cutouts = []

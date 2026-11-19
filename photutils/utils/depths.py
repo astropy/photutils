@@ -366,10 +366,11 @@ class ImageDepth:
         # identical results.
         rng = np.random.default_rng(self.seed)
 
-        # Use a local copy of the SigmaClip instance because SigmaClip
-        # stores internal state on the instance during calls, so a
-        # shared instance is not safe to call concurrently from multiple
-        # threads.
+        # Use a local copy of the SigmaClip instance because, in astropy
+        # versions before 8.1, SigmaClip stores internal state on the
+        # instance during calls, so a shared instance is not safe to
+        # call concurrently from multiple threads. The copy can be
+        # removed when astropy >= 8.1 is required.
         sigma_clip = copy(self.sigma_clip)
 
         apertures = []
