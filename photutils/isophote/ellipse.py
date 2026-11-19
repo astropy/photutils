@@ -260,7 +260,7 @@ class Ellipse:
             if a `~photutils.isophote.EllipseGeometry` instance was
             input to the `~photutils.isophote.Ellipse` constructor, its
             ``sma`` value will be used. Otherwise, a default value of
-            10. will be used.
+            10. will be used. The starting value must be positive.
 
         minsma : float, optional
             The minimum value for the semimajor axis length (pixels).
@@ -402,12 +402,13 @@ class Ellipse:
         # Multiple fitted isophotes will be stored here.
         isophote_list = []
 
-        # get starting sma from appropriate source: keyword parameter,
-        # internal EllipseGeometry instance, or fixed default value.
-        if not sma0:
-            sma = self._geometry.sma if self._geometry else 10.0
-        else:
-            sma = sma0
+        # Get starting sma from appropriate source: keyword parameter or
+        # internal EllipseGeometry instance.
+        sma = self._geometry.sma if sma0 is None else sma0
+        if sma <= 0:
+            msg = ('The starting semimajor axis length (sma0 or the sma of '
+                   'the input geometry) must be positive')
+            raise ValueError(msg)
 
         # Override the geometry parameters set in this call on a copy
         # so that they do not persist in the input geometry instance.
@@ -480,7 +481,7 @@ class Ellipse:
                     and ((isophote.stop_code == 5
                           and isophote_list[-2].stop_code == 5)
                          or isophote.stop_code == 1)):
-                    if maxsma and maxsma > isophote.sma:
+                    if maxsma is not None and maxsma > isophote.sma:
                         # If a maximum sma value was provided by
                         # user, and the current sma is smaller than
                         # maxsma, keep growing sma in noniterative
@@ -504,7 +505,7 @@ class Ellipse:
             gradient_rel_err = isophote.gradient_rel_err
             exceeded = gradient_rel_err is None or gradient_rel_err > maxgerr
             if exceeded and previous_exceeded and len(isophote_list) > 1:
-                if maxsma and maxsma > isophote.sma:
+                if maxsma is not None and maxsma > isophote.sma:
                     noiter = True
                 else:
                     break
@@ -513,7 +514,7 @@ class Ellipse:
             # Update sma. If exceeded user-defined
             # maximum, bail out from this loop.
             sma = isophote.sample.geometry.update_sma(step)
-            if maxsma and sma >= maxsma:
+            if maxsma is not None and sma >= maxsma:
                 break
 
         # Reset sma so as to go inwards. As in the STSDAS ellipse task,
@@ -726,7 +727,7 @@ class Ellipse:
         is not `None`, a valid fitted isophote is appended to it.
         """
         # Do the fit.
-        if noniterate or (maxrit and sma > maxrit):
+        if noniterate or (maxrit is not None and sma > maxrit):
             isophote = self._non_iterative(sma, step, linear, geometry,
                                            sclip, n_clip, integrmode)
         else:

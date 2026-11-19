@@ -256,6 +256,30 @@ class TestEllipse:
         with pytest.raises(ValueError, match=match):
             Ellipse(self.data[0])
 
+    @pytest.mark.parametrize(('sma0', 'geometry_sma'),
+                             [(0.0, 10.0), (-1.0, 10.0), (None, 0.0)])
+    def test_invalid_sma0(self, sma0, geometry_sma):
+        geometry = EllipseGeometry(256.0, 256.0, geometry_sma, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        match = 'The starting semimajor axis length'
+        with pytest.raises(ValueError, match=match):
+            ellipse.fit_image(sma0=sma0)
+
+    def test_zero_maxsma_maxrit(self):
+        """
+        Test that zero values of maxsma and maxrit are used instead of
+        being treated as None.
+        """
+        ellipse = Ellipse(self.data)
+
+        # No isophotes are fit outwards from sma0.
+        isolist = ellipse.fit_image(sma0=10.0, maxsma=0.0)
+        assert isolist.sma[-1] == 10.0
+
+        # All isophotes are extracted in noniterative mode.
+        isolist = ellipse.fit_image(sma0=10.0, maxsma=20.0, maxrit=0.0)
+        assert np.all(isolist.stop_code[isolist.sma > 0] == 4)
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)
