@@ -68,6 +68,22 @@ Bug Fixes
     about half a pixel in x and y. The last image row and column are
     now also sampled. [#2543]
 
+  - Fixed ``build_ellipse_model`` for galaxies whose position angle
+    is near 0 or 180 degrees. The fitted position angles of
+    neighboring isophotes can then jump by almost 180 degrees, and
+    the interpolated model isophotes swept through all the angles in
+    between. [#2548]
+
+  - Fixed ``Ellipse.fit_image`` raising an ``IndexError`` when the
+    first isophote has no valid data points, e.g., for a fully masked
+    image or a starting ellipse outside of the image. It now emits a
+    warning and returns an empty ``IsophoteList``. [#2548]
+
+  - Fixed ``Ellipse.fit_image`` modifying the input
+    ``EllipseGeometry`` instance. The ``fix_center``, ``fix_pa``,
+    ``fix_eps``, and ``linear`` keywords now apply only to that call.
+    Previously, they persisted in subsequent calls. [#2548]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
