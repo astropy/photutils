@@ -199,9 +199,10 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     Returns
     -------
     result : 2D float32 `~numpy.ndarray`
-        The Moran's I map. A pixel is NaN if it is excluded, if fewer
-        than 25% of the pixels of a full patch are usable, or if the
-        variance of its patch is too small to be measured (see Notes).
+        The Moran's I map. A pixel is NaN if it is excluded, if none
+        of its eight nearest neighbors are usable, if fewer than 25% of
+        the pixels of a full patch are usable, or if the variance of
+        its patch is too small to be measured (see Notes).
 
     See Also
     --------
@@ -580,7 +581,8 @@ def _diamond_morphology(mask, radius, *, erode):
             segments = grown
 
         # Combine the segments in the rows at this offset above and
-        # below each row
+        # below each row. The two rows are the same row for an offset
+        # of zero, so the set then has a single start.
         offset = radius - half_width
         for start in {radius - offset, radius + offset}:
             rows = segments[start:start + n_rows, cols]
@@ -647,9 +649,10 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
         is correlated between pixels. The background value is taken
         from the lowest peak of the distribution of the statistic, so
         it can be estimated even if most of the patches contain
-        sources. A warning is raised if nearly all of the patches
-        contain sources, because the background value then cannot be
-        estimated. Ignored if ``percent`` is input.
+        sources. A warning is raised if the background value cannot be
+        estimated, which happens if nearly all of the patches contain
+        sources or if the background changes strongly across each
+        patch. Ignored if ``percent`` is input.
 
     percent : float or `None`, optional
         The percentage of the pixels with a value of the statistic to
@@ -659,7 +662,9 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
         flagged even if the image contains no sources. The final
         masked fraction differs somewhat because holes in the flagged
         regions are then filled and the binary opening removes small
-        regions.
+        regions. For images with more than about one million pixels,
+        the threshold is calculated from a regularly-spaced subsample
+        of the statistic, so the percentage is approximate.
 
     mask : 2D bool array_like, optional
         A boolean mask with the same shape as ``data``, where `True`
@@ -671,7 +676,12 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
         `~photutils.background.Background2D`. Bad pixels with
         extreme values (e.g., hot pixels) should be excluded, because
         such a pixel dominates the statistic of every patch that
-        contains it, which hides the sources near it.
+        contains it, which hides the sources near it. Blank regions
+        that are filled with a constant value instead of NaN (e.g.,
+        the zeros outside of the footprint of a mosaic) should also be
+        excluded. The step at their edges is otherwise flagged, and
+        the hole filling then flags everything that those edges
+        enclose.
 
     weights : 2D array_like, optional
         The weights of the pixels used to calculate the statistic,

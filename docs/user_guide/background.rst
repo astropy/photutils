@@ -237,7 +237,7 @@ weighted (e.g., by an inverse-variance map) with the ``weights``
 keyword. Bad pixels with extreme values (e.g., hot pixels) should
 always be excluded, because such a pixel dominates the statistic of
 every patch that contains it, which hides the sources near it.
-Non-finite data values and pixels with a non-positive weight are
+Nonfinite data values and pixels with a nonpositive weight are
 excluded automatically. Excluded pixels are not flagged as sources
 unless they are enclosed by source pixels, so the bad-pixel mask must
 be combined with the source mask when the background is estimated.
@@ -247,10 +247,21 @@ Let's exclude a bad column of pixels::
     >>> bad_mask = np.zeros(data.shape, dtype=bool)
     >>> bad_mask[:, 300] = True
     >>> source_mask = make_morans_i_mask(data, mask=bad_mask)
-    >>> bkg = Background2D(data, (50, 50), mask=source_mask | bad_mask)
+    >>> bkg = Background2D(data, (50, 50), mask=source_mask | bad_mask,
+    ...                    exclude_percentile=50.0)
 
-`~photutils.background.Background2D` masks non-finite data values
-automatically, so they do not need to be included in the combined mask.
+The source mask covers a large fraction of the image, so
+``exclude_percentile`` is increased to keep the boxes that are partly
+covered by the mask. `~photutils.background.Background2D` masks
+nonfinite data values automatically, so they do not need to be included
+in the combined mask.
+
+Blank regions that are filled with a constant value instead of NaN
+(e.g., the zeros outside of the footprint of a mosaic) should also be
+excluded with the ``mask`` keyword. The step at the edges of such a
+region is otherwise flagged as a source, and the hole filling then
+flags everything that those edges enclose, which can be the whole
+image.
 
 The statistic has a square footprint around each source because the
 patch is square. The default number of iterations of the binary opening

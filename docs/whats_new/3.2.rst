@@ -34,7 +34,8 @@ mask can be made before the background is known and then input to
     >>> from photutils.datasets import make_100gaussians_image
     >>> data = make_100gaussians_image()
     >>> mask = make_morans_i_mask(data)
-    >>> bkg = Background2D(data, (50, 50), mask=mask, filter_size=(3, 3))
+    >>> bkg = Background2D(data, (50, 50), mask=mask, filter_size=(3, 3),
+    ...                    exclude_percentile=50.0)
 
 The threshold is set relative to the typical value of the statistic
 in the image, so it adapts to images with correlated noise such as
