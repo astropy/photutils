@@ -190,48 +190,44 @@ class Isophote:
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since='3.0', until='4.0')
 
-    @staticmethod
-    def _raise_sma_error(err):
-        msg = "Comparison object does not have a 'sma' attribute"
-        raise AttributeError(msg) from err
-
-    # This method is useful for sorting lists of instances. Note
-    # that __lt__ is the python3 way of supporting sorting.
+    # These methods are useful for sorting lists of instances. The
+    # isophotes are compared by their semimajor axis length. Objects
+    # without a semimajor axis length are not comparable.
     def __lt__(self, other):
         try:
             return self.sma < other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __gt__(self, other):
         try:
             return self.sma > other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __le__(self, other):
         try:
             return self.sma <= other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __ge__(self, other):
         try:
             return self.sma >= other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __eq__(self, other):
         try:
             return self.sma == other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __ne__(self, other):
         try:
             return self.sma != other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __str__(self):
         return str(self.to_table())
@@ -487,12 +483,6 @@ class CentralPixel(Isophote):
         self.pa_err = 0.0
         self.x0_err = 0.0
         self.y0_err = 0.0
-
-    def __eq__(self, other):
-        try:
-            return self.sma == other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
 
     @property
     def eps(self):

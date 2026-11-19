@@ -137,18 +137,20 @@ def test_isophote_comparisons():
     assert iso1 != iso2
     assert iso0 == iso1
 
-    with pytest.raises(AttributeError):
-        assert iso1 < sample1
-    with pytest.raises(AttributeError):
-        assert iso1 > sample1
-    with pytest.raises(AttributeError):
-        assert iso1 <= sample1
-    with pytest.raises(AttributeError):
-        assert iso1 >= sample1
-    with pytest.raises(AttributeError):
-        assert iso1 == sample1
-    with pytest.raises(AttributeError):
-        assert iso1 != sample1
+    # Objects without a semimajor axis length cannot be ordered and
+    # are never equal to an isophote.
+    match = 'not supported between instances'
+    for other in (sample1, None, 1.0):
+        with pytest.raises(TypeError, match=match):
+            assert iso1 < other
+        with pytest.raises(TypeError, match=match):
+            assert iso1 > other
+        with pytest.raises(TypeError, match=match):
+            assert iso1 <= other
+        with pytest.raises(TypeError, match=match):
+            assert iso1 >= other
+        assert iso1 != other
+        assert not iso1 == other  # noqa: SIM201
 
 
 class TestIsophoteList:
