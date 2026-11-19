@@ -177,7 +177,7 @@ class Ellipse:
     @deprecated_renamed_argument('threshold', None, '3.2', until='4.0')
     def __init__(self, image, geometry=None,
                  threshold=None):  # noqa: ARG002
-        _validate_image(image)
+        image = _validate_image(image)
         self.image = image
 
         data = np.ma.getdata(image)

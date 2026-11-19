@@ -6,6 +6,7 @@ Tests for the sample module.
 import astropy.units as u
 import numpy as np
 import pytest
+from numpy.testing import assert_array_equal
 
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
@@ -119,3 +120,10 @@ def test_invalid_image():
     match = 'image must be a 2D array'
     with pytest.raises(ValueError, match=match):
         EllipseSample(DATA[0], 10.0)
+
+
+def test_array_like_image():
+    sample = EllipseSample(DATA.tolist(), 10.0)
+    assert isinstance(sample.image, np.ndarray)
+    expected = EllipseSample(DATA, 10.0)
+    assert_array_equal(sample.extract(), expected.extract())

@@ -256,6 +256,11 @@ class TestEllipse:
         with pytest.raises(ValueError, match=match):
             Ellipse(self.data[0])
 
+    def test_array_like_image(self):
+        ellipse = Ellipse(self.data.tolist())
+        assert isinstance(ellipse.image, np.ndarray)
+        assert_allclose(ellipse.image, self.data)
+
     @pytest.mark.parametrize(('sma0', 'geometry_sma'),
                              [(0.0, 10.0), (-1.0, 10.0), (np.nan, 10.0),
                               (None, 0.0)])
