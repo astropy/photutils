@@ -189,7 +189,6 @@ class _BiLinearIntegrator(_Integrator):
 
         # ignore data point if outside image boundaries
         if (i in self._i_range) and (j in self._j_range):
-            # in the future, will need to handle masked pixels here
             qx = 1.0 - fx
             qy = 1.0 - fy
 
@@ -203,7 +202,7 @@ class _BiLinearIntegrator(_Integrator):
                           + self._image[j][i + 1] * fx * qy
                           + self._image[j + 1][i + 1] * fy * fx)
 
-                # skip samples that include nonfinite pixels
+                # Skip samples that include nonfinite pixels.
                 if math.isfinite(sample):
                     self._store_results(phi, radius, sample)
 

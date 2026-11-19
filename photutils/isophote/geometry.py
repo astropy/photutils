@@ -185,9 +185,9 @@ class EllipseGeometry:
         Parameters
         ----------
         image : 2D `~numpy.ndarray`
-            The image array. Masked arrays are not recognized here.
-            This assumes that centering should always be done on valid
-            pixels.
+            The image array. Masked pixels (if ``image`` is a
+            `~numpy.ma.MaskedArray`) and nonfinite (NaN or infinity)
+            values are excluded.
 
         threshold : float, optional
             The centerer threshold. To turn off the centerer, set this

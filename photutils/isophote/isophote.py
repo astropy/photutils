@@ -116,7 +116,7 @@ class Isophote:
         The number of discarded data points. Data points can be
         discarded either because they are physically outside the image
         frame boundaries, because they were rejected by sigma-clipping,
-        or they are masked.
+        or they are masked or nonfinite.
     a3, b3, a4, b4 : float
         The higher order harmonics that measure the deviations from a
         perfect ellipse. These values are actually the raw harmonic
@@ -760,7 +760,7 @@ class IsophoteList:
 
         Data points can be discarded either because they are physically
         outside the image frame boundaries, because they were rejected
-        by sigma-clipping, or they are masked.
+        by sigma-clipping, or they are masked or nonfinite.
         """
         return self._collect_as_array('n_flag', dtype=int)
 

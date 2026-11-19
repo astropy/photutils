@@ -135,8 +135,9 @@ class EllipseSample:
     actual_points : int
         The actual number of sample values that were taken from the
         image. It can be smaller than ``total_points`` when the ellipse
-        encompasses regions outside the image, or when sigma-clipping
-        removed some of the points.
+        encompasses regions outside the image, when it encompasses
+        masked or nonfinite pixels, or when sigma-clipping removed some
+        of the points.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')

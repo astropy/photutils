@@ -307,8 +307,8 @@ class Ellipse:
             smaller than this, the iterations will stop and the current
             `~photutils.isophote.Isophote` will be returned. Flagged
             data points are points that either lie outside the image
-            frame, are masked, or were rejected by sigma-clipping. The
-            default is 0.7.
+            frame, are masked or nonfinite, or were rejected by
+            sigma-clipping. The default is 0.7.
 
         maxgerr : float, optional
             The maximum acceptable relative error in the local
@@ -625,8 +625,8 @@ class Ellipse:
             smaller than this, the iterations will stop and the current
             `~photutils.isophote.Isophote` will be returned. Flagged
             data points are points that either lie outside the image
-            frame, are masked, or were rejected by sigma-clipping. The
-            default is 0.7.
+            frame, are masked or nonfinite, or were rejected by
+            sigma-clipping. The default is 0.7.
 
         maxgerr : float, optional
             This keyword has no effect.
