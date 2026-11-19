@@ -343,9 +343,11 @@ class TestEllipse:
             Ellipse(self.data[0])
 
     def test_array_like_image(self):
-        ellipse = Ellipse(self.data.tolist())
-        assert isinstance(ellipse.image, np.ndarray)
-        assert_allclose(ellipse.image, self.data)
+        data = make_test_image(nx=100, ny=100, seed=0)
+        isophote = Ellipse(data).fit_isophote(20.0)
+        isophote_list = Ellipse(data.tolist()).fit_isophote(20.0)
+        assert isophote_list.intens == isophote.intens
+        assert isophote_list.eps == isophote.eps
 
     @pytest.mark.parametrize(('sma0', 'geometry_sma'),
                              [(0.0, 10.0), (-1.0, 10.0), (np.nan, 10.0),
@@ -613,3 +615,83 @@ class TestEllipse:
         assert_allclose(np.median(isolist.pa[mask]), np.deg2rad(40.0),
                         atol=np.deg2rad(2.0))
         _assert_sma_grid(isolist)
+
+    def test_round_starting_ellipse(self):
+        """
+        Test a starting ellipse with an ellipticity of exactly zero,
+        for which the position angle correction diverges.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.0, 0.0)
+        isolist = Ellipse(self.data, geometry=geometry).fit_image(
+            maxsma=40.0)
+        mask = isolist.sma > 5
+        assert np.count_nonzero(mask) > 10
+        assert_allclose(isolist.eps[mask], 0.2, atol=0.01)
+        assert_allclose(isolist.pa[mask], PA, atol=0.02)
+
+    def test_fixed_round_ellipse(self):
+        """
+        Test that a fixed ellipticity of zero is not changed.
+        """
+        geometry = EllipseGeometry(256.5, 255.5, 20.0, 0.0, 0.3,
+                                   fix_eps=True)
+        isolist = Ellipse(self.data, geometry=geometry).fit_image(
+            maxsma=40.0)
+        assert len(isolist) > 10
+        assert np.all(isolist.eps == 0.0)
+        mask = isolist.sma > 5
+        assert np.all(isolist.pa[mask] == 0.3)
+        assert_allclose(isolist.x0[mask], 256.0, atol=0.1)
+        assert_allclose(isolist.y0[mask], 256.0, atol=0.1)
+
+    def test_first_inward_sma(self):
+        """
+        Test that the first inward isophote is not fit if its semimajor
+        axis length is below the minimum.
+        """
+        # A linear step larger than the starting sma
+        geometry = EllipseGeometry(256.0, 256.0, 3.0, 0.2, PA)
+        isolist = Ellipse(self.data, geometry=geometry).fit_image(
+            step=5.0, linear=True, maxsma=15.0)
+        assert_allclose(isolist.sma, [0.0, 3.0, 8.0, 13.0])
+
+        geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA)
+        isolist = Ellipse(self.data, geometry=geometry).fit_image(
+            minsma=9.5, maxsma=12.0)
+        assert_allclose(isolist.sma, [10.0, 11.0])
+
+    @pytest.mark.parametrize('step', [0.0, -0.1])
+    def test_invalid_step(self, step):
+        match = 'step must be positive'
+        with pytest.raises(ValueError, match=match):
+            Ellipse(self.data).fit_image(step=step)
+
+    def test_maxsma_outside_image(self):
+        """
+        Test that the outward growth in noniterative mode stops at an
+        isophote that lies entirely outside of the image.
+        """
+        data = make_test_image(nx=200, ny=200, pa=PA, noise=1.0, seed=0)
+        isolist = Ellipse(data).fit_image(maxsma=400.0)
+        assert isolist[-1].stop_code == 4
+        assert np.all(isolist.n_data > 0)
+        assert np.all(np.isfinite(isolist.intens))
+        assert 150 < isolist.sma[-1] < 220
+
+    def test_fit_isophote_linear(self):
+        """
+        Test that fit_isophote uses the linear_growth attribute of the
+        geometry unless the linear keyword is set.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA,
+                                   linear_growth=True)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        isophote = ellipse.fit_isophote(20.0, step=2.0)
+        assert isophote.sample.geometry.linear_growth
+        assert isophote.sample.geometry.astep == 2.0
+
+        isophote = ellipse.fit_isophote(20.0, linear=False)
+        assert not isophote.sample.geometry.linear_growth
+
+        assert geometry.linear_growth
+        assert geometry.astep == 0.1
