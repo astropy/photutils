@@ -204,6 +204,12 @@ class TestIsophoteList:
         assert isinstance(result.b3, np.ndarray)
         assert isinstance(result.b4, np.ndarray)
 
+        # The counts and stop codes are integers and the validity flags
+        # are booleans.
+        for name in ('n_iter', 'n_data', 'n_flag', 'stop_code'):
+            assert getattr(result, name).dtype.kind == 'i'
+        assert result.valid.dtype == bool
+
         samples = result.sample
         assert isinstance(samples, list)
         assert isinstance(samples[0], EllipseSample)

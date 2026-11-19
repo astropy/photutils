@@ -613,8 +613,8 @@ class IsophoteList:
         index = (np.abs(self.sma - sma)).argmin()
         return self._list[index]
 
-    def _collect_as_array(self, attr_name):
-        return np.array(self._collect_as_list(attr_name), dtype=float)
+    def _collect_as_array(self, attr_name, dtype=float):
+        return np.array(self._collect_as_list(attr_name), dtype=dtype)
 
     def _collect_as_list(self, attr_name):
         return [getattr(iso, attr_name) for iso in self._list]
@@ -752,7 +752,7 @@ class IsophoteList:
         """
         The number of extracted data points.
         """
-        return self._collect_as_array('n_data')
+        return self._collect_as_array('n_data', dtype=int)
 
     @property
     def n_flag(self):
@@ -763,28 +763,28 @@ class IsophoteList:
         outside the image frame boundaries, because they were rejected
         by sigma-clipping, or they are masked.
         """
-        return self._collect_as_array('n_flag')
+        return self._collect_as_array('n_flag', dtype=int)
 
     @property
     def n_iter(self):
         """
         The number of iterations used to fit the isophote.
         """
-        return self._collect_as_array('n_iter')
+        return self._collect_as_array('n_iter', dtype=int)
 
     @property
     def valid(self):
         """
         The status of the fitting operation.
         """
-        return self._collect_as_array('valid')
+        return self._collect_as_array('valid', dtype=bool)
 
     @property
     def stop_code(self):
         """
         The fitting stop code.
         """
-        return self._collect_as_array('stop_code')
+        return self._collect_as_array('stop_code', dtype=int)
 
     @property
     def tflux_e(self):
