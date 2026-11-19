@@ -126,6 +126,9 @@ def test_model_inputs():
     match = 'isolist must contain at least 4 isophotes'
     with pytest.raises(ValueError, match=match):
         build_ellipse_model(data.shape, isolist[-3:])
+    model = build_ellipse_model(data.shape, isolist[-4:])
+    assert np.all(np.isfinite(model))
+    assert np.max(model) > 0
 
     match = 'must be sorted by strictly increasing semimajor axis'
     with pytest.raises(ValueError, match=match):

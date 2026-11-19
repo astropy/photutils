@@ -127,3 +127,26 @@ def test_array_like_image():
     assert isinstance(sample.image, np.ndarray)
     expected = EllipseSample(DATA, 10.0)
     assert_array_equal(sample.extract(), expected.extract())
+
+
+@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
+                                        MEDIAN])
+def test_nonfinite_values(integrmode):
+    """
+    Test that nonfinite values are excluded from the sample, like
+    masked pixels.
+    """
+    # The nonfinite pixels are on the major and minor axes of the
+    # elliptical path.
+    data = DATA.copy()
+    data[254:259, 294:299] = np.nan
+    data[286:291, 254:259] = np.inf
+    values = EllipseSample(data, 40.0, integrmode=integrmode).extract()
+    assert np.all(np.isfinite(values[2]))
+
+    masked = np.ma.masked_invalid(data)
+    expected = EllipseSample(masked, 40.0, integrmode=integrmode).extract()
+    assert_array_equal(values, expected)
+
+    unmasked = EllipseSample(DATA, 40.0, integrmode=integrmode).extract()
+    assert not np.array_equal(values[2], unmasked[2])
