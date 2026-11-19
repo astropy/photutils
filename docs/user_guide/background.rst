@@ -635,13 +635,14 @@ the output background and background RMS maps. The ``fill_value``
 keyword defines the value assigned in the output background and
 background RMS maps where the input ``coverage_mask`` is `True`.
 
-Let's create a rotated image that has blank areas and plot it:
+Let's create a rotated image whose blank areas contain NaN values and
+plot it:
 
 .. doctest-skip::
 
     >>> from astropy.visualization import simple_norm
     >>> from scipy.ndimage import rotate
-    >>> data3 = rotate(data2, -45.0)
+    >>> data3 = rotate(data2, -45.0, cval=np.nan)
     >>> norm = simple_norm(data3, 'sqrt', percent=99.5)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data3, norm=norm, origin='lower')
@@ -659,7 +660,7 @@ Let's create a rotated image that has blank areas and plot it:
     y, x = np.mgrid[:ny, :nx]
     gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.0)
+    data3 = rotate(data2, -45.0, cval=np.nan)
     norm = simple_norm(data3, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(data3, norm=norm, origin='lower')
@@ -667,28 +668,29 @@ Let's create a rotated image that has blank areas and plot it:
 
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
-have no data. For this example, we set ``fill_value`` to 0.0, which is
-also the default. For real data, one can usually create a coverage mask
-from a weight or noise image.
+have no data. For this example, we set ``fill_value`` to NaN, so that
+the regions without data are also NaN in the output maps (the default
+is 0.0). For real data, one can usually create a coverage mask from a
+weight or noise image.
 
-Because the blank regions in this example contain zeros, the coverage
-mask must also be input as the ``mask`` keyword of
-`~photutils.background.make_morans_i_mask`, so that the blank regions
-are excluded from the statistic. Otherwise, every pixel with data would
-be flagged as a source. Blank regions that contain NaN
-values are excluded automatically. The excluded pixels are not flagged
-as sources, so the source mask and the coverage mask are input
-separately into `~photutils.background.Background2D`. As in the example
-above, we set ``exclude_percentile`` to 50.0, which also keeps more
-boxes around the edges of the rotated image:
+Because the blank regions in this example contain NaN values,
+`~photutils.background.make_morans_i_mask` excludes them from the
+statistic automatically. Blank regions that contain zeros (or another
+constant fill value) must instead be input with its ``mask`` keyword.
+Otherwise, every pixel with data would be flagged as a source. The
+excluded pixels are not flagged as sources, so the source mask and the
+coverage mask are input separately into
+`~photutils.background.Background2D`. As in the example above, we set
+``exclude_percentile`` to 50.0, which also keeps more boxes around the
+edges of the rotated image:
 
 .. doctest-skip::
 
-    >>> coverage_mask = (data3 == 0)
-    >>> mask3 = make_morans_i_mask(data3, mask=coverage_mask)
+    >>> coverage_mask = np.isnan(data3)
+    >>> mask3 = make_morans_i_mask(data3)
     >>> bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
     ...                     mask=mask3, coverage_mask=coverage_mask,
-    ...                     fill_value=0.0, exclude_percentile=50.0)
+    ...                     fill_value=np.nan, exclude_percentile=50.0)
 
 Let's plot the background image, in which the regions without
 coverage are set to ``fill_value``:
@@ -713,12 +715,12 @@ coverage are set to ``fill_value``:
     y, x = np.mgrid[:ny, :nx]
     gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.0)
-    coverage_mask = (data3 == 0)
-    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
+    data3 = rotate(data2, -45.0, cval=np.nan)
+    coverage_mask = np.isnan(data3)
+    mask3 = make_morans_i_mask(data3)
     bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
                         mask=mask3, coverage_mask=coverage_mask,
-                        fill_value=0.0, exclude_percentile=50.0)
+                        fill_value=np.nan, exclude_percentile=50.0)
     norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(bkg3.background, norm=norm, origin='lower')
@@ -747,12 +749,12 @@ Finally, let's subtract the background from the image and plot it:
     y, x = np.mgrid[:ny, :nx]
     gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.0)
-    coverage_mask = (data3 == 0)
-    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
+    data3 = rotate(data2, -45.0, cval=np.nan)
+    coverage_mask = np.isnan(data3)
+    mask3 = make_morans_i_mask(data3)
     bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
                         mask=mask3, coverage_mask=coverage_mask,
-                        fill_value=0.0, exclude_percentile=50.0)
+                        fill_value=np.nan, exclude_percentile=50.0)
     data_sub = data3 - bkg3.background
     norm = simple_norm(data_sub, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
@@ -800,12 +802,12 @@ masked pixels for ``exclude_percentile``.
     y, x = np.mgrid[:ny, :nx]
     gradient = x * y / 5000.0
     data2 = data + gradient
-    data3 = rotate(data2, -45.0)
-    coverage_mask = (data3 == 0)
-    mask3 = make_morans_i_mask(data3, mask=coverage_mask)
+    data3 = rotate(data2, -45.0, cval=np.nan)
+    coverage_mask = np.isnan(data3)
+    mask3 = make_morans_i_mask(data3)
     bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
                         mask=mask3, coverage_mask=coverage_mask,
-                        fill_value=0.0, exclude_percentile=50.0)
+                        fill_value=np.nan, exclude_percentile=50.0)
     norm = simple_norm(data3, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
     ax.imshow(data3, norm=norm, origin='lower')
