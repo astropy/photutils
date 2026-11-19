@@ -547,9 +547,12 @@ and the background-subtracted image:
 
 The background is extrapolated beyond the centers of the outermost
 boxes, so it is less accurate near the edges of the image. In this
-example, where the gradient is steepest at the right edge, the
-background in the last 10 columns is underestimated by about 0.55,
-compared to less than 0.1 a few boxes farther in.
+example, the background within 10 pixels of the top and right edges,
+where it increases toward the edge, is underestimated by about 0.85
+and 0.55, respectively. Within 10 pixels of the bottom and left edges,
+where it decreases toward the edge, it is overestimated by about 1.0
+and 0.7, respectively. A few boxes farther in, the mean error is about
+0.1 or less.
 
 
 .. _background_2d_masking:
