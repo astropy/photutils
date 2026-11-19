@@ -56,10 +56,11 @@ def _area(sma, eps, phi, r):
     """
     Compute elliptical sector area.
     """
-    aux = r * math.cos(phi) / sma
-    signal = aux / abs(aux)
-    if abs(aux) >= 1.0:
-        aux = signal
+    # An ellipse with zero size (e.g., the inner bounding ellipse of
+    # the innermost sectors) has zero area.
+    if sma == 0:
+        return 0.0
+    aux = min(max(r * math.cos(phi) / sma, -1.0), 1.0)
     return abs(sma**2 * (1.0 - eps) / 2.0 * math.acos(aux))
 
 
@@ -364,10 +365,14 @@ class EllipseGeometry:
         self.sector_area = abs((sa3 - sa2) - (sa4 - sa1))
 
         # Angular width of sector. It is calculated such that the sectors
-        # come out with roughly constant area along the ellipse.
-        self.sector_angular_width = max(min((self._area_factor / (r3 - r4)
-                                             / r4), self._phi_max),
-                                        self._phi_min)
+        # come out with roughly constant area along the ellipse. The
+        # width tends to infinity as the inner radius tends to zero.
+        if r4 == 0:
+            self.sector_angular_width = self._phi_max
+        else:
+            self.sector_angular_width = max(
+                min((self._area_factor / (r3 - r4) / r4), self._phi_max),
+                self._phi_min)
 
         # Compute the 4 vertices that define the elliptical sector.
         vertex_x = np.zeros(shape=4, dtype=float)

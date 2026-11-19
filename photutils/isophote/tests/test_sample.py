@@ -94,3 +94,17 @@ def test_default_center():
     sample = EllipseSample(DATA, 10.0)
     assert sample.geometry.x0 == DATA.shape[1] / 2
     assert sample.geometry.y0 == DATA.shape[0] / 2
+
+
+@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+def test_zero_inner_sma(integrmode):
+    """
+    Test the area integration modes when the inner bounding ellipse of
+    the sectors has zero size.
+    """
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 1.0, astep=2.0, linear_growth=True,
+                           integrmode=integrmode)
+    sample.update(fixed_parameters=DEFAULT_FIX)
+    assert sample.actual_points > 0
+    assert np.isfinite(sample.mean)
