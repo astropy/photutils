@@ -58,6 +58,12 @@ Bug Fixes
     in the docstrings of the background and background RMS estimator
     classes on Python 3.12. [#2547]
 
+  - Fixed ``Background2D`` giving slightly different results on
+    different platforms when boxes are excluded. The values of the
+    excluded boxes are now interpolated using all of the neighboring
+    boxes that are at the same distance as the last nearest neighbor.
+    [#2548]
+
 - ``photutils.detection``
 
   - Fixed a race condition on free-threaded Python builds where
@@ -156,6 +162,12 @@ Bug Fixes
     raised a ``MaskError`` or ignored its mask. The mask of a
     ``MaskedArray`` input is now combined with the input ``mask``.
     [#2541]
+
+  - Fixed ``ShepardIDWInterpolator`` giving results that depended on
+    the order of the data points and on the platform when data points
+    were at the same distance as the last nearest neighbor (e.g., for
+    data points on a regular grid). All of those data points are now
+    used. [#2548]
 
 API Changes
 ^^^^^^^^^^^

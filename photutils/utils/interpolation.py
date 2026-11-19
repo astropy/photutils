@@ -198,6 +198,58 @@ class ShepardIDWInterpolator:
                                   _DEPRECATED_ATTRIBUTES,
                                   since='3.1', until='4.0')
 
+    def _query_neighbors(self, positions, n_neighbors, eps):
+        """
+        Query the k-d tree for the nearest neighbors of each position,
+        including all of the data points at the same distance as the
+        last nearest neighbor.
+
+        Which of the equidistant data points the k-d tree returns
+        depends on the order of the data points and on the platform.
+        Equidistant neighbors are common for data points on a regular
+        grid. Using all of them makes the interpolation independent of
+        that choice.
+
+        Parameters
+        ----------
+        positions : 2D `~numpy.ndarray`
+            The positions with shape ``(n_positions, coords_ndim)``.
+
+        n_neighbors : int
+            The number of nearest neighbors. Must be larger than 1.
+
+        eps : float
+            The approximation parameter of the k-d tree query.
+
+        Returns
+        -------
+        distances, idx : 2D `~numpy.ndarray`
+            The distances to the neighbors of each position in
+            increasing order and the indices of those neighbors. The
+            arrays have at least ``n_neighbors`` columns. The neighbors
+            that are farther than the last nearest neighbor (column
+            ``n_neighbors - 1``) are not used. Missing neighbors have
+            an infinite distance.
+        """
+        # Query one more neighbor than needed and keep increasing the
+        # number while the last one is still at the same distance as
+        # the last nearest neighbor
+        n_query = n_neighbors + 1
+        while True:
+            n_query = max(n_neighbors, min(n_query, self.n_coords))
+            distances, idx = self.kdtree.query(positions, k=n_query, eps=eps)
+            last_dist = distances[:, -1]
+            tied = (np.isfinite(last_dist)
+                    & (last_dist == distances[:, n_neighbors - 1]))
+            if n_query >= self.n_coords or not np.any(tied):
+                break
+            n_query *= 2
+
+        # Remove the columns that are not used for any position
+        used = distances <= distances[:, n_neighbors - 1:n_neighbors]
+        n_used = int(np.max(np.sum(used, axis=1), initial=n_neighbors))
+        return distances[:, :n_used], idx[:, :n_used]
+
     @deprecated_renamed_argument('reg', 'regularization', '3.0',
                                  until='4.0')
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -224,8 +276,13 @@ class ShepardIDWInterpolator:
                 initialization of the interpolator.
 
         n_neighbors : int, optional
-            The maximum number of nearest neighbors to use during the
-            interpolation.
+            The number of nearest neighbors to use during the
+            interpolation. Fewer neighbors are used if there are fewer
+            data points. If ``n_neighbors`` is larger than 1 and other
+            data points are at exactly the same distance as the last
+            of these neighbors, then all of them are also used. The
+            result therefore does not depend on the order of the data
+            points.
 
         eps : float, optional
             Set to use approximate nearest neighbors. The *k*-th
@@ -303,11 +360,12 @@ class ShepardIDWInterpolator:
         positions = np.reshape(positions, (-1, self.coords_ndim))
         n_positions = positions.shape[0]
 
-        distances, idx = self.kdtree.query(positions, k=n_neighbors, eps=eps)
-
         if n_neighbors == 1:
+            _, idx = self.kdtree.query(positions, k=1, eps=eps)
             result = self.values[idx]
             return result[0] if n_positions == 1 else result
+
+        distances, idx = self._query_neighbors(positions, n_neighbors, eps)
 
         if dtype is None:
             dtype = self.values.dtype
@@ -316,6 +374,10 @@ class ShepardIDWInterpolator:
         # for valid (finite) distances. Invalid entries arise when
         # n_neighbors exceeds the number of known data points.
         valid = np.isfinite(distances)
+
+        # Exclude the extra neighbors that are farther than the last
+        # nearest neighbor
+        valid &= distances <= distances[:, n_neighbors - 1:n_neighbors]
 
         # Replace nonfinite distances and out-of-bound indices with
         # safe values so that vectorized indexing and arithmetic do not
