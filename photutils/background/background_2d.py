@@ -65,13 +65,18 @@ class Background2D:
     image.
 
     The background is estimated using (sigma-clipped) statistics in
-    each box of a grid that covers the input ``data`` to create a
-    low-resolution, and possibly irregularly-gridded, background map.
+    each box of a grid of nonoverlapping boxes that covers the input
+    ``data``. Each box gives one pixel, or mesh, of a low-resolution,
+    and possibly irregularly gridded, background map.
 
     The final background map is calculated by interpolating the
     low-resolution background map.
 
-    Invalid data values (i.e., NaN or inf) are automatically masked.
+    Sources should be masked with the ``mask`` keyword (e.g., using
+    `~photutils.background.make_morans_i_mask`). Nonfinite data values
+    (NaN or inf) are automatically masked, and an
+    `~astropy.utils.exceptions.AstropyUserWarning` is issued if any of
+    them are not already masked.
 
     .. note::
 
@@ -85,8 +90,9 @@ class Background2D:
     data : 2D `~numpy.ndarray`, `~numpy.ma.MaskedArray`, \
             `~astropy.units.Quantity`, or `~astropy.nddata.NDData`
         The 2D array from which to estimate the background and/or
-        background RMS map. If ``data`` is a `~numpy.ma.MaskedArray`,
-        its mask is combined with the input ``mask``.
+        background RMS map. If ``data`` is a `~numpy.ma.MaskedArray` or
+        an `~astropy.nddata.NDData` with a ``mask``, its mask is
+        combined with the input ``mask``.
 
     box_size : int or array_like (int)
         The box size along each axis. If ``box_size`` is a scalar then
@@ -106,10 +112,11 @@ class Background2D:
         RMS calculations. ``mask`` is intended to mask sources or bad
         pixels, but a background and background RMS value will be
         calculated for them based on interpolation of the low-resolution
-        background and background RMS maps. Use ``coverage_mask`` to
-        mask blank areas of an image. ``coverage_mask`` pixels are
-        assigned a value of ``fill_value`` (default = 0) in the output
-        background and background RMS maps.
+        background and background RMS maps. A source mask can be made,
+        e.g., with `~photutils.background.make_morans_i_mask`. Use
+        ``coverage_mask`` to mask blank areas of an image.
+        ``coverage_mask`` pixels are assigned a value of ``fill_value``
+        (default = 0) in the output background and background RMS maps.
 
     coverage_mask : array_like (bool), optional
         A boolean mask, with the same shape as ``data``, where a `True`
@@ -138,15 +145,21 @@ class Background2D:
         always excluded. In general, ``exclude_percentile`` should be
         kept as low as possible to ensure there are a sufficient number
         of unmasked pixels in each box for reasonable statistical
-        estimates. The default is 10.0.
+        estimates. If ``mask`` includes a source mask that covers a
+        large fraction of the image (e.g., from
+        `~photutils.background.make_morans_i_mask`), a larger value
+        (e.g., 50) keeps the boxes that are partly covered by the mask.
+        A `ValueError` is raised if all boxes are excluded. The default
+        is 10.0.
 
     filter_size : int or array_like (int), optional
         The window size of the 2D median filter to apply to the
-        low-resolution background map. If ``filter_size`` is a scalar
-        then a square box of size ``filter_size`` will be used. If
-        ``filter_size`` has two elements, they must be in ``(ny, nx)``
-        order. ``filter_size`` must be odd along both axes. A filter
-        size of ``1`` (or ``(1, 1)``) means no filtering.
+        low-resolution background and background RMS maps. If
+        ``filter_size`` is a scalar then a square box of size
+        ``filter_size`` will be used. If ``filter_size`` has two
+        elements, they must be in ``(ny, nx)`` order. ``filter_size``
+        must be odd along both axes. A filter size of ``1`` (or
+        ``(1, 1)``) means no filtering. The default is ``(3, 3)``.
 
     filter_threshold : float or `None`, optional
         The threshold value used for selective median filtering of the
@@ -162,7 +175,7 @@ class Background2D:
         instance with ``sigma=3.0`` and ``maxiters=10``.
 
     bkg_estimator : callable, optional
-        A callable object (a function or e.g., an instance of
+        A callable object (a function or, e.g., an instance of
         any `~photutils.background.BackgroundBase` subclass)
         used to estimate the background in each of the boxes.
         The callable object must take in a `~numpy.ndarray`, in which
@@ -178,7 +191,7 @@ class Background2D:
         `~photutils.background.SExtractorBackground`.
 
     bkg_rms_estimator : callable, optional
-        A callable object (a function or e.g., an instance of
+        A callable object (a function or, e.g., an instance of
         any `~photutils.background.BackgroundRMSBase` subclass)
         used to estimate the background RMS in each of the boxes.
         The callable object must take in a `~numpy.ndarray`, in which
@@ -212,9 +225,10 @@ class Background2D:
     interpolator : callable, optional
         A callable object (a function or object) used to interpolate
         the low-resolution background or background RMS image to the
-        full-size background or background RMS maps. The default
-        is an instance of `BkgZoomInterpolator`, which uses the
-        `scipy.ndimage.zoom` function.
+        full-size background or background RMS maps. The default uses
+        the `scipy.ndimage.zoom` cubic spline interpolator, which is
+        equivalent to the deprecated `BkgZoomInterpolator` with its
+        default parameters.
 
         .. deprecated:: 3.0
            This keyword argument is deprecated and will be removed in
@@ -232,11 +246,13 @@ class Background2D:
     same dtype as the input data. Other floating-point dtypes (e.g.,
     ``np.float16``) are not supported.
 
-    When the ``sigma_clip`` input is `None` or uses the string
-    ``cenfunc`` and ``stdfunc`` options, and the ``bkg_estimator``
-    and ``bkg_rms_estimator`` inputs are standard photutils estimator
-    classes, the sigma clipping and box statistics are computed
-    together in compiled code. Otherwise, a generic path that calls
+    When the ``sigma_clip`` input is `None` or a
+    `~astropy.stats.SigmaClip` instance that uses the string
+    ``cenfunc`` and ``stdfunc`` options without ``grow``, and the
+    ``bkg_estimator`` and ``bkg_rms_estimator`` inputs are instances
+    of the standard photutils estimator classes (not subclasses), the
+    sigma clipping and box statistics are computed together in
+    compiled code. Otherwise, a generic path that calls
     ``sigma_clip`` and the estimators is used. Both paths produce the
     same results to within floating-point rounding.
 
@@ -259,7 +275,12 @@ class Background2D:
             data = data.value
         elif isinstance(data, NDData):  # includes CCDData
             self._unit = data.unit
-            data = data.data
+            # An NDData mask is combined with the input mask below, in
+            # the same way as the mask of a masked array
+            if data.mask is not None:
+                data = np.ma.MaskedArray(data.data, mask=data.mask)
+            else:
+                data = data.data
         else:
             self._unit = None
 
@@ -509,7 +530,9 @@ class Background2D:
 
         Boxes that are completely masked are always excluded.
         """
-        return (1 - (self.exclude_percentile / 100.0)) * self._box_n_pixels
+        # Multiply before dividing so that the threshold is exact when
+        # it is an integer (e.g., (1 - 0.41) * 100 is 59.00000000000001)
+        return self._box_n_pixels * (100.0 - self.exclude_percentile) / 100.0
 
     def _make_box_stats_spec(self):
         """
@@ -758,13 +781,17 @@ class Background2D:
             The array of box data, where NaN values mark masked pixels.
 
         sigma_clip : `~astropy.stats.SigmaClip` or `None`, optional
-            The sigma-clipping instance to apply to the box data. If
-            `None`, no sigma clipping is performed.
+            The sigma-clipping instance to apply to the box data on the
+            generic path. If `None`, no sigma clipping is performed on
+            that path. The fused kernel path ignores this argument and
+            uses the clipping parameters of the ``sigma_clip`` input
+            given at initialization.
 
-        axis : int, tuple of int, or `None`, optional
-            The axis or axes along which to compute the statistics. If
-            `None`, the entire array is treated as a single box and
-            scalar values are returned.
+        axis : int or `None`, optional
+            The axis along which to compute the statistics. It must be
+            the last axis (``-1``) on the fused kernel path. If `None`,
+            the entire array is treated as a single box and scalar
+            values are returned.
 
         Returns
         -------
@@ -1131,9 +1158,9 @@ class Background2D:
 
     def _calculate_mesh_yxcen(self):
         """
-        Calculate the y and x positions of the centers of the low-
-        resolution background and background RMS meshes with respect to
-        the input data array.
+        Calculate the y and x positions of the centers of the included
+        (not excluded) low-resolution mesh boxes with respect to the
+        input data array.
 
         This is used by the IDW interpolator to expand the low-
         resolution mesh to the full-size image. It is also used to plot
@@ -1148,7 +1175,7 @@ class Background2D:
         """
         The low-resolution background image.
 
-        This image is equivalent to the low-resolution "MINIBACK"
+        This image is equivalent to the low-resolution "MINIBACKGROUND"
         background map check image in SourceExtractor.
         """
         return self._background_mesh
@@ -1237,8 +1264,8 @@ class Background2D:
         """
         The median value of the low-resolution background RMS map.
 
-        This is equivalent to the value SourceExtractor prints to stdout
-        (i.e., "(M+D) RMS: <value>").
+        This is equivalent to the "RMS" value SourceExtractor prints to
+        stdout (i.e., "(M+D) Background: <value> RMS: <value>").
 
         .. note::
 

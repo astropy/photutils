@@ -634,6 +634,25 @@ class TestBackground2D:
                          sigma_clip=None, mask=mask,
                          exclude_percentile=10.0)
 
+    def test_exclude_percentile_boundary_rounding(self):
+        """
+        Test that a box with exactly exclude_percentile percent masked
+        pixels is included for every integer percentage.
+
+        For a 100-pixel box, ``(1 - p / 100) * 100`` rounds slightly
+        above the exact number of unmasked pixels for some ``p`` (e.g.,
+        41), which would exclude the box.
+        """
+        data = np.ones((10, 10))
+        for percent in range(1, 100):
+            mask = np.zeros(data.size, dtype=bool)
+            mask[:percent] = True
+            bkg = Background2D(data, (10, 10), filter_size=(1, 1),
+                               sigma_clip=None,
+                               mask=mask.reshape(data.shape),
+                               exclude_percentile=float(percent))
+            assert bkg.n_pixels_mesh[0, 0] == 100 - percent
+
     def test_filter_threshold(self, test_data, bkg_mesh):
         """
         Test that the filter_threshold parameter filters the correct
@@ -1463,6 +1482,32 @@ class TestFastBoxStatistics:
         data_nomask = np.ma.MaskedArray(np.ones((100, 100)))
         bkg = Background2D(data_nomask, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background_mesh, 1.0)
+
+    @pytest.mark.parametrize('nddata_class', [NDData, CCDData])
+    def test_nddata_mask(self, nddata_class):
+        """
+        Test that the mask of NDData input is respected and combined
+        with the input mask.
+        """
+        data_values = np.ones((100, 100))
+        data_values[0:25, 0:25] = 1e6
+        data_values[25:50, 25:50] = 1e6
+        data_mask = np.zeros(data_values.shape, dtype=bool)
+        data_mask[0:25, 0:25] = True
+        kwargs = {'unit': u.ct} if nddata_class is CCDData else {}
+        data = nddata_class(data_values, mask=data_mask, **kwargs)
+
+        mask = np.zeros(data_values.shape, dtype=bool)
+        mask[25:50, 25:50] = True
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask)
+        assert_allclose(np.asarray(bkg.background_mesh), 1.0)
+        assert bkg.n_pixels_mesh[0, 0] == 0
+        assert bkg.n_pixels_mesh[1, 1] == 0
+
+        # NDData without a mask
+        data = nddata_class(np.ones((100, 100)), **kwargs)
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1))
+        assert bkg.n_pixels_mesh[0, 0] == 625
 
 
 @pytest.mark.parametrize('dtype', [np.float32, np.float64])
