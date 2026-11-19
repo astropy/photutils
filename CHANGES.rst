@@ -226,6 +226,32 @@ Bug Fixes
     and ``'median'`` integration modes, as documented. Fits with the
     default step are unchanged. [#2552]
 
+  - Fixed the sampling of diverged isophotes (stop code 5) in
+    ``Ellipse.fit_image``. Their geometry is replaced by that of a
+    neighboring isophote, but they were sampled with the initial
+    polar radius of the diverged ellipse, about 0.3 pixels off the
+    reported ellipse. [#2552]
+
+  - Fixed ``Ellipse.fit_image`` repeating the same failed fit forever
+    when an isophote beyond the first one has no valid data points
+    (e.g., an ellipse inside a masked annulus). The outward growth now
+    stops at such an isophote. [#2552]
+
+  - Fixed ``IsophoteList.to_table`` raising an ``AttributeError`` when
+    ``'main'`` or ``'all'`` is input in a list with other column names
+    (it now raises a ``ValueError``) and rejecting the table column
+    names of renamed properties (e.g., ``'ellipticity'``). A deprecated
+    column name now emits one warning instead of one per isophote.
+    [#2552]
+
+  - Fixed the ``'median'`` integration mode, which used the upper of
+    the two middle pixel values for sectors with an even number of
+    pixels. As in the STSDAS ``ellipse`` task, it now averages the two
+    middle values. [#2552]
+
+  - Fixed ``EllipseSample.update`` clearing the fixed parameters of
+    the sample geometry when ``fixed_parameters`` is `None`. [#2552]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
