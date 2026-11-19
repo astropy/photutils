@@ -239,7 +239,9 @@ class TestEllipse:
         match = 'Input image contains nonfinite'
         with pytest.warns(AstropyUserWarning, match=match):
             ellipse = Ellipse(data)
-        isolist = ellipse.fit_image(maxsma=20.0)
+        match = 'The harmonic fit failed'
+        with pytest.warns(AstropyUserWarning, match=match):
+            isolist = ellipse.fit_image(maxsma=20.0)
         assert isolist[0].sma == 0
         assert np.isnan(isolist[0].intens)
         assert isolist[0].n_data == 0
@@ -305,8 +307,10 @@ class TestEllipse:
             data = self.data
             geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
         ellipse = Ellipse(data, geometry=geometry)
-        match = 'No meaningful fit was possible'
-        with pytest.warns(AstropyUserWarning, match=match):
+        match1 = 'Too small sample to warrant a fit'
+        match2 = 'No meaningful fit was possible'
+        with (pytest.warns(AstropyUserWarning, match=match1),
+              pytest.warns(AstropyUserWarning, match=match2)):
             isophote_list = ellipse.fit_image()
         assert isinstance(isophote_list, IsophoteList)
         assert len(isophote_list) == 0
