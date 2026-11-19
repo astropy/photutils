@@ -153,6 +153,34 @@ def test_isophote_comparisons():
         assert not iso1 == other  # noqa: SIM201
 
 
+def test_isophote_small_flux_box():
+    """
+    Test the fluxes of an isophote whose enclosing box at the image
+    corner is too small to integrate.
+    """
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 0.2, x0=0.0, y0=0.0)
+    sample.update(fixed_parameters=DEFAULT_FIX)
+    isophote = Isophote(sample, 0, valid=True, stop_code=0)
+    assert sample.actual_points > 0
+    assert isophote.tflux_e == 0.0
+    assert isophote.tflux_c == 0.0
+    assert isophote.npix_e == 0
+    assert isophote.npix_c == 0
+
+
+def test_isophote_round_pa_err():
+    """
+    Test that the position angle error of a round isophote is zero.
+    """
+    data = make_test_image(eps=0.0, seed=0)
+    sample = EllipseSample(data, 20.0, eps=0.0)
+    sample.update(fixed_parameters=DEFAULT_FIX)
+    isophote = Isophote(sample, 0, valid=True, stop_code=0)
+    assert isophote.pa_err == 0.0
+    assert np.isfinite(isophote.ellip_err)
+
+
 class TestIsophoteList:
     def setup_class(self):
         data = make_test_image(seed=0)
