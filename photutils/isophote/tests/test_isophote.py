@@ -294,6 +294,7 @@ class TestIsophoteList:
                           match=match) as record:
             tbl = self.isolist_sma10.to_table(columns=['sma', 'niter'])
         assert len(record) == 1
+        assert record[0].filename == __file__
         assert tbl.colnames == ['sma', 'n_iter']
 
     def test_mutators(self):
@@ -481,3 +482,54 @@ class TestIsophoteList:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = isolist.to_table(columns=['grad_error'])
         assert tbl.colnames == ['gradient_err']
+
+
+@pytest.mark.parametrize(('width', 'has_deviations'),
+                         [(0.22, False), (0.3, True)])
+def test_isophote_few_points(width, has_deviations):
+    """
+    Test an isophote with too few data points to estimate the residual
+    variance of the harmonic fits.
+    """
+    data = make_test_image(seed=0)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    angle = np.arctan2(yy - 256, xx - 256)
+    mask = ~((angle > 0.0) & (angle < width))
+    sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
+    sample.update(fixed_parameters=DEFAULT_FIX)
+    isophote = Isophote(sample, 1, valid=False, stop_code=3)
+    assert 0 < isophote.n_data <= 5
+    assert isophote.x0_err == 0.0
+    assert isophote.ellip_err == 0.0
+    if has_deviations:
+        assert isophote.n_data > 3
+        assert np.isfinite(isophote.a3)
+        assert np.isfinite(isophote.a3_err)
+    else:
+        assert isophote.n_data <= 3
+        assert isophote.a3 is None
+        assert isophote.a4_err is None
+
+
+def test_to_table_dtypes():
+    """
+    Test that the table columns have a numerical dtype, with NaN for the
+    values that are not defined for the central pixel.
+    """
+    data = make_test_image(nx=200, ny=200, seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=20.0)
+    assert isinstance(isolist[0], CentralPixel)
+
+    for columns in ('main', 'all'):
+        tbl = isolist.to_table(columns=columns)
+        for name in tbl.colnames:
+            assert tbl[name].dtype.kind in 'fib'
+        assert np.isnan(tbl['gradient_err'][0])
+        assert np.all(np.isfinite(tbl['gradient_err'][1:]))
+    assert tbl['n_data'].dtype.kind == 'i'
+    assert tbl['valid'].dtype == bool
+    assert np.isnan(tbl['tflux_e'][0])
+
+    tbl = isolist[0].to_table()
+    assert tbl['gradient_rel_err'].dtype.kind == 'f'
+    assert np.isnan(tbl['gradient_rel_err'][0])

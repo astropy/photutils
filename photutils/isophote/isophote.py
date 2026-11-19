@@ -147,9 +147,7 @@ class Isophote:
                 # fell entirely outside the image). Operating on the
                 # empty sample arrays would emit numpy warnings (e.g.,
                 # "Mean of empty slice"), so set nonmeaningful values
-                # directly and skip the harmonic computations. Such a
-                # degenerate isophote is transient. It is either
-                # discarded or replaced by `_fix_last_isophote`.
+                # directly and skip the harmonic computations.
                 self.rms = np.nan
                 self.int_err = np.nan
                 self.pix_stddev = np.nan
@@ -321,6 +319,11 @@ class Isophote:
         Note that we first subtract the first and second harmonics from
         the raw data.
         """
+        # The residual variance needs more data points than fitted
+        # coefficients.
+        if sample.actual_points <= 3:
+            return None, None, None, None
+
         try:
             # Upper (third and fourth) harmonics
             up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.values[0],
@@ -364,6 +367,12 @@ class Isophote:
         matrix of the four harmonic coefficients for harmonics n=1 and
         n=2.0.
         """
+        # The residual variance needs more data points than fitted
+        # coefficients.
+        if self.sample.actual_points <= 5:
+            self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
+            return
+
         try:
             coeffs, covariance = fit_first_and_second_harmonics(
                 self.sample.values[0], self.sample.values[2])
@@ -1020,6 +1029,11 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         If any name in ``columns`` is not a valid (or deprecated)
         column name.
     """
+    # The IsophoteList properties are arrays with a numerical dtype,
+    # where missing values (None) are NaN.
+    if not isinstance(isophote_list, IsophoteList):
+        isophote_list = IsophoteList(isophote_list)
+
     _deprecation_map = _DEPRECATED_ATTRIBUTES.copy()
     all_names = _get_properties(isophote_list).keys()
 
@@ -1058,13 +1072,13 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
                        f'3.0. Use {new_name!r} instead. It will be removed '
                        'in version 4.0.')
                 warnings.warn(msg, PhotutilsDeprecationWarning,
-                              stacklevel=3)
+                              stacklevel=4)
                 properties[new_name] = new_name
             else:
                 properties[column_aliases.get(name, name)] = name
 
     for k, v in properties.items():
-        isotable[v] = np.array([getattr(iso, k) for iso in isophote_list])
+        isotable[v] = getattr(isophote_list, k)
 
         if k in ('pa', 'pa_err'):
             isotable[v] = np.rad2deg(isotable[v]) << u.deg
