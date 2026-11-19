@@ -44,8 +44,8 @@ def _validate_image(image):
     Returns
     -------
     image : 2D `~numpy.ndarray`
-        The input image as an array. Array subclasses (e.g.,
-        `~numpy.ma.MaskedArray`) are passed through.
+        The input image as an array. A `~numpy.ma.MaskedArray` is
+        returned unchanged.
 
     Raises
     ------
@@ -63,6 +63,7 @@ def _validate_image(image):
     if image.ndim != 2:
         msg = 'image must be a 2D array'
         raise ValueError(msg)
+
     return image
 
 
@@ -86,7 +87,8 @@ class EllipseSample:
         The semimajor axis length in pixels.
     x0, y0 : float, optional
         The (x, y) coordinate of the ellipse center. The coordinates
-        must be finite.
+        must be finite. A coordinate that is `None` (the default) is
+        set to the image center.
     astep : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
@@ -168,13 +170,10 @@ class EllipseSample:
             self.geometry.sma = sma
             self.geometry._reset_sma_dependent_attributes()
         else:
-            # If no center was specified, assume it's roughly coincident
-            # with the image center.
-            _x0 = x0
-            _y0 = y0
-            if _x0 is None or _y0 is None:
-                _x0 = image.shape[1] / 2
-                _y0 = image.shape[0] / 2
+            # A center coordinate that was not specified is assumed to
+            # be roughly coincident with the image center.
+            _x0 = image.shape[1] / 2 if x0 is None else x0
+            _y0 = image.shape[0] / 2 if y0 is None else y0
 
             self.geometry = EllipseGeometry(_x0, _y0, sma, eps,
                                             position_angle, astep=astep,
@@ -186,6 +185,7 @@ class EllipseSample:
 
         # Extracted values associated with this sample.
         self.values = None
+        self._updated_values = None
         self.mean = None
         self.gradient = None
         self.gradient_err = None
@@ -378,7 +378,7 @@ class EllipseSample:
             sig = np.std(intensities)
             lower = mean - self.sclip * sig
             upper = mean + self.sclip * sig
-            keep = (intensities >= lower) & (intensities < upper)
+            keep = (intensities >= lower) & (intensities <= upper)
             angles = angles[keep]
             radii = radii[keep]
             intensities = intensities[keep]
@@ -401,6 +401,9 @@ class EllipseSample:
         larger if the first estimate is not meaningful), as in the
         STSDAS ``ellipse`` task, regardless of the ``astep`` value.
 
+        The mean intensity and the gradient are computed only if the
+        sample values changed since the last call.
+
         Parameters
         ----------
         fixed_parameters : `None` or array_like, optional
@@ -414,6 +417,14 @@ class EllipseSample:
 
         # Update the mean value first, using extraction from main sample.
         s = self.extract()
+
+        # The mean and the gradient depend only on the sample values, so
+        # they are not computed again if the values did not change since
+        # the last update. This avoids extracting the gradient sample
+        # again.
+        if s is self._updated_values:
+            return
+        self._updated_values = s
 
         # If the elliptical path falls entirely outside the image (e.g.,
         # a trial geometry that diverged during the fit), no points are
