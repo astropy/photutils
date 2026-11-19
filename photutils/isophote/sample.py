@@ -4,11 +4,11 @@ Tools for sampling data along an elliptical path.
 """
 
 import copy
-import math
 
 import astropy.units as u
 import numpy as np
 
+from photutils.isophote._polar_path import compute_polar_path
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import INTEGRATORS
 from photutils.utils._deprecation import (deprecated_getattr,
@@ -316,9 +316,11 @@ class EllipseSample:
                 radius = self.geometry.radius(phi)
         else:
             # The pixel integrators step along the path by about one
-            # pixel (an angle step of 1 / radius), so the path can be
-            # computed first and then sampled at once.
-            phis, path_radii = self._get_polar_path(phi, radius, phi_max)
+            # pixel (an angle step of 1 / radius, but at most 0.5
+            # radians), so the path can be computed first and then
+            # sampled at once.
+            phis, path_radii = compute_polar_path(
+                phi, radius, phi_max, self.geometry.sma, self.geometry.eps)
             angles, radii, intensities = integrator.integrate_path(
                 path_radii, phis)
             sector_areas.append(integrator.get_sector_area())
@@ -338,27 +340,6 @@ class EllipseSample:
         # Pack results in 2D array.
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
-
-    def _get_polar_path(self, phi, radius, phi_max):
-        """
-        Compute the polar angles and radii of the points along the
-        elliptical path for the pixel integrators.
-
-        The angle step is the inverse of the radius (about one pixel
-        along the path), but at most 0.5 radians.
-        """
-        q = 1.0 - self.geometry.eps
-        sma_q = self.geometry.sma * q
-        phis = []
-        radii = []
-        while phi <= phi_max:
-            phis.append(phi)
-            radii.append(radius)
-            phi += min(1.0 / radius, 0.5)
-            radius = sma_q / math.sqrt((q * math.cos(phi))**2
-                                       + math.sin(phi)**2)
-
-        return np.array(phis), np.array(radii)
 
     def _sigma_clip(self, angles, radii, intensities):
         # Can't use scipy or astropy tools because they use masked
