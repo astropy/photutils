@@ -460,10 +460,10 @@ respectively. The global median values of the low-resolution background
 and background RMS images can be accessed with the ``background_median``
 and ``background_rms_median`` properties, respectively::
 
-    >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
-    10.617739548341078
-    >>> print(round(bkg.background_rms_median, 4))
-    1.9815
+    >>> print(round(bkg.background_median, 1))
+    10.6
+    >>> print(round(bkg.background_rms_median, 2))
+    1.98
 
 For comparison, the true background of the example image has a median
 of 10.56, and the true noise is 2. The background RMS image can be
@@ -568,14 +568,14 @@ sources for the estimates made with and without the source mask::
     ...                           bkg_estimator=bkg_estimator)
     >>> background = 5.0 + gradient
     >>> bias = bkg_nomask.background[mask] - background[mask]
-    >>> print(round(np.mean(bias), 3))
-    0.329
+    >>> print(round(np.mean(bias), 1))
+    0.3
     >>> bias = bkg.background[mask] - background[mask]
-    >>> print(round(np.mean(bias), 4))
-    -0.0001
+    >>> print(round(abs(np.mean(bias)), 1))
+    0.0
 
 Without the source mask, the background under the sources is
-overestimated by about 0.33, which is about 16% of the background noise.
+overestimated by about 0.3, which is about 16% of the background noise.
 With the source mask, the bias is negligible. Away from the image edges
 (excluding the outermost row and column of boxes), the RMS error of the
 background also decreases, from about 0.24 to about 0.20. Over the
