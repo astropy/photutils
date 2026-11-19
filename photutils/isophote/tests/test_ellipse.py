@@ -288,4 +288,15 @@ class TestEllipse:
         data = g(x, y) + noise
         ellipse = Ellipse(data)  # estimates initial center
         isolist = ellipse.fit_image()
-        assert len(isolist) == 55
+
+        # The isophotes are centered on the galaxy and have its shape.
+        # The number of isophotes is not checked because the fits of
+        # the noise-dominated outermost isophotes, which set where the
+        # fit stops, depend on the platform.
+        mask = (isolist.sma > 2) & (isolist.sma < 40)
+        assert_allclose(isolist.x0[mask], nx / 2.0, atol=1.0)
+        assert_allclose(isolist.y0[mask], ny / 2.0, atol=1.0)
+        assert_allclose(np.median(isolist.eps[mask]), 1.0 - 12 / 20,
+                        atol=0.02)
+        assert_allclose(np.median(isolist.pa[mask]), np.deg2rad(40.0),
+                        atol=np.deg2rad(2.0))
