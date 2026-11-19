@@ -12,7 +12,6 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
 from photutils.isophote.isophote import CentralPixel, Isophote
-from photutils.isophote.sample import EllipseSample
 from photutils.utils._deprecation import deprecated_renamed_argument
 
 __all__ = ['EllipseFitter']
@@ -300,16 +299,8 @@ class _ParameterCorrector:
 class _PositionCorrector(_ParameterCorrector):
     @staticmethod
     def finalize_correction(dx, dy, sample):
-        new_x0 = sample.geometry.x0 + dx
-        new_y0 = sample.geometry.y0 + dy
-
-        return EllipseSample(sample.image, sample.geometry.sma, x0=new_x0,
-                             y0=new_y0, astep=sample.geometry.astep,
-                             sclip=sample.sclip, n_clip=sample.n_clip,
-                             eps=sample.geometry.eps,
-                             position_angle=sample.geometry.pa,
-                             linear_growth=sample.geometry.linear_growth,
-                             integrmode=sample.integrmode)
+        return sample._make_sample(x0=sample.geometry.x0 + dx,
+                                   y0=sample.geometry.y0 + dy)
 
 
 class _PositionCorrector0(_PositionCorrector):
@@ -344,13 +335,7 @@ class _AngleCorrector(_ParameterCorrector):
         # Make the angle lie between 0 and np.pi radians.
         new_pa = (sample.geometry.pa + correction) % np.pi
 
-        return EllipseSample(sample.image, sample.geometry.sma,
-                             x0=sample.geometry.x0, y0=sample.geometry.y0,
-                             astep=sample.geometry.astep, sclip=sample.sclip,
-                             n_clip=sample.n_clip, eps=sample.geometry.eps,
-                             position_angle=new_pa,
-                             linear_growth=sample.geometry.linear_growth,
-                             integrmode=sample.integrmode)
+        return sample._make_sample(pa=new_pa)
 
 
 class _EllipticityCorrector(_ParameterCorrector):
@@ -363,13 +348,7 @@ class _EllipticityCorrector(_ParameterCorrector):
 
         new_eps = sample.geometry.eps - correction
 
-        return EllipseSample(sample.image, sample.geometry.sma,
-                             x0=sample.geometry.x0, y0=sample.geometry.y0,
-                             astep=sample.geometry.astep, sclip=sample.sclip,
-                             n_clip=sample.n_clip, eps=new_eps,
-                             position_angle=sample.geometry.pa,
-                             linear_growth=sample.geometry.linear_growth,
-                             integrmode=sample.integrmode)
+        return sample._make_sample(eps=new_eps)
 
 
 # Instances of corrector code
