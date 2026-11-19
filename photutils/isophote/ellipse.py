@@ -391,7 +391,7 @@ class Ellipse:
             A list-like object of `~photutils.isophote.Isophote`
             instances, sorted by increasing semimajor axis length.
         """
-        # multiple fitted isophotes will be stored here
+        # Multiple fitted isophotes will be stored here.
         isophote_list = []
 
         # get starting sma from appropriate source: keyword parameter,
@@ -415,7 +415,7 @@ class Ellipse:
             self._geometry.fix = np.array([fix_center, fix_center, fix_pa,
                                            fix_eps])
 
-        # first, go from initial sma outwards until
+        # First, go from initial sma outwards until
         # hitting one of several stopping criteria.
         noiter = False
         first_isophote = True
@@ -433,9 +433,17 @@ class Ellipse:
                                          noniterate=noiter,
                                          isophote_list=isophote_list)
 
-            # check for failed fit.
+            # An invalid isophote (e.g., no valid data points) is not
+            # stored, so an empty list means that the first isophote
+            # could not be fit at all.
+            if not isophote_list:
+                msg = 'No meaningful fit was possible.'
+                warnings.warn(msg, AstropyUserWarning)
+                return IsophoteList([])
+
+            # Check for failed fit.
             if isophote.stop_code < 0 or isophote.stop_code == 1:
-                # in case the fit failed right at the outset, return an
+                # In case the fit failed right at the outset, return an
                 # empty list. This is the usual case when the user
                 # provides initial guesses that are too way off to enable
                 # the fitting algorithm to find any meaningful solution.
@@ -447,11 +455,11 @@ class Ellipse:
 
                 self._fix_last_isophote(isophote_list, -1)
 
-                # get last isophote from the actual list, since the last
+                # Get last isophote from the actual list, since the last
                 # `isophote` instance in this context may no longer be OK.
                 isophote = isophote_list[-1]
 
-                # if two consecutive isophotes failed to fit,
+                # If two consecutive isophotes failed to fit,
                 # shut off iterative mode. Or, bail out and
                 # change to go inwards.
                 if (len(isophote_list) > 2
@@ -459,21 +467,21 @@ class Ellipse:
                           and isophote_list[-2].stop_code == 5)
                          or isophote.stop_code == 1)):
                     if maxsma and maxsma > isophote.sma:
-                        # if a maximum sma value was provided by
+                        # If a maximum sma value was provided by
                         # user, and the current sma is smaller than
                         # maxsma, keep growing sma in noniterative
                         # mode until reaching it.
                         noiter = True
                     else:
-                        # if no maximum sma, stop growing and change
+                        # If no maximum sma, stop growing and change
                         # to go inwards.
                         break
 
-            # reset variable from the actual list, since the last
+            # Reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
 
-            # update sma. If exceeded user-defined
+            # Update sma. If exceeded user-defined
             # maximum, bail out from this loop.
             sma = isophote.sample.geometry.update_sma(step)
             if maxsma and sma >= maxsma:
@@ -483,7 +491,7 @@ class Ellipse:
         first_isophote = isophote_list[0]
         sma, step = first_isophote.sample.geometry.reset_sma(step)
 
-        # now, go from initial sma inwards towards center.
+        # Now, go from initial sma inwards towards center.
         while True:
             isophote = self.fit_isophote(sma, step=step, conver=conver,
                                          minit=minit, maxit=maxit,
@@ -494,32 +502,32 @@ class Ellipse:
                                          going_inwards=True,
                                          isophote_list=isophote_list)
 
-            # if abnormal condition, fix isophote but keep going.
+            # If abnormal condition, fix isophote but keep going.
             if isophote.stop_code < 0:
                 self._fix_last_isophote(isophote_list, 0)
 
-            # but if we get an error from the scipy fitter, bail out
+            # But if we get an error from the scipy fitter, bail out
             # immediately. This usually happens at very small radii
             # when the number of data points is too small.
             if isophote.stop_code == 3:
                 break
 
-            # reset variable from the actual list, since the last
+            # Reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
 
             # Figure out the next sma. If it exceeded the user-defined
-            # minimum, or is too small, bail out from this loop
+            # minimum, or is too small, bail out from this loop.
             sma = isophote.sample.geometry.update_sma(step)
             if sma <= max(minsma, 0.5):
                 break
 
-        # if user asked for minsma=0, extract special isophote there
+        # If user asked for minsma=0, extract special isophote there.
         if minsma == 0.0:
-            # isophote is appended to isophote_list
+            # The isophote is appended to isophote_list.
             _ = self.fit_isophote(0.0, isophote_list=isophote_list)
 
-        # sort list of isophotes according to sma
+        # Sort list of isophotes according to sma.
         isophote_list.sort()
 
         return IsophoteList(isophote_list)
@@ -655,12 +663,12 @@ class Ellipse:
         """
         geometry = self._geometry
 
-        # if available, geometry from last fitted isophote will be
+        # If available, geometry from last fitted isophote will be
         # used as initial guess for next isophote.
         if isophote_list:
             geometry = isophote_list[-1].sample.geometry
 
-        # do the fit
+        # Do the fit.
         if noniterate or (maxrit and sma > maxrit):
             isophote = self._non_iterative(sma, step, linear, geometry,
                                            sclip, n_clip, integrmode)
@@ -670,7 +678,7 @@ class Ellipse:
                                        maxit, fflag, maxgerr,
                                        going_inwards=going_inwards)
 
-        # store result in list
+        # Store result in list.
         if isophote_list is not None and isophote.valid:
             isophote_list.append(isophote)
 
@@ -680,13 +688,13 @@ class Ellipse:
                    integrmode, conver, minit, maxit, fflag, maxgerr, *,
                    going_inwards=False):
         if sma > 0.0:
-            # iterative fitter
+            # Iterative fitter
             sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
                                    n_clip=n_clip, linear_growth=linear,
                                    geometry=geometry, integrmode=integrmode)
             fitter = EllipseFitter(sample)
         else:
-            # sma == 0 requires special handling
+            # sma == 0 requires special handling.
             sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
             fitter = CentralEllipseFitter(sample)
 
@@ -701,7 +709,7 @@ class Ellipse:
                                geometry=geometry, integrmode=integrmode)
         sample.update(fixed_parameters=geometry.fix)
 
-        # build isophote without iterating with an EllipseFitter
+        # Build isophote without iterating with an EllipseFitter.
         return Isophote(sample, 0, valid=True, stop_code=4)
 
     @staticmethod

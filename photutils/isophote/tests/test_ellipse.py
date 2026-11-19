@@ -18,7 +18,7 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
 
-# Define an off-center position and a tilted sma
+# Define an off-center position and a tilted sma.
 POS = 384
 PA = np.deg2rad(10.0)
 
@@ -65,8 +65,8 @@ class TestEllipse:
 
     def test_linear(self):
         ellipse = Ellipse(self.data)
-        # maxsma limits the runtime. The linear spacing checks below
-        # do not depend on the outer extent of the fit.
+        # The maxsma keyword limits the runtime. The linear spacing checks
+        # below do not depend on the outer extent of the fit.
         isophote_list = ellipse.fit_image(linear=True, step=2.0,
                                           maxsma=80.0)
 
@@ -118,6 +118,25 @@ class TestEllipse:
         match = 'No meaningful fit was possible'
         with pytest.warns(AstropyUserWarning, match=match):
             isophote_list = ellipse.fit_image()
+        assert len(isophote_list) == 0
+
+    @pytest.mark.parametrize('case', ['masked', 'outside'])
+    def test_no_valid_data(self, case):
+        """
+        Test that fit_image returns an empty list when the first
+        isophote has no valid data points.
+        """
+        if case == 'masked':
+            data = np.ma.masked_all(self.data.shape)
+            geometry = None
+        else:
+            data = self.data
+            geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
+        ellipse = Ellipse(data, geometry=geometry)
+        match = 'No meaningful fit was possible'
+        with pytest.warns(AstropyUserWarning, match=match):
+            isophote_list = ellipse.fit_image()
+        assert isinstance(isophote_list, IsophoteList)
         assert len(isophote_list) == 0
 
     def test_offcenter_fit(self):
