@@ -225,19 +225,22 @@ class EllipseFitter:
                 sample = corrector.correct(sample, largest_harmonic)
 
                 # If the corrected ellipse diverged, stop without
-                # sampling it and return the best-fit sample instead.
-                # Otherwise, fix a round ellipse before the new sample
-                # is extracted so that its values match its geometry.
+                # sampling it. Otherwise, fix a round ellipse before the
+                # new sample is extracted so that its values match its
+                # geometry.
                 if self._is_diverged(sample):
-                    sample = minimum_amplitude_sample
                     proceed = False
                 else:
                     self._fix_round_ellipse(sample.geometry)
                     sample.update(fixed_parameters=fixed_parameters)
 
+            # If iterations cannot proceed, return the best-fit sample
+            # instead of the current one.
             if not proceed:
-                sample.update(fixed_parameters=fixed_parameters)
-                return Isophote(sample, i + 1, valid=True, stop_code=-1)
+                minimum_amplitude_sample.update(
+                    fixed_parameters=fixed_parameters)
+                return Isophote(minimum_amplitude_sample, i + 1, valid=True,
+                                stop_code=-1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the

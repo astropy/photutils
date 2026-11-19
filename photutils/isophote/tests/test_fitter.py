@@ -56,6 +56,45 @@ def test_zero_gradient_flat_image():
     assert isophote.intens == 1.0
 
 
+def test_positive_gradient():
+    """
+    Test that the fitter does not apply corrections computed from a
+    positive gradient.
+
+    The intensity of this image increases outward, so the initial
+    ellipse is returned unchanged.
+    """
+    yy, xx = np.mgrid[0:201, 0:201]
+    data = 10.0 + 0.5 * np.hypot(xx - 100, yy - 100)
+    sample = EllipseSample(data, 20.0, x0=100.0, y0=100.0, eps=0.2)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == -1
+    assert isophote.grad > 0
+    assert isophote.eps == 0.2
+    assert isophote.x0 == 100.0
+    assert isophote.y0 == 100.0
+
+
+@pytest.mark.parametrize('ring_radius', [21.0, 23.0])
+def test_abnormal_stop_returns_best_fit(ring_radius):
+    """
+    Test that the best-fit sample is returned when the iterations stop
+    because the gradient of the current sample is not negative.
+
+    A bright ring just outside of the fitted ellipse makes the gradient
+    positive for some of the corrected ellipses.
+    """
+    yy, xx = np.mgrid[0:201, 0:201]
+    radius = np.hypot(xx - 100, yy - 100)
+    data = (1000.0 * np.exp(-radius / 10.0)
+            + 100.0 * np.exp(-0.5 * (radius - ring_radius)**2))
+    sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, eps=0.1)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == -1
+    assert isophote.n_iter > 1
+    assert isophote.grad < 0
+
+
 def test_fitting_raw():
     """
     This test performs a raw (no EllipseFitter), 1-step correction in
