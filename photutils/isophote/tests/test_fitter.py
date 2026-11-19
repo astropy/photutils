@@ -96,6 +96,21 @@ def test_abnormal_stop_returns_best_fit(ring_radius):
     assert isophote.grad < 0
 
 
+def test_everything_fixed():
+    """
+    Test that the isophote is extracted with the input geometry,
+    without fitting, if all the ellipse parameters are fixed.
+    """
+    geometry = EllipseGeometry(250.0, 260.0, 40.0, 0.3, 1.0, fix_center=True,
+                               fix_pa=True, fix_eps=True)
+    sample = EllipseSample(DATA, 40.0, geometry=geometry)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == 4
+    assert isophote.n_iter == 0
+    assert (isophote.x0, isophote.y0, isophote.eps, isophote.pa) == (
+        250.0, 260.0, 0.3, 1.0)
+
+
 def test_fitting_raw():
     """
     This test performs a raw (no EllipseFitter), 1-step correction in

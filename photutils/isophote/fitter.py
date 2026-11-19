@@ -127,6 +127,13 @@ class EllipseFitter:
         # These must be passed throughout the execution chain.
         fixed_parameters = self._sample.geometry.fix
 
+        # If all the ellipse parameters are fixed, there is nothing to
+        # fit. As in the STSDAS ellipse task, the isophote is extracted
+        # with the input geometry, as in the noniterative mode.
+        if np.all(fixed_parameters):
+            sample.update(fixed_parameters=fixed_parameters)
+            return Isophote(sample, 0, valid=True, stop_code=4)
+
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
             sample.update(fixed_parameters=fixed_parameters)
@@ -138,25 +145,22 @@ class EllipseFitter:
             # values[2] = 1-d array with intensity
             values = sample.extract()
 
-            # The harmonic fit has 5 coefficients, so it needs at least
-            # 5 data points. We have to check for that condition here,
-            # and bail out in case it is detected.
+            # Fit harmonic coefficients. A sample with fewer data points
+            # than the 5 harmonic coefficients or a failure in the fit
+            # is a fatal error, so terminate immediately with the sample
+            # marked as invalid.
+            msg = None
             if len(values[2]) < 5:
                 msg = ('Too small sample to warrant a fit. SMA is '
                        f'{sample.geometry.sma}')
-                warnings.warn(msg, AstropyUserWarning)
-                sample.geometry.fix = fixed_parameters
-                return Isophote(sample, i + 1, valid=False, stop_code=3)
-
-            # Fit harmonic coefficients. Failure in fitting is a fatal
-            # error, so terminate immediately with sample marked as
-            # invalid.
-            try:
-                coeffs = fit_first_and_second_harmonics(values[0], values[2])
-                coeffs = coeffs[0]
-            except Exception as exc:
-                msg = (f'The harmonic fit failed at SMA {sample.geometry.sma}'
-                       f': {exc}')
+            else:
+                try:
+                    coeffs = fit_first_and_second_harmonics(values[0],
+                                                            values[2])[0]
+                except Exception as exc:
+                    msg = ('The harmonic fit failed at SMA '
+                           f'{sample.geometry.sma}: {exc}')
+            if msg is not None:
                 warnings.warn(msg, AstropyUserWarning)
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, valid=False, stop_code=3)

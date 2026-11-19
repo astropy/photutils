@@ -421,13 +421,13 @@ class Ellipse:
             geometry.linear_growth = linear
         else:
             linear = geometry.linear_growth
-        if fix_center and fix_pa and fix_eps:
-            msg = ': Everything is fixed. Fit not possible.'
-            warnings.warn(msg, AstropyUserWarning)
-            return IsophoteList([])
         if fix_center or fix_pa or fix_eps:
             geometry.fix = np.array([fix_center, fix_center, fix_pa,
                                      fix_eps])
+        if np.all(geometry.fix):
+            msg = 'Everything is fixed. Fit not possible.'
+            warnings.warn(msg, AstropyUserWarning)
+            return IsophoteList([])
 
         # The fit parameters that are the same for all isophotes. The
         # fitted isophotes are appended to isophote_list.

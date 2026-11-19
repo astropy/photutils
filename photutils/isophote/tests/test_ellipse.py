@@ -316,6 +316,42 @@ class TestEllipse:
         assert not np.any(geometry.fix)
         assert not geometry.linear_growth
 
+    @pytest.mark.parametrize(('kwargs', 'fixed_names'),
+                             [({'fix_center': True}, ('x0', 'y0')),
+                              ({'fix_pa': True}, ('pa',)),
+                              ({'fix_eps': True}, ('eps',)),
+                              ({'fix_center': True, 'fix_eps': True},
+                               ('x0', 'y0', 'eps'))])
+    def test_fixed_parameters(self, kwargs, fixed_names):
+        """
+        Test that the fixed parameters keep their initial values and
+        that the other parameters are fitted.
+        """
+        geometry = EllipseGeometry(256.5, 255.5, 20.0, 0.25, PA + 0.1)
+        isolist = Ellipse(self.data, geometry=geometry).fit_image(
+            maxsma=40.0, **kwargs)
+        sma_positive = isolist.sma > 0
+        for name in ('x0', 'y0', 'eps', 'pa'):
+            values = getattr(isolist, name)[sma_positive]
+            if name in fixed_names:
+                assert np.all(values == getattr(geometry, name))
+            else:
+                assert np.any(values != getattr(geometry, name))
+
+    @pytest.mark.parametrize('use_geometry', [False, True])
+    def test_everything_fixed(self, use_geometry):
+        kwargs = {'fix_center': True, 'fix_pa': True, 'fix_eps': True}
+        if use_geometry:
+            geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA, **kwargs)
+            ellipse = Ellipse(self.data, geometry=geometry)
+            kwargs = {}
+        else:
+            ellipse = Ellipse(self.data)
+        match = 'Everything is fixed'
+        with pytest.warns(AstropyUserWarning, match=match):
+            isolist = ellipse.fit_image(**kwargs)
+        assert len(isolist) == 0
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)
