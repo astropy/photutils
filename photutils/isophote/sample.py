@@ -24,6 +24,13 @@ _DEPRECATED_SAMPLE_ATTRIBUTES = {
 
 __all__ = ['EllipseSample']
 
+# The relative distances (as fractions of the semimajor axis length)
+# of the samples used to measure the local radial gradient, as in the
+# STSDAS ellipse task. The second distance is used only if the first one
+# does not give a meaningful gradient.
+_GRADIENT_RADIUS = 0.1
+_GRADIENT_RADIUS_RETRY = 0.2
+
 
 def _validate_image(image):
     """
@@ -389,6 +396,11 @@ class EllipseSample:
         then computes the mean intensity, local gradient, and other
         associated quantities.
 
+        The local radial gradient is measured from a second sample on
+        an ellipse with a 10% larger semimajor axis length (or 20%
+        larger if the first estimate is not meaningful), as in the
+        STSDAS ``ellipse`` task, regardless of the ``astep`` value.
+
         Parameters
         ----------
         fixed_parameters : `None` or array_like, optional
@@ -398,8 +410,6 @@ class EllipseSample:
         if fixed_parameters is None:
             fixed_parameters = np.array([False, False, False, False])
         self.geometry.fix = fixed_parameters
-
-        step = self.geometry.astep
 
         # Update the mean value first, using extraction from main sample.
         s = self.extract()
@@ -421,7 +431,7 @@ class EllipseSample:
 
         # Get sample with same geometry but at a different distance from
         # center. Estimate gradient from there.
-        gradient, gradient_err = self._get_gradient(step)
+        gradient, gradient_err = self._get_gradient(_GRADIENT_RADIUS)
 
         # Check for meaningful gradient. If no meaningful gradient, try
         # another sample, this time using larger radius. Meaningful
@@ -440,7 +450,8 @@ class EllipseSample:
         # divisions by zero in the fitter's parameter correctors.
         if (gradient >= (previous_gradient / 3.0)  # gradient is negative!
                 or gradient >= 0.0):
-            gradient, gradient_err = self._get_gradient(2 * step)
+            gradient, gradient_err = self._get_gradient(
+                _GRADIENT_RADIUS_RETRY)
 
         # If still no meaningful gradient can be measured, try with
         # previous one, slightly shallower. A factor 0.8 is not too far
@@ -479,8 +490,10 @@ class EllipseSample:
             linear_growth=geometry.linear_growth,
             integrmode=self.integrmode)
 
-    def _get_gradient(self, step):
-        gradient_sma = (1.0 + step) * self.geometry.sma
+    def _get_gradient(self, radius):
+        # The gradient sample is at a relative distance ``radius`` from
+        # this ellipse.
+        gradient_sma = (1.0 + radius) * self.geometry.sma
 
         gradient_sample = self._make_sample(sma=gradient_sma)
 
@@ -496,7 +509,7 @@ class EllipseSample:
             return np.nan, np.nan
 
         mean_g = np.mean(sg[2])
-        gradient = (mean_g - self.mean) / self.geometry.sma / step
+        gradient = (mean_g - self.mean) / self.geometry.sma / radius
 
         s = self.extract()
         sigma = np.std(s[2])
@@ -504,7 +517,7 @@ class EllipseSample:
 
         gradient_err = (np.sqrt(sigma**2 / len(s[2])
                                 + sigma_g**2 / len(sg[2]))
-                        / self.geometry.sma / step)
+                        / self.geometry.sma / radius)
 
         return gradient, gradient_err
 

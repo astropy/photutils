@@ -6,7 +6,7 @@ Tests for the sample module.
 import astropy.units as u
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
@@ -193,3 +193,23 @@ def test_nonfinite_values(integrmode):
 
     unmasked = EllipseSample(DATA, 40.0, integrmode=integrmode).extract()
     assert not np.array_equal(values[2], unmasked[2])
+
+
+@pytest.mark.parametrize(('astep', 'linear_growth'),
+                         [(0.3, False), (2.0, True), (5.0, True)])
+def test_gradient_radius(astep, linear_growth):
+    """
+    Test that the local gradient is measured at a fixed relative
+    distance from the ellipse, as in the STSDAS ellipse task,
+    regardless of the semimajor axis step.
+
+    The gradient samples start at slightly different polar angles for
+    different steps, so the gradients are not identical.
+    """
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 20.0, astep=0.1)
+    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample_step = EllipseSample(data, 20.0, astep=astep,
+                                linear_growth=linear_growth)
+    sample_step.update(fixed_parameters=DEFAULT_FIX)
+    assert_allclose(sample_step.gradient, sample.gradient, rtol=1e-3)
