@@ -156,10 +156,10 @@ def resolve_implementation(spec, percent):
                    f'{value}:photutils/background/morans_i.py']
         source = subprocess.run(command, cwd=repo, check=True,  # noqa: S603
                                 capture_output=True, text=True).stdout
-        tmpdir = Path(tempfile.mkdtemp())
-        path = tmpdir / 'morans_i_revision.py'
-        path.write_text(source)
-        module = load_module(path, 'morans_i_revision')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'morans_i_revision.py'
+            path.write_text(source)
+            module = load_module(path, 'morans_i_revision')
         return lambda data: module.make_morans_i_mask(data, percent=percent)
 
     # The upstream module imports two packages that are used only to
@@ -262,6 +262,10 @@ def trace_memory(spec, *, size, seed, percent, repeats, interval):
     proc = ctx.Process(target=trace_child,
                        args=(spec, size, seed, percent, repeats, child_conn))
     proc.start()
+
+    # Only the child keeps its end of the pipe open, so the parent gets
+    # an EOFError instead of waiting forever if the child fails
+    child_conn.close()
     try:
         conn.recv()
         child = psutil.Process(proc.pid)
@@ -450,8 +454,10 @@ def main():
                              'this clone of the moransi_sourcemasking '
                              'repository')
     parser.add_argument('--output', type=Path,
-                        default=Path('morans_i_memory.png'),
-                        help='the memory plot file (default: %(default)s)')
+                        default=Path(__file__).parent / 'morans_i_memory.png',
+                        help='the memory plot file (default: '
+                             'morans_i_memory.png in the benchmarks '
+                             'directory)')
     add_memory_argument(parser)
     args = parser.parse_args()
     set_memory_mode(args.memory)

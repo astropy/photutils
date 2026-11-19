@@ -416,7 +416,8 @@ Benchmarks for `make_morans_i_map` and `make_morans_i_mask`:
 - the run time of both functions across image sizes
 - the resident memory against the wall time while a source mask is
   made, sampled from a parent process and written as a plot and a CSV
-  file (requires the optional `psutil` and `matplotlib` packages)
+  file in the `benchmarks` directory (requires the optional `psutil`
+  and `matplotlib` packages)
 
 The memory benchmark can also trace an earlier version of
 `photutils/background/morans_i.py` from a git revision that needs no
