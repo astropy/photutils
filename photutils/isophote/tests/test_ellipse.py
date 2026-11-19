@@ -34,6 +34,26 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.0e-12,
                                 seed=0)
 
 
+def _assert_sma_grid(isolist, step=0.1):
+    """
+    Assert that the isophotes, excluding the central pixel, are on a
+    contiguous geometric grid of semimajor axis lengths.
+    """
+    sma = isolist.sma[isolist.sma > 0]
+    assert_allclose(sma[1:] / sma[:-1], 1.0 + step)
+
+
+def _assert_fflag_stop(isolist, fflag=0.7):
+    """
+    Assert that the outward growth stopped because more than a fraction
+    1 - fflag of the sample points of the last isophote were flagged.
+    """
+    flagged = isolist.n_flag / (isolist.n_flag + isolist.n_data)
+    assert isolist[-1].stop_code == 1
+    assert flagged[-1] > 1.0 - fflag
+    assert flagged[-2] <= 1.0 - fflag
+
+
 class TestEllipse:
     def setup_class(self):
         # Centered, tilted galaxy
@@ -63,9 +83,10 @@ class TestEllipse:
         # Verify that the list is properly sorted in sem-major axis length
         assert isophote_list[-1] > isophote_list[0]
 
-        # The fit should stop where gradient loses reliability
-        assert len(isophote_list) == 69
-        assert isophote_list[-1].stop_code == 1
+        # The fit should stop when too many sample points fall outside
+        # the image frame.
+        _assert_fflag_stop(isophote_list)
+        _assert_sma_grid(isophote_list)
 
     def test_linear(self):
         ellipse = Ellipse(self.data)
@@ -420,8 +441,8 @@ class TestEllipse:
 
         # The fit should stop when too many potential sample points fall
         # outside the image frame.
-        assert len(isophote_list) == 63
-        assert isophote_list[-1].stop_code == 1
+        _assert_fflag_stop(isophote_list)
+        _assert_sma_grid(isophote_list)
 
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to go beyond the image
@@ -431,8 +452,15 @@ class TestEllipse:
         isophote_list = ellipse.fit_image(maxsma=400.0)
 
         # The fit should go to maxsma, but with fixed geometry
-        assert len(isophote_list) == 71
-        assert isophote_list[-1].stop_code == 4
+        # (noniterative mode) after too many sample points fall outside
+        # the image frame.
+        sma = isophote_list.sma
+        stop_code = isophote_list.stop_code
+        assert sma[-1] < 400.0 <= sma[-1] * 1.1
+        idx = np.nonzero(stop_code == 1)[0][0]
+        assert np.all(stop_code[idx + 1:] == 4)
+        assert np.all(stop_code[:idx + 1] != 4)
+        _assert_sma_grid(isophote_list)
 
         # Check that no zero-valued intensities were left behind in the
         # sample arrays when sampling outside the image.
@@ -451,7 +479,7 @@ class TestEllipse:
         noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
                                  stddev=2.0, seed=0)
         data = g(x, y) + noise
-        ellipse = Ellipse(data)  # estimates initial center
+        ellipse = Ellipse(data)  # starts from the image center
         isolist = ellipse.fit_image()
 
         # The isophotes are centered on the galaxy and have its shape.
@@ -465,3 +493,4 @@ class TestEllipse:
                         atol=0.02)
         assert_allclose(np.median(isolist.pa[mask]), np.deg2rad(40.0),
                         atol=np.deg2rad(2.0))
+        _assert_sma_grid(isolist)

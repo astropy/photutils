@@ -25,10 +25,11 @@ For the M51 image we have mostly good agreement with the SPP code
 in most of the parameters (mean isophotal intensity agrees within a
 fraction of 1% mostly), but every now and then the ellipticity and
 position angle of the semimajor axis may differ by a large amount from
-what the SPP code measures. The code also stops prematurely with respect
-to the larger sma values measured by the SPP code. This is caused by a
-difference in the way the gradient relative error is measured in each
-case, and suggests that the SPP code may have a bug.
+what the SPP code measures. For the noisy images (M51 and
+synth_lowsnr), the fit extends by about one isophote beyond the SPP
+code. The ``maxgerr`` criterion stops the outward growth after two
+consecutive isophotes exceed it (soft stopping), while the SPP code
+default is to stop after the first one.
 
 The not-so-good behavior observed in the case of the M51 image is to
 be expected though. This image is exactly the type of galaxy image for
@@ -59,8 +60,6 @@ from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.integrator import BILINEAR
 
 
-# @pytest.mark.parametrize('name', ['M51', 'synth', 'synth_lowsnr',
-#                                   'synth_highsnr'])
 @pytest.mark.parametrize('name', ['synth_highsnr'])
 @pytest.mark.remote_data
 def test_regression(name):
@@ -105,10 +104,10 @@ def test_regression(name):
         try:
             iso = isophote_list[row]
         except IndexError:
-            # skip nonexistent rows in isophote list, if that's the case.
+            # Skip nonexistent rows in isophote list, if that's the case.
             break
 
-        # data from Isophote
+        # Data from Isophote
         sma_i = iso.sample.geometry.sma
         intens_i = iso.intens
         int_err_i = iso.int_err or 0.0
@@ -124,12 +123,12 @@ def test_regression(name):
         niter_i = iso.n_iter
         stop_i = iso.stop_code
 
-        # convert to old code reference system
+        # Convert to old code reference system.
         pa_i = np.rad2deg(pa_i - np.pi / 2)
         x0_i += 1
         y0_i += 1
 
-        # ref data from table
+        # Ref data from table
         sma_t = table['SMA'][row]
         intens_t = table['INTENS'][row]
         int_err_t = table['INT_ERR'][row]
@@ -146,7 +145,7 @@ def test_regression(name):
         niter_t = table['NITER'][row] or 0
         stop_t = table['STOP'][row] or -1
 
-        # relative differences
+        # Relative differences
         sma_d = (sma_i - sma_t) / sma_t * 100.0 if sma_t > 0.0 else 0.0
         intens_d = (intens_i - intens_t) / intens_t * 100.0
         int_err_d = ((int_err_i - int_err_t) / int_err_t * 100.0
@@ -190,7 +189,7 @@ def test_regression(name):
             else:
                 assert abs(intens_d) <= 5.0
 
-            # prevent "converting a masked element to nan" warning
+            # Prevent "converting a masked element to nan" warning.
             if ellip_d is np.ma.masked:
                 continue
 
@@ -223,3 +222,56 @@ def test_regression(name):
         tbl['niter'] = tniter
         tbl['stop'] = tstop
         tbl.write('test_regression.ecsv', overwrite=True)
+
+
+@pytest.mark.parametrize(('name', 'max_extra'), [('synth_highsnr', 2),
+                                                 ('synth', 2),
+                                                 ('synth_lowsnr', 10),
+                                                 ('M51', 10)])
+@pytest.mark.remote_data
+def test_regression_summary(name, max_extra):
+    """
+    Compare summary statistics of the fitted isophotes with the results
+    of the SPP code for all the test images.
+    """
+    path = op.join(op.dirname(op.abspath(__file__)), 'data',
+                   f'{name}_table.fits')
+    table = Table.read(path)
+    path = _get_path(f'isophote/{name}.fits',
+                     location='photutils-datasets', cache=True)
+    with fits.open(path) as hdu:
+        data = hdu[0].data
+    isolist = Ellipse(data).fit_image()
+
+    # The fit must extend about as far as the SPP results. In the
+    # low-S/N and M51 images, the outermost isophotes are dominated by
+    # noise. The semimajor axis length where their outward growth
+    # stops changes by several isophotes with rounding differences,
+    # so the number of additional isophotes is only loosely limited.
+    assert -2 <= len(isolist) - len(table) <= max_extra
+
+    # Match the isophotes by semimajor axis length. The table values
+    # have a limited precision. Only the isophotes at sma > 3 pixels
+    # are compared.
+    table_sma = np.array(table['SMA'])
+    index = np.argmin(np.abs(isolist.sma[:, np.newaxis] - table_sma),
+                      axis=0)
+    matched = np.isclose(isolist.sma[index], table_sma, rtol=1e-3)
+    assert np.count_nonzero(matched) >= len(table) - 2
+    mask = matched & (table_sma > 3)
+    index = index[mask]
+    ref = {name: np.asarray(table[name][mask], dtype=float)
+           for name in ('INTENS', 'ELLIP', 'PA', 'X0', 'Y0')}
+
+    intens_diff = isolist.intens[index] / ref['INTENS'] - 1.0
+    eps_diff = isolist.eps[index] - ref['ELLIP']
+    # The SPP position angle is measured from the y axis. The
+    # difference is wrapped into the range [-90, 90) degrees.
+    pa_ref = ref['PA'] + 90.0
+    pa_diff = (np.rad2deg(isolist.pa[index]) - pa_ref + 90.0) % 180.0 - 90.0
+    center_diff = np.hypot(isolist.x0[index] + 1 - ref['X0'],
+                           isolist.y0[index] + 1 - ref['Y0'])
+    assert np.median(np.abs(intens_diff)) < 0.005
+    assert np.median(np.abs(eps_diff)) < 0.01
+    assert np.median(np.abs(pa_diff)) < 1.0
+    assert np.median(center_diff) < 0.1

@@ -190,8 +190,7 @@ def test_fitting_eps():
 
     assert isinstance(isophote, Isophote)
     g = isophote.sample.geometry
-    assert g.eps >= 0.19
-    assert g.eps <= 0.21
+    assert_allclose(g.eps, 0.2, atol=0.01)
 
 
 @pytest.mark.parametrize('galaxy_eps', [0.97, 0.98])
@@ -227,8 +226,7 @@ def test_fitting_pa():
     isophote = fitter.fit()
     g = isophote.sample.geometry
 
-    assert g.pa >= (np.pi / 4 - 0.05)
-    assert g.pa <= (np.pi / 4 + 0.05)
+    assert_allclose(g.pa, np.pi / 4, atol=0.05)
 
 
 def test_fitting_xy():
@@ -241,10 +239,7 @@ def test_fitting_xy():
     isophote = fitter.fit()
     g = isophote.sample.geometry
 
-    assert g.x0 >= (pos - 1)
-    assert g.x0 <= (pos + 1)
-    assert g.y0 >= (pos - 1)
-    assert g.y0 <= (pos + 1)
+    assert_allclose((g.x0, g.y0), pos, atol=1.0)
 
 
 def test_fitting_all():
@@ -266,14 +261,9 @@ def test_fitting_all():
     assert isophote.stop_code == 0
 
     g = isophote.sample.geometry
-    assert g.x0 >= (pos - 1.5)  # position within 1.5 pixel
-    assert g.x0 <= (pos + 1.5)
-    assert g.y0 >= (pos - 1.5)
-    assert g.y0 <= (pos + 1.5)
-    assert g.eps >= (eps - 0.01)  # eps within 0.01
-    assert g.eps <= (eps + 0.01)
-    assert g.pa >= (angle - 0.05)  # pa within 5 deg
-    assert g.pa <= (angle + 0.05)
+    assert_allclose((g.x0, g.y0), pos, atol=1.5)  # within 1.5 pixel
+    assert_allclose(g.eps, eps, atol=0.01)
+    assert_allclose(g.pa, angle, atol=0.05)  # within ~3 deg
 
     sample_m = EllipseSample(data, sma, position_angle=(1.2 * angle),
                              integrmode=MEAN)
