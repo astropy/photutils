@@ -4,24 +4,55 @@ Tools for computing and fitting harmonic functions.
 """
 
 import numpy as np
-from scipy.optimize import leastsq
 
 __all__ = ['first_and_second_harmonic_function',
            'fit_first_and_second_harmonics', 'fit_upper_harmonic']
 
 
-def _least_squares_fit(optimize_func, parameters):
-    # call the least-squares fitting
-    # function and handle the result.
+def _linear_least_squares_fit(design, values):
+    """
+    Solve a linear least-squares problem.
 
-    solution = leastsq(optimize_func, parameters, full_output=True)
+    The harmonic functions are linear in their coefficients, so they
+    are fit directly instead of with an iterative nonlinear fitter.
 
-    if solution[4] > 4:
-        msg = f'Error in least-squares fit: {solution[3]}'
-        raise RuntimeError(msg)
+    Parameters
+    ----------
+    design : 2D `~numpy.ndarray`
+        The design matrix, with one column per coefficient.
 
-    # return coefficients and covariance matrix
-    return (solution[0], solution[1])
+    values : 1D `~numpy.ndarray`
+        The data values.
+
+    Returns
+    -------
+    coeffs : 1D `~numpy.ndarray`
+        The fitted coefficients.
+
+    covariance : 2D `~numpy.ndarray` or `None`
+        The unscaled covariance matrix of the coefficients, i.e., the
+        inverse of the normal matrix. It must be multiplied by the
+        residual variance to get the covariance matrix. It is `None`
+        if the normal matrix is singular.
+
+    Raises
+    ------
+    ValueError
+        If there are fewer data values than coefficients.
+    """
+    n_coeffs = design.shape[1]
+    if len(values) < n_coeffs:
+        msg = (f'At least {n_coeffs} data points are required for the '
+               f'harmonic fit, got {len(values)}')
+        raise ValueError(msg)
+
+    coeffs = np.linalg.lstsq(design, values, rcond=None)[0]
+    try:
+        covariance = np.linalg.inv(design.T @ design)
+    except np.linalg.LinAlgError:
+        covariance = None
+
+    return coeffs, covariance
 
 
 def first_and_second_harmonic_function(phi, c):
@@ -84,14 +115,10 @@ def fit_first_and_second_harmonics(phi, intensities):
     y0, a1, b1, a2, b2 : float
         The fitted harmonic coefficient values.
     """
-    a1 = b1 = a2 = b2 = 1.0
-
-    def optimize_func(x):
-        return first_and_second_harmonic_function(
-            phi, np.array([x[0], x[1], x[2], x[3], x[4]])) - intensities
-
-    return _least_squares_fit(optimize_func, [np.mean(intensities), a1, b1,
-                                              a2, b2])
+    phi = np.asarray(phi)
+    design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
+                              np.sin(2 * phi), np.cos(2 * phi)])
+    return _linear_least_squares_fit(design, intensities)
 
 
 def fit_upper_harmonic(phi, intensities, order):
@@ -126,10 +153,7 @@ def fit_upper_harmonic(phi, intensities, order):
     y0, An, Bn : float
         The fitted harmonic values.
     """
-    an = bn = 1.0
-
-    def optimize_func(x):
-        return (x[0] + x[1] * np.sin(order * phi)
-                + x[2] * np.cos(order * phi) - intensities)
-
-    return _least_squares_fit(optimize_func, [np.mean(intensities), an, bn])
+    phi = np.asarray(phi)
+    design = np.column_stack([np.ones_like(phi), np.sin(order * phi),
+                              np.cos(order * phi)])
+    return _linear_least_squares_fit(design, intensities)

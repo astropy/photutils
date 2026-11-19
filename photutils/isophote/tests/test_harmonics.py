@@ -4,6 +4,7 @@ Tests for the harmonics module.
 """
 
 import numpy as np
+import pytest
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 from scipy.optimize import leastsq
@@ -23,7 +24,7 @@ def test_harmonics_1():
     theta = np.linspace(0, 4 * np.pi, npts)
 
     # Create artificial data with noise:
-    # mean = 0.5, amplitude = 3.0, phase = 0.1, noise-std = 0.01
+    # mean = 0.5, amplitude = 3.0, phase = 0.1, noise-std = 0.01.
     rng = np.random.default_rng(0)
     data = 3.0 * np.sin(theta + 0.1) + 0.5 + 0.01 * rng.standard_normal(npts)
 
@@ -33,14 +34,14 @@ def test_harmonics_1():
     guess_phase = 0
 
     # Minimize the difference between the actual data and our "guessed"
-    # parameters
+    # parameters.
     def optimize_func(x):
         return x[0] * np.sin(theta + x[1]) + x[2] - data
 
     est_std, est_phase, est_mean = leastsq(
         optimize_func, [guess_std, guess_phase, guess_mean])[0]
 
-    # Recreate the fitted curve using the optimized parameters
+    # Recreate the fitted curve using the optimized parameters.
     data_fit = est_std * np.sin(theta + est_phase) + est_mean
     residual = data - data_fit
 
@@ -49,7 +50,7 @@ def test_harmonics_1():
 
 
 def test_harmonics_2():
-    # This uses the actual functional form used for fitting ellipses
+    # This uses the actual functional form used for fitting ellipses.
     npts = 100
     theta = np.linspace(0, 4 * np.pi, npts)
 
@@ -120,7 +121,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(a2), -5.658e-05, atol=0.001)
         assert_allclose(np.mean(b2), -0.00911, atol=0.001)
 
-        # Check that harmonics subtract nicely
+        # Check that harmonics subtract nicely.
         model = first_and_second_harmonic_function(
             s[0], np.array([y0, a1, b1, a2, b2]))
         residual = s[2] - model
@@ -129,7 +130,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.std(residual), 0.015, atol=0.01)
 
     def test_fit_ellipsesample_2(self):
-        # Initial guess is rounder than actual image
+        # Initial guess is rounder than actual image.
         sample = EllipseSample(self.data1, 40.0, eps=0.1)
         s = sample.extract()
 
@@ -143,7 +144,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), 10.153, atol=0.001)
 
     def test_fit_ellipsesample_3(self):
-        # Initial guess for center is offset
+        # Initial guess for center is offset.
         sample = EllipseSample(self.data1, x0=220.0, y0=210.0, sma=40.0)
         s = sample.extract()
 
@@ -217,3 +218,33 @@ def test_upper_harmonics_sign():
     assert isolist.a4[idx] < 0
     assert isolist.b3[idx] > 0
     assert isolist.b4[idx] > 0
+
+
+def test_harmonic_fits_exact():
+    """
+    Test that the harmonic fits recover the exact coefficients and the
+    unscaled covariance matrix of noiseless data.
+    """
+    phi = np.linspace(0.0, 2 * np.pi, 50, endpoint=False)
+    coeffs = np.array([100.0, 1e-3, -2e-3, 3.0, -4.0])
+    intensities = first_and_second_harmonic_function(phi, coeffs)
+    fit_coeffs, covariance = fit_first_and_second_harmonics(phi,
+                                                            intensities)
+    assert_allclose(fit_coeffs, coeffs, rtol=0, atol=1e-12)
+    design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
+                              np.sin(2 * phi), np.cos(2 * phi)])
+    assert_allclose(covariance, np.linalg.inv(design.T @ design))
+
+    intensities = 10.0 + 2e-4 * np.sin(4 * phi) - 3e-4 * np.cos(4 * phi)
+    fit_coeffs, _ = fit_upper_harmonic(phi, intensities, 4)
+    assert_allclose(fit_coeffs, [10.0, 2e-4, -3e-4], rtol=0, atol=1e-12)
+
+
+def test_harmonic_fits_too_few_points():
+    phi = np.array([0.0, 1.0, 2.0, 3.0])
+    match = 'At least 5 data points are required'
+    with pytest.raises(ValueError, match=match):
+        fit_first_and_second_harmonics(phi, phi)
+    match = 'At least 3 data points are required'
+    with pytest.raises(ValueError, match=match):
+        fit_upper_harmonic(phi[:2], phi[:2], 3)
