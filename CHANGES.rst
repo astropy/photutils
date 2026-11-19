@@ -84,6 +84,28 @@ Bug Fixes
     ``fix_eps``, and ``linear`` keywords now apply only to that call.
     Previously, they persisted in subsequent calls. [#2548]
 
+  - Fixed the convergence criterion of the isophote fitter, which
+    scaled the harmonic fit rms by the mean sector area instead of its
+    square root as in the STSDAS ``ellipse`` task. Iterations stopped
+    too early, especially for the ``'mean'`` and ``'median'``
+    integration modes. [#2548]
+
+  - Fixed the ``maxgerr`` criterion of ``Ellipse.fit_image``. It was
+    applied to consecutive iterations of a single isophote, which
+    stopped that fit early and replaced its geometry with that of the
+    previous isophote. As documented, it now stops the semimajor axis
+    growth (or starts the noniterative mode if ``maxsma`` is set) when
+    two consecutive isophotes exceed ``maxgerr``. The fits now
+    typically extend to larger semimajor axes. Also, parameter
+    corrections are no longer computed from a positive local
+    gradient. [#2548]
+
+  - Fixed the ellipse divergence checks of the isophote fitter. The
+    ellipticity check never triggered, so ellipticity corrections
+    beyond 0.95 were clipped to 0.95. The fit now stops and returns
+    the best-fit isophote. The image boundary check of the ellipse
+    center now uses 0-based pixel coordinates. [#2548]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -168,6 +190,13 @@ API Changes
     removed in version 4.0. Use ``photutils.asdf.converters`` and
     ``photutils.asdf.extension`` instead. The ASDF tags and schema URIs
     are unchanged, so existing ASDF files remain readable. [#2540]
+
+- ``photutils.isophote``
+
+  - The ``maxgerr`` and ``going_inwards`` keywords of
+    ``EllipseFitter.fit`` and ``Ellipse.fit_isophote`` are deprecated
+    and will be removed in version 4.0. They have no effect. The
+    ``maxgerr`` criterion is applied by ``Ellipse.fit_image``. [#2548]
 
 
 3.1.1 (2026-10-16)
