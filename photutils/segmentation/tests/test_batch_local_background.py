@@ -77,9 +77,13 @@ def _iterative_sigma_clip(values, *, sigma, maxiters):
     where a value dropped in an earlier iteration is never included
     again.
 
-    The clipping is implemented here because the surviving values of
-    `~astropy.stats.SigmaClip` are the values within the final clipping
-    bounds.
+    This is not the rule that the kernel follows. The kernel and
+    `~astropy.stats.SigmaClip` keep the values within the final
+    clipping bounds, so a value dropped in an earlier iteration is
+    included again if the final bounds admit it. This function gives
+    the contrasting result. The tests use it to check that their data
+    distinguish the two rules and that the kernel does not follow this
+    one.
     """
     values = np.asarray(values, dtype=float)
     for _ in range(maxiters):
@@ -98,8 +102,9 @@ def _iterative_local_background(cat, *, sigma=3.0, maxiters=20):
     sigma clipping, where a value dropped in an earlier iteration is
     never included again.
 
-    It differs from the reference only when the clipping bounds widen
-    between iterations.
+    This is the contrasting result that the kernel must not give (see
+    `_iterative_sigma_clip`). It differs from the reference only when
+    the clipping bounds widen between iterations.
     """
     local_bkgs = []
     for data_values in _annulus_values(cat):
