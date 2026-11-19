@@ -470,6 +470,14 @@ class Ellipse:
                 warnings.warn(msg, AstropyUserWarning)
                 return IsophoteList([])
 
+            # If a later isophote could not be fit at all (e.g., no valid
+            # data points), it is not stored. Stop growing outwards, as
+            # in the inward loop below. Otherwise, the next sma would be
+            # computed again from the last stored isophote, repeating the
+            # same failed fit forever.
+            if isophote.stop_code == 3:
+                break
+
             # Check for failed fit.
             if isophote.stop_code < 0 or isophote.stop_code == 1:
                 # In case the fit failed right at the outset, return an

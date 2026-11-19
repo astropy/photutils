@@ -471,6 +471,27 @@ class TestEllipse:
             angles, radii, _ = iso.sample.values
             assert_allclose(radii, iso.sample.geometry.radius(angles))
 
+    def test_masked_outer_isophote(self):
+        """
+        Test that the outward growth stops at an isophote that has no
+        valid data points.
+
+        The masked annulus contains the whole isophote at sma=33.8
+        (step=0.3), but not the sample used to measure the gradient of
+        the previous isophote. This used to repeat the same failed fit
+        forever.
+        """
+        data = make_test_image(eps=0.0, seed=0)
+        yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+        radius = np.hypot(xx - 256, yy - 256)
+        data = np.ma.masked_array(data, mask=(radius > 31) & (radius < 40))
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.05, 0.1)
+        ellipse = Ellipse(data, geometry=geometry)
+        match = 'Too small sample to warrant a fit'
+        with pytest.warns(AstropyUserWarning, match=match):
+            isolist = ellipse.fit_image(step=0.3, maxsma=80.0)
+        assert_allclose(isolist.sma[-1], 26.0)
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)
