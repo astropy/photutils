@@ -405,11 +405,12 @@ class EllipseSample:
         ----------
         fixed_parameters : `None` or array_like, optional
             An array of the fixed parameters. Must have 4 elements,
-            corresponding to x center, y center, PA, and EPS.
+            corresponding to x center, y center, PA, and EPS. If
+            `None`, the fixed parameters of the ``geometry`` attribute
+            are not changed.
         """
-        if fixed_parameters is None:
-            fixed_parameters = np.array([False, False, False, False])
-        self.geometry.fix = fixed_parameters
+        if fixed_parameters is not None:
+            self.geometry.fix = fixed_parameters
 
         # Update the mean value first, using extraction from main sample.
         s = self.extract()

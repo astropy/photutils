@@ -213,3 +213,19 @@ def test_gradient_radius(astep, linear_growth):
                                 linear_growth=linear_growth)
     sample_step.update(fixed_parameters=DEFAULT_FIX)
     assert_allclose(sample_step.gradient, sample.gradient, rtol=1e-3)
+
+
+def test_update_keeps_fixed_parameters():
+    """
+    Test that update without fixed_parameters keeps the fixed parameters
+    of the geometry.
+    """
+    data = make_test_image(seed=0)
+    geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0,
+                               fix_center=True, fix_eps=True)
+    sample = EllipseSample(data, 20.0, geometry=geometry)
+    sample.update()
+    assert list(sample.geometry.fix) == [True, True, False, True]
+
+    sample.update(fixed_parameters=np.array([False, False, True, False]))
+    assert list(sample.geometry.fix) == [False, False, True, False]
