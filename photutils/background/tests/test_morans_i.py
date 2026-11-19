@@ -179,6 +179,27 @@ class TestMakeMoransIMap:
         assert not np.allclose(result, make_morans_i_map(small, patch_size=7),
                                atol=1e-3, equal_nan=True)
 
+    def test_weights_masked_array(self, small):
+        """
+        Test that the masked pixels of MaskedArray weights are
+        excluded.
+        """
+        rng = np.random.default_rng(5)
+        weights = rng.uniform(0.1, 3.0, small.shape)
+        mask = np.zeros(small.shape, dtype=bool)
+        mask[10:14, 10:14] = True
+        expected = make_morans_i_map(small, patch_size=7, mask=mask,
+                                     weights=weights)
+        assert np.all(np.isnan(expected[mask]))
+
+        result = make_morans_i_map(
+            small, patch_size=7, weights=np.ma.MaskedArray(weights, mask=mask))
+        assert_equal(result, expected)
+        result = make_morans_i_map(
+            small, patch_size=7, weights=np.ma.MaskedArray(weights))
+        assert_equal(result, make_morans_i_map(small, patch_size=7,
+                                               weights=weights))
+
     def test_weights_scale(self, small):
         """
         Test that the result does not depend on the weight scale and
@@ -243,6 +264,26 @@ class TestMakeMoransIMap:
         result = make_morans_i_map(data, patch_size=21)
         assert_allclose(result, _reference_morans_i(data, 21), atol=1e-5)
 
+    def test_fewer_rows_than_half_patch(self):
+        """
+        Test a wide image with fewer rows than half of the patch.
+        """
+        rng = np.random.default_rng(9)
+        data = rng.normal(0.0, 1.0, (3, 300))
+        result = make_morans_i_map(data, patch_size=7)
+        expected = _reference_morans_i(data, 7)
+        assert np.any(np.isfinite(result))
+        assert_equal(np.isnan(result), np.isnan(expected))
+        assert_allclose(result, expected, atol=1e-5)
+
+    @pytest.mark.parametrize('shape', [(0, 5), (5, 0), (0, 0)])
+    def test_zero_size(self, shape):
+        data = np.empty(shape)
+        result = make_morans_i_map(data, mask=np.zeros(shape, dtype=bool),
+                                   weights=np.ones(shape))
+        assert result.shape == shape
+        assert result.dtype == np.float32
+
     def test_noise_and_source(self, noise):
         """
         Test that uncorrelated noise gives values near zero and that a
@@ -276,6 +317,20 @@ class TestMakeMoransIMap:
         data = np.round(noise * 100).astype(int)
         assert_equal(make_morans_i_map(data),
                      make_morans_i_map(data.astype(float)))
+
+    @pytest.mark.parametrize('dtype', ['>f4', '>f8', '<i2', 'f2', 'O'])
+    def test_dtypes(self, noise, dtype):
+        """
+        Test that data and weights with other dtypes give the same
+        result as their float64 values.
+        """
+        data = np.round(noise * 100).astype(dtype)
+        weights = np.round(np.abs(noise) * 10).astype(dtype)
+        expected = make_morans_i_map(data.astype(float),
+                                     weights=weights.astype(float))
+        assert np.any(np.isnan(expected))
+        assert np.any(np.isfinite(expected))
+        assert_equal(make_morans_i_map(data, weights=weights), expected)
 
     def test_quantity(self, noise):
         result = make_morans_i_map(noise << u.Jy)
@@ -654,6 +709,12 @@ class TestMakeMoransIMask:
         mask = make_morans_i_mask(np.full((50, 50), np.nan))
         assert mask.dtype == bool
         assert not np.any(mask)
+
+    @pytest.mark.parametrize('shape', [(0, 5), (5, 0), (0, 0)])
+    def test_zero_size(self, shape):
+        mask = make_morans_i_mask(np.empty(shape))
+        assert mask.shape == shape
+        assert mask.dtype == bool
 
     @pytest.mark.parametrize('shape', [(400, 600), (700, 1100)])
     def test_zero_filled_border(self, shape):

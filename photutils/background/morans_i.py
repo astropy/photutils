@@ -64,6 +64,19 @@ def _subsample(array):
     return array[::step, ::step]
 
 
+def _as_real_array(array):
+    """
+    Return the input as an array with a real numeric dtype.
+
+    Inputs with any other dtype are converted to float64. Real numeric
+    dtypes are kept, so that a large image is not copied.
+    """
+    array = np.asarray(array)
+    if array.dtype.kind not in 'biuf':
+        array = array.astype(float)
+    return array
+
+
 def _image_mean_sq(values):
     """
     Return the mean squared value of a sample of the image, limited to
@@ -177,9 +190,11 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
         The weights of the pixels, with the same shape as ``data``
         (e.g., an inverse-variance map). The patch means, the patch
         variance, and the neighbor means are then weighted. Pixels with
-        a nonfinite or nonpositive weight are excluded. The statistic
-        does not change if the weights are multiplied by a positive
-        constant. If `None`, all of the pixels have the same weight.
+        a nonfinite or nonpositive weight are excluded, as are the
+        masked pixels if ``weights`` is a `~numpy.ma.MaskedArray`. The
+        statistic does not change if the weights are multiplied by a
+        positive constant. If `None`, all of the pixels have the same
+        weight.
 
     Returns
     -------
@@ -240,12 +255,10 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     data, mask = split_masked_array(data, mask)
     if isinstance(data, Quantity):
         data = data.value
-    data = np.asanyarray(data)
+    data = _as_real_array(data)
     if data.ndim != 2:
         msg = 'data must be a 2D array'
         raise ValueError(msg)
-    if data.dtype not in (np.float32, np.float64):
-        data = data.astype(float)
 
     if (isinstance(patch_size, bool)
             or not isinstance(patch_size, (int, np.integer))
@@ -262,12 +275,19 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
         valid &= ~mask
 
     if weights is not None:
-        weights = np.asarray(weights, dtype=float)
+        weights, weights_mask = split_masked_array(weights, None)
+        weights = _as_real_array(weights)
         if weights.shape != data.shape:
             msg = 'weights must have the same shape as data'
             raise ValueError(msg)
         with np.errstate(invalid='ignore'):
             valid &= np.isfinite(weights) & (weights > 0)
+        if weights_mask is not None:
+            valid &= ~weights_mask
+
+    result = np.empty(data.shape, dtype=np.float32)
+    if data.size == 0:
+        return result
 
     # Subtract an approximate background level to limit the rounding
     # error of the box sums. The statistic does not depend on it. The
@@ -283,11 +303,11 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     # The statistic of each pixel depends only on the pixels within
     # this many rows of it, so the map is calculated in strips of rows
     # that overlap by this many rows on each side. The strips limit the
-    # memory used by the intermediate arrays.
+    # memory used by the intermediate arrays, including the float64
+    # copies of data and weights with other dtypes.
     overlap = patch_size // 2 + 1
     n_rows, n_cols = data.shape
     strip_rows = max(overlap, _STRIP_PIXELS // n_cols)
-    result = np.empty(data.shape, dtype=np.float32)
     for start in range(0, n_rows, strip_rows):
         stop = min(start + strip_rows, n_rows)
         lower = max(start - overlap, 0)
@@ -309,13 +329,14 @@ def _morans_i_strip(data, valid, weights, *, pedestal, image_mean_sq,
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The strip of the image.
+        The strip of the image, with any real numeric dtype.
 
     valid : 2D bool `~numpy.ndarray`
         The valid pixels of the strip.
 
     weights : 2D `~numpy.ndarray` or `None`
-        The weights of the strip, or `None` for equal weights.
+        The weights of the strip, with any real numeric dtype, or
+        `None` for equal weights.
 
     pedestal : float
         The value subtracted from the data.
@@ -334,10 +355,12 @@ def _morans_i_strip(data, valid, weights, *, pedestal, image_mean_sq,
         edges of the strip are incorrect unless they are also edges of
         the image.
     """
+    if data.dtype not in (np.float32, np.float64):
+        data = data.astype(float)
     if weights is None:
         wts = valid.astype(float)
     else:
-        wts = np.where(valid, weights, 0.0)
+        wts = np.where(valid, weights, 0.0).astype(float, copy=False)
     values = np.zeros(data.shape)
     values[valid] = data[valid] - pedestal
 
@@ -654,7 +677,9 @@ def make_morans_i_mask(data, *, patch_size=21, n_sigma=3.0, percent=None,
         The weights of the pixels used to calculate the statistic,
         with the same shape as ``data`` (e.g., an inverse-variance
         map). Pixels with a nonfinite or nonpositive weight are
-        excluded. If `None`, all of the pixels have the same weight.
+        excluded, as are the masked pixels if ``weights`` is a
+        `~numpy.ma.MaskedArray`. If `None`, all of the pixels have the
+        same weight.
 
     opening_iterations : int or `None`, optional
         The number of iterations of the binary opening that is applied
