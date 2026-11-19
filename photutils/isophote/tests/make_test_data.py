@@ -135,8 +135,9 @@ def make_fits_test_image(name, *, nx=512, ny=512, x0=None, y0=None,
     if not name.endswith('.fits'):
         name += '.fits'
 
-    array = make_test_image(nx, ny, x0, y0, background, noise, i0, sma, eps,
-                            pa, seed=seed)
+    array = make_test_image(nx=nx, ny=ny, x0=x0, y0=y0,
+                            background=background, noise=noise, i0=i0,
+                            sma=sma, eps=eps, pa=pa, seed=seed)
 
     hdu = fits.PrimaryHDU(array)
     hdulist = fits.HDUList([hdu])
