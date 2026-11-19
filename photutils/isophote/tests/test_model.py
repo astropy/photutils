@@ -11,7 +11,8 @@ import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.data import get_pkg_data_filename
-from numpy.testing import assert_array_equal
+from astropy.utils.exceptions import AstropyUserWarning
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.datasets.load import _get_path
 from photutils.isophote._ellipse_model import build_ellipse_model_c
@@ -369,3 +370,33 @@ def test_build_ellipse_model_c_partial_harmonics():
     with pytest.raises(ValueError, match=match):
         build_ellipse_model_c(100, 100, sma, *arrays,
                               a3_array=np.full(n, 0.01))
+
+
+def test_model_nonfinite_central_pixel():
+    """
+    Test that isophotes with a nonfinite intensity, such as the central
+    pixel of a galaxy with a masked center, are ignored.
+    """
+    data = make_test_image(nx=200, ny=200, seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=30.0)
+    expected = build_ellipse_model(data.shape, isolist)
+
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[100, 100] = True
+    ellipse = Ellipse(np.ma.masked_array(data, mask=mask))
+    match = 'The harmonic fit failed'
+    with pytest.warns(AstropyUserWarning, match=match):
+        isolist = ellipse.fit_image(maxsma=30.0)
+    assert isolist[0].sma == 0
+    assert np.isnan(isolist[0].intens)
+
+    model = build_ellipse_model(data.shape, isolist)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    radius = np.hypot(xx - 100, yy - 100)
+    annulus = (radius > 3) & (radius < 20)
+    assert np.all(np.isfinite(model))
+    assert_allclose(model[annulus], expected[annulus], rtol=0.01)
+
+    match = 'at least 4 isophotes with a finite intensity'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist[:4])
