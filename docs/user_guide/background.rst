@@ -364,9 +364,17 @@ source. With a source mask, a box that is mostly covered by sources is
 excluded instead, so smaller boxes can be used, as long as each box
 keeps enough unmasked pixels for its statistics.
 
-For best results, the box size should also be chosen so that the data
-are covered by an integer number of boxes in both dimensions. If that
-is not the case, the boxes along the top and/or right edges are only
+The box size is a tradeoff. Smaller boxes follow a background gradient
+more closely and give smaller errors near the edges of the image, where
+the background is extrapolated beyond the centers of the outermost
+boxes. Those errors increase with the box size and with the steepness
+of the gradient. Larger boxes contain more pixels, so their estimates
+are less noisy. Where the background changes slowly, as in most images,
+larger boxes are therefore the better choice.
+
+If possible, the box size should also be chosen so that the data are
+covered by an integer number of boxes in both dimensions. If that is
+not the case, the boxes along the top and/or right edges are only
 partly filled with data. The missing area counts as masked pixels for
 the ``exclude_percentile`` keyword (see :ref:`background_2d_masking`),
 so a narrow edge box is excluded and the background there is
@@ -440,7 +448,7 @@ Let's plot the source mask:
     ax.set_title('Source Mask')
 
 Next, we create a `~photutils.background.Background2D` object using a
-box size of 20x20 and a 3x3 median filter, and we input the source mask
+box size of 10x10 and a 3x3 median filter, and we input the source mask
 with the ``mask`` keyword. We will estimate the background level in each
 box as the sigma-clipped median using an instance of
 :class:`~photutils.background.MedianBackground` (see
@@ -453,12 +461,14 @@ pixels masked are used (see :ref:`background_2d_masking` below)::
     >>> from photutils.background import Background2D, MedianBackground
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg_estimator = MedianBackground()
-    >>> bkg = Background2D(data2, (20, 20), filter_size=(3, 3),
+    >>> bkg = Background2D(data2, (10, 10), filter_size=(3, 3),
     ...                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,
     ...                    mask=mask, exclude_percentile=50.0)
 
-The image has 300x500 pixels, so it is covered by exactly 15x25 boxes
-of this size.
+The image has 300x500 pixels, so it is covered by exactly 30x50 boxes
+of this size. Such small boxes are used here because the gradient of
+this example is unusually steep. The background changes by the noise
+level over about 30 pixels. Most images call for much larger boxes.
 
 The 2D background and background RMS images are retrieved using the
 ``background`` and ``background_rms`` properties, respectively, on the
@@ -469,9 +479,9 @@ and background RMS images can be accessed with the ``background_median``
 and ``background_rms_median`` properties, respectively::
 
     >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
-    10.582891223852661
+    10.548921536796389
     >>> print(round(bkg.background_rms_median, 3))
-    2.0
+    1.965
 
 For comparison, the true background of the example image has a median
 of 10.56, and the true noise is 2. The background RMS image can be
@@ -502,7 +512,7 @@ Let's plot the background image:
     mask = make_morans_i_mask(data2)
     sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
-    bkg = Background2D(data2, (20, 20), filter_size=(3, 3),
+    bkg = Background2D(data2, (10, 10), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,
                        mask=mask, exclude_percentile=50.0)
     fig, ax = plt.subplots()
@@ -536,7 +546,7 @@ and the background-subtracted image:
     mask = make_morans_i_mask(data2)
     sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
-    bkg = Background2D(data2, (20, 20), filter_size=(3, 3),
+    bkg = Background2D(data2, (10, 10), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator,
                        mask=mask, exclude_percentile=50.0)
     data2_sub = data2 - bkg.background
@@ -547,11 +557,11 @@ and the background-subtracted image:
 
 The background is extrapolated beyond the centers of the outermost
 boxes, so it is less accurate near the edges of the image. In this
-example, the background within 10 pixels of the top and right edges,
-where it increases toward the edge, is underestimated by about 0.85
-and 0.55, respectively. Within 10 pixels of the bottom and left edges,
-where it decreases toward the edge, it is overestimated by about 1.0
-and 0.7, respectively. A few boxes farther in, the mean error is about
+example, the background within 5 pixels of the top and right edges,
+where it increases toward the edge, is underestimated by about 0.4
+and 0.2, respectively. Within 5 pixels of the bottom and left edges,
+where it decreases toward the edge, it is overestimated by about 0.5
+and 0.3, respectively. A few boxes farther in, the mean error is about
 0.1 or less.
 
 
@@ -574,34 +584,32 @@ sources. Because the true background of the example image is known (a
 level of 5 plus the gradient), we can measure that bias under the
 sources for the estimates made with and without the source mask::
 
-    >>> bkg_nomask = Background2D(data2, (20, 20), filter_size=(3, 3),
+    >>> bkg_nomask = Background2D(data2, (10, 10), filter_size=(3, 3),
     ...                           sigma_clip=sigma_clip,
     ...                           bkg_estimator=bkg_estimator)
     >>> background = 5.0 + gradient
     >>> bias = bkg_nomask.background[mask] - background[mask]
     >>> print(round(np.mean(bias), 3))
-    0.336
+    0.421
     >>> bias = bkg.background[mask] - background[mask]
     >>> print(round(np.mean(bias), 3))
-    0.054
+    0.026
 
 Without the source mask, the background under the sources is
-overestimated by about 0.34, which is about 17% of the background noise.
-With the source mask, the bias is about 0.05, which is about 3% of the
-background noise. Away from the image edges (excluding the outermost
-rows and columns of boxes), the RMS error of the background also
-decreases, from about 0.29 to about 0.21. Over the whole image, the
-error is dominated by the extrapolation at the edges.
+overestimated by about 0.42, which is about 21% of the background noise.
+With the source mask, the bias is about 0.03, which is about 1% of the
+background noise. The RMS error of the background over the whole image
+also decreases, from about 0.37 to about 0.25.
 
 A box is excluded from the low-resolution background map if more than
 ``exclude_percentile`` percent of its pixels are masked (10 by
 default), including the pixels removed by sigma clipping. The
 background in an excluded box is interpolated from the neighboring
 boxes. The Moran's I mask covers each source out to approximately half
-the patch size beyond where it is detected, so in this example more
-than half of the 20x20 boxes have more than 10% of their pixels in the
+the patch size beyond where it is detected, so in this example about
+half of the 10x10 boxes have more than 10% of their pixels in the
 source mask. Setting ``exclude_percentile=50`` keeps the boxes in which
-at least half of the pixels remain, which still leaves at least 200
+at least half of the pixels remain, which still leaves at least 50
 pixels for the statistics of each box. A larger value admits boxes with
 fewer pixels, whose estimates are noisier, so ``exclude_percentile``
 should not be increased more than needed.
@@ -678,7 +686,7 @@ boxes around the edges of the rotated image:
 
     >>> coverage_mask = (data3 == 0)
     >>> mask3 = make_morans_i_mask(data3, mask=coverage_mask)
-    >>> bkg3 = Background2D(data3, (20, 20), filter_size=(3, 3),
+    >>> bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
     ...                     mask=mask3, coverage_mask=coverage_mask,
     ...                     fill_value=0.0, exclude_percentile=50.0)
 
@@ -708,7 +716,7 @@ coverage are set to ``fill_value``:
     data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
     mask3 = make_morans_i_mask(data3, mask=coverage_mask)
-    bkg3 = Background2D(data3, (20, 20), filter_size=(3, 3),
+    bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
                         mask=mask3, coverage_mask=coverage_mask,
                         fill_value=0.0, exclude_percentile=50.0)
     norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
@@ -742,7 +750,7 @@ Finally, let's subtract the background from the image and plot it:
     data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
     mask3 = make_morans_i_mask(data3, mask=coverage_mask)
-    bkg3 = Background2D(data3, (20, 20), filter_size=(3, 3),
+    bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
                         mask=mask3, coverage_mask=coverage_mask,
                         fill_value=0.0, exclude_percentile=50.0)
     data_sub = data3 - bkg3.background
@@ -795,7 +803,7 @@ masked pixels for ``exclude_percentile``.
     data3 = rotate(data2, -45.0)
     coverage_mask = (data3 == 0)
     mask3 = make_morans_i_mask(data3, mask=coverage_mask)
-    bkg3 = Background2D(data3, (20, 20), filter_size=(3, 3),
+    bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
                         mask=mask3, coverage_mask=coverage_mask,
                         fill_value=0.0, exclude_percentile=50.0)
     norm = simple_norm(data3, 'sqrt', percent=99.5)
@@ -865,16 +873,18 @@ clipping to both estimators. For example, to use the MMM background,
 the MAD-based background RMS, and a 2.5-sigma clip::
 
     >>> from photutils.background import MADStdBackgroundRMS, MMMBackground
-    >>> bkg_mmm = Background2D(data2, (20, 20), mask=mask,
+    >>> bkg_mmm = Background2D(data2, (10, 10), mask=mask,
     ...                        exclude_percentile=50.0,
     ...                        sigma_clip=SigmaClip(sigma=2.5),
     ...                        bkg_estimator=MMMBackground(),
     ...                        bkg_rms_estimator=MADStdBackgroundRMS())
 
-With a good source mask, the choice of estimator matters little. For
-the image with the gradient above, the median, MMM, and SourceExtractor
-estimators all give a small bias under the sources (about 0.05), and
-their RMS errors of the background differ by only about 0.01.
+With a good source mask, the choice of estimator matters little for
+the bias. For the image with the gradient above, the median, MMM, and
+SourceExtractor estimators all give a small bias under the sources
+(less than 0.03). Their RMS errors of the background range from about
+0.25 for the median to about 0.30 for MMM, because the mode estimators
+are noisier than the median.
 
 After the background level has been determined in each of the boxes,
 the low-resolution background and background RMS images are median
@@ -913,7 +923,7 @@ callable is input, it must be thread-safe. For example:
 
 .. doctest-skip::
 
-    >>> bkg = Background2D(data2, (20, 20), mask=mask,
+    >>> bkg = Background2D(data2, (10, 10), mask=mask,
     ...                    exclude_percentile=50.0, n_threads=4)
 
 Multithreading is most beneficial for large images. For the small
