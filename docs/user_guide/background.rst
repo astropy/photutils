@@ -469,10 +469,10 @@ respectively. The global median values of the low-resolution background
 and background RMS images can be accessed with the ``background_median``
 and ``background_rms_median`` properties, respectively::
 
-    >>> print(round(bkg.background_median, 1))
-    10.6
-    >>> print(round(bkg.background_rms_median, 2))
-    1.98
+    >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
+    10.617739548341078
+    >>> print(round(bkg.background_rms_median, 4))
+    1.9825
 
 For comparison, the true background of the example image has a median
 of 10.56, and the true noise is 2. The background RMS image can be
@@ -577,18 +577,19 @@ sources for the estimates made with and without the source mask::
     ...                           bkg_estimator=bkg_estimator)
     >>> background = 5.0 + gradient
     >>> bias = bkg_nomask.background[mask] - background[mask]
-    >>> print(round(np.mean(bias), 1))
-    0.3
+    >>> print(round(np.mean(bias), 3))
+    0.333
     >>> bias = bkg.background[mask] - background[mask]
-    >>> print(round(abs(np.mean(bias)), 1))
-    0.0
+    >>> print(round(np.mean(bias), 3))
+    0.022
 
 Without the source mask, the background under the sources is
-overestimated by about 0.3, which is about 16% of the background noise.
-With the source mask, the bias is negligible. Away from the image edges
-(excluding the outermost row and column of boxes), the RMS error of the
-background also decreases, from about 0.24 to about 0.20. Over the
-whole image, the error is dominated by the extrapolation at the edges.
+overestimated by about 0.33, which is about 17% of the background noise.
+With the source mask, the bias is about 0.02, which is about 1% of the
+background noise. Away from the image edges (excluding the outermost
+row and column of boxes), the RMS error of the background also
+decreases, from about 0.24 to about 0.20. Over the whole image, the
+error is dominated by the extrapolation at the edges.
 
 A box is excluded from the low-resolution background map if more than
 ``exclude_percentile`` percent of its pixels are masked (10 by
@@ -870,9 +871,8 @@ the MAD-based background RMS, and a 2.5-sigma clip::
 
 With a good source mask, the choice of estimator matters little. For
 the image with the gradient above, the median, MMM, and SourceExtractor
-estimators all give a negligible bias under the sources (less than
-0.005), and their RMS errors of the background differ by only about
-0.02.
+estimators all give a small bias under the sources (less than 0.03),
+and their RMS errors of the background differ by only about 0.02.
 
 After the background level has been determined in each of the boxes,
 the low-resolution background and background RMS images are median
