@@ -106,6 +106,18 @@ Bug Fixes
     the best-fit isophote. The image boundary check of the ellipse
     center now uses 0-based pixel coordinates. [#2548]
 
+  - Fixed the isophote fitter for isophotes whose ellipticity
+    corrections cross zero. The ellipticity was flipped to a positive
+    value after the sample had already been extracted, so the next
+    iteration fit the intensities of a different ellipse. [#2548]
+
+  - Fixed the isophote fitter to return the best-fit sample instead
+    of the last corrected one when the iterations stop because the
+    local gradient is not negative. [#2548]
+
+  - Fixed ``EllipseGeometry.find_center`` raising a ``MaskError`` for
+    starting positions near the image edges. [#2548]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
