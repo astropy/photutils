@@ -48,6 +48,13 @@ class _Integrator:
         self._image = image
         self._geometry = geometry
 
+        # Split a masked image into its data and mask arrays once,
+        # because indexing a MaskedArray pixel by pixel is slow. The
+        # mask is None if no pixels can be masked.
+        self._data = np.ma.getdata(image)
+        mask = np.ma.getmask(image)
+        self._mask = None if mask is np.ma.nomask else mask
+
         self._angles = angles
         self._radii = radii
         self._intensities = intensities
@@ -157,10 +164,11 @@ class _NearestNeighborIntegrator(_Integrator):
 
         # ignore data point if outside image boundaries
         if (0 <= i < self._image.shape[1]) and (0 <= j < self._image.shape[0]):
-            sample = self._image[j][i]
-
             # Skip masked and nonfinite pixels.
-            if sample is not np.ma.masked and math.isfinite(sample):
+            if self._mask is not None and self._mask[j, i]:
+                return
+            sample = self._data[j, i]
+            if math.isfinite(sample):
                 self._store_results(phi, radius, sample)
 
     def get_polar_angle_step(self):
@@ -192,15 +200,15 @@ class _BiLinearIntegrator(_Integrator):
             qx = 1.0 - fx
             qy = 1.0 - fy
 
-            if (self._image[j][i] is not np.ma.masked
-                    and self._image[j + 1][i] is not np.ma.masked
-                    and self._image[j][i + 1] is not np.ma.masked
-                    and self._image[j + 1][i + 1] is not np.ma.masked):
-
-                sample = (self._image[j][i] * qx * qy
-                          + self._image[j + 1][i] * qx * fy
-                          + self._image[j][i + 1] * fx * qy
-                          + self._image[j + 1][i + 1] * fy * fx)
+            mask = self._mask
+            if mask is None or not (mask[j, i] or mask[j + 1, i]
+                                    or mask[j, i + 1]
+                                    or mask[j + 1, i + 1]):
+                data = self._data
+                sample = (data[j, i] * qx * qy
+                          + data[j + 1, i] * qx * fy
+                          + data[j, i + 1] * fx * qy
+                          + data[j + 1, i + 1] * fy * fx)
 
                 # Skip samples that include nonfinite pixels.
                 if math.isfinite(sample):
@@ -277,8 +285,8 @@ class _AreaIntegrator(_Integrator):
 
                         if rp < r2 and rp >= r1:
                             # update accumulator with pixel value
-                            pix_value = self._image[j][i]
-                            if (pix_value is not np.ma.masked
+                            pix_value = self._data[j, i]
+                            if ((self._mask is None or not self._mask[j, i])
                                     and math.isfinite(pix_value)):
                                 accumulator, n_pixels = self.accumulate(
                                     pix_value, accumulator)
