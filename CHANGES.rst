@@ -155,25 +155,14 @@ Bug Fixes
     from the geometry of the first fitted isophote, as in the STSDAS
     ``ellipse`` task, instead of the outermost isophote. [#2549]
 
-  - Fixed ``EllipseSample`` replacing an input ``x0`` or ``y0`` of zero
-    with the image center. [#2548]
-
-  - Fixed a ``ZeroDivisionError`` in the ``'mean'`` and ``'median'``
-    integration modes when the inner bounding ellipse of the sectors
-    has zero size. [#2548]
-
-  - Fixed ``build_ellipse_model`` setting model pixels with a value of
-    exactly zero to the ``fill`` value. Only the pixels with no
-    contribution from any isophote are now filled. [#2548]
-
-  - Fixed ``Ellipse.fit_image`` to start the first isophote fit inwards
-    from the geometry of the first fitted isophote, as in the STSDAS
-    ``ellipse`` task, instead of the outermost isophote. [#2548]
-
   - Fixed the isophote fits for images with nonfinite (NaN or
     infinity) values, which propagated into the fitted intensities and
     could stop the fit early. Nonfinite values are now excluded, like
     masked pixels, and ``Ellipse`` emits a warning. [#2550]
+
+  - Fixed an ``IndexError`` in ``Ellipse.fit_image`` when the central
+    pixel is masked. The intensity of the central pixel is now NaN.
+    [#2550]
 
   - Fixed ``build_ellipse_model`` omitting the outermost isophote from
     the model image. [#2550]
