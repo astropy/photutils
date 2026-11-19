@@ -290,7 +290,7 @@ class TestIsophoteList:
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
-        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(maxsma=27)
 
         assert len(isolist.get_names()) >= 30  # test for get_names
@@ -318,7 +318,7 @@ class TestIsophoteList:
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
-        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(maxsma=27)
         match = 'Invalid column name'
         with pytest.raises(ValueError, match=match):
@@ -334,7 +334,7 @@ class TestIsophoteList:
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
-        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(maxsma=27)
         match = "'grad_error' attribute was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):

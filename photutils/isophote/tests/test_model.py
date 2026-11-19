@@ -31,7 +31,7 @@ def test_model():
     hdu.close()
 
     g = EllipseGeometry(530.0, 511, 10.0, 0.1, np.deg2rad(10.0))
-    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
+    ellipse = Ellipse(data, geometry=g)
 
     # NOTE: this sometimes emits warnings (e.g., py38, ubuntu), but
     # sometimes not. Here we simply ignore any RuntimeWarning, whether
@@ -60,7 +60,7 @@ def fixture_simulated_isolist():
                            pa=np.pi / 3.0, noise=0.05, seed=0)
 
     g = EllipseGeometry(100.0, 100.0, 5.0, 0.5, np.pi / 3.0)
-    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
+    ellipse = Ellipse(data, geometry=g)
 
     # Catch warnings that may arise from empty slices. This started
     # to happen on windows with scipy 1.15.0.
@@ -201,7 +201,7 @@ def test_model_integration():
     data = make_test_image(nx=80, ny=110, i0=100.0, sma=60.0, eps=0.5,
                            pa=np.pi / 3.0, noise=0.05, seed=0)
     g = EllipseGeometry(40, 55, 5.0, 0.5, np.pi / 3.0)
-    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
+    ellipse = Ellipse(data, geometry=g)
     isophote_list = ellipse.fit_image()
     model = build_ellipse_model(data.shape, isophote_list,
                                 fill=np.nanmean(data[105:, :5]),

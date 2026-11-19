@@ -17,7 +17,8 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
-from photutils.utils._deprecation import (deprecated_positional_kwargs,
+from photutils.utils._deprecation import (deprecated,
+                                          deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 
 __all__ = ['Ellipse']
@@ -45,16 +46,13 @@ class Ellipse:
         position angle of 90 degrees.
 
     threshold : float, optional
-        The threshold for the object centerer algorithm. By lowering
-        this value the object centerer becomes less strict, in the
-        sense that it will accept lower signal-to-noise data. If set
-        to a very large value, the centerer is effectively shut off.
-        In this case, either the geometry information supplied by the
-        ``geometry`` parameter is used as is, or the fit algorithm
-        will terminate prematurely. Note that once the object centerer
-        runs successfully, the (x, y) coordinates in the ``geometry``
-        attribute (an `~photutils.isophote.EllipseGeometry` instance)
-        are modified in place. The default is 0.1.
+        This keyword has no effect.
+
+        .. deprecated:: 3.2
+           This keyword argument is deprecated and will be removed in
+           version 4.0. The object centerer is not run by this class.
+           Use :meth:`~photutils.isophote.EllipseGeometry.find_center`
+           to refine the initial center before creating this class.
 
     Notes
     -----
@@ -154,25 +152,14 @@ class Ellipse:
     The fit algorithm has no way of finding where, in the input image
     frame, the galaxy to be measured is located. The center (x, y)
     coordinates need to be close to the actual center for the fit
-    to work. An "object centerer" function helps to verify that the
-    selected position can be used as starting point. This function
-    scans a 10x10 window centered either on the (x, y) coordinates in
-    the `~photutils.isophote.EllipseGeometry` instance passed to the
-    constructor of the `~photutils.isophote.Ellipse` class, or, if
-    any one of them, or both, are set to `None`, on the input image
-    frame center. In case a successful acquisition takes place, the
-    `~photutils.isophote.EllipseGeometry` instance is modified in place
-    to reflect the solution of the object centerer algorithm.
-
-    In some cases the object centerer algorithm may fail, even though
-    there is enough signal-to-noise to start a fit (e.g., in objects
-    with very high ellipticity). In those cases the sensitivity of the
-    algorithm can be decreased by decreasing the value of the object
-    centerer threshold parameter. The centerer works by looking to where
-    a quantity akin to a signal-to-noise ratio is maximized within the
-    10x10 window. The centerer can thus be shut off entirely by setting
-    the threshold to a large value >> 1 (meaning, no location inside the
-    search window will achieve that signal-to-noise ratio).
+    to work. The "object centerer", the
+    :meth:`~photutils.isophote.EllipseGeometry.find_center` method,
+    can be used to refine the initial center before the
+    `~photutils.isophote.EllipseGeometry` instance is passed to the
+    constructor of this class. It scans an 11x11 window centered on
+    the (x, y) coordinates of the instance, and it modifies them in
+    place if it finds the galaxy center. This class does not run the
+    object centerer.
 
     A note of caution: the ellipse fitting algorithm was designed
     explicitly with an elliptical galaxy brightness distribution in
@@ -184,7 +171,9 @@ class Ellipse:
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def __init__(self, image, geometry=None, threshold=0.1):
+    @deprecated_renamed_argument('threshold', None, '3.2', until='4.0')
+    def __init__(self, image, geometry=None,
+                 threshold=None):  # noqa: ARG002
         self.image = image
 
         if geometry is not None:
@@ -194,11 +183,17 @@ class Ellipse:
             _y0 = image.shape[0] / 2
             self._geometry = EllipseGeometry(_x0, _y0, 10.0, eps=0.2,
                                              pa=np.pi / 2)
-        self.set_threshold(threshold)
 
+    @deprecated('3.2', alternative='EllipseGeometry.find_center',
+                until='4.0')
     def set_threshold(self, threshold):
         """
         Modify the threshold value used by the centerer.
+
+        This method has no effect because this class does not run the
+        object centerer. Use
+        :meth:`~photutils.isophote.EllipseGeometry.find_center`
+        instead.
 
         Parameters
         ----------

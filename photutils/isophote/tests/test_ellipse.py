@@ -189,6 +189,20 @@ class TestEllipse:
         assert isophote.eps == expected.eps
         assert isophote.pa == expected.pa
 
+    def test_threshold_deprecated(self):
+        geometry = EllipseGeometry(250.0, 260.0, 10.0, 0.2, PA)
+        match = "'threshold' was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            ellipse = Ellipse(self.data, geometry=geometry, threshold=0.1)
+
+        match = 'Use EllipseGeometry.find_center instead'
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            ellipse.set_threshold(0.1)
+
+        # The object centerer is not run.
+        assert geometry.x0 == 250.0
+        assert geometry.y0 == 260.0
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)
