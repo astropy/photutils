@@ -226,12 +226,14 @@ class EllipseFitter:
 
                 # If the corrected ellipse diverged, stop without
                 # sampling it and return the best-fit sample instead.
+                # Otherwise, fix a round ellipse before the new sample
+                # is extracted so that its values match its geometry.
                 if self._is_diverged(sample):
                     sample = minimum_amplitude_sample
                     proceed = False
                 else:
-                    sample.update(fixed_parameters=fixed_parameters)
                     self._fix_round_ellipse(sample.geometry)
+                    sample.update(fixed_parameters=fixed_parameters)
 
             if not proceed:
                 sample.update(fixed_parameters=fixed_parameters)
@@ -249,6 +251,9 @@ class EllipseFitter:
         """
         Fix an ellipse geometry whose ellipticity crossed or reached
         zero.
+
+        This must be called before the sample with this geometry is
+        extracted.
         """
         # See if eps == 0 (round isophote) was crossed.
         # If so, fix it but still proceed.
@@ -263,6 +268,8 @@ class EllipseFitter:
         # Make it slightly flat, but still proceed.
         if geometry.eps == 0.0:
             geometry.eps = MIN_EPS
+
+        geometry._reset_sma_dependent_attributes()
 
     @staticmethod
     def _is_diverged(sample):

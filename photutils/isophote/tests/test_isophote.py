@@ -104,13 +104,15 @@ class TestIsophote:
     def test_m51_niter(self):
         # Compare with old STSDAS task. In this task, the
         # default for the starting value of SMA is 10. It
-        # fits with 20 iterations.
+        # fits with 20 iterations, which is the minimum number of
+        # iterations (2 * minit) for the first isophote.
         sample = EllipseSample(self.data, 10)
         fitter = EllipseFitter(sample)
-        iso = fitter.fit()
+        iso = fitter.fit(minit=20)
 
         assert iso.valid
-        assert iso.n_iter == 50
+        assert iso.stop_code == 0
+        assert iso.n_iter == 20
 
 
 def test_isophote_comparisons():
@@ -168,7 +170,7 @@ class TestIsophoteList:
         return IsophoteList(iso_list)
 
     def test_basic_list(self):
-        # Make sure it can be indexed as a list
+        # Make sure it can be indexed as a list.
         result = self.isolist_sma10[:]
         assert isinstance(result[0], Isophote)
 
@@ -209,7 +211,7 @@ class TestIsophoteList:
         assert_allclose(iso.sma, 14.0, atol=1e-6)
 
     def test_central_pixel(self):
-        # Test the central_pixel method
+        # Test the central_pixel method.
         sample = EllipseSample(self.data, 10.0)
         sample.update()
         cenpix = CentralPixel(sample)
@@ -251,19 +253,19 @@ class TestIsophoteList:
         assert len(iso_list[2:-2]) == self.slen - 4
 
     def test_combined(self):
-        # Combine extend with slicing
+        # Combine extend with slicing.
         inner_list = self.isolist_sma10[:]
         outer_list = self.isolist_sma100[:]
         sublist = inner_list[2:-2]
         sublist.extend(outer_list)
         assert len(sublist) == 2 * self.slen - 4
 
-        # Try one more slice
+        # Try one more slice.
         even_outer_list = self.isolist_sma200
         sublist.extend(even_outer_list[1:-1])
         assert len(sublist) == 2 * self.slen - 4 + 3
 
-        # Combine __add__ with slicing
+        # Combine __add__ with slicing.
         sublist = inner_list[2:-2]
         result = sublist + outer_list
         assert isinstance(result, IsophoteList)

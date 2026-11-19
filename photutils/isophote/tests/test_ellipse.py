@@ -149,6 +149,24 @@ class TestEllipse:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ellipse.fit_isophote(40.0, **kwargs)
 
+    def test_round_galaxy_sample_matches_geometry(self):
+        """
+        Test that the sampled values of the fitted isophotes match their
+        geometry for a round galaxy.
+
+        For a round galaxy, the ellipticity corrections can cross zero.
+        The ellipse is then flipped to a positive ellipticity, and the
+        sample must be extracted from the flipped geometry.
+        """
+        data = make_test_image(eps=0.0, noise=1.0, seed=0)
+        isolist = Ellipse(data).fit_image(maxsma=60.0)
+        for isophote in isolist:
+            if isophote.sma == 0:
+                continue
+            angles, radii, _ = isophote.sample.values
+            assert_allclose(radii, isophote.sample.geometry.radius(angles),
+                            rtol=1e-10)
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)
