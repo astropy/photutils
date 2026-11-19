@@ -201,14 +201,16 @@ The results are comparable to those from the segmentation-based mask
 above, but neither an iteration nor a detection threshold in data units
 was needed.
 
-Only a constant background drops out of the statistic, however. A
-background that changes by more than about the noise level across a
-single patch adds autocorrelation of its own, which raises the
-statistic in every patch. If the whole image has such a strong
+The statistic is unaffected by the background only where the
+background is nearly constant across a patch. A background that
+changes by more than about the noise level across a single patch makes
+neighboring pixels more alike than distant ones, which is the same
+correlation that a source produces. Such a gradient therefore raises
+the statistic in every patch. If the whole image has such a strong
 gradient, the typical background value of the statistic cannot be
-estimated, and few or no sources are flagged.
-Gradients that are small compared to the noise across a patch, like the
-one in the 2D example below, have little effect.
+estimated, and few or no sources are flagged. Gradients that are small
+compared to the noise across a patch, like the one in the 2D example
+below, have little effect.
 
 The map of the statistic can be calculated with the
 `~photutils.background.make_morans_i_map` function. Let's plot the
