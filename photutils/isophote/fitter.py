@@ -12,6 +12,7 @@ from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
 from photutils.isophote.isophote import CentralPixel, Isophote
 from photutils.isophote.sample import EllipseSample
+from photutils.utils._deprecation import deprecated_renamed_argument
 
 __all__ = ['EllipseFitter']
 
@@ -42,9 +43,11 @@ class EllipseFitter:
     def __init__(self, sample):
         self._sample = sample
 
+    @deprecated_renamed_argument('maxgerr', None, '3.2', until='4.0')
+    @deprecated_renamed_argument('going_inwards', None, '3.2', until='4.0')
     def fit(self, *, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
-            maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
-            going_inwards=False):
+            maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
+            maxgerr=None, going_inwards=None):  # noqa: ARG002
         """
         Fit an elliptical isophote.
 
@@ -82,40 +85,21 @@ class EllipseFitter:
             default is 0.7.
 
         maxgerr : float, optional
-            The maximum acceptable relative error in the local
-            radial intensity gradient. This is the main control
-            for preventing ellipses to grow to regions of too
-            low signal-to-noise ratio. It specifies the maximum
-            acceptable relative error in the local radial
-            intensity gradient. `Busko (1996, ASPC 101, 139)
-            <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstr
-            act>`_ showed that the fitting precision relates to that
-            relative error. The usual behavior of the gradient relative
-            error is to increase with semimajor axis, being larger in
-            outer, fainter regions of a galaxy image. In the current
-            implementation, the ``maxgerr`` criterion is triggered only
-            when two consecutive isophotes exceed the value specified by
-            the parameter. This prevents premature stopping caused by
-            contamination such as stars and HII regions.
+            This keyword has no effect.
 
-            A number of actions may happen when the gradient error
-            exceeds ``maxgerr`` (or becomes nonsignificant and is
-            set to `None`). If the maximum semimajor axis specified
-            by ``maxsma`` is set to `None`, semimajor axis growth is
-            stopped and the algorithm proceeds inwards to the galaxy
-            center. If ``maxsma`` is set to some finite value, and this
-            value is larger than the current semimajor axis length, the
-            algorithm enters noniterative mode and proceeds outwards
-            until reaching ``maxsma``. The default is 0.5.
+            .. deprecated:: 3.2
+               This keyword argument is deprecated and will be removed
+               in version 4.0. The ``maxgerr`` criterion compares
+               consecutive isophotes. It is applied by
+               :meth:`~photutils.isophote.Ellipse.fit_image`, so it has
+               no effect when fitting a single isophote.
 
         going_inwards : bool, optional
-            Parameter to define the sense of SMA growth. When fitting
-            just one isophote, this parameter is used only by the code
-            that defines the details of how elliptical arc segments
-            ("sectors") are extracted from the image, when using area
-            extraction modes (see the ``integrmode`` parameter in the
-            `~photutils.isophote.EllipseSample` class). The default is
-            `False`.
+            This keyword has no effect.
+
+            .. deprecated:: 3.2
+               This keyword argument is deprecated and will be removed
+               in version 4.0.
 
         Returns
         -------
@@ -131,10 +115,6 @@ class EllipseFitter:
         >>> isophote = fitter.fit()
         """
         sample = self._sample
-
-        # This flag signals that limiting gradient error (`maxgerr`)
-        # wasn't exceeded yet.
-        lexceed = False
 
         # Here we keep track of the sample that caused the minimum harmonic
         # amplitude(in absolute value). This will eventually be used to
@@ -219,11 +199,13 @@ class EllipseFitter:
                                 stop_code=1)
 
             # The parameter correctors divide by the sample's local
-            # gradient. If the gradient is zero or nonfinite (e.g.,
-            # from a degenerate sample where no gradient could be
-            # measured), no correction can be computed and iterations
-            # cannot proceed.
-            proceed = (sample.gradient != 0.0
+            # gradient, which must be negative (the intensity decreases
+            # outward) for the corrections to have the right sign. If
+            # the gradient is zero, positive, or nonfinite (e.g., from
+            # a degenerate sample where no gradient could be measured),
+            # no correction can be computed and iterations cannot
+            # proceed.
+            proceed = (sample.gradient < 0.0
                        and np.isfinite(sample.gradient))
 
             if proceed:
@@ -249,12 +231,7 @@ class EllipseFitter:
                     proceed = False
                 else:
                     sample.update(fixed_parameters=fixed_parameters)
-
-                    # See if any abnormal (or unusual) conditions
-                    # warrant the change to noniterative mode, or
-                    # go-inwards mode.
-                    proceed, lexceed = self._check_conditions(
-                        sample, maxgerr, going_inwards, lexceed)
+                    self._fix_round_ellipse(sample.geometry)
 
             if not proceed:
                 sample.update(fixed_parameters=fixed_parameters)
@@ -268,36 +245,24 @@ class EllipseFitter:
                         stop_code=2)
 
     @staticmethod
-    def _check_conditions(sample, maxgerr, going_inwards, lexceed):
-        proceed = True
-
-        # Check if an acceptable gradient value could be computed.
-        if sample.gradient_err and sample.gradient_rel_err:
-            if not going_inwards and (
-                    sample.gradient_rel_err > maxgerr
-                    or sample.gradient >= 0.0):
-                if lexceed:
-                    proceed = False
-                else:
-                    lexceed = True
-        else:
-            proceed = False
-
+    def _fix_round_ellipse(geometry):
+        """
+        Fix an ellipse geometry whose ellipticity crossed or reached
+        zero.
+        """
         # See if eps == 0 (round isophote) was crossed.
         # If so, fix it but still proceed.
-        if sample.geometry.eps < 0.0:
-            sample.geometry.eps = min(-sample.geometry.eps, MAX_EPS)
-            if sample.geometry.pa < PI2:
-                sample.geometry.pa += PI2
+        if geometry.eps < 0.0:
+            geometry.eps = min(-geometry.eps, MAX_EPS)
+            if geometry.pa < PI2:
+                geometry.pa += PI2
             else:
-                sample.geometry.pa -= PI2
+                geometry.pa -= PI2
 
         # If ellipse is an exact circle, computations will diverge.
         # Make it slightly flat, but still proceed.
-        if sample.geometry.eps == 0.0:
-            sample.geometry.eps = MIN_EPS
-
-        return proceed, lexceed
+        if geometry.eps == 0.0:
+            geometry.eps = MIN_EPS
 
     @staticmethod
     def _is_diverged(sample):

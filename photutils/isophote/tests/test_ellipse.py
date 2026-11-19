@@ -18,6 +18,7 @@ from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 # Define an off-center position and a tilted sma.
 POS = 384
@@ -105,6 +106,48 @@ class TestEllipse:
         x0 = isolist.x0[isolist.sma > 0]
         assert np.any(x0 != 256.0)
         assert_allclose(isolist.sma[-1] / isolist.sma[-2], 1.1)
+
+    @pytest.mark.parametrize('maxsma', [None, 200.0])
+    def test_maxgerr(self, maxsma):
+        """
+        Test that the maxgerr criterion is triggered when two
+        consecutive isophotes exceed it while the semimajor axis grows
+        outwards.
+
+        Without ``maxsma``, the semimajor axis growth then stops.
+        With ``maxsma``, the remaining isophotes up to ``maxsma`` are
+        extracted in noniterative mode (stop code 4).
+        """
+        data = make_test_image(noise=5.0, seed=0)
+        maxgerr = 0.05
+        isolist = Ellipse(data).fit_image(minsma=8.0, maxsma=maxsma,
+                                          maxgerr=maxgerr)
+        sma = isolist.sma
+        stop_code = isolist.stop_code
+        fitted = (sma >= 10.0) & (stop_code != 4)
+        exceeded = isolist.gradient_rel_err[fitted] > maxgerr
+        assert np.all(exceeded[-2:])
+        assert not np.any(exceeded[:-2] & exceeded[1:-1])
+
+        # The isophotes that exceed maxgerr are fitted instead of
+        # being stopped and replaced by the geometry of the previous
+        # isophote (stop code 5)
+        assert np.all(stop_code[fitted][-2:] != 5)
+
+        if maxsma is None:
+            assert not np.any(stop_code == 4)
+        else:
+            last_fitted = sma[fitted][-1]
+            assert np.all(stop_code[sma > last_fitted] == 4)
+            assert sma[-1] < maxsma <= sma[-1] * 1.1
+
+    @pytest.mark.parametrize('kwargs', [{'maxgerr': 0.5},
+                                        {'going_inwards': True}])
+    def test_fit_isophote_deprecated_keywords(self, kwargs):
+        ellipse = Ellipse(self.data)
+        match = f"'{next(iter(kwargs))}' was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            ellipse.fit_isophote(40.0, **kwargs)
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
@@ -205,4 +248,4 @@ class TestEllipse:
         data = g(x, y) + noise
         ellipse = Ellipse(data)  # estimates initial center
         isolist = ellipse.fit_image()
-        assert len(isolist) == 54
+        assert len(isolist) == 55

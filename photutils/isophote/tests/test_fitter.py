@@ -16,6 +16,7 @@ from photutils.isophote.integrator import MEAN
 from photutils.isophote.isophote import Isophote
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DATA = make_test_image(seed=0)
 DEFAULT_POS = 256
@@ -116,6 +117,15 @@ def test_fitting_eps_diverged(galaxy_eps):
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == -1
     assert isophote.eps == 0.9
+
+
+@pytest.mark.parametrize('kwargs', [{'maxgerr': 0.5},
+                                    {'going_inwards': True}])
+def test_fit_deprecated_keywords(kwargs):
+    sample = EllipseSample(DATA, 40.0)
+    match = f"'{next(iter(kwargs))}' was deprecated"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        EllipseFitter(sample).fit(**kwargs)
 
 
 def test_fitting_pa():
