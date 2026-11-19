@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
@@ -15,6 +15,7 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import (BILINEAR, INTEGRATORS, MEAN, MEDIAN,
                                            NEAREST_NEIGHBOR)
 from photutils.isophote.sample import EllipseSample
+from photutils.isophote.tests.make_test_data import make_test_image
 
 
 @pytest.mark.remote_data
@@ -47,10 +48,10 @@ class TestUnmasked(TestData):
         s, sample = self.make_sample()
 
         assert len(s[0]) == 225
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 200.76, atol=0.01)
         assert_allclose(np.std(s[2]), 21.55, atol=0.01)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
@@ -58,13 +59,13 @@ class TestUnmasked(TestData):
         assert sample.actual_points == 225
 
     def test_bilinear_small(self):
-        # small radius forces subpixel sampling
+        # Small radius forces subpixel sampling.
         s, sample = self.make_sample(sma=10.0)
 
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 1045.4, atol=0.1)
         assert_allclose(np.std(s[2]), 143.0, atol=0.1)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 10.0, atol=0.1)
         assert_allclose(np.min(s[1]), 8.0, atol=0.1)
 
@@ -75,10 +76,10 @@ class TestUnmasked(TestData):
         s, sample = self.make_sample(integrmode=NEAREST_NEIGHBOR)
 
         assert len(s[0]) == 225
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 200.7, atol=0.1)
         assert_allclose(np.std(s[2]), 21.6, atol=0.1)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
@@ -89,10 +90,10 @@ class TestUnmasked(TestData):
         s, sample = self.make_sample(integrmode=MEAN)
 
         assert len(s[0]) == 64
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 199.9, atol=0.1)
         assert_allclose(np.std(s[2]), 21.3, atol=0.1)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
@@ -104,10 +105,10 @@ class TestUnmasked(TestData):
         s, sample = self.make_sample(sma=5.0, integrmode=MEAN)
 
         assert len(s[0]) == 29
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 2339.0, atol=0.1)
         assert_allclose(np.std(s[2]), 284.7, atol=0.1)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 5.0, atol=0.01)
         assert_allclose(np.min(s[1]), 4.0, atol=0.01)
 
@@ -119,10 +120,10 @@ class TestUnmasked(TestData):
         s, sample = self.make_sample(integrmode=MEDIAN)
 
         assert len(s[0]) == 64
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 199.9, atol=0.1)
         assert_allclose(np.std(s[2]), 21.3, atol=0.1)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.01, atol=0.01)
 
@@ -137,10 +138,10 @@ class TestMasked(TestData):
         s, sample = self.make_sample(masked=True, integrmode=BILINEAR)
 
         assert len(s[0]) == 157
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 201.52, atol=0.01)
         assert_allclose(np.std(s[2]), 25.21, atol=0.01)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
@@ -151,16 +152,42 @@ class TestMasked(TestData):
         s, sample = self.make_sample(masked=True, integrmode=MEAN)
 
         assert len(s[0]) == 51
-        # intensities
+        # Intensities
         assert_allclose(np.mean(s[2]), 199.9, atol=0.1)
         assert_allclose(np.std(s[2]), 24.12, atol=0.1)
-        # radii
+        # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
         assert_allclose(sample.sector_area, 12.4, atol=0.1)
         assert sample.total_points == 64
         assert sample.actual_points == 51
+
+
+@pytest.mark.parametrize('integrmode',
+                         [NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN])
+def test_masked_and_nonfinite(integrmode):
+    """
+    Test that masked pixels and nonfinite pixels are excluded in the
+    same way.
+    """
+    data = make_test_image(seed=0)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[230:260, 280:300] = True
+
+    sample = EllipseSample(data, 40.0, integrmode=integrmode)
+    sample.update()
+    sample_masked = EllipseSample(np.ma.masked_array(data, mask=mask), 40.0,
+                                  integrmode=integrmode)
+    sample_masked.update()
+    data_nan = data.copy()
+    data_nan[mask] = np.nan
+    sample_nan = EllipseSample(data_nan, 40.0, integrmode=integrmode)
+    sample_nan.update()
+
+    assert sample_masked.actual_points < sample.actual_points
+    assert sample_masked.total_points == sample.total_points
+    assert_array_equal(sample_masked.values, sample_nan.values)
 
 
 def _sample_point(integrmode, data, x, y):

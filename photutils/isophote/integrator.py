@@ -80,17 +80,6 @@ class _Integrator:
         """
         raise NotImplementedError
 
-    def _reset(self):
-        """
-        Reset the lists containing results.
-
-        This method is for internal use and shouldn't be used by
-        external callers.
-        """
-        self._angles = []
-        self._radii = []
-        self._intensities = []
-
     def _store_results(self, phi, radius, sample):
         self._angles.append(phi)
         self._radii.append(radius)
