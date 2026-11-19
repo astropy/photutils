@@ -199,7 +199,7 @@ class EllipseFitter:
             if ((conver * sample.sector_area * np.std(residual))
                     > np.abs(largest_harmonic)) and (i >= minit - 1):
                 # Got a valid solution and a minimum number of
-                # iterations has run
+                # iterations has run.
                 sample.update(fixed_parameters=fixed_parameters)
                 return Isophote(sample, i + 1, valid=True, stop_code=0)
 
@@ -237,12 +237,20 @@ class EllipseFitter:
                 # smaller) price here, by having multiple calls to the
                 # EllipseSample constructor.
                 sample = corrector.correct(sample, largest_harmonic)
-                sample.update(fixed_parameters=fixed_parameters)
 
-                # See if any abnormal (or unusual) conditions warrant
-                # the change to noniterative mode, or go-inwards mode.
-                proceed, lexceed = self._check_conditions(
-                    sample, maxgerr, going_inwards, lexceed)
+                # If the corrected ellipse diverged, stop without
+                # sampling it and return the best-fit sample instead.
+                if self._is_diverged(sample):
+                    sample = minimum_amplitude_sample
+                    proceed = False
+                else:
+                    sample.update(fixed_parameters=fixed_parameters)
+
+                    # See if any abnormal (or unusual) conditions
+                    # warrant the change to noniterative mode, or
+                    # go-inwards mode.
+                    proceed, lexceed = self._check_conditions(
+                        sample, maxgerr, going_inwards, lexceed)
 
             if not proceed:
                 sample.update(fixed_parameters=fixed_parameters)
@@ -271,15 +279,6 @@ class EllipseFitter:
         else:
             proceed = False
 
-        # Check if ellipse geometry diverged.
-        if abs(sample.geometry.eps > MAX_EPS):
-            proceed = False
-        if (sample.geometry.x0 < 1.0
-                or sample.geometry.x0 > sample.image.shape[1]
-                or sample.geometry.y0 < 1.0
-                or sample.geometry.y0 > sample.image.shape[0]):
-            proceed = False
-
         # See if eps == 0 (round isophote) was crossed.
         # If so, fix it but still proceed.
         if sample.geometry.eps < 0.0:
@@ -295,6 +294,21 @@ class EllipseFitter:
             sample.geometry.eps = MIN_EPS
 
         return proceed, lexceed
+
+    @staticmethod
+    def _is_diverged(sample):
+        """
+        Return whether the ellipticity is too large or the ellipse
+        center lies outside of the image.
+
+        The center limits are the centers of the first and last
+        pixels.
+        """
+        geometry = sample.geometry
+        ny, nx = sample.image.shape
+        return (abs(geometry.eps) > MAX_EPS
+                or not 0.0 <= geometry.x0 <= nx - 1
+                or not 0.0 <= geometry.y0 <= ny - 1)
 
 
 class _ParameterCorrector:
@@ -346,7 +360,7 @@ class _AngleCorrector(_ParameterCorrector):
         correction = (harmonic * 2.0 * (1.0 - eps) / sma / gradient
                       / ((1.0 - eps)**2 - 1.0))
 
-        # Make the angle lie between 0 and np.pi radians
+        # Make the angle lie between 0 and np.pi radians.
         new_pa = (sample.geometry.pa + correction) % np.pi
 
         return EllipseSample(sample.image, sample.geometry.sma,
@@ -366,7 +380,7 @@ class _EllipticityCorrector(_ParameterCorrector):
 
         correction = harmonic * 2.0 * (1.0 - eps) / sma / gradient
 
-        new_eps = min((sample.geometry.eps - correction), MAX_EPS)
+        new_eps = sample.geometry.eps - correction
 
         return EllipseSample(sample.image, sample.geometry.sma,
                              x0=sample.geometry.x0, y0=sample.geometry.y0,
