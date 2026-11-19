@@ -139,7 +139,7 @@ class EllipseGeometry:
         # fitter._CORRECTORS list.
         self.fix = np.array([fix_center, fix_center, fix_pa, fix_eps])
 
-        # limits for sector angular width
+        # Limits for sector angular width
         self._phi_min = 0.05
         self._phi_max = 0.2
 
@@ -149,7 +149,7 @@ class EllipseGeometry:
         """
         Reset attributes derived from the current semimajor axis length.
         """
-        # variables used in the calculation of the sector angular width
+        # Variables used in the calculation of the sector angular width
         sma1, sma2 = self.bounding_ellipses()
         inner_sma = min((sma2 - sma1), 3.0)
         self._area_factor = (sma2 - sma1) * inner_sma
@@ -208,6 +208,10 @@ class EllipseGeometry:
         `~photutils.isophote.EllipseGeometry` instance is modified in
         place to reflect the solution of the object centerer algorithm.
 
+        Only the window positions inside the image are scanned. Near
+        the image edges, only the pixels inside the image are used to
+        compute the figure of merit.
+
         In some cases the object centerer algorithm may fail even though
         there is enough signal-to-noise to start a fit (e.g., objects
         with very high ellipticity). In those cases the sensitivity
@@ -219,17 +223,10 @@ class EllipseGeometry:
         >> 1, meaning no location inside the search window will achieve
         that signal-to-noise ratio).
         """
-        self._centerer_mask_half_size = len(IN_MASK) / 2
         self.centerer_threshold = threshold
-
-        # number of pixels in each mask
-        sz = len(IN_MASK)
-        self._centerer_ones_in = np.ma.masked_array(np.ones(shape=(sz, sz)),
-                                                    mask=IN_MASK)
-        self._centerer_ones_out = np.ma.masked_array(np.ones(shape=(sz, sz)),
-                                                     mask=OUT_MASK)
-        self._centerer_in_mask_npix = np.sum(self._centerer_ones_in)
-        self._centerer_out_mask_npix = np.sum(self._centerer_ones_out)
+        half_size = len(IN_MASK) // 2
+        in_mask = np.array(IN_MASK, dtype=bool)
+        out_mask = np.array(OUT_MASK, dtype=bool)
 
         # Check if center coordinates point to somewhere inside the frame.
         # If not, set then to frame center.
@@ -245,28 +242,36 @@ class EllipseGeometry:
         max_i = 0
         max_j = 0
 
-        # scan all positions inside window
+        # Scan all positions inside window that are inside the image.
         window_half_size = 5
-        for i in range(int(_x0 - window_half_size),
-                       int(_x0 + window_half_size) + 1):
-            for j in range(int(_y0 - window_half_size),
-                           int(_y0 + window_half_size) + 1):
+        i_range = range(max(int(_x0 - window_half_size), 0),
+                        min(int(_x0 + window_half_size), shape[1] - 1) + 1)
+        j_range = range(max(int(_y0 - window_half_size), 0),
+                        min(int(_y0 + window_half_size), shape[0] - 1) + 1)
+        for i in i_range:
+            for j in j_range:
 
-                # ensure that it stays inside image frame
-                i1 = int(max(0, i - self._centerer_mask_half_size))
-                j1 = int(max(0, j - self._centerer_mask_half_size))
-                i2 = int(min(shape[1] - 1, i + self._centerer_mask_half_size))
-                j2 = int(min(shape[0] - 1, j + self._centerer_mask_half_size))
+                # Clip the box at the image edges. The masks are clipped
+                # by the same amount so that they stay aligned with the
+                # image pixels.
+                i1 = i - half_size
+                j1 = j - half_size
+                i1_clip = max(i1, 0)
+                j1_clip = max(j1, 0)
+                i2_clip = min(i + half_size, shape[1])
+                j2_clip = min(j + half_size, shape[0])
+                window = image[j1_clip:j2_clip, i1_clip:i2_clip]
+                mask_slices = (slice(j1_clip - j1, j2_clip - j1),
+                               slice(i1_clip - i1, i2_clip - i1))
 
-                window = image[j1:j2, i1:i2]
+                # Averages in inner and outer regions.
+                inner = np.ma.masked_array(window, mask=in_mask[mask_slices])
+                outer = np.ma.masked_array(window,
+                                           mask=out_mask[mask_slices])
+                inner_avg = np.ma.mean(inner)
+                outer_avg = np.ma.mean(outer)
 
-                # averages in inner and outer regions.
-                inner = np.ma.masked_array(window, mask=IN_MASK)
-                outer = np.ma.masked_array(window, mask=OUT_MASK)
-                inner_avg = np.sum(inner) / self._centerer_in_mask_npix
-                outer_avg = np.sum(outer) / self._centerer_out_mask_npix
-
-                # standard deviation and figure of merit
+                # Standard deviation and figure of merit
                 inner_std = np.std(inner)
                 outer_std = np.std(outer)
                 stddev = np.sqrt(inner_std**2 + outer_std**2)
@@ -278,7 +283,7 @@ class EllipseGeometry:
                     max_i = i
                     max_j = j
 
-        # figure of merit > threshold: update geometry with new coordinates.
+        # Figure of merit > threshold: update geometry with new coordinates.
         if max_fom > threshold:
             self.x0 = float(max_i)
             self.y0 = float(max_j)
@@ -336,14 +341,14 @@ class EllipseGeometry:
         sma1, sma2 = self.bounding_ellipses()
         eps_ = 1.0 - self.eps
 
-        # polar vector at one side of the elliptical sector
+        # Polar vector at one side of the elliptical sector
         self._phi1 = phi - self.sector_angular_width / 2.0
         r1 = (sma1 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
         r2 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
 
-        # polar vector at the other side of the elliptical sector
+        # Polar vector at the other side of the elliptical sector
         self._phi2 = phi + self.sector_angular_width / 2.0
         r3 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi2))**2
                                       + (math.sin(self._phi2))**2))
@@ -351,24 +356,24 @@ class EllipseGeometry:
         r4 = (sma1 * eps_ / math.sqrt((eps_ * math.cos(self._phi2))**2
                                       + (math.sin(self._phi2))**2))
 
-        # sector area
+        # Sector area
         sa1 = _area(sma1, self.eps, self._phi1, r1)
         sa2 = _area(sma2, self.eps, self._phi1, r2)
         sa3 = _area(sma2, self.eps, self._phi2, r3)
         sa4 = _area(sma1, self.eps, self._phi2, r4)
         self.sector_area = abs((sa3 - sa2) - (sa4 - sa1))
 
-        # angular width of sector. It is calculated such that the sectors
+        # Angular width of sector. It is calculated such that the sectors
         # come out with roughly constant area along the ellipse.
         self.sector_angular_width = max(min((self._area_factor / (r3 - r4)
                                              / r4), self._phi_max),
                                         self._phi_min)
 
-        # compute the 4 vertices that define the elliptical sector.
+        # Compute the 4 vertices that define the elliptical sector.
         vertex_x = np.zeros(shape=4, dtype=float)
         vertex_y = np.zeros(shape=4, dtype=float)
 
-        # vertices are labelled in counterclockwise sequence
+        # Vertices are labeled in counterclockwise sequence.
         vertex_x[0:2] = np.array([r1, r2]) * math.cos(self._phi1 + self.pa)
         vertex_x[2:4] = np.array([r4, r3]) * math.cos(self._phi2 + self.pa)
         vertex_y[0:2] = np.array([r1, r2]) * math.sin(self._phi1 + self.pa)
