@@ -18,7 +18,7 @@ DEFAULT_FIX = np.array([False, False, False, False])
 DATA = make_test_image(background=100.0, i0=0.0, noise=10.0, seed=0)
 
 
-# the median is not so good at estimating rms
+# The median is not so good at estimating rms.
 @pytest.mark.parametrize(('integrmode', 'amin', 'amax'),
                          [(NEAREST_NEIGHBOR, 7.0, 15.0),
                           (BILINEAR, 7.0, 15.0),
@@ -76,3 +76,21 @@ def test_geometry_sma_override_resets_cached_attributes():
                                expected_geometry.initial_polar_angle)
     np.testing.assert_allclose(sample.geometry.initial_polar_radius,
                                expected_geometry.initial_polar_radius)
+
+
+@pytest.mark.parametrize(('x0', 'y0'), [(0.0, 40.0), (40.0, 0.0),
+                                        (0.0, 0.0)])
+def test_zero_center(x0, y0):
+    """
+    Test that a center coordinate of zero is not replaced by the image
+    center.
+    """
+    sample = EllipseSample(DATA, 10.0, x0=x0, y0=y0)
+    assert sample.geometry.x0 == x0
+    assert sample.geometry.y0 == y0
+
+
+def test_default_center():
+    sample = EllipseSample(DATA, 10.0)
+    assert sample.geometry.x0 == DATA.shape[1] / 2
+    assert sample.geometry.y0 == DATA.shape[0] / 2
