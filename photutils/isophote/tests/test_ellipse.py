@@ -10,6 +10,7 @@ import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
+from numpy.testing import assert_allclose
 
 from photutils.datasets import make_noise_image
 from photutils.datasets.load import _get_path
@@ -81,6 +82,29 @@ class TestEllipse:
                             step, rel_tol=0.01)
         assert math.isclose((isophote_list[2].sma - isophote_list[1].sma),
                             step, rel_tol=0.01)
+
+    def test_fit_image_geometry_unchanged(self):
+        """
+        Test that the fix_XXX and linear parameters of fit_image apply
+        only to that call and do not modify the input geometry.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        isolist = ellipse.fit_image(maxsma=30.0, step=2.0, linear=True,
+                                    fix_center=True)
+        assert np.all(isolist.x0 == 256.0)
+        assert np.all(isolist.y0 == 256.0)
+        assert_allclose(np.diff(isolist.sma[-3:]), 2.0)
+
+        assert not np.any(geometry.fix)
+        assert not geometry.linear_growth
+
+        # A second call without these parameters fits the center and
+        # uses geometric growth.
+        isolist = ellipse.fit_image(maxsma=30.0)
+        x0 = isolist.x0[isolist.sma > 0]
+        assert np.any(x0 != 256.0)
+        assert_allclose(isolist.sma[-1] / isolist.sma[-2], 1.1)
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)

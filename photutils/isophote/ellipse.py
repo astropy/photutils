@@ -3,6 +3,7 @@
 Tools for fitting elliptical isophotes.
 """
 
+import copy
 import warnings
 
 import numpy as np
@@ -226,15 +227,15 @@ class Ellipse:
         isophote at each sma. The entire set of isophotes is returned in
         an `~photutils.isophote.IsophoteList` instance.
 
-        Note that the fix_XXX parameters act in unison. Meaning,
-        if one of them is set via this call, the others will
-        assume their default (False) values. This effectively
-        overrides any settings that are present in the internal
-        `~photutils.isophote.EllipseGeometry` instance that is
-        carried along as a property of this class. If an instance of
-        `~photutils.isophote.EllipseGeometry` was passed to this class'
-        constructor, that instance will be effectively overridden by the
-        fix_XXX parameters in this call.
+        Note that the fix_XXX parameters act in unison. If any of
+        them is set in this call, the others assume their default
+        (False) values, and together they override the fixed
+        parameters of the `~photutils.isophote.EllipseGeometry`
+        instance used by this class. If none of them is set, the
+        fixed parameters of that instance are used. Likewise, the
+        ``linear`` parameter overrides the ``linear_growth`` attribute
+        of that instance. These overrides apply only to this call. The
+        `~photutils.isophote.EllipseGeometry` instance is not modified.
 
         Parameters
         ----------
@@ -401,19 +402,20 @@ class Ellipse:
         else:
             sma = sma0
 
-        # Override geometry instance with parameters set at the call.
+        # Override the geometry parameters set in this call on a copy
+        # so that they do not persist in the input geometry instance.
+        geometry = copy.deepcopy(self._geometry)
         if isinstance(linear, bool):
-            self._geometry.linear_growth = linear
+            geometry.linear_growth = linear
         else:
-            linear = self._geometry.linear_growth
+            linear = geometry.linear_growth
         if fix_center and fix_pa and fix_eps:
             msg = ': Everything is fixed. Fit not possible.'
             warnings.warn(msg, AstropyUserWarning)
             return IsophoteList([])
         if fix_center or fix_pa or fix_eps:
-            # Note that this overrides the geometry instance for good.
-            self._geometry.fix = np.array([fix_center, fix_center, fix_pa,
-                                           fix_eps])
+            geometry.fix = np.array([fix_center, fix_center, fix_pa,
+                                     fix_eps])
 
         # First, go from initial sma outwards until
         # hitting one of several stopping criteria.
@@ -424,14 +426,15 @@ class Ellipse:
             minit_a = 2 * minit if first_isophote else minit
             first_isophote = False
 
-            isophote = self.fit_isophote(sma, step=step, conver=conver,
-                                         minit=minit_a, maxit=maxit,
-                                         fflag=fflag, maxgerr=maxgerr,
-                                         sclip=sclip, n_clip=n_clip,
-                                         integrmode=integrmode,
-                                         linear=linear, maxrit=maxrit,
-                                         noniterate=noiter,
-                                         isophote_list=isophote_list)
+            isophote = self._fit_isophote(geometry, sma, step=step,
+                                          conver=conver, minit=minit_a,
+                                          maxit=maxit, fflag=fflag,
+                                          maxgerr=maxgerr, sclip=sclip,
+                                          n_clip=n_clip,
+                                          integrmode=integrmode,
+                                          linear=linear, maxrit=maxrit,
+                                          noniterate=noiter,
+                                          isophote_list=isophote_list)
 
             # An invalid isophote (e.g., no valid data points) is not
             # stored, so an empty list means that the first isophote
@@ -661,8 +664,27 @@ class Ellipse:
             The fitted isophote. The fitted isophote is also appended to
             the input list input to the ``isophote_list`` parameter.
         """
-        geometry = self._geometry
+        return self._fit_isophote(self._geometry, sma, step=step,
+                                  conver=conver, minit=minit, maxit=maxit,
+                                  fflag=fflag, maxgerr=maxgerr, sclip=sclip,
+                                  n_clip=n_clip, integrmode=integrmode,
+                                  linear=linear, maxrit=maxrit,
+                                  noniterate=noniterate,
+                                  going_inwards=going_inwards,
+                                  isophote_list=isophote_list)
 
+    def _fit_isophote(self, geometry, sma, *, step, conver, minit, maxit,
+                      fflag, maxgerr, sclip, n_clip, integrmode, linear,
+                      maxrit, noniterate=False, going_inwards=False,
+                      isophote_list=None):
+        """
+        Fit a single isophote, starting from the input geometry.
+
+        See `fit_isophote` for a description of the parameters. The
+        input ``geometry`` is the initial guess when ``isophote_list``
+        is empty. Otherwise, the geometry of the last isophote in
+        ``isophote_list`` is used.
+        """
         # If available, geometry from last fitted isophote will be
         # used as initial guess for next isophote.
         if isophote_list:
