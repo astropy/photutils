@@ -104,12 +104,19 @@ rejected, and the central value and standard deviation are then
 recalculated from the remaining values. The procedure is repeated for a
 number of iterations or until no more values are rejected.
 
-In an astronomical image, the background pixels form the bulk of the
-distribution of pixel values, and the pixels in sources form a tail of
-high values. A commonly used technique to remove the sources from the
-image statistics is therefore to sigma clip the pixel values, which
-treats the bright source pixels as outliers. This method provides a
-better estimate of the background and background noise levels::
+In an image where the sources cover only a small fraction of the
+pixels, as is typical of extragalactic fields, the background pixels
+form the bulk of the distribution of pixel values, and the pixels in
+sources form a tail of high values. This is not the case for crowded
+fields or for images dominated by extended emission (e.g., a globular
+cluster, the Galactic plane, or a galaxy that fills the image), where
+the source pixels are not a minority.
+
+When the background pixels dominate, a commonly used technique to
+remove the sources from the image statistics is to sigma clip the
+pixel values, which treats the bright source pixels as outliers. This
+method provides a better estimate of the background and background
+noise levels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
