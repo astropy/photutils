@@ -259,3 +259,54 @@ class TestShepardIDWInterpolator:
         f = IDWInterp(coords, values, weights=weights)
         result = f(0.5, n_neighbors=3)
         assert np.isnan(result)
+
+    @pytest.mark.parametrize('n_neighbors', [2, 3, 4])
+    def test_tied_neighbors(self, n_neighbors):
+        """
+        Test that all of the data points at the same distance as the
+        last nearest neighbor are used.
+        """
+        coords = np.array([[0, 1], [1, 0], [0, -1], [-1, 0], [5, 5]])
+        values = np.array([1.0, 2.0, 3.0, 6.0, 100.0])
+        f = IDWInterp(coords, values)
+        assert_allclose(f([0, 0], n_neighbors=n_neighbors), 3.0)
+
+    def test_tied_neighbors_many(self):
+        """
+        Test that all of the equidistant data points are used when
+        there are many more of them than ``n_neighbors``.
+        """
+        ring = np.array([[1, 2], [2, 1], [2, -1], [1, -2],
+                         [-1, -2], [-2, -1], [-2, 1], [-1, 2]])
+        far = np.array([[10, 10], [11, 10], [10, 11], [11, 11],
+                        [12, 10], [10, 12], [12, 12], [12, 11]])
+        coords = np.vstack([ring, far])
+        values = np.concatenate([np.arange(8.0), np.full(8, 100.0)])
+        f = IDWInterp(coords, values)
+        assert_allclose(f([0, 0], n_neighbors=2), 3.5)
+
+    def test_tied_neighbors_order(self):
+        """
+        Test that the result does not depend on the order of the data
+        points when neighbors are at equal distances.
+        """
+        rng = np.random.default_rng(0)
+        coords = np.mgrid[:12, :15].reshape(2, -1).T
+        known = rng.random(len(coords)) > 0.3
+        values = rng.random(known.sum())
+        positions = coords[~known]
+        result = IDWInterp(coords[known], values)(positions)
+
+        perm = rng.permutation(known.sum())
+        f = IDWInterp(coords[known][perm], values[perm])
+        assert_allclose(f(positions), result, rtol=1e-12)
+
+    def test_no_positions(self):
+        """
+        Test that an empty array is returned for an empty array of
+        positions.
+        """
+        pos = np.random.default_rng(0).random((10, 2))
+        f = IDWInterp(pos, np.arange(10.0))
+        result = f(np.empty((0, 2)))
+        assert result.shape == (0,)

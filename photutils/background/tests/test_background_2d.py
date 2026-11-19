@@ -363,6 +363,25 @@ class TestBackground2D:
         assert_allclose(bkg.background, np.full(data.shape, 1.5))
         assert np.issubdtype(bkg.background.dtype, np.floating)
 
+    def test_excluded_boxes_flip(self):
+        """
+        Test that flipping the image flips the meshes when excluded
+        boxes are interpolated from equidistant neighboring boxes.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 2.0, (150, 150))
+        mask = np.zeros(data.shape, dtype=bool)
+        box_mask = rng.random((15, 15)) < 0.3
+        mask[np.kron(box_mask, np.ones((10, 10), dtype=bool))] = True
+
+        bkg = Background2D(data, 10, mask=mask)
+        bkg_flip = Background2D(data[:, ::-1], 10, mask=mask[:, ::-1])
+        assert np.any(mask)
+        assert_allclose(bkg_flip.background_mesh[:, ::-1],
+                        bkg.background_mesh, rtol=1e-12)
+        assert_allclose(bkg_flip.background_rms_mesh[:, ::-1],
+                        bkg.background_rms_mesh, rtol=1e-12)
+
     def test_resizing(self):
         """
         Test that the background mesh is resized correctly when the

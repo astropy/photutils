@@ -198,6 +198,75 @@ class ShepardIDWInterpolator:
                                   _DEPRECATED_ATTRIBUTES,
                                   since='3.1', until='4.0')
 
+    def _query_neighbors(self, positions, n_neighbors, eps):
+        """
+        Query the k-d tree for the nearest neighbors of each position,
+        including all of the data points at the same distance as the
+        last nearest neighbor.
+
+        Which of the equidistant data points the k-d tree returns
+        depends on the order of the data points and on the platform.
+        Equidistant neighbors are common for data points on a regular
+        grid. Using all of them makes the interpolation independent of
+        that choice.
+
+        Parameters
+        ----------
+        positions : 2D `~numpy.ndarray`
+            The positions with shape ``(n_positions, coords_ndim)``.
+
+        n_neighbors : int
+            The number of nearest neighbors. Must be larger than 1.
+
+        eps : float
+            The approximation parameter of the k-d tree query.
+
+        Returns
+        -------
+        distances, idx : 2D `~numpy.ndarray`
+            The distances to the neighbors of each position in
+            increasing order and the indices of those neighbors. The
+            arrays have at least ``n_neighbors`` columns. The entries
+            that are not used have an infinite distance.
+        """
+        # All of the data points are neighbors
+        if self.n_coords <= n_neighbors:
+            return self.kdtree.query(positions, k=n_neighbors, eps=eps)
+
+        # Query one more neighbor than needed to find the positions
+        # where it is at the same distance as the last nearest neighbor
+        distances, idx = self.kdtree.query(positions, k=n_neighbors + 1,
+                                           eps=eps)
+        tied = distances[:, n_neighbors] == distances[:, n_neighbors - 1]
+        distances = distances[:, :n_neighbors]
+        idx = idx[:, :n_neighbors]
+        if not np.any(tied):
+            return distances, idx
+
+        # Query more neighbors for those positions only, doubling the
+        # number until the last one is farther than the last nearest
+        # neighbor
+        tied_positions = positions[tied]
+        last_dist = distances[tied, -1:]
+        n_query = n_neighbors + 1
+        while True:
+            n_query = min(2 * n_query, self.n_coords)
+            tied_distances, tied_idx = self.kdtree.query(
+                tied_positions, k=n_query, eps=eps)
+            used = tied_distances <= last_dist
+            if n_query == self.n_coords or not np.any(used[:, -1]):
+                break
+
+        n_used = int(np.max(np.sum(used, axis=1)))
+        tied_distances[~used] = np.inf
+        all_distances = np.full((len(positions), n_used), np.inf)
+        all_idx = np.zeros((len(positions), n_used), dtype=idx.dtype)
+        all_distances[:, :n_neighbors] = distances
+        all_idx[:, :n_neighbors] = idx
+        all_distances[tied] = tied_distances[:, :n_used]
+        all_idx[tied] = tied_idx[:, :n_used]
+        return all_distances, all_idx
+
     @deprecated_renamed_argument('reg', 'regularization', '3.0',
                                  until='4.0')
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -224,8 +293,13 @@ class ShepardIDWInterpolator:
                 initialization of the interpolator.
 
         n_neighbors : int, optional
-            The maximum number of nearest neighbors to use during the
-            interpolation.
+            The number of nearest neighbors to use during the
+            interpolation. Fewer neighbors are used if there are fewer
+            data points. If ``n_neighbors`` is larger than 1 and other
+            data points are at exactly the same distance as the last
+            of these neighbors, then all of them are also used. The
+            result therefore does not depend on the order of the data
+            points.
 
         eps : float, optional
             Set to use approximate nearest neighbors. The *k*-th
@@ -303,18 +377,20 @@ class ShepardIDWInterpolator:
         positions = np.reshape(positions, (-1, self.coords_ndim))
         n_positions = positions.shape[0]
 
-        distances, idx = self.kdtree.query(positions, k=n_neighbors, eps=eps)
-
         if n_neighbors == 1:
+            _, idx = self.kdtree.query(positions, k=1, eps=eps)
             result = self.values[idx]
             return result[0] if n_positions == 1 else result
+
+        distances, idx = self._query_neighbors(positions, n_neighbors, eps)
 
         if dtype is None:
             dtype = self.values.dtype
 
-        # distances and idx have shape (n_positions, n_neighbors). Mask
+        # distances and idx have at least n_neighbors columns. Mask
         # for valid (finite) distances. Invalid entries arise when
-        # n_neighbors exceeds the number of known data points.
+        # n_neighbors exceeds the number of known data points and for
+        # the columns that are used only for other positions.
         valid = np.isfinite(distances)
 
         # Replace nonfinite distances and out-of-bound indices with
