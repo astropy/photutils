@@ -210,6 +210,22 @@ Bug Fixes
     ``EllipseFitter.fit`` extract the isophote without fitting (stop
     code 4). [#2552]
 
+  - Fixed the local radial gradient of the isophote samples, which was
+    measured from a sample at a relative distance equal to the
+    semimajor axis step. In linear growth mode the step is in pixels,
+    so the gradient was measured far from the ellipse (e.g., at three
+    times the semimajor axis length for a step of 2 pixels). As in the
+    STSDAS ``ellipse`` task, the gradient is now always measured from
+    a sample at a 10% (or 20%) larger semimajor axis length. [#2552]
+
+  - Fixed ``Ellipse.fit_image`` and ``Ellipse.fit_isophote`` ignoring
+    their ``step`` keyword (and ``fit_isophote`` its ``linear``
+    keyword) when sampling the image. The ``astep`` of the input
+    ``EllipseGeometry`` was used instead. The step now defines the
+    elliptical annulus that sets the sector areas of the ``'mean'``
+    and ``'median'`` integration modes, as documented. Fits with the
+    default step are unchanged. [#2552]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
