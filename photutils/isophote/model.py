@@ -72,18 +72,24 @@ def build_ellipse_model(
         isolist[0].sma, isolist[-1].sma, sma_interval,
     )
 
-    # interpolate ellipse parameters
+    # Interpolate ellipse parameters.
 
     # End points must be discarded, but how many?
-    # This seems to work so far
+    # This seems to work so far.
     nodes = isolist.sma[2:-2]
 
     intens_array = LSQUnivariateSpline(
         isolist.sma, isolist.intens, nodes)(finely_spaced_sma)
     eps_array = LSQUnivariateSpline(
         isolist.sma, isolist.eps, nodes)(finely_spaced_sma)
+    # The position angle is defined modulo pi. Fitted values near 0
+    # or pi can jump by almost pi between neighboring isophotes, so
+    # unwrap them to prevent the spline from sweeping through all the
+    # angles in between.
+    pa = isolist.pa
+    pa_unwrapped = np.unwrap(pa, period=np.pi)
     pa_array = LSQUnivariateSpline(
-        isolist.sma, isolist.pa, nodes)(finely_spaced_sma)
+        isolist.sma, pa_unwrapped, nodes)(finely_spaced_sma)
     x0_array = LSQUnivariateSpline(
         isolist.sma, isolist.x0, nodes)(finely_spaced_sma)
     y0_array = LSQUnivariateSpline(
@@ -91,10 +97,16 @@ def build_ellipse_model(
     grad_array = LSQUnivariateSpline(
         isolist.sma, isolist.grad, nodes)(finely_spaced_sma)
     if high_harmonics:
+        # Shifting the position angle by pi also shifts the angle
+        # origin of the harmonics by pi, which flips the sign of the
+        # third-order harmonics and leaves the fourth-order harmonics
+        # unchanged.
+        n_shifts = np.rint((pa_unwrapped - pa) / np.pi)
+        sign3 = np.where(n_shifts % 2 == 0, 1.0, -1.0)
         a3_array = LSQUnivariateSpline(
-            isolist.sma, isolist.a3, nodes)(finely_spaced_sma)
+            isolist.sma, sign3 * isolist.a3, nodes)(finely_spaced_sma)
         b3_array = LSQUnivariateSpline(
-            isolist.sma, isolist.b3, nodes)(finely_spaced_sma)
+            isolist.sma, sign3 * isolist.b3, nodes)(finely_spaced_sma)
         a4_array = LSQUnivariateSpline(
             isolist.sma, isolist.a4, nodes)(finely_spaced_sma)
         b4_array = LSQUnivariateSpline(
@@ -103,7 +115,7 @@ def build_ellipse_model(
         grad_sma = -grad_array * finely_spaced_sma
 
         # Return deviations from ellipticity to their original amplitude
-        # meaning
+        # meaning.
         kwargs_harm = {
             'a3_array': a3_array * grad_sma,
             'b3_array': b3_array * grad_sma,
@@ -113,11 +125,11 @@ def build_ellipse_model(
     else:
         kwargs_harm = {}
 
-    # correct deviations caused by fluctuations in spline solution
+    # Correct deviations caused by fluctuations in spline solution.
     eps_array[np.where(eps_array < 0.0)] = 0.0
 
-    # for each interpolated isophote, generate intensity values on the
-    # output image array
+    # For each interpolated isophote, generate intensity values on the
+    # output image array.
     result, weight = build_ellipse_model_c(
         shape[0],
         shape[1],
@@ -133,10 +145,10 @@ def build_ellipse_model(
     # zero weight values must be set to 1.0
     weight[np.where(weight <= 0.0)] = 1.0
 
-    # normalize
+    # Normalize.
     result /= weight
 
-    # fill value
+    # Fill value
     result[np.where(result == 0.0)] = fill
 
     return result

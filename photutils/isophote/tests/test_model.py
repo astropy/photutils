@@ -121,6 +121,28 @@ def test_model_inputs():
         build_ellipse_model((10, 10), IsophoteList([]))
 
 
+def test_model_pa_wrap():
+    """
+    Test the model for a galaxy whose position angle is near 0.
+
+    The fitted position angles of neighboring isophotes then jump
+    between values near 0 and near pi. The interpolated position angle
+    must not sweep through the angles in between.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=60.0)
+    pa = isolist.pa[isolist.sma > 0]
+    assert np.any(pa < 0.1)
+    assert np.any(pa > np.pi - 0.1)
+
+    model = build_ellipse_model(data.shape, isolist)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    radius = np.hypot(xx - 256, yy - 256)
+    annulus = (radius >= 10) & (radius < 30)
+    residual = np.abs(model - data)[annulus] / data[annulus]
+    assert np.max(residual) < 0.01
+
+
 def test_model_harmonics():
     """
     Test that high harmonics are included in build_ellipse_model.
@@ -247,7 +269,7 @@ def test_build_ellipse_model_c_noncontiguous_arrays():
     arrays = (sma, intens, eps, pa, x0, y0)
     expected = build_ellipse_model_c(100, 100, *arrays)
 
-    # Build strided (noncontiguous) views by interleaving and slicing
+    # Build strided (noncontiguous) views by interleaving and slicing.
     arrays_strided = []
     for arr in arrays:
         strided = np.repeat(arr, 2)[::2]
