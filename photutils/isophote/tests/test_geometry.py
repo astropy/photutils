@@ -6,6 +6,7 @@ Tests for the geometry module.
 import numpy as np
 import pytest
 from astropy import log
+from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 
 from photutils.isophote.geometry import EllipseGeometry
@@ -270,3 +271,19 @@ def test_bounding_ellipses_large_step(astep, linear_growth):
     sma1, sma2 = geometry.bounding_ellipses()
     assert sma1 == 0.0
     assert_allclose(sma2, 4.5)
+
+
+@pytest.mark.parametrize(('x0', 'y0'), [(50.0, 50.0), (50.4, 50.4),
+                                        (49.6, 50.3), (50.3, 49.6),
+                                        (49.7, 49.8)])
+def test_find_center_nearest_pixel(x0, y0):
+    """
+    Test that find_center returns the pixel nearest to the center of
+    a symmetric source.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = Gaussian2D(100.0, x0, y0, 6.0, 5.0, theta=0.4)(xx, yy)
+    geometry = EllipseGeometry(53.0, 47.0, 10.0, 0.2, 0.1)
+    geometry.find_center(data, verbose=False)
+    assert geometry.x0 == round(x0)
+    assert geometry.y0 == round(y0)
