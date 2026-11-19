@@ -409,6 +409,28 @@ python benchmarks/bench_background.py --which background2d \
     --sizes 2048,4096 --box-sizes 64 --n-threads 1,2,4,8
 ```
 
+## Moran's I source masking (`bench_morans_i.py`)
+
+Benchmarks for `make_morans_i_map` and `make_morans_i_mask`:
+
+- the run time of both functions across image sizes
+- the resident memory against the wall time while a source mask is
+  made, sampled from a parent process and written as a plot and a CSV
+  file (requires the optional `psutil` and `matplotlib` packages)
+
+The memory benchmark can also trace an earlier version of
+`photutils/background/morans_i.py` from a git revision that needs no
+compiled code (`--git-revision`) and the original implementation in a
+clone of the `moransi_sourcemasking` repository (`--upstream`). All
+implementations flag the same percentage of the pixels (`--percent`).
+
+```bash
+python benchmarks/bench_morans_i.py
+python benchmarks/bench_morans_i.py --which memory --memory-size 8192
+python benchmarks/bench_morans_i.py --which memory \
+    --git-revision <revision> --upstream ~/moransi_sourcemasking
+```
+
 ## WCS helpers (`bench_wcs_helpers.py`)
 
 Benchmarks for the local WCS helper functions in
