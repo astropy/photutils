@@ -405,7 +405,7 @@ class Ellipse:
         # Get starting sma from appropriate source: keyword parameter or
         # internal EllipseGeometry instance.
         sma = self._geometry.sma if sma0 is None else sma0
-        if sma <= 0:
+        if not sma > 0:  # also rejects NaN
             msg = ('The starting semimajor axis length (sma0 or the sma of '
                    'the input geometry) must be positive')
             raise ValueError(msg)

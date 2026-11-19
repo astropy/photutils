@@ -257,7 +257,8 @@ class TestEllipse:
             Ellipse(self.data[0])
 
     @pytest.mark.parametrize(('sma0', 'geometry_sma'),
-                             [(0.0, 10.0), (-1.0, 10.0), (None, 0.0)])
+                             [(0.0, 10.0), (-1.0, 10.0), (np.nan, 10.0),
+                              (None, 0.0)])
     def test_invalid_sma0(self, sma0, geometry_sma):
         geometry = EllipseGeometry(256.0, 256.0, geometry_sma, 0.2, PA)
         ellipse = Ellipse(self.data, geometry=geometry)
