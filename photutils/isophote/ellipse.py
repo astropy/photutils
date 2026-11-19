@@ -14,7 +14,7 @@ from photutils.isophote.fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG,
                                        DEFAULT_MAXGERR, DEFAULT_MAXIT,
                                        DEFAULT_MINIT, CentralEllipseFitter,
                                        EllipseFitter)
-from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.geometry import EllipseGeometry, _make_fix_array
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import (CentralEllipseSample, EllipseSample,
@@ -422,8 +422,8 @@ class Ellipse:
         else:
             linear = geometry.linear_growth
         if fix_center or fix_pa or fix_eps:
-            geometry.fix = np.array([fix_center, fix_center, fix_pa,
-                                     fix_eps])
+            geometry.fix = _make_fix_array(fix_center=fix_center,
+                                           fix_pa=fix_pa, fix_eps=fix_eps)
         if np.all(geometry.fix):
             msg = 'Everything is fixed. Fit not possible.'
             warnings.warn(msg, AstropyUserWarning)

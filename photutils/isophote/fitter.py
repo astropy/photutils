@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.isophote.geometry import _HARMONIC_PARAMETERS
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
 from photutils.isophote.isophote import CentralPixel, Isophote
@@ -355,9 +356,18 @@ class _EllipticityCorrector(_ParameterCorrector):
         return sample._make_sample(eps=new_eps)
 
 
-# Instances of corrector code
-_CORRECTORS = [_PositionCorrector0(), _PositionCorrector1(),
-               _AngleCorrector(), _EllipticityCorrector()]
+# The parameter corrector for each harmonic coefficient. The correctors
+# are listed in the order of the coefficients returned by
+# fit_first_and_second_harmonics, which is also the order of the
+# ``fix`` array of EllipseGeometry.
+_CORRECTORS_BY_COEFFICIENT = {
+    'a1': _PositionCorrector0(),
+    'b1': _PositionCorrector1(),
+    'a2': _AngleCorrector(),
+    'b2': _EllipticityCorrector(),
+}
+_CORRECTORS = [_CORRECTORS_BY_COEFFICIENT[name]
+               for name in _HARMONIC_PARAMETERS]
 
 
 class CentralEllipseFitter(EllipseFitter):

@@ -13,6 +13,24 @@ from photutils.utils._deprecation import deprecated_positional_kwargs
 __all__ = ['EllipseGeometry']
 
 
+# The first and second harmonic coefficients of the isophote fit, in
+# the order returned by fit_first_and_second_harmonics after the mean,
+# and the ellipse parameter that each one corrects. The ``fix`` array of
+# EllipseGeometry and the parameter correctors of EllipseFitter follow
+# this order.
+_HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center', 'a2': 'pa',
+                        'b2': 'eps'}
+
+
+def _make_fix_array(*, fix_center, fix_pa, fix_eps):
+    """
+    Make the array of fixed-parameter flags, in the order of the
+    harmonic coefficients that correct the parameters.
+    """
+    fixed = {'center': fix_center, 'pa': fix_pa, 'eps': fix_eps}
+    return np.array([fixed[name] for name in _HARMONIC_PARAMETERS.values()])
+
+
 IN_MASK = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -135,10 +153,10 @@ class EllipseGeometry:
         self.astep = astep
         self.linear_growth = linear_growth
 
-        # Fixed parameters are flagged in here. Note that the
-        # ordering must follow the same ordering used in the
-        # fitter._CORRECTORS list.
-        self.fix = np.array([fix_center, fix_center, fix_pa, fix_eps])
+        # Fixed parameters are flagged in here, in the order of the
+        # harmonic coefficients that correct them.
+        self.fix = _make_fix_array(fix_center=fix_center, fix_pa=fix_pa,
+                                   fix_eps=fix_eps)
 
         # Limits for sector angular width
         self._phi_min = 0.05
