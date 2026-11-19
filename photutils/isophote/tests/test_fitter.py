@@ -6,6 +6,7 @@ Tests for the fitter module.
 import numpy as np
 import pytest
 from astropy.io import fits
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.datasets.load import _get_path
@@ -129,6 +130,41 @@ def test_fitting_small_radii():
 
     assert isinstance(isophote, Isophote)
     assert isophote.n_data == 13
+
+
+def test_fitting_small_sample():
+    """
+    Test that a sample with fewer data points than harmonic
+    coefficients is not fit.
+    """
+    data = np.ma.masked_array(DATA, mask=np.ones(DATA.shape, dtype=bool))
+    data.mask[255:258, 295:298] = False
+    sample = EllipseSample(data, 40.0)
+    assert 0 < len(sample.extract()[2]) < 5
+
+    match = 'Too small sample to warrant a fit'
+    with pytest.warns(AstropyUserWarning, match=match):
+        isophote = EllipseFitter(sample).fit()
+    assert not isophote.valid
+    assert isophote.stop_code == 3
+
+
+def test_fitting_failed_harmonic_fit(monkeypatch):
+    """
+    Test that a failed harmonic fit gives an invalid isophote.
+    """
+    def fit_harmonics(*args):  # noqa: ARG001
+        msg = 'Error in least-squares fit'
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr('photutils.isophote.fitter.'
+                        'fit_first_and_second_harmonics', fit_harmonics)
+    sample = EllipseSample(DATA, 40.0)
+    match = 'The harmonic fit failed at SMA 40.0: Error in least-squares'
+    with pytest.warns(AstropyUserWarning, match=match):
+        isophote = EllipseFitter(sample).fit()
+    assert not isophote.valid
+    assert isophote.stop_code == 3
 
 
 def test_fitting_eps():

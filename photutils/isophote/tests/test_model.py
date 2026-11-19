@@ -384,7 +384,7 @@ def test_model_nonfinite_central_pixel():
     mask = np.zeros(data.shape, dtype=bool)
     mask[100, 100] = True
     ellipse = Ellipse(np.ma.masked_array(data, mask=mask))
-    match = 'The harmonic fit failed'
+    match = 'Too small sample to warrant a fit'
     with pytest.warns(AstropyUserWarning, match=match):
         isolist = ellipse.fit_image(maxsma=30.0)
     assert isolist[0].sma == 0
