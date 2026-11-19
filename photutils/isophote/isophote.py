@@ -3,6 +3,8 @@
 Tools for storing the results of isophote fits.
 """
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 
@@ -14,6 +16,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['Isophote', 'IsophoteList']
 
@@ -898,15 +901,24 @@ class IsophoteList:
 
         Parameters
         ----------
-        columns : list of str
-            A list of properties to export from the isophote list. If
-            ``columns`` is 'all' or 'main', it will pick all or few of the
-            main properties.
+        columns : {'main', 'all'} or list of str, optional
+            The columns to include in the table. ``'main'`` (default)
+            selects the main isophote properties and ``'all'`` selects
+            all of them. Otherwise, ``columns`` is a list of property
+            names (see :meth:`get_names`) or table column names (e.g.,
+            ``'ellipticity'`` for the ``eps`` property). ``'main'``
+            and ``'all'`` must be input by themselves.
 
         Returns
         -------
         result : `~astropy.table.QTable`
             An astropy QTable with the main isophote parameters.
+
+        Raises
+        ------
+        ValueError
+            If any name in ``columns`` is not a valid column name, or if
+            ``'main'`` or ``'all'`` is input together with other names.
         """
         return _isophote_list_to_table(self, columns=columns)
 
@@ -1011,9 +1023,17 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     _deprecation_map = _DEPRECATED_ATTRIBUTES.copy()
     all_names = _get_properties(isophote_list).keys()
 
-    allowed_columns = {*all_names, 'main', 'all'}
+    # The table column names of the renamed properties are also
+    # accepted.
+    column_aliases = {column: name for name, column in _RENAME_MAP.items()}
+
+    allowed_columns = {*all_names, *column_aliases, 'main', 'all'}
     table_columns = validate_table_columns(
         columns, allowed_columns, deprecated_names=_deprecation_map)
+    if len(table_columns) > 1 and {'main', 'all'} & set(table_columns):
+        msg = ("'main' and 'all' must be input by themselves, not in a "
+               'list with other column names.')
+        raise ValueError(msg)
 
     # Replace with QTable in 4.0
     isotable = create_empty_deprecated_qtable(
@@ -1026,12 +1046,22 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     elif table_columns == ['main']:
         properties = _rename_properties(_MAIN_PROPERTIES)
     else:
-        # Use the canonical (nondeprecated) column name so that
-        # assigning into ``isotable`` does not trigger a second,
-        # redundant deprecation warning (the deprecated attribute access
-        # below already warns once).
-        properties = {name: _deprecation_map.get(name, name)
-                      for name in table_columns}
+        # Map each requested name to the property that holds its values
+        # and to its table column name. A deprecated name uses the new
+        # property and column names, with a single deprecation warning
+        # instead of one per isophote.
+        properties = {}
+        for name in table_columns:
+            if name in _deprecation_map:
+                new_name = _deprecation_map[name]
+                msg = (f'The {name!r} attribute was deprecated in version '
+                       f'3.0. Use {new_name!r} instead. It will be removed '
+                       'in version 4.0.')
+                warnings.warn(msg, PhotutilsDeprecationWarning,
+                              stacklevel=3)
+                properties[new_name] = new_name
+            else:
+                properties[column_aliases.get(name, name)] = name
 
     for k, v in properties.items():
         isotable[v] = np.array([getattr(iso, k) for iso in isophote_list])

@@ -271,6 +271,31 @@ class TestIsophoteList:
         assert isinstance(iso, Isophote)
         assert_allclose(iso.sma, 14.0, atol=1e-6)
 
+    def test_to_table_columns(self):
+        isolist = self.isolist_sma10
+        match = "'main' and 'all' must be input by themselves"
+        for columns in (['main', 'sma'], ['sma', 'all']):
+            with pytest.raises(ValueError, match=match):
+                isolist.to_table(columns=columns)
+
+        # The table column names of renamed properties are accepted.
+        columns = ['sma', 'ellipticity', 'intens_err', 'ellipticity_err']
+        tbl = isolist.to_table(columns=columns)
+        assert tbl.colnames == columns
+        assert_allclose(tbl['ellipticity'], isolist.eps)
+        assert_allclose(tbl['intens_err'], isolist.int_err)
+
+        tbl = isolist.to_table(columns=['eps'])
+        assert tbl.colnames == ['eps']
+
+    def test_to_table_deprecated_column_warns_once(self):
+        match = "'niter' attribute was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match=match) as record:
+            tbl = self.isolist_sma10.to_table(columns=['sma', 'niter'])
+        assert len(record) == 1
+        assert tbl.colnames == ['sma', 'n_iter']
+
     def test_mutators(self):
         isolist = IsophoteList(list(self.isolist_sma10))
         n_isophotes = len(isolist)
