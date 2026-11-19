@@ -120,6 +120,34 @@ def test_model_inputs():
     with pytest.raises(ValueError, match=match):
         build_ellipse_model((10, 10), IsophoteList([]))
 
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=20.0)
+    match = 'isolist must contain at least 4 isophotes'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist[-3:])
+
+    match = 'must be sorted by strictly increasing semimajor axis'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist[::-1])
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist + isolist[-1:])
+
+
+def test_model_outer_isophote():
+    """
+    Test that the model extends to the outermost isophote.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=40.0)
+    model = build_ellipse_model(data.shape, isolist, fill=np.nan,
+                                sma_interval=10.0)
+
+    # The fitted isophotes have position angles near 0 or pi, so the
+    # major axis is along the x axis.
+    sma = isolist[-1].sma
+    assert np.isfinite(model[256, 256 + int(sma)])
+    assert np.isfinite(model[256, 256 - int(sma)])
+
 
 def test_model_pa_wrap():
     """
