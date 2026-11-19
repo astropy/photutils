@@ -329,8 +329,9 @@ class Isophote:
                                                            sample.values[2],
                                                            n)
 
-            a = up_coeffs[1] / self.sma / abs(sample.gradient)
-            b = up_coeffs[2] / self.sma / abs(sample.gradient)
+            scale = self.sma * abs(sample.gradient)
+            a = up_coeffs[1] / scale
+            b = up_coeffs[2] / scale
 
             def errfunc(x, phi, order, intensities):
                 return (x[0] + x[1] * np.sin(order * phi)
@@ -349,8 +350,12 @@ class Isophote:
             gre = (self.gradient_rel_err
                    if self.gradient_rel_err is not None else 0.8)
 
-            a_err = abs(a) * np.sqrt((ce[1] / up_coeffs[1])**2 + gre**2)
-            b_err = abs(b) * np.sqrt((ce[2] / up_coeffs[2])**2 + gre**2)
+            # The relative amplitude error is combined in quadrature with
+            # the relative gradient error. The errors are written in a
+            # form that does not divide by the amplitudes, which can be
+            # zero.
+            a_err = np.sqrt((ce[1] / scale)**2 + (a * gre)**2)
+            b_err = np.sqrt((ce[2] / scale)**2 + (b * gre)**2)
 
         except Exception:  # we want to catch everything
             a = b = a_err = b_err = None
