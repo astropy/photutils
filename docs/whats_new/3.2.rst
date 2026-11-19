@@ -77,6 +77,16 @@ Most users never import these modules directly, because ``asdf`` loads
 the photutils extension automatically. The ASDF tags and schema URIs are
 unchanged, so existing ASDF files remain readable.
 
+Isophote Fitting Keywords
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``maxgerr`` and ``going_inwards`` keywords of
+`~photutils.isophote.EllipseFitter.fit` and
+`~photutils.isophote.Ellipse.fit_isophote` are deprecated and will be
+removed in version 4.0. They have no effect. The ``maxgerr`` criterion
+compares consecutive isophotes, so it is applied only by
+`~photutils.isophote.Ellipse.fit_image`.
+
 
 .. _whatsnew-3.2-breaking-changes:
 

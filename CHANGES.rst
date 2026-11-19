@@ -90,6 +90,71 @@ Bug Fixes
     about half a pixel in x and y. The last image row and column are
     now also sampled. [#2543]
 
+  - Fixed ``build_ellipse_model`` for galaxies whose position angle
+    is near 0 or 180 degrees. The fitted position angles of
+    neighboring isophotes can then jump by almost 180 degrees, and
+    the interpolated model isophotes swept through all the angles in
+    between. [#2549]
+
+  - Fixed ``Ellipse.fit_image`` raising an ``IndexError`` when the
+    first isophote has no valid data points, e.g., for a fully masked
+    image or a starting ellipse outside of the image. It now emits a
+    warning and returns an empty ``IsophoteList``. [#2549]
+
+  - Fixed ``Ellipse.fit_image`` modifying the input
+    ``EllipseGeometry`` instance. The ``fix_center``, ``fix_pa``,
+    ``fix_eps``, and ``linear`` keywords now apply only to that call.
+    Previously, they persisted in subsequent calls. [#2549]
+
+  - Fixed the convergence criterion of the isophote fitter, which
+    scaled the harmonic fit rms by the mean sector area instead of its
+    square root as in the STSDAS ``ellipse`` task. Iterations stopped
+    too early, especially for the ``'mean'`` and ``'median'``
+    integration modes. [#2549]
+
+  - Fixed the ``maxgerr`` criterion of ``Ellipse.fit_image``. It was
+    applied to consecutive iterations of a single isophote, which
+    stopped that fit early and replaced its geometry with that of the
+    previous isophote. As documented, it now stops the semimajor axis
+    growth (or starts the noniterative mode if ``maxsma`` is set) when
+    two consecutive isophotes exceed ``maxgerr``. The fits now
+    typically extend to larger semimajor axes. Also, parameter
+    corrections are no longer computed from a positive local
+    gradient. [#2549]
+
+  - Fixed the ellipse divergence checks of the isophote fitter. The
+    ellipticity check never triggered, so ellipticity corrections
+    beyond 0.95 were clipped to 0.95. The fit now stops and returns
+    the best-fit isophote. The image boundary check of the ellipse
+    center now uses 0-based pixel coordinates. [#2549]
+
+  - Fixed the isophote fitter for isophotes whose ellipticity
+    corrections cross zero. The ellipticity was flipped to a positive
+    value after the sample had already been extracted, so the next
+    iteration fit the intensities of a different ellipse. [#2549]
+
+  - Fixed the isophote fitter to return the best-fit sample instead
+    of the last corrected one when the iterations stop because the
+    local gradient is not negative. [#2549]
+
+  - Fixed ``EllipseGeometry.find_center`` raising a ``MaskError`` for
+    starting positions near the image edges. [#2549]
+
+  - Fixed ``EllipseSample`` replacing an input ``x0`` or ``y0`` of zero
+    with the image center. [#2549]
+
+  - Fixed a ``ZeroDivisionError`` in the ``'mean'`` and ``'median'``
+    integration modes when the inner bounding ellipse of the sectors
+    has zero size. [#2549]
+
+  - Fixed ``build_ellipse_model`` setting model pixels with a value of
+    exactly zero to the ``fill`` value. Only the pixels with no
+    contribution from any isophote are now filled. [#2549]
+
+  - Fixed ``Ellipse.fit_image`` to start the first isophote fit inwards
+    from the geometry of the first fitted isophote, as in the STSDAS
+    ``ellipse`` task, instead of the outermost isophote. [#2549]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -180,6 +245,13 @@ API Changes
     removed in version 4.0. Use ``photutils.asdf.converters`` and
     ``photutils.asdf.extension`` instead. The ASDF tags and schema URIs
     are unchanged, so existing ASDF files remain readable. [#2540]
+
+- ``photutils.isophote``
+
+  - The ``maxgerr`` and ``going_inwards`` keywords of
+    ``EllipseFitter.fit`` and ``Ellipse.fit_isophote`` are deprecated
+    and will be removed in version 4.0. They have no effect. The
+    ``maxgerr`` criterion is applied by ``Ellipse.fit_image``. [#2549]
 
 
 3.1.1 (2026-10-16)

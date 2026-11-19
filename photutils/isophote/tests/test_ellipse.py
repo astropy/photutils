@@ -10,6 +10,7 @@ import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
+from numpy.testing import assert_allclose
 
 from photutils.datasets import make_noise_image
 from photutils.datasets.load import _get_path
@@ -17,8 +18,9 @@ from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-# Define an off-center position and a tilted sma
+# Define an off-center position and a tilted sma.
 POS = 384
 PA = np.deg2rad(10.0)
 
@@ -65,8 +67,8 @@ class TestEllipse:
 
     def test_linear(self):
         ellipse = Ellipse(self.data)
-        # maxsma limits the runtime. The linear spacing checks below
-        # do not depend on the outer extent of the fit.
+        # The maxsma keyword limits the runtime. The linear spacing checks
+        # below do not depend on the outer extent of the fit.
         isophote_list = ellipse.fit_image(linear=True, step=2.0,
                                           maxsma=80.0)
 
@@ -81,6 +83,111 @@ class TestEllipse:
                             step, rel_tol=0.01)
         assert math.isclose((isophote_list[2].sma - isophote_list[1].sma),
                             step, rel_tol=0.01)
+
+    def test_fit_image_geometry_unchanged(self):
+        """
+        Test that the fix_XXX and linear parameters of fit_image apply
+        only to that call and do not modify the input geometry.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        isolist = ellipse.fit_image(maxsma=30.0, step=2.0, linear=True,
+                                    fix_center=True)
+        assert np.all(isolist.x0 == 256.0)
+        assert np.all(isolist.y0 == 256.0)
+        assert_allclose(np.diff(isolist.sma[-3:]), 2.0)
+
+        assert not np.any(geometry.fix)
+        assert not geometry.linear_growth
+
+        # A second call without these parameters fits the center and
+        # uses geometric growth.
+        isolist = ellipse.fit_image(maxsma=30.0)
+        x0 = isolist.x0[isolist.sma > 0]
+        assert np.any(x0 != 256.0)
+        assert_allclose(isolist.sma[-1] / isolist.sma[-2], 1.1)
+
+    @pytest.mark.parametrize('maxsma', [None, 200.0])
+    def test_maxgerr(self, maxsma):
+        """
+        Test that the maxgerr criterion is triggered when two
+        consecutive isophotes exceed it while the semimajor axis grows
+        outwards.
+
+        Without ``maxsma``, the semimajor axis growth then stops.
+        With ``maxsma``, the remaining isophotes up to ``maxsma`` are
+        extracted in noniterative mode (stop code 4).
+        """
+        data = make_test_image(noise=5.0, seed=0)
+        maxgerr = 0.05
+        isolist = Ellipse(data).fit_image(minsma=8.0, maxsma=maxsma,
+                                          maxgerr=maxgerr)
+        sma = isolist.sma
+        stop_code = isolist.stop_code
+        fitted = (sma >= 10.0) & (stop_code != 4)
+        exceeded = isolist.gradient_rel_err[fitted] > maxgerr
+        assert np.all(exceeded[-2:])
+        assert not np.any(exceeded[:-2] & exceeded[1:-1])
+
+        # The isophotes that exceed maxgerr are fitted instead of
+        # being stopped and replaced by the geometry of the previous
+        # isophote (stop code 5)
+        assert np.all(stop_code[fitted][-2:] != 5)
+
+        if maxsma is None:
+            assert not np.any(stop_code == 4)
+        else:
+            last_fitted = sma[fitted][-1]
+            assert np.all(stop_code[sma > last_fitted] == 4)
+            assert sma[-1] < maxsma <= sma[-1] * 1.1
+
+    @pytest.mark.parametrize('kwargs', [{'maxgerr': 0.5},
+                                        {'going_inwards': True}])
+    def test_fit_isophote_deprecated_keywords(self, kwargs):
+        ellipse = Ellipse(self.data)
+        match = f"'{next(iter(kwargs))}' was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            ellipse.fit_isophote(40.0, **kwargs)
+
+    def test_round_galaxy_sample_matches_geometry(self):
+        """
+        Test that the sampled values of the fitted isophotes match their
+        geometry for a round galaxy.
+
+        For a round galaxy, the ellipticity corrections can cross zero.
+        The ellipse is then flipped to a positive ellipticity, and the
+        sample must be extracted from the flipped geometry.
+        """
+        data = make_test_image(eps=0.0, noise=1.0, seed=0)
+        isolist = Ellipse(data).fit_image(maxsma=60.0)
+        for isophote in isolist:
+            if isophote.sma == 0:
+                continue
+            angles, radii, _ = isophote.sample.values
+            assert_allclose(radii, isophote.sample.geometry.radius(angles),
+                            rtol=1e-10)
+
+    def test_first_inward_isophote(self):
+        """
+        Test that the first inward isophote starts from the geometry of
+        the first fitted isophote instead of the last (outermost) one.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        isolist = ellipse.fit_image(maxsma=40.0)
+
+        first = isolist.get_closest(10.0)
+        assert first.sma == 10.0
+        sma = 10.0 / 1.1
+        step = 1.0 / 1.1 - 1.0
+        expected = ellipse.fit_isophote(sma, step=step,
+                                        isophote_list=[first])
+        isophote = isolist.get_closest(sma)
+        assert isophote.sma == expected.sma
+        assert isophote.x0 == expected.x0
+        assert isophote.y0 == expected.y0
+        assert isophote.eps == expected.eps
+        assert isophote.pa == expected.pa
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
@@ -118,6 +225,25 @@ class TestEllipse:
         match = 'No meaningful fit was possible'
         with pytest.warns(AstropyUserWarning, match=match):
             isophote_list = ellipse.fit_image()
+        assert len(isophote_list) == 0
+
+    @pytest.mark.parametrize('case', ['masked', 'outside'])
+    def test_no_valid_data(self, case):
+        """
+        Test that fit_image returns an empty list when the first
+        isophote has no valid data points.
+        """
+        if case == 'masked':
+            data = np.ma.masked_all(self.data.shape)
+            geometry = None
+        else:
+            data = self.data
+            geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
+        ellipse = Ellipse(data, geometry=geometry)
+        match = 'No meaningful fit was possible'
+        with pytest.warns(AstropyUserWarning, match=match):
+            isophote_list = ellipse.fit_image()
+        assert isinstance(isophote_list, IsophoteList)
         assert len(isophote_list) == 0
 
     def test_offcenter_fit(self):
@@ -162,4 +288,15 @@ class TestEllipse:
         data = g(x, y) + noise
         ellipse = Ellipse(data)  # estimates initial center
         isolist = ellipse.fit_image()
-        assert len(isolist) == 54
+
+        # The isophotes are centered on the galaxy and have its shape.
+        # The number of isophotes is not checked because the fits of
+        # the noise-dominated outermost isophotes, which set where the
+        # fit stops, depend on the platform.
+        mask = (isolist.sma > 2) & (isolist.sma < 40)
+        assert_allclose(isolist.x0[mask], nx / 2.0, atol=1.0)
+        assert_allclose(isolist.y0[mask], ny / 2.0, atol=1.0)
+        assert_allclose(np.median(isolist.eps[mask]), 1.0 - 12 / 20,
+                        atol=0.02)
+        assert_allclose(np.median(isolist.pa[mask]), np.deg2rad(40.0),
+                        atol=np.deg2rad(2.0))

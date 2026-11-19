@@ -123,7 +123,7 @@ class EllipseSample:
             # with the image center.
             _x0 = x0
             _y0 = y0
-            if not _x0 or not _y0:
+            if _x0 is None or _y0 is None:
                 _x0 = image.shape[1] / 2
                 _y0 = image.shape[0] / 2
 
@@ -182,21 +182,21 @@ class EllipseSample:
         # from external code. To force it to rerun, set "sample.values =
         # None" before calling sample.extract().
 
-        # Individual extracted sample points will be stored in here
+        # Individual extracted sample points will be stored in here.
         angles = []
         radii = []
         intensities = []
         sector_areas = []
 
-        # Reset counters
+        # Reset counters.
         self.total_points = 0
         self.actual_points = 0
 
-        # Build integrator
+        # Build integrator.
         integrator = INTEGRATORS[self.integrmode](self.image, self.geometry,
                                                   angles, radii, intensities)
 
-        # Initialize walk along elliptical path
+        # Initialize walk along elliptical path.
         radius = self.geometry.initial_polar_radius
         phi = self.geometry.initial_polar_angle
 
@@ -248,14 +248,14 @@ class EllipseSample:
         # the opportunity to step over the entire elliptical path.
         self.sector_area = np.mean(np.array(sector_areas))
 
-        # Apply sigma-clipping
+        # Apply sigma-clipping.
         angles, radii, intensities = self._sigma_clip(angles, radii,
                                                       intensities)
 
         # Actual number of sampled points, after sigma-clip removed outliers
         self.actual_points = len(angles)
 
-        # Pack results in 2D array
+        # Pack results in 2D array.
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
 

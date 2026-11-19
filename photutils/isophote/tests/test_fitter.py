@@ -16,6 +16,7 @@ from photutils.isophote.integrator import MEAN
 from photutils.isophote.isophote import Isophote
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DATA = make_test_image(seed=0)
 DEFAULT_POS = 256
@@ -55,6 +56,45 @@ def test_zero_gradient_flat_image():
     assert isophote.intens == 1.0
 
 
+def test_positive_gradient():
+    """
+    Test that the fitter does not apply corrections computed from a
+    positive gradient.
+
+    The intensity of this image increases outward, so the initial
+    ellipse is returned unchanged.
+    """
+    yy, xx = np.mgrid[0:201, 0:201]
+    data = 10.0 + 0.5 * np.hypot(xx - 100, yy - 100)
+    sample = EllipseSample(data, 20.0, x0=100.0, y0=100.0, eps=0.2)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == -1
+    assert isophote.grad > 0
+    assert isophote.eps == 0.2
+    assert isophote.x0 == 100.0
+    assert isophote.y0 == 100.0
+
+
+@pytest.mark.parametrize('ring_radius', [21.0, 23.0])
+def test_abnormal_stop_returns_best_fit(ring_radius):
+    """
+    Test that the best-fit sample is returned when the iterations stop
+    because the gradient of the current sample is not negative.
+
+    A bright ring just outside of the fitted ellipse makes the gradient
+    positive for some of the corrected ellipses.
+    """
+    yy, xx = np.mgrid[0:201, 0:201]
+    radius = np.hypot(xx - 100, yy - 100)
+    data = (1000.0 * np.exp(-radius / 10.0)
+            + 100.0 * np.exp(-0.5 * (radius - ring_radius)**2))
+    sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, eps=0.1)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == -1
+    assert isophote.n_iter > 1
+    assert isophote.grad < 0
+
+
 def test_fitting_raw():
     """
     This test performs a raw (no EllipseFitter), 1-step correction in
@@ -92,7 +132,7 @@ def test_fitting_small_radii():
 
 
 def test_fitting_eps():
-    # Initial guess is off in the eps parameter
+    # Initial guess is off in the eps parameter.
     sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
@@ -103,10 +143,34 @@ def test_fitting_eps():
     assert g.eps <= 0.21
 
 
+@pytest.mark.parametrize('galaxy_eps', [0.97, 0.98])
+def test_fitting_eps_diverged(galaxy_eps):
+    """
+    Test that the fit stops when a correction makes the ellipticity
+    exceed its maximum allowed value of 0.95.
+
+    The best-fit sample is returned instead of the diverged one.
+    """
+    data = make_test_image(eps=galaxy_eps, seed=0)
+    sample = EllipseSample(data, 40.0, eps=0.9)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == -1
+    assert isophote.eps == 0.9
+
+
+@pytest.mark.parametrize('kwargs', [{'maxgerr': 0.5},
+                                    {'going_inwards': True}])
+def test_fit_deprecated_keywords(kwargs):
+    sample = EllipseSample(DATA, 40.0)
+    match = f"'{next(iter(kwargs))}' was deprecated"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        EllipseFitter(sample).fit(**kwargs)
+
+
 def test_fitting_pa():
     data = make_test_image(pa=np.pi / 4, noise=0.01, seed=0)
 
-    # Initial guess is off in the pa parameter
+    # Initial guess is off in the pa parameter.
     sample = EllipseSample(data, 40)
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
@@ -120,7 +184,7 @@ def test_fitting_xy():
     pos = DEFAULT_POS - 5
     data = make_test_image(x0=pos, y0=pos, seed=0)
 
-    # Initial guess is off in the x0 and y0 parameters
+    # Initial guess is off in the x0 and y0 parameters.
     sample = EllipseSample(data, 40)
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
