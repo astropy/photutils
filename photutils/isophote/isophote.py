@@ -223,12 +223,6 @@ class Isophote:
         except AttributeError:
             return NotImplemented
 
-    def __ne__(self, other):
-        try:
-            return self.sma != other.sma
-        except AttributeError:
-            return NotImplemented
-
     def __str__(self):
         return str(self.to_table())
 
