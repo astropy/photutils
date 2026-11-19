@@ -153,6 +153,31 @@ def test_isophote_comparisons():
         assert not iso1 == other  # noqa: SIM201
 
 
+def test_fix_geometry():
+    """
+    Test that a sample re-extracted after ``fix_geometry`` lies on the
+    new ellipse.
+    """
+    data = make_test_image(seed=0)
+    geometry1 = EllipseGeometry(256.0, 256.0, 20.0, 0.1, 0.0)
+    geometry2 = EllipseGeometry(257.0, 255.0, 20.0, 0.5, 1.0)
+    sample1 = EllipseSample(data, 20.0, geometry=geometry1)
+    sample2 = EllipseSample(data, 20.0, geometry=geometry2)
+    sample1.update(fixed_parameters=DEFAULT_FIX)
+    sample2.update(fixed_parameters=DEFAULT_FIX)
+    iso1 = Isophote(sample1, 0, valid=True, stop_code=0)
+    iso2 = Isophote(sample2, 0, valid=True, stop_code=0)
+
+    iso1.fix_geometry(iso2)
+    sample1.values = None
+    sample1.update(fixed_parameters=DEFAULT_FIX)
+
+    angles, radii, _ = sample1.values
+    assert_allclose(radii, geometry2.radius(angles))
+    assert_allclose(sample1.values, sample2.values)
+    assert_allclose(sample1.mean, sample2.mean)
+
+
 def test_isophote_small_flux_box():
     """
     Test the fluxes of an isophote whose enclosing box at the image

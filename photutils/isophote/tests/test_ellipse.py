@@ -459,6 +459,18 @@ class TestEllipse:
                                     step=5.0, linear=True)
         assert np.all([iso.sample.geometry.astep == 5.0 for iso in isolist])
 
+    def test_sampled_on_ellipse(self):
+        """
+        Test that every fitted isophote, including the diverged ones
+        (stop_code 5) whose geometry is replaced by that of a neighbor,
+        is sampled along its reported ellipse.
+        """
+        isophote_list = Ellipse(self.data).fit_image()
+        assert np.any(isophote_list.stop_code == 5)
+        for iso in isophote_list[1:]:
+            angles, radii, _ = iso.sample.values
+            assert_allclose(radii, iso.sample.geometry.radius(angles))
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)

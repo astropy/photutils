@@ -413,6 +413,10 @@ class Isophote:
         self.sample.geometry.x0 = isophote.sample.geometry.x0
         self.sample.geometry.y0 = isophote.sample.geometry.y0
 
+        # The initial polar radius and sector width depend on the
+        # ellipticity, so they must be recomputed for the new geometry.
+        self.sample.geometry._reset_sma_dependent_attributes()
+
     def sampled_coordinates(self):
         """
         Return the (x, y) coordinates where the image was sampled in
