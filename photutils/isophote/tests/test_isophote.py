@@ -246,6 +246,61 @@ class TestIsophoteList:
         assert isinstance(iso, Isophote)
         assert_allclose(iso.sma, 14.0, atol=1e-6)
 
+    def test_mutators(self):
+        isolist = IsophoteList(list(self.isolist_sma10))
+        n_isophotes = len(isolist)
+        first = isolist[0]
+        last = isolist[-1]
+
+        isolist.append(first)
+        assert len(isolist) == n_isophotes + 1
+        assert isolist[-1] is first
+
+        isolist.insert(0, last)
+        assert len(isolist) == n_isophotes + 2
+        assert isolist[0] is last
+
+        isolist[1] = last
+        assert isolist[1] is last
+
+        del isolist[0]
+        assert len(isolist) == n_isophotes + 1
+        assert isolist[0] is last
+
+        # The original list is not modified.
+        assert len(self.isolist_sma10) == n_isophotes
+
+    @pytest.mark.parametrize('name', ['int_err', 'ellip_err', 'pa_err',
+                                      'x0_err', 'y0_err', 'gradient_err',
+                                      'gradient_rel_err', 'a3_err',
+                                      'b3_err', 'a4_err', 'b4_err'])
+    def test_error_properties(self, name):
+        isolist = self.isolist_sma10
+        values = getattr(isolist, name)
+        assert values.shape == (len(isolist),)
+        assert np.all(np.isfinite(values))
+        assert np.all(values >= 0)
+        assert_allclose(values, [getattr(iso, name) for iso in isolist])
+
+    def test_deprecated_attribute(self):
+        match = "'niter' attribute was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            n_iter = self.isolist_sma10.niter
+        assert_allclose(n_iter, self.isolist_sma10.n_iter)
+
+    def test_isophote_methods(self):
+        isophote = self.isolist_sma10[2]
+        assert 'sma' in str(isophote)
+
+        table = isophote.to_table()
+        assert len(table) == 1
+        assert table['sma'][0] == isophote.sma
+
+        x, y = isophote.sampled_coordinates()
+        assert len(x) == len(y) == isophote.n_data
+        radius = np.hypot(x - isophote.x0, y - isophote.y0)
+        assert_allclose(radius, isophote.sample.values[1])
+
     def test_central_pixel(self):
         # Test the central_pixel method.
         sample = EllipseSample(self.data, 10.0)
