@@ -150,78 +150,126 @@ class _Integrator:
         raise NotImplementedError
 
 
-class _NearestNeighborIntegrator(_Integrator):
+class _PixelIntegrator(_Integrator):
+    """
+    Base class for the integrators that sample single pixel positions.
+
+    The path along the ellipse is sampled at once by the
+    ``integrate_path`` method. The ``integrate`` method samples a single
+    point.
+    """
+
     def integrate(self, radius, phi):
         self._r = radius
+        angles, radii, values = self.integrate_path(np.array([radius]),
+                                                    np.array([phi]))
+        if len(values) > 0:
+            self._store_results(angles[0], radii[0], values[0])
 
-        # Get image coordinates of (radius, phi) pixel. Pixel centers
-        # are at integer coordinates, so the nearest pixel is found by
-        # rounding.
-        i = math.floor(radius * math.cos(phi + self._geometry.pa)
-                       + self._geometry.x0 + 0.5)
-        j = math.floor(radius * math.sin(phi + self._geometry.pa)
-                       + self._geometry.y0 + 0.5)
+    def integrate_path(self, radii, phis):
+        """
+        Sample the image at the input polar coordinates.
 
-        # ignore data point if outside image boundaries
-        if (0 <= i < self._image.shape[1]) and (0 <= j < self._image.shape[0]):
-            # Skip masked and nonfinite pixels.
-            if self._mask is not None and self._mask[j, i]:
-                return
-            sample = self._data[j, i]
-            if math.isfinite(sample):
-                self._store_results(phi, radius, sample)
+        Points outside of the image, or whose sample includes masked or
+        nonfinite pixels, are skipped.
+
+        Parameters
+        ----------
+        radii : 1D `~numpy.ndarray`
+            The polar radii (pixels).
+
+        phis : 1D `~numpy.ndarray`
+            The polar angles (radians).
+
+        Returns
+        -------
+        angles, radii, values : 1D `~numpy.ndarray`
+            The polar angles, polar radii, and sampled values of the
+            valid points.
+        """
+        raise NotImplementedError
 
     def get_polar_angle_step(self):
         return 1.0 / self._r
+
+    def is_area(self):
+        return False
+
+
+class _NearestNeighborIntegrator(_PixelIntegrator):
+    def integrate_path(self, radii, phis):
+        ny, nx = self._data.shape
+
+        # Get image coordinates of the (radius, phi) points. Pixel
+        # centers are at integer coordinates, so the nearest pixel is
+        # found by rounding.
+        angle = phis + self._geometry.pa
+        i = np.floor(radii * np.cos(angle) + self._geometry.x0
+                     + 0.5).astype(int)
+        j = np.floor(radii * np.sin(angle) + self._geometry.y0
+                     + 0.5).astype(int)
+
+        # Ignore data points outside image boundaries.
+        good = (i >= 0) & (i < nx) & (j >= 0) & (j < ny)
+        i = i[good]
+        j = j[good]
+        radii = radii[good]
+        phis = phis[good]
+
+        # Skip masked and nonfinite pixels.
+        values = self._data[j, i]
+        good = np.isfinite(values)
+        if self._mask is not None:
+            good &= ~self._mask[j, i]
+
+        return phis[good], radii[good], values[good]
 
     def get_sector_area(self):
         return 1.0
 
-    def is_area(self):
-        return False
 
+class _BiLinearIntegrator(_PixelIntegrator):
+    def integrate_path(self, radii, phis):
+        ny, nx = self._data.shape
 
-class _BiLinearIntegrator(_Integrator):
-    def integrate(self, radius, phi):
-        self._r = radius
+        # Get image coordinates of the (radius, phi) points.
+        angle = phis + self._geometry.pa
+        x = radii * np.cos(angle) + self._geometry.x0
+        y = radii * np.sin(angle) + self._geometry.y0
 
-        # Get image coordinates of (radius, phi) pixel
-        x_ = radius * math.cos(phi + self._geometry.pa) + self._geometry.x0
-        y_ = radius * math.sin(phi + self._geometry.pa) + self._geometry.y0
         # Use floor so that points before the first pixel center are
         # skipped instead of extrapolated.
-        i = math.floor(x_)
-        j = math.floor(y_)
-        fx = x_ - i
-        fy = y_ - j
+        i = np.floor(x).astype(int)
+        j = np.floor(y).astype(int)
 
-        # ignore data point if outside image boundaries
-        if (i in self._i_range) and (j in self._j_range):
-            qx = 1.0 - fx
-            qy = 1.0 - fy
+        # Ignore data points outside image boundaries.
+        good = (i >= 0) & (i < nx - 1) & (j >= 0) & (j < ny - 1)
+        i = i[good]
+        j = j[good]
+        fx = x[good] - i
+        fy = y[good] - j
+        radii = radii[good]
+        phis = phis[good]
 
+        qx = 1.0 - fx
+        qy = 1.0 - fy
+        data = self._data
+        values = (data[j, i] * qx * qy
+                  + data[j + 1, i] * qx * fy
+                  + data[j, i + 1] * fx * qy
+                  + data[j + 1, i + 1] * fy * fx)
+
+        # Skip samples that include masked or nonfinite pixels.
+        good = np.isfinite(values)
+        if self._mask is not None:
             mask = self._mask
-            if mask is None or not (mask[j, i] or mask[j + 1, i]
-                                    or mask[j, i + 1]
-                                    or mask[j + 1, i + 1]):
-                data = self._data
-                sample = (data[j, i] * qx * qy
-                          + data[j + 1, i] * qx * fy
-                          + data[j, i + 1] * fx * qy
-                          + data[j + 1, i + 1] * fy * fx)
+            good &= ~(mask[j, i] | mask[j + 1, i] | mask[j, i + 1]
+                      | mask[j + 1, i + 1])
 
-                # Skip samples that include nonfinite pixels.
-                if math.isfinite(sample):
-                    self._store_results(phi, radius, sample)
-
-    def get_polar_angle_step(self):
-        return 1.0 / self._r
+        return phis[good], radii[good], values[good]
 
     def get_sector_area(self):
         return 2.0
-
-    def is_area(self):
-        return False
 
 
 class _AreaIntegrator(_Integrator):

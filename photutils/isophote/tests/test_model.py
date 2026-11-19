@@ -98,15 +98,10 @@ def test_model_minimum_radius():
         g.find_center(data)
         ellipse = Ellipse(data, geometry=g)
 
-        match1 = 'Degrees of freedom'
-        match2 = 'Mean of empty slice'
-        match3 = 'invalid value encountered'
-        ctx1 = pytest.warns(RuntimeWarning, match=match1)
-        ctx2 = pytest.warns(RuntimeWarning, match=match2)
-        ctx3 = pytest.warns(RuntimeWarning, match=match3)
-        with ctx1, ctx2, ctx3:
-            isophote_list = ellipse.fit_image(sma0=40, minsma=0,
-                                              maxsma=350.0, step=0.4, n_clip=3)
+        # Sigma clipping of samples with no valid data points does not
+        # emit numpy RuntimeWarnings.
+        isophote_list = ellipse.fit_image(sma0=40, minsma=0, maxsma=350.0,
+                                          step=0.4, n_clip=3)
 
         model = build_ellipse_model(data.shape, isophote_list,
                                     fill=np.mean(data[0:50, 0:50]))
