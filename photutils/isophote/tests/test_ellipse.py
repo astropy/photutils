@@ -211,9 +211,7 @@ class TestEllipse:
         first = isolist.get_closest(10.0)
         assert first.sma == 10.0
         sma = 10.0 / 1.1
-        step = 1.0 / 1.1 - 1.0
-        expected = ellipse.fit_isophote(sma, step=step,
-                                        isophote_list=[first])
+        expected = ellipse.fit_isophote(sma, isophote_list=[first])
         isophote = isolist.get_closest(sma)
         assert isophote.sma == expected.sma
         assert isophote.x0 == expected.x0
@@ -438,6 +436,28 @@ class TestEllipse:
         with pytest.warns(AstropyUserWarning, match=match):
             isolist = ellipse.fit_image(**kwargs)
         assert len(isolist) == 0
+
+    def test_step_sampling_annulus(self):
+        """
+        Test that the step of fit_image and fit_isophote defines the
+        sampling annulus, which sets the sector areas of the area
+        integration modes.
+        """
+        ellipse = Ellipse(self.data)
+        sarea = {}
+        for step in (0.1, 0.3):
+            isolist = ellipse.fit_image(sma0=20.0, maxsma=40.0, minsma=15.0,
+                                        step=step, integrmode='mean')
+            assert np.all(isolist.sample[-1].geometry.astep == step)
+            sarea[step] = isolist.get_closest(20.0).sarea
+            isophote = ellipse.fit_isophote(20.0, step=step,
+                                            integrmode='mean')
+            assert isophote.sample.geometry.astep == step
+        assert sarea[0.3] > 2 * sarea[0.1]
+
+        isolist = ellipse.fit_image(sma0=20.0, maxsma=40.0, minsma=15.0,
+                                    step=5.0, linear=True)
+        assert np.all([iso.sample.geometry.astep == 5.0 for iso in isolist])
 
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)

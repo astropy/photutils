@@ -286,8 +286,11 @@ class Ellipse:
         step : float, optional
             The step value used to grow/shrink the semimajor axis
             length (pixels if ``linear=True``, or a relative value if
-            ``linear=False``). See the ``linear`` parameter. The default
-            is 0.1.
+            ``linear=False``). See the ``linear`` parameter. It also
+            defines the elliptical annulus used by the sampling
+            algorithm, which sets the areas of the elliptical sectors
+            for the area integration modes (see the ``integrmode``
+            parameter). The default is 0.1.
 
         conver : float, optional
             The main convergence criterion. Iterations stop when the
@@ -423,6 +426,7 @@ class Ellipse:
         # Override the geometry parameters set in this call on a copy
         # so that they do not persist in the input geometry instance.
         geometry = copy.deepcopy(self._geometry)
+        geometry.astep = step
         if isinstance(linear, bool):
             geometry.linear_growth = linear
         else:
@@ -585,10 +589,11 @@ class Ellipse:
 
         The ``step`` and ``linear`` parameters do not directly control
         the growth or reduction of the current fitting semimajor axis
-        length. Instead, they are used by the sampling algorithm to
-        determine the starting point for gradient computation and
-        to calculate the areas of the elliptical sectors (when area
-        integration mode is enabled).
+        length. Instead, they define the elliptical annulus used by
+        the sampling algorithm, which sets the areas of the elliptical
+        sectors for the area integration modes (see the ``integrmode``
+        parameter). They override the ``astep`` and ``linear_growth``
+        attributes of the starting geometry.
 
         If the center, position angle, and ellipticity are all fixed
         by the `~photutils.isophote.EllipseGeometry` instance, there
@@ -717,6 +722,12 @@ class Ellipse:
         geometry = self._geometry
         if isophote_list:
             geometry = isophote_list[-1].sample.geometry
+
+        # The step and linear values define the sampling annulus. They
+        # are set on a copy so that the input geometry is not modified.
+        geometry = copy.deepcopy(geometry)
+        geometry.astep = step
+        geometry.linear_growth = linear
 
         return self._fit_isophote(geometry, sma, step=step,
                                   conver=conver, minit=minit, maxit=maxit,
