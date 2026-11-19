@@ -282,6 +282,9 @@ API Changes
     ``Quantity`` image and a ``ValueError`` for an image that is not
     2D. [#2550]
 
+  - ``Ellipse`` and ``EllipseSample`` now accept an array-like image,
+    such as a nested list. [#2550]
+
   - ``build_ellipse_model`` now raises a ``ValueError`` if the input
     isophote list contains fewer than 4 isophotes or is not sorted by
     strictly increasing semimajor axis length. [#2550]
