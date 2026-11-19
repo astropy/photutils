@@ -295,6 +295,42 @@ class TestMakeMoransIMap:
         assert np.all(np.isnan(result[:, 36:]))
         assert np.all(np.isfinite(result[:, :30]))
 
+    @pytest.mark.parametrize('level', [100.0, 0.02])
+    @pytest.mark.parametrize('n_data_cols', [20, 40])
+    @pytest.mark.parametrize('shape', [(60, 60), (60, 400)])
+    def test_constant_region_at_pedestal(self, shape, n_data_cols, level):
+        """
+        Test that a region of zeros is NaN if the zeros are equal or
+        close to the value that is subtracted from the data.
+
+        That value is the median of the image, which is zero if most
+        of the image is zero and is close to zero if the background
+        level of the data is close to zero. The mean squared value of
+        the patches of zeros is then only a rounding residual of the
+        patch sums.
+        """
+        rng = np.random.default_rng(2)
+        data = rng.normal(level, 1.0, shape)
+        data[:, n_data_cols:] = 0.0
+        result = make_morans_i_map(data, patch_size=11)
+        assert np.all(np.isnan(result[:, n_data_cols + 6:]))
+        assert np.all(np.isfinite(result[:, :n_data_cols]))
+
+    def test_extreme_value(self):
+        """
+        Test that a single unmasked extreme value does not make the
+        patches that do not contain it constant.
+        """
+        rng = np.random.default_rng(1)
+        data = rng.normal(0.0, 1.0, (201, 251))
+        expected = make_morans_i_map(data)
+        data[100, 120] = 1.0e8
+        result = make_morans_i_map(data)
+        far = np.ones(data.shape, dtype=bool)
+        far[88:113, 108:133] = False
+        assert np.all(np.isfinite(result[far]))
+        assert_allclose(result[:80], expected[:80], atol=1e-5)
+
     def test_all_masked(self, noise):
         assert np.all(np.isnan(make_morans_i_map(np.full((30, 30), np.nan))))
         mask = np.ones(noise.shape, dtype=bool)
@@ -618,6 +654,32 @@ class TestMakeMoransIMask:
         mask = make_morans_i_mask(np.full((50, 50), np.nan))
         assert mask.dtype == bool
         assert not np.any(mask)
+
+    @pytest.mark.parametrize('shape', [(400, 600), (700, 1100)])
+    def test_zero_filled_border(self, shape):
+        """
+        Test that a border of zeros around background-subtracted data
+        gives the same mask as a border of NaN values.
+
+        The zeros are less than half of the smaller image and more
+        than half of the larger image.
+        """
+        data = np.zeros(shape)
+        data[50:350, 50:550] = make_100gaussians_image() - 5.0
+        border = np.ones(shape, dtype=bool)
+        border[50:350, 50:550] = False
+        mask = make_morans_i_mask(data)
+        expected = make_morans_i_mask(np.where(border, np.nan, data))
+        assert np.mean(expected) > 0.05
+
+        # The zeros away from the data have no value of the statistic.
+        # The patches that straddle the edges of the data change the
+        # threshold slightly.
+        far_border = np.ones(shape, dtype=bool)
+        far_border[38:362, 38:562] = False
+        assert not np.any(mask[far_border])
+        interior = (slice(65, 335), slice(65, 535))
+        assert np.mean(mask[interior] != expected[interior]) < 0.005
 
     def test_inputs(self, noise):
         match = 'n_sigma must be a positive number'

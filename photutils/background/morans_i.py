@@ -23,10 +23,19 @@ _MIN_PATCH_FRACTION = 0.25
 # The approximate number of pixels sampled to estimate image statistics
 _N_SAMPLES = 1_000_000
 
-# Patches whose variance is below this fraction of their mean squared
-# value are treated as constant. This rejects rounding residuals in
-# regions of constant data.
+# Patches whose variance is below this fraction of the sum of their
+# mean squared value and the mean squared value of the image are
+# treated as constant. This rejects the rounding residuals of the patch
+# sums in regions of constant data. The image term is needed where the
+# constant is equal or close to the value subtracted from the data,
+# because the mean squared value of the patch is then itself only a
+# rounding residual.
 _VARIANCE_FLOOR = 1.0e-10
+
+# The mean squared value of the image is limited to this multiple of
+# its robust variance. A few extreme unmasked values (e.g., hot pixels)
+# would otherwise make every patch look constant.
+_MAX_MEAN_SQ_RATIO = 1.0e6
 
 # The standard deviation of the statistic for uncorrelated noise is
 # about 0.5 / patch_size. Noise that is strongly correlated between
@@ -53,6 +62,24 @@ def _subsample(array):
     """
     step = max(1, math.ceil(math.sqrt(array.size / _N_SAMPLES)))
     return array[::step, ::step]
+
+
+def _image_mean_sq(values):
+    """
+    Return the mean squared value of a sample of the image, limited to
+    a multiple of its robust variance.
+
+    The robust variance is calculated from the median absolute value
+    of the nonzero values. The zero values are left out because more
+    than half of the values are zero if most of the image is a constant
+    region.
+    """
+    mean_sq = float(np.mean(values**2))
+    nonzero = np.abs(values[values != 0])
+    if nonzero.size == 0:
+        return mean_sq
+    robust_std = _MAD_TO_STD * float(np.median(nonzero))
+    return min(mean_sq, _MAX_MEAN_SQ_RATIO * robust_std**2)
 
 
 def _box_sum(array, size):
@@ -158,8 +185,8 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     -------
     result : 2D float32 `~numpy.ndarray`
         The Moran's I map. A pixel is NaN if it is excluded, if fewer
-        than 25% of the pixels of a full patch are usable, or if its
-        patch has zero variance.
+        than 25% of the pixels of a full patch are usable, or if the
+        variance of its patch is too small to be measured (see Notes).
 
     See Also
     --------
@@ -182,6 +209,14 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
     I statistic with row-standardized weights. The neighbor means use
     all of the image pixels, including those just outside of the patch.
     Patches are truncated at the image edges.
+
+    The variance of a patch is too small to be measured if it is
+    smaller than about ``1e-10`` times the mean squared deviation from
+    the median of the image, of either the patch or the whole image.
+    Regions of constant data (e.g., blank regions that are filled with
+    zeros) therefore have no value of the statistic. Neither do regions
+    whose values differ from the median of the image by more than
+    about ``1e5`` times their standard deviation.
 
     Noise that is correlated between adjacent pixels (e.g., in
     resampled or drizzled images) has a positive Moran's I even without
@@ -235,9 +270,15 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
             valid &= np.isfinite(weights) & (weights > 0)
 
     # Subtract an approximate background level to limit the rounding
-    # error of the box sums. The statistic does not depend on it.
-    sample = _subsample(data)[_subsample(valid)]
-    pedestal = float(np.median(sample)) if sample.size > 0 else 0.0
+    # error of the box sums. The statistic does not depend on it. The
+    # mean squared value of the image sets the scale of that rounding
+    # error.
+    sample = _subsample(data)[_subsample(valid)].astype(float)
+    pedestal = 0.0
+    image_mean_sq = 0.0
+    if sample.size > 0:
+        pedestal = float(np.median(sample))
+        image_mean_sq = _image_mean_sq(sample - pedestal)
 
     # The statistic of each pixel depends only on the pixels within
     # this many rows of it, so the map is calculated in strips of rows
@@ -253,12 +294,15 @@ def make_morans_i_map(data, *, patch_size=21, mask=None, weights=None):
         rows = slice(lower, min(stop + overlap, n_rows))
         strip_weights = None if weights is None else weights[rows]
         strip = _morans_i_strip(data[rows], valid[rows], strip_weights,
-                                pedestal=pedestal, patch_size=patch_size)
+                                pedestal=pedestal,
+                                image_mean_sq=image_mean_sq,
+                                patch_size=patch_size)
         result[start:stop] = strip[start - lower:stop - lower]
     return result
 
 
-def _morans_i_strip(data, valid, weights, *, pedestal, patch_size):
+def _morans_i_strip(data, valid, weights, *, pedestal, image_mean_sq,
+                    patch_size):
     """
     Calculate the Moran's I map of a strip of rows.
 
@@ -275,6 +319,10 @@ def _morans_i_strip(data, valid, weights, *, pedestal, patch_size):
 
     pedestal : float
         The value subtracted from the data.
+
+    image_mean_sq : float
+        The mean squared value of the whole image after ``pedestal`` is
+        subtracted.
 
     patch_size : int
         The side length in pixels of the square patch.
@@ -329,7 +377,9 @@ def _morans_i_strip(data, valid, weights, *, pedestal, patch_size):
         del wtd_sq_values
         mean_sq /= sum_wts
         var = mean_sq - mean**2
-        good &= var > _VARIANCE_FLOOR * mean_sq
+        mean_sq += image_mean_sq
+        mean_sq *= _VARIANCE_FLOOR
+        good &= var > mean_sq
         del mean_sq
 
         result = patch_sum(wtd_values * neighbors)
