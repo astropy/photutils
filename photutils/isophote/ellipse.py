@@ -277,8 +277,10 @@ class Ellipse:
         conver : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms. The
-            default is 0.05.
+            value) than ``conver`` times the harmonic fit rms times the
+            square root of the mean sector area of the sample points
+            (see the ``sector_area`` attribute of
+            `~photutils.isophote.EllipseSample`). The default is 0.05.
 
         minit : int, optional
             The minimum number of iterations to perform. A minimum of
@@ -567,8 +569,10 @@ class Ellipse:
         conver : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms. The
-            default is 0.05.
+            value) than ``conver`` times the harmonic fit rms times the
+            square root of the mean sector area of the sample points
+            (see the ``sector_area`` attribute of
+            `~photutils.isophote.EllipseSample`). The default is 0.05.
 
         minit : int, optional
             The minimum number of iterations to perform. A minimum of

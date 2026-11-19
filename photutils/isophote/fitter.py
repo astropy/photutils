@@ -53,8 +53,10 @@ class EllipseFitter:
         conver : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms. The
-            default is 0.05.
+            value) than ``conver`` times the harmonic fit rms times the
+            square root of the mean sector area of the sample points
+            (see the ``sector_area`` attribute of
+            `~photutils.isophote.EllipseSample`). The default is 0.05.
 
         minit : int, optional
             The minimum number of iterations to perform. A minimum of
@@ -192,11 +194,13 @@ class EllipseFitter:
                 minimum_amplitude_value = abs(largest_harmonic)
                 minimum_amplitude_sample = sample
 
-            # Check if converged
+            # Check if converged. As in the STSDAS ellipse task, the
+            # residual rms is scaled by the square root of the sector
+            # area to account for the smoothing from area averaging.
             model = first_and_second_harmonic_function(values[0], coeffs)
             residual = values[2] - model
 
-            if ((conver * sample.sector_area * np.std(residual))
+            if ((conver * np.sqrt(sample.sector_area) * np.std(residual))
                     > np.abs(largest_harmonic)) and (i >= minit - 1):
                 # Got a valid solution and a minimum number of
                 # iterations has run.
