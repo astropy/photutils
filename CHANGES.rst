@@ -155,6 +155,37 @@ Bug Fixes
     from the geometry of the first fitted isophote, as in the STSDAS
     ``ellipse`` task, instead of the outermost isophote. [#2549]
 
+  - Fixed ``EllipseSample`` replacing an input ``x0`` or ``y0`` of zero
+    with the image center. [#2548]
+
+  - Fixed a ``ZeroDivisionError`` in the ``'mean'`` and ``'median'``
+    integration modes when the inner bounding ellipse of the sectors
+    has zero size. [#2548]
+
+  - Fixed ``build_ellipse_model`` setting model pixels with a value of
+    exactly zero to the ``fill`` value. Only the pixels with no
+    contribution from any isophote are now filled. [#2548]
+
+  - Fixed ``Ellipse.fit_image`` to start the first isophote fit inwards
+    from the geometry of the first fitted isophote, as in the STSDAS
+    ``ellipse`` task, instead of the outermost isophote. [#2548]
+
+  - Fixed the isophote fits for images with nonfinite (NaN or
+    infinity) values, which propagated into the fitted intensities and
+    could stop the fit early. Nonfinite values are now excluded, like
+    masked pixels, and ``Ellipse`` emits a warning. [#2550]
+
+  - Fixed ``build_ellipse_model`` omitting the outermost isophote from
+    the model image. [#2550]
+
+  - Fixed ``build_ellipse_model`` returning NaN values over a range of
+    semimajor axis lengths when an isophote has a nonfinite intensity
+    (e.g., the central pixel of a galaxy with a masked center). Such
+    isophotes are now ignored. [#2550]
+
+  - Fixed the errors of the higher-order harmonic amplitudes, which
+    were NaN when an amplitude was exactly zero. [#2550]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -252,6 +283,37 @@ API Changes
     ``EllipseFitter.fit`` and ``Ellipse.fit_isophote`` are deprecated
     and will be removed in version 4.0. They have no effect. The
     ``maxgerr`` criterion is applied by ``Ellipse.fit_image``. [#2549]
+
+  - The ``threshold`` keyword and the ``set_threshold`` method of
+    ``Ellipse`` are deprecated and will be removed in version 4.0.
+    They have no effect because ``Ellipse`` does not run the object
+    centerer. Use ``EllipseGeometry.find_center`` instead. [#2550]
+
+  - ``Ellipse`` and ``EllipseSample`` now raise a ``TypeError`` for a
+    ``Quantity`` image and a ``ValueError`` for an image that is not
+    2D. [#2550]
+
+  - ``build_ellipse_model`` now raises a ``ValueError`` if the input
+    isophote list contains fewer than 4 isophotes or is not sorted by
+    strictly increasing semimajor axis length. [#2550]
+
+  - Comparing an ``Isophote`` with an object without an ``sma``
+    attribute now returns ``False`` for ``==`` and raises a
+    ``TypeError`` for the ordering operators, instead of raising an
+    ``AttributeError``. [#2550]
+
+  - The ``n_iter``, ``n_data``, ``n_flag``, and ``stop_code``
+    properties of ``IsophoteList`` now return integer arrays, and
+    ``valid`` returns a boolean array. Previously, they returned float
+    arrays. [#2550]
+
+  - Failed isophote fits now emit an ``AstropyUserWarning`` instead of
+    an ``astropy`` log warning. [#2550]
+
+  - ``Ellipse.fit_image`` now raises a ``ValueError`` if the starting
+    semimajor axis length is not positive. An ``sma0`` of zero was
+    previously ignored. Also, ``maxsma`` and ``maxrit`` values of zero
+    are now used instead of being treated as `None`. [#2550]
 
 
 3.1.1 (2026-10-16)

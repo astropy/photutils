@@ -87,6 +87,13 @@ removed in version 4.0. They have no effect. The ``maxgerr`` criterion
 compares consecutive isophotes, so it is applied only by
 `~photutils.isophote.Ellipse.fit_image`.
 
+The ``threshold`` keyword and the ``set_threshold`` method of
+`~photutils.isophote.Ellipse` are also deprecated and will be removed
+in version 4.0. They have no effect because
+`~photutils.isophote.Ellipse` does not run the object centerer. Use
+`~photutils.isophote.EllipseGeometry.find_center` to refine the initial
+center before fitting.
+
 
 .. _whatsnew-3.2-breaking-changes:
 
