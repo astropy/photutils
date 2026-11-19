@@ -733,9 +733,10 @@ class Background2D:
 
         sigma_clip : `~astropy.stats.SigmaClip` or `None`, optional
             The sigma-clipping instance to apply. If `None`, no sigma
-            clipping is performed. `~astropy.stats.SigmaClip` stores
-            internal state on the instance during calls, so each thread
-            must use its own instance.
+            clipping is performed. In astropy versions before 8.1,
+            `~astropy.stats.SigmaClip` stores internal state on the
+            instance during calls, so each thread must use its own
+            instance.
 
         Returns
         -------
@@ -843,8 +844,10 @@ class Background2D:
                 data, axis=-1, sigma_clip=self.sigma_clip)
 
         def worker(chunk):
-            # SigmaClip stores internal state on the instance during
-            # calls, so each thread needs its own copy
+            # In astropy versions before 8.1, SigmaClip stores internal
+            # state on the instance during calls, so each thread needs
+            # its own copy. The copy can be removed when astropy >= 8.1
+            # is required.
             sigma_clip = (None if self.sigma_clip is None
                           else copy.copy(self.sigma_clip))
             return self._compute_box_statistics(chunk, axis=-1,

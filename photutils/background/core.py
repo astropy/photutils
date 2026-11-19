@@ -89,11 +89,16 @@ def _use_fast_flat_clip(sigma_clip):
     Whether an ``axis=None`` sigma clip can be routed through astropy's
     fast C implementation.
 
-    astropy dispatches ``axis=None`` clipping to its slower Python code
-    path even when the ``cenfunc`` and ``stdfunc`` options are supported
-    by its fast C implementation, which requires an axis. When this
-    function returns `True`, `_prepare_data` instead clips the raveled
-    data along ``axis=0`` to use the fast C path.
+    astropy versions before 8.1 dispatch ``axis=None`` clipping to a
+    slower Python code path even when the ``cenfunc`` and ``stdfunc``
+    options are supported by the fast C implementation, which requires
+    an axis in those versions. When this function returns `True`,
+    `_prepare_data` instead clips the raveled data along ``axis=0`` to
+    use the fast C path.
+
+    This function and the raveled clip in `_prepare_data` can be
+    removed when photutils requires astropy >= 8.1, which uses the fast
+    C implementation for ``axis=None``.
 
     Parameters
     ----------
@@ -144,7 +149,8 @@ def _prepare_data(sigma_clip, data, axis):
             # Clip the raveled data along axis=0 to use astropy's
             # fast C implementation. Clipped values are replaced by
             # NaN (rather than removed), which is equivalent for the
-            # NaN-aware statistics used by the estimator classes.
+            # NaN-aware statistics used by the estimator classes. This
+            # branch can be removed when astropy >= 8.1 is required.
             return sigma_clip(np.ravel(data), axis=0, masked=False)
         return sigma_clip(data, axis=axis, masked=False)
 
@@ -159,9 +165,13 @@ def _prepare_biweight_location(location, data, axis):
     """
     Prepare the ``M`` location input for the astropy biweight functions.
 
-    The astropy biweight functions require ``M`` to be an array with the
-    shape of the result (the shape of ``data`` with ``axis`` removed). A
-    scalar ``M`` is therefore expanded to that shape.
+    The astropy biweight functions in versions before 8.1 require ``M``
+    to be an array with the shape of the result (the shape of ``data``
+    with ``axis`` removed). A scalar ``M`` is therefore expanded to that
+    shape.
+
+    This function can be removed when photutils requires astropy >= 8.1,
+    whose biweight functions accept a scalar ``M`` for any ``axis``.
 
     Parameters
     ----------

@@ -71,24 +71,48 @@ def _reference_local_background(cat, *, sigma=3.0, maxiters=20):
     return local_bkgs
 
 
+def _iterative_sigma_clip(values, *, sigma, maxiters):
+    """
+    Sigma clip the values about their median with iterative removal,
+    where a value dropped in an earlier iteration is never included
+    again.
+
+    This is not the rule that the kernel follows. The kernel and
+    `~astropy.stats.SigmaClip` keep the values within the final
+    clipping bounds, so a value dropped in an earlier iteration is
+    included again if the final bounds admit it. This function gives
+    the contrasting result. The tests use it to check that their data
+    distinguish the two rules and that the kernel does not follow this
+    one.
+    """
+    values = np.asarray(values, dtype=float)
+    for _ in range(maxiters):
+        median = np.median(values)
+        std = np.std(values)
+        keep = np.abs(values - median) <= sigma * std
+        if np.all(keep):
+            break
+        values = values[keep]
+    return values
+
+
 def _iterative_local_background(cat, *, sigma=3.0, maxiters=20):
     """
     Compute the local background of each source with iterative-removal
     sigma clipping, where a value dropped in an earlier iteration is
     never included again.
 
-    This is the ``axis=None, masked=False`` code path of
-    `~astropy.stats.SigmaClip`. It differs from the reference only when
+    This is the contrasting result that the kernel must not give (see
+    `_iterative_sigma_clip`). It differs from the reference only when
     the clipping bounds widen between iterations.
     """
-    sigma_clip = SigmaClip(sigma=sigma, cenfunc='median', maxiters=maxiters)
-
     local_bkgs = []
     for data_values in _annulus_values(cat):
         if len(data_values) < 10:
             local_bkgs.append(0.0)
             continue
-        values = sigma_clip(data_values, axis=None, masked=False)
+        values = _iterative_sigma_clip(data_values, sigma=sigma,
+                                       maxiters=maxiters)
         median = np.median(values)
         mean = np.mean(values)
         std = np.std(values)
@@ -230,9 +254,9 @@ def test_final_bounds_readmit_clipped_value():
     mask[9:12, 9:12] = False  # the source segment
     cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=3)
 
-    sigma_clip = SigmaClip(sigma=sigma, cenfunc='median', maxiters=20)
-    clipped = sigma_clip(values, axis=None, masked=False)
+    clipped = _iterative_sigma_clip(values, sigma=sigma, maxiters=20)
     assert clipped.min() == 0.0
+    sigma_clip = SigmaClip(sigma=sigma, cenfunc='median', maxiters=20)
     clipped = sigma_clip(values, axis=None, masked=True).compressed()
     assert clipped.min() == -1.0
 
