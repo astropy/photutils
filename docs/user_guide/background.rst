@@ -697,15 +697,13 @@ coverage are set to ``fill_value``:
 
 .. doctest-skip::
 
-    >>> norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
     >>> fig, ax = plt.subplots()
-    >>> ax.imshow(bkg3.background, norm=norm, origin='lower')
+    >>> ax.imshow(bkg3.background, origin='lower')
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.visualization import simple_norm
     from photutils.background import Background2D, make_morans_i_mask
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
@@ -721,9 +719,8 @@ coverage are set to ``fill_value``:
     bkg3 = Background2D(data3, (10, 10), filter_size=(3, 3),
                         mask=mask3, coverage_mask=coverage_mask,
                         fill_value=np.nan, exclude_percentile=50.0)
-    norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
     fig, ax = plt.subplots()
-    ax.imshow(bkg3.background, norm=norm, origin='lower')
+    ax.imshow(bkg3.background, origin='lower')
     ax.set_title('Estimated Background (Rotated Image)')
 
 Finally, let's subtract the background from the image and plot it:
@@ -731,7 +728,7 @@ Finally, let's subtract the background from the image and plot it:
 .. doctest-skip::
 
     >>> data_sub = data3 - bkg3.background
-    >>> norm = simple_norm(data_sub, 'sqrt', percent=99.5)
+    >>> norm = simple_norm(data_sub, 'sqrt', percent=99.9)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data_sub, norm=norm, origin='lower')
 
@@ -756,7 +753,7 @@ Finally, let's subtract the background from the image and plot it:
                         mask=mask3, coverage_mask=coverage_mask,
                         fill_value=np.nan, exclude_percentile=50.0)
     data_sub = data3 - bkg3.background
-    norm = simple_norm(data_sub, 'sqrt', percent=99.5)
+    norm = simple_norm(data_sub, 'sqrt', percent=99.9)
     fig, ax = plt.subplots()
     ax.imshow(data_sub, norm=norm, origin='lower')
     ax.set_title('Background-subtracted Data (Rotated Image)')
