@@ -35,6 +35,10 @@ Pipfile.lock
 coverage.xml
 htmlcov
 
+# Benchmark output
+benchmarks/*.csv
+benchmarks/*.png
+
 # Sphinx
 docs/_build
 docs/api

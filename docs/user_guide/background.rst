@@ -146,6 +146,130 @@ with one iteration we are within 0.2% of the true background value and
 1.5% of the true background RMS.
 
 
+.. _morans_i_mask:
+
+Masking Sources Using the Moran's I Statistic
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A source mask can also be made without first estimating the
+background, using the `~photutils.background.make_morans_i_mask`
+function. It is based on the `Moran's I
+<https://en.wikipedia.org/wiki/Moran%27s_I>`_ statistic, which measures
+the spatial autocorrelation of the pixel values. The value of the
+statistic at each pixel is calculated from the square patch of pixels
+centered on that pixel (21 pixels on a side by default). It measures
+how strongly the pixel values in the patch are correlated with the
+values of their nearest neighbors. Patches that contain only
+uncorrelated background noise have values near zero. Patches that
+contain a source, including the faint outer regions of extended
+sources, have larger values.
+
+The statistic does not change if a constant is added to the data or if
+the data are multiplied by a constant. The source mask therefore does
+not depend on the background level or on the amplitude of the background
+noise, and no iteration is needed::
+
+    >>> from photutils.background import make_morans_i_mask
+    >>> mask = make_morans_i_mask(data)
+    >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
+    >>> print(np.array((mean, median, std)))  # doctest: +FLOAT_CMP
+    [4.9990853  4.99195359 1.96672525]
+
+Pixels are flagged as sources where the statistic is more than
+``n_sigma`` standard deviations (3 by default) above its typical
+background value. Both of those values are estimated from the map of
+the statistic itself. This matters for images with noise that is
+correlated between adjacent pixels (e.g., resampled or drizzled
+mosaics), where the statistic is significantly larger than zero even
+without sources. The background value is taken from the lowest peak of
+the distribution of the statistic, so it can be estimated even in
+crowded images where most of the patches contain sources. If nearly
+all of the patches contain sources, a warning is raised, and the
+``percent`` keyword or a smaller ``patch_size`` should be used
+instead. Alternatively, the ``percent`` keyword flags a fixed
+percentage of the image pixels, selecting those with the largest values
+of the statistic. Holes in the flagged regions are then filled, and a
+binary opening removes small isolated regions and rounds the corners of
+the remaining regions.
+
+The map of the statistic can be calculated with the
+`~photutils.background.make_morans_i_map` function. Let's plot the
+data, the Moran's I map, and the source mask:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from astropy.visualization import simple_norm
+    from photutils.background import make_morans_i_map, make_morans_i_mask
+    from photutils.datasets import make_100gaussians_image
+
+    data = make_100gaussians_image()
+    stat = make_morans_i_map(data)
+    mask = make_morans_i_mask(data)
+
+    norm = simple_norm(data, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots(3, 1, figsize=(6, 11))
+    ax[0].imshow(data, norm=norm, origin='lower')
+    ax[0].set_title('Data')
+    ax[1].imshow(stat, origin='lower')
+    ax[1].set_title("Moran's I")
+    ax[2].imshow(mask, origin='lower', cmap='gray')
+    ax[2].set_title('Source Mask')
+    fig.tight_layout()
+
+The mask is intended to be used as the ``mask`` input to
+:class:`~photutils.background.Background2D` (see below). Large sources
+are masked out to a distance of approximately half the patch size
+beyond where they are detected.
+
+The statistic responds to how much the pixel values vary within each
+patch, not to how bright they are. The faint outer regions of very
+extended sources change little across a patch, so they may not be
+flagged even where they are well above the noise. For images with such
+sources, a larger ``patch_size`` can be used, which also enlarges the
+masked regions of all of the other sources, or the Moran's I mask can
+be combined with a detection-based source mask, such as the
+segmentation-based mask described above.
+
+Bad pixels can be excluded from the statistic with the ``mask`` keyword
+of `~photutils.background.make_morans_i_mask`, and the pixels can be
+weighted (e.g., by an inverse-variance map) with the ``weights``
+keyword. Bad pixels with extreme values (e.g., hot pixels) should
+always be excluded, because such a pixel dominates the statistic of
+every patch that contains it, which hides the sources near it.
+Nonfinite data values and pixels with a nonpositive weight are
+excluded automatically. Excluded pixels are not flagged as sources
+unless they are enclosed by source pixels, so the bad-pixel mask must
+be combined with the source mask when the background is estimated.
+Let's exclude a bad column of pixels::
+
+    >>> from photutils.background import Background2D
+    >>> bad_mask = np.zeros(data.shape, dtype=bool)
+    >>> bad_mask[:, 300] = True
+    >>> source_mask = make_morans_i_mask(data, mask=bad_mask)
+    >>> bkg = Background2D(data, (50, 50), mask=source_mask | bad_mask,
+    ...                    exclude_percentile=50.0)
+
+The source mask covers a large fraction of the image, so
+``exclude_percentile`` is increased to keep the boxes that are partly
+covered by the mask. `~photutils.background.Background2D` masks
+nonfinite data values automatically, so they do not need to be included
+in the combined mask.
+
+Blank regions that are filled with a constant value instead of NaN
+(e.g., the zeros outside of the footprint of a mosaic) should also be
+excluded with the ``mask`` keyword. The step at the edges of such a
+region is otherwise flagged as a source, and the hole filling then
+flags everything that those edges enclose, which can be the whole
+image.
+
+The statistic has a square footprint around each source because the
+patch is square. The default number of iterations of the binary opening
+(``opening_iterations``) is set from the patch size so that the opening
+rounds the corners of the masked regions without enlarging them and
+without removing detected sources.
+
+
 2D Background and Noise Estimation
 ----------------------------------
 
