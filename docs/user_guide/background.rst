@@ -588,7 +588,7 @@ overestimated by about 0.33, which is about 17% of the background noise.
 With the source mask, the bias is about 0.02, which is about 1% of the
 background noise. Away from the image edges (excluding the outermost
 row and column of boxes), the RMS error of the background also
-decreases, from about 0.24 to about 0.20. Over the whole image, the
+decreases, from about 0.30 to about 0.21. Over the whole image, the
 error is dominated by the extrapolation at the edges.
 
 A box is excluded from the low-resolution background map if more than
