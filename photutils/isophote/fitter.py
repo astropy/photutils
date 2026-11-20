@@ -141,10 +141,7 @@ class EllipseFitter:
 
             # The harmonic fit has 5 coefficients, so it needs at least
             # 5 data points. We have to check for that condition here,
-            # and bail out in case it is detected. The scipy fitter
-            # won't raise an exception for zero-length input arrays, but
-            # just prints an "INFO" message. This may result in an
-            # infinite loop.
+            # and bail out in case it is detected.
             if len(values[2]) < 5:
                 msg = ('Too small sample to warrant a fit. SMA is '
                        f'{sample.geometry.sma}')
