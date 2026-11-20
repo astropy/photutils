@@ -39,6 +39,12 @@ Alternatively, you can import the subpackage itself::
         >>> from photutils.aperture.circle import CircularAperture
         >>> aper = CircularAperture((10, 20), r=4)
 
+    The public API consists of the objects listed in the
+    :ref:`api_reference`. Internal module names can appear in tab
+    completion, object representations, and tracebacks (e.g.,
+    ``photutils.segmentation.core.SegmentationImage``). That does not
+    make the module part of the public API.
+
 
 .. warning::
 
