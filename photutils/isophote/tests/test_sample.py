@@ -165,6 +165,16 @@ def test_invalid_image():
         EllipseSample(DATA[0], 10.0)
 
 
+def test_invalid_integrmode():
+    match = 'integrmode must be one of'
+    with pytest.raises(ValueError, match=match):
+        EllipseSample(DATA, 10.0, integrmode='foo')
+    with pytest.raises(ValueError, match=match):
+        Ellipse(DATA).fit_image(integrmode='foo')
+    with pytest.raises(ValueError, match=match):
+        Ellipse(DATA).fit_isophote(10.0, integrmode='foo')
+
+
 def test_array_like_image():
     sample = EllipseSample(DATA.tolist(), 10.0)
     assert isinstance(sample.image, np.ndarray)
