@@ -115,7 +115,7 @@ def make_gaussian_kernel(size, *, fwhm=FWHM):
     return model(xx, yy)
 
 
-def make_finders(xypos=None):
+def make_finders(*, xypos=None):
     """
     Return the star finder name and instance pairs.
 

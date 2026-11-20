@@ -373,7 +373,7 @@ def bench_total_error(*, sizes=(500, 1000, 2000), n_iter=3, repeats=3):
         gain_image = np.full(data.shape, 2.0)
         times = []
         for gain in (2.0, gain_image):
-            def run(data=data, bkg_error=bkg_error, gain=gain):
+            def run(*, data=data, bkg_error=bkg_error, gain=gain):
                 for _ in range(n_iter):
                     calc_total_error(data, bkg_error, gain)
 
@@ -417,7 +417,7 @@ def bench_nan_stats(*, size=2000, n_iter=3, repeats=3):
     for name, func in funcs:
         times = []
         for arr in (data, data32):
-            def run(func=func, arr=arr):
+            def run(*, func=func, arr=arr):
                 for _ in range(n_iter):
                     func(arr)
 
