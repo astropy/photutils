@@ -3,7 +3,10 @@
 Tests for the load module.
 """
 
-from unittest.mock import patch
+from email.message import Message
+from io import BytesIO
+from unittest.mock import call, patch
+from urllib.error import HTTPError, URLError
 
 import numpy as np
 import pytest
@@ -66,16 +69,15 @@ class TestGetPathRemote:
     """
     Tests for the behavior of _get_path with location='remote'.
 
-    These tests verify that ``download_file`` is called with both the
-    primary astropy data URL and the photutils-datasets fallback URL
-    passed as ``sources``, so that astropy handles the cache lookup
-    and fallback behavior automatically.
+    These tests verify that ``download_file`` is called with the
+    primary astropy data URL first, and that the photutils-datasets
+    URL is used as a fallback source when the primary URL fails.
     """
 
-    def test_calls_download_file_with_sources(self, url_paths):
+    def test_calls_download_file_with_primary_url(self, url_paths):
         """
-        Test that _get_path calls ``download_file`` with the primary
-        URL as the cache key and both URLs in ``sources``.
+        Test that _get_path calls ``download_file`` only with the
+        primary URL when the primary URL succeeds.
         """
         with patch('photutils.datasets.load.download_file') as mock_dl:
             mock_dl.return_value = '/cached/path/test_file.fits'
@@ -86,8 +88,6 @@ class TestGetPathRemote:
             mock_dl.assert_called_once_with(
                 url_paths['primary_url'],
                 cache=True,
-                sources=[url_paths['primary_url'],
-                         url_paths['datasets_url']],
                 show_progress=False,
             )
 
@@ -106,10 +106,61 @@ class TestGetPathRemote:
             mock_dl.assert_called_once_with(
                 url_paths['primary_url'],
                 cache=False,
-                sources=[url_paths['primary_url'],
-                         url_paths['datasets_url']],
                 show_progress=True,
             )
+
+    @pytest.mark.parametrize('error', [URLError('unreachable'),
+                                       TimeoutError('timed out')])
+    def test_falls_back_to_datasets_url(self, url_paths, error):
+        """
+        Test that _get_path downloads the file from the
+        photutils-datasets URL, cached under the primary URL, when the
+        primary URL fails.
+        """
+        with patch('photutils.datasets.load.download_file') as mock_dl:
+            mock_dl.side_effect = [error, '/mirror/path/test_file.fits']
+
+            result = _get_path(url_paths['filename'], location='remote',
+                               cache=False, show_progress=True)
+
+            assert result == '/mirror/path/test_file.fits'
+            assert mock_dl.call_args_list == [
+                call(url_paths['primary_url'], cache=False,
+                     show_progress=True),
+                call(url_paths['primary_url'], cache=False,
+                     sources=[url_paths['datasets_url']],
+                     show_progress=True),
+            ]
+
+    def test_closes_http_error_response(self, url_paths):
+        """
+        Test that _get_path closes the server response held by an HTTP
+        error from the primary URL before falling back to the
+        photutils-datasets URL.
+        """
+        response = BytesIO(b'Bad Gateway')
+        error = HTTPError(url_paths['primary_url'], 502, 'Bad Gateway',
+                          Message(), response)
+        with patch('photutils.datasets.load.download_file') as mock_dl:
+            mock_dl.side_effect = [error, '/mirror/path/test_file.fits']
+
+            result = _get_path(url_paths['filename'], location='remote')
+
+            assert result == '/mirror/path/test_file.fits'
+            assert response.closed
+            assert mock_dl.call_count == 2
+
+    def test_raises_when_all_urls_fail(self, url_paths):
+        """
+        Test that _get_path raises the photutils-datasets URL error
+        when both URLs fail.
+        """
+        errors = [URLError('primary failed'), URLError('mirror failed')]
+        with patch('photutils.datasets.load.download_file') as mock_dl:
+            mock_dl.side_effect = errors
+
+            with pytest.raises(URLError, match='mirror failed'):
+                _get_path(url_paths['filename'], location='remote')
 
 
 def test_load_irac_psf_invalid_channel():

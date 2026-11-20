@@ -4,6 +4,8 @@ Tools for loading example datasets, from both within photutils and
 remote servers.
 """
 
+from urllib.error import HTTPError, URLError
+
 from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.data import download_file, get_pkg_data_filename
@@ -59,15 +61,22 @@ def _get_path(filename, *, location='local', cache=True, show_progress=False):
     elif location == 'remote':
         url = f'http://data.astropy.org/photometry/{filename}'
 
-        # Use download_file's ``sources`` argument to try the primary
-        # astropy data URL first and fall back to the photutils-datasets
-        # repo. The result is cached under the primary URL regardless
-        # of which source was used. If the file is already in the
-        # cache, download_file returns the local path without any
-        # network access.
-        path = download_file(url, cache=cache,
-                             sources=[url, datasets_url],
-                             show_progress=show_progress)
+        # Try the primary astropy data URL first and fall back to
+        # the photutils-datasets repo. The result is cached under the
+        # primary URL regardless of which source was used. If the file
+        # is already in the cache, download_file returns the local path
+        # without any network access.
+        try:
+            path = download_file(url, cache=cache,
+                                 show_progress=show_progress)
+        except (URLError, TimeoutError) as exc:
+            # An HTTPError holds the open server response. Python emits
+            # a ResourceWarning if the error is discarded without
+            # closing the response.
+            if isinstance(exc, HTTPError):
+                exc.close()
+            path = download_file(url, cache=cache, sources=[datasets_url],
+                                 show_progress=show_progress)
     elif location == 'photutils-datasets':
         path = download_file(datasets_url, cache=cache,
                              show_progress=show_progress)
