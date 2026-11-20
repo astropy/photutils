@@ -95,7 +95,7 @@ class EllipseGeometry:
             \epsilon =  1  -  \frac{b}{a}
 
         where a and b are the lengths of the semimajor and semiminor
-        axes, respectively.
+        axes, respectively. The ellipticity must be less than 1.
     pa : float
         The position angle (in radians) of the semimajor axis in
         relation to the positive x-axis of the image array (rotating

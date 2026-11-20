@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
+from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
                                            NEAREST_NEIGHBOR)
@@ -96,6 +97,48 @@ def test_default_center():
     sample = EllipseSample(DATA, 10.0)
     assert sample.geometry.x0 == DATA.shape[1] / 2
     assert sample.geometry.y0 == DATA.shape[0] / 2
+
+
+@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
+                                        MEDIAN])
+@pytest.mark.parametrize('eps', [1.0, 1.5])
+def test_invalid_ellipticity(integrmode, eps):
+    """
+    Test that an ellipse with an ellipticity of 1 or larger, which has
+    no elliptical path, cannot be sampled.
+    """
+    sample = EllipseSample(DATA, 10.0, eps=eps, integrmode=integrmode)
+    match = 'ellipticity must be less than 1'
+    with pytest.raises(ValueError, match=match):
+        sample.extract()
+    with pytest.raises(ValueError, match=match):
+        sample.update()
+
+    geometry = EllipseGeometry(256.0, 256.0, 10.0, eps, 0.0)
+    ellipse = Ellipse(DATA, geometry=geometry)
+    with pytest.raises(ValueError, match=match):
+        ellipse.fit_image(integrmode=integrmode)
+
+
+@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
+                                        MEDIAN])
+@pytest.mark.parametrize(('x0', 'y0'), [(np.nan, 256.0), (256.0, np.nan),
+                                        (np.inf, 256.0), (256.0, -np.inf)])
+def test_nonfinite_center(integrmode, x0, y0):
+    """
+    Test that an ellipse with a nonfinite center cannot be sampled.
+    """
+    sample = EllipseSample(DATA, 10.0, x0=x0, y0=y0, integrmode=integrmode)
+    match = 'center of the ellipse must be finite'
+    with pytest.raises(ValueError, match=match):
+        sample.extract()
+    with pytest.raises(ValueError, match=match):
+        sample.update()
+
+    geometry = EllipseGeometry(x0, y0, 10.0, 0.2, 0.0)
+    ellipse = Ellipse(DATA, geometry=geometry)
+    with pytest.raises(ValueError, match=match):
+        ellipse.fit_image(integrmode=integrmode)
 
 
 @pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])

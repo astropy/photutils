@@ -78,14 +78,16 @@ class EllipseSample:
     sma : float
         The semimajor axis length in pixels.
     x0, y0 : float, optional
-        The (x, y) coordinate of the ellipse center.
+        The (x, y) coordinate of the ellipse center. The coordinates
+        must be finite.
     astep : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
         as a relative value (when ``linear_growth=False``). The default
         is 0.1.
     eps : float, optional
-        The ellipticity of the ellipse. The default is 0.2.
+        The ellipticity of the ellipse. It must be less than 1. The
+        default is 0.2.
     position_angle : float, optional
         The position angle of ellipse in relation to the positive x-axis
         of the image array (rotating towards the positive y-axis). The
@@ -205,11 +207,31 @@ class EllipseSample:
         result : 2D `~numpy.ndarray`
             The rows of the array contain the angles, radii, and
             extracted intensity values, respectively.
+
+        Raises
+        ------
+        ValueError
+            If the ellipticity of the ellipse is 1 or larger or if its
+            center is not finite.
         """
         # The sample values themselves are kept cached to prevent
         # multiple calls to the integrator code.
         if self.values is not None:
             return self.values
+
+        # An ellipse with an ellipticity of 1 or larger or a nonfinite
+        # center has no elliptical path. The geometry is checked here
+        # instead of in the constructor because the fitter makes trial
+        # samples with any geometry and discards the invalid ones
+        # without extracting them.
+        geometry = self.geometry
+        if geometry.eps >= 1.0:
+            msg = f'The ellipticity must be less than 1, got {geometry.eps}'
+            raise ValueError(msg)
+        if not (np.isfinite(geometry.x0) and np.isfinite(geometry.y0)):
+            msg = ('The center of the ellipse must be finite, got '
+                   f'({geometry.x0}, {geometry.y0})')
+            raise ValueError(msg)
 
         s = self._extract()
         self.values = s

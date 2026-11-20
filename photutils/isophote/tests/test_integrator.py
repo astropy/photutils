@@ -215,11 +215,11 @@ def test_masked_infinite_values(integrmode):
 
 
 @pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR])
-@pytest.mark.parametrize('x0', [np.nan, np.inf, 1.0e30])
-def test_nonfinite_path(integrmode, x0):
+@pytest.mark.parametrize('x0', [1.0e30, -1.0e30])
+def test_very_large_path_coordinates(integrmode, x0):
     """
-    Test that path points with nonfinite or very large coordinates
-    are skipped like the points outside of the image.
+    Test that path points with coordinates too large to be pixel
+    indices are skipped like the points outside of the image.
     """
     data = make_test_image(nx=128, ny=128, seed=0)
     sample = EllipseSample(data, 10.0, x0=x0, y0=64.0,
