@@ -220,7 +220,8 @@ class Ellipse:
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
                   maxgerr=DEFAULT_MAXGERR, sclip=3.0, n_clip=0,
                   integrmode=BILINEAR, linear=None, maxrit=None,
-                  fix_center=False, fix_pa=False, fix_eps=False):
+                  fix_center=False, fix_pa=False, fix_eps=False, *,
+                  max_center_shift=None):
         # This parameter list is quite large and should in principle be
         # simplified by redistributing these controls to somewhere else.
         # We keep this design though because it better mimics the flat
@@ -408,6 +409,18 @@ class Ellipse:
             Keep ellipticity of ellipse fixed during fit? The default is
             False.
 
+        max_center_shift : float or `None`, optional
+            The maximum distance (in pixels) that the center of any
+            fitted isophote may move from the center of the ``geometry``
+            input to `~photutils.isophote.Ellipse`. Unlike
+            ``fix_center``, this lets the center move freely within a
+            circle of this radius. If a fit would move the center
+            outside the circle, the center of that isophote is placed
+            on the circle and held fixed for the rest of its fit, while
+            ellipticity and position angle continue to be fitted. If
+            `None` (default), the center is not limited. This parameter
+            has no effect if ``fix_center`` is `True`.
+
         Returns
         -------
         result : `~photutils.isophote.IsophoteList` instance
@@ -447,7 +460,8 @@ class Ellipse:
         fit = functools.partial(self._fit_isophote, conver=conver,
                                 maxit=maxit, fflag=fflag, sclip=sclip,
                                 n_clip=n_clip, integrmode=integrmode,
-                                maxrit=maxrit, isophote_list=isophote_list)
+                                maxrit=maxrit, isophote_list=isophote_list,
+                                max_center_shift=max_center_shift)
 
         # First, go from initial sma outwards until
         # hitting one of several stopping criteria.
@@ -592,7 +606,7 @@ class Ellipse:
                      sclip=3.0, n_clip=0, integrmode=BILINEAR,
                      linear=None, maxrit=None, noniterate=False,
                      going_inwards=None,  # noqa: ARG002
-                     isophote_list=None):
+                     isophote_list=None, *, max_center_shift=None):
         """
         Fit a single isophote with a given semimajor axis length.
 
@@ -723,6 +737,16 @@ class Ellipse:
             `~photutils.isophote.Isophote` instance is appended to this
             list. It must be created and managed by the caller.
 
+        max_center_shift : float or `None`, optional
+            The maximum distance (in pixels) that the ellipse center may
+            move from the center of the ``geometry`` input to
+            `~photutils.isophote.Ellipse`. If the fit
+            would move the center farther than this, the center is
+            placed on the boundary at this distance and held fixed for
+            the rest of the fit, while the other free parameters
+            continue to be fitted. If `None` (default), the center is
+            not limited.
+
         Returns
         -------
         result : `~photutils.isophote.Isophote` instance
@@ -750,11 +774,12 @@ class Ellipse:
                                   maxit=maxit, fflag=fflag, sclip=sclip,
                                   n_clip=n_clip, integrmode=integrmode,
                                   maxrit=maxrit, noniterate=noniterate,
-                                  isophote_list=isophote_list)
+                                  isophote_list=isophote_list,
+                                  max_center_shift=max_center_shift)
 
     def _fit_isophote(self, geometry, sma, *, conver, minit, maxit, fflag,
                       sclip, n_clip, integrmode, maxrit, noniterate=False,
-                      isophote_list=None):
+                      isophote_list=None, max_center_shift=None):
         """
         Fit a single isophote, starting from the input geometry.
 
@@ -771,7 +796,8 @@ class Ellipse:
         else:
             isophote = self._iterative(sma, geometry, sclip, n_clip,
                                        integrmode, conver, minit, maxit,
-                                       fflag)
+                                       fflag,
+                                       max_center_shift=max_center_shift)
 
         # Store result in list.
         if isophote_list is not None and isophote.valid:
@@ -859,7 +885,7 @@ class Ellipse:
         return IsophoteList(isophote_list)
 
     def _iterative(self, sma, geometry, sclip, n_clip, integrmode, conver,
-                   minit, maxit, fflag):
+                   minit, maxit, fflag, *, max_center_shift=None):
         if sma > 0.0:
             # Iterative fitter
             sample = EllipseSample(self.image, sma, sclip=sclip,
@@ -871,8 +897,12 @@ class Ellipse:
             sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
             fitter = CentralEllipseFitter(sample)
 
+        # The center shift is measured from the input geometry, which
+        # fitting does not modify (each sample uses a copy).
+        reference_center = (self._geometry.x0, self._geometry.y0)
         return fitter.fit(conver=conver, minit=minit, maxit=maxit,
-                          fflag=fflag)
+                          fflag=fflag, max_center_shift=max_center_shift,
+                          reference_center=reference_center)
 
     def _non_iterative(self, sma, geometry, sclip, n_clip, integrmode):
         sample = EllipseSample(self.image, sma, sclip=sclip, n_clip=n_clip,

@@ -292,6 +292,69 @@ def test_fitting_all():
     assert isophote_m.stop_code == 0
 
 
+class TestMaxCenterShift:
+    def setup_class(self):
+        # The galaxy is offset by (-5, -5) pixels from the default
+        # initial guess at (256, 256).
+        self.pos = DEFAULT_POS - 5
+        self.data = make_test_image(x0=self.pos, y0=self.pos, seed=0)
+
+    def test_center_held_at_bound(self):
+        sample = EllipseSample(self.data, 40)
+        isophote = EllipseFitter(sample).fit(max_center_shift=2.0)
+
+        g = isophote.sample.geometry
+        shift = np.hypot(g.x0 - DEFAULT_POS, g.y0 - DEFAULT_POS)
+        assert_allclose(shift, 2.0)
+
+        # The center is held fixed only within this fit
+        assert np.array_equal(g.fix, DEFAULT_FIX)
+
+    def test_shift_within_bound(self):
+        # A bound larger than the true offset does not change the fit
+        sample1 = EllipseSample(self.data, 40)
+        isophote1 = EllipseFitter(sample1).fit()
+        sample2 = EllipseSample(self.data, 40)
+        isophote2 = EllipseFitter(sample2).fit(max_center_shift=20.0)
+
+        g1 = isophote1.sample.geometry
+        g2 = isophote2.sample.geometry
+        assert g1.x0 == g2.x0
+        assert g1.y0 == g2.y0
+        assert g1.eps == g2.eps
+        assert g1.pa == g2.pa
+
+    def test_reference_center(self):
+        reference = (DEFAULT_POS + 4, DEFAULT_POS + 4)
+        sample = EllipseSample(self.data, 40)
+        isophote = EllipseFitter(sample).fit(max_center_shift=6.0,
+                                             reference_center=reference)
+
+        g = isophote.sample.geometry
+        shift = np.hypot(g.x0 - reference[0], g.y0 - reference[1])
+        assert_allclose(shift, 6.0)
+
+    def test_all_parameters_fixed_at_bound(self):
+        # With PA and ellipticity fixed, holding the center at the bound
+        # leaves nothing to fit, so the fit stops there.
+        sample = EllipseSample(self.data, 40)
+        sample.geometry.fix = np.array([False, False, True, True])
+        isophote = EllipseFitter(sample).fit(max_center_shift=1.0)
+
+        g = isophote.sample.geometry
+        shift = np.hypot(g.x0 - DEFAULT_POS, g.y0 - DEFAULT_POS)
+        assert_allclose(shift, 1.0)
+        assert isophote.stop_code == 0
+        assert np.array_equal(g.fix, [False, False, True, True])
+
+    @pytest.mark.parametrize('value', [-1.0, np.nan])
+    def test_invalid(self, value):
+        sample = EllipseSample(self.data, 40)
+        match = 'max_center_shift must be a non-negative number'
+        with pytest.raises(ValueError, match=match):
+            EllipseFitter(sample).fit(max_center_shift=value)
+
+
 @pytest.mark.remote_data
 class TestM51:
     def setup_class(self):
