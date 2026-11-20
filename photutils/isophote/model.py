@@ -47,8 +47,9 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     high_harmonics : bool, optional
         Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
         ``a4``, and ``b4``) to the result. See
-        `~photutils.isophote.Isophote` for details. The default is
-        `False`.
+        `~photutils.isophote.Isophote` for details. Harmonics that could
+        not be computed (`None` or NaN) are treated as zero. The default
+        is `False`.
 
     sma_interval : float, optional
         The step in semimajor axis length of the grid on which the
@@ -130,14 +131,19 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
         # unchanged.
         n_shifts = np.rint((pa_unwrapped - pa) / np.pi)
         sign3 = np.where(n_shifts % 2 == 0, 1.0, -1.0)
+
+        # Harmonics that could not be computed (NaN) are treated as
+        # zero, i.e., no deviation from a perfect ellipse.
+        a3, b3, a4, b4 = (np.nan_to_num(values, nan=0.0) for values in
+                          (isolist.a3, isolist.b3, isolist.a4, isolist.b4))
         a3_array = LSQUnivariateSpline(
-            isolist.sma, sign3 * isolist.a3, nodes)(finely_spaced_sma)
+            isolist.sma, sign3 * a3, nodes)(finely_spaced_sma)
         b3_array = LSQUnivariateSpline(
-            isolist.sma, sign3 * isolist.b3, nodes)(finely_spaced_sma)
+            isolist.sma, sign3 * b3, nodes)(finely_spaced_sma)
         a4_array = LSQUnivariateSpline(
-            isolist.sma, isolist.a4, nodes)(finely_spaced_sma)
+            isolist.sma, a4, nodes)(finely_spaced_sma)
         b4_array = LSQUnivariateSpline(
-            isolist.sma, isolist.b4, nodes)(finely_spaced_sma)
+            isolist.sma, b4, nodes)(finely_spaced_sma)
 
         # Return deviations from ellipticity to their original amplitude
         # meaning. The isophote harmonics are divided by the absolute
