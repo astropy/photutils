@@ -280,8 +280,9 @@ def test_uncorrectable_members_give_zero_flux():
     fcounts = batch_aperture_sums(
         arrays['data'], arrays['error'], arrays['mask'],
         np.array([[25.0, 25.0]]), SHAPE_ELLIPSE, None, 0.0, 0.0, 0.0,
-        0.0, 1, 1, arrays['segm'], np.array([1], dtype=np.intp), 4,
-        np.zeros(1), 0,
+        0.0, 1, 1, segmentation=arrays['segm'],
+        labels=np.array([1], dtype=np.intp), seg_method=4,
+        local_bkg=np.zeros(1), emit_sum=0,
         params_per_source=np.array([[aperture.a, aperture.b,
                                      aperture.theta.to_value(u.rad)]]),
     ).flag_counts

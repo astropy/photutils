@@ -106,10 +106,10 @@ class TestBatchApertureGather:
 
         none_result = batch_aperture_gather(data, mask, positions,
                                             SHAPE_CIRCLE, params, 8.0, 8.0,
-                                            0.0, 0.0, None)
+                                            0.0, 0.0, local_bkg=None)
         zero_result = batch_aperture_gather(data, mask, positions,
                                             SHAPE_CIRCLE, params, 8.0, 8.0,
-                                            0.0, 0.0, zeros)
+                                            0.0, 0.0, local_bkg=zeros)
 
         _assert_gather_equal(none_result, zero_result)
 
@@ -123,7 +123,7 @@ class TestBatchApertureGather:
         def fn():
             return batch_aperture_gather(data, mask, positions, shape_code,
                                          params, ext_x, ext_y, 0.0, 0.0,
-                                         local_bkg)
+                                         local_bkg=local_bkg)
 
         expected = fn()
         with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
@@ -148,7 +148,7 @@ class TestBatchApertureGather:
             params = np.array(params, dtype=np.float64)
             return batch_aperture_gather(data, mask, positions, shape_code,
                                          params, ext_x, ext_y, 0.0, 0.0,
-                                         local_bkg)
+                                         local_bkg=local_bkg)
 
         expected = {spec[0]: task(spec) for spec in _GATHER_SPECS}
 

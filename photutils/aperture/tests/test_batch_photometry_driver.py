@@ -202,8 +202,8 @@ def test_params_per_source_invalid():
     match = 'params_per_source does not support emit_sum'
     with pytest.raises(ValueError, match=match):
         batch_aperture_sums(data, None, None, positions, SHAPE_CIRCLE,
-                            None, 2.0, 2.0, 0.0, 0.0, 1, 1, None, None,
-                            0, None, 1, params_per_source=psrc)
+                            None, 2.0, 2.0, 0.0, 0.0, 1, 1, emit_sum=1,
+                            params_per_source=psrc)
 
     match = 'params_per_source must have one row per position'
     with pytest.raises(ValueError, match=match):
