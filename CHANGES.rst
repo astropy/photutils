@@ -40,6 +40,12 @@ New Features
     releases the GIL, so models can be built in parallel threads.
     [#2551]
 
+  - Added an ``Ellipse.measure_isophotes`` method to measure an image
+    along a given set of ellipses without fitting, similar to the
+    IRAF ``ellipse`` task with an input ellipse table (``inellip``).
+    The ellipses can be an ``IsophoteList`` fit to another image or
+    user-defined ``EllipseGeometry`` objects. [#2558]
+
 Bug Fixes
 ^^^^^^^^^
 

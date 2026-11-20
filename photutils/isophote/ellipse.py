@@ -779,6 +779,85 @@ class Ellipse:
 
         return isophote
 
+    def measure_isophotes(self, isophotes, *, sclip=3.0, n_clip=0,
+                          integrmode=BILINEAR):
+        """
+        Measure the image along a set of ellipses without fitting.
+
+        The image is sampled along each input ellipse with its geometry
+        held fixed. This is equivalent to running the IRAF ``ellipse``
+        task with an input ellipse table (the ``inellip`` parameter).
+        A common use is to measure an image in a second band along the
+        isophotes fit to a reference image with
+        :meth:`~photutils.isophote.Ellipse.fit_image`, so that both
+        intensity profiles (e.g., for a color profile) are measured
+        along the same elliptical paths.
+
+        Parameters
+        ----------
+        isophotes : `~photutils.isophote.IsophoteList` or iterable
+            The ellipses along which to measure the image. It can be an
+            `~photutils.isophote.IsophoteList` (e.g., the output of
+            :meth:`~photutils.isophote.Ellipse.fit_image`) or an
+            iterable of
+            `~photutils.isophote.Isophote` and
+            `~photutils.isophote.EllipseGeometry` instances. The center,
+            semimajor axis length, ellipticity, and position angle of
+            each ellipse are used. The ``astep`` and ``linear_growth``
+            values of each geometry define the sampling used to compute
+            the local radial gradient and the sector areas. The input
+            isophotes and geometries are not modified.
+
+        sclip : float, optional
+            The sigma-clip sigma value. The default is 3.0.
+
+        n_clip : int, optional
+            The number of sigma-clip iterations. The default is 0, which
+            means sigma-clipping is skipped.
+
+        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
+                optional
+            The area integration mode. The default is 'bilinear'.
+
+        Returns
+        -------
+        result : `~photutils.isophote.IsophoteList` instance
+            The measured isophotes, sorted by semimajor axis length.
+            There is one isophote for each input ellipse, each with
+            ``n_iter=0`` and ``stop_code=4``. An ellipse with a
+            semimajor axis length of zero gives the intensity at its
+            center, with ``stop_code=0``. An ellipse with no valid
+            sampled points (e.g., one that lies entirely outside the
+            image) has a NaN intensity and ``stop_code=3``.
+        """
+        geometries = []
+        for isophote in isophotes:
+            if isinstance(isophote, Isophote):
+                geometries.append(isophote.sample.geometry)
+            elif isinstance(isophote, EllipseGeometry):
+                geometries.append(isophote)
+            else:
+                msg = ('isophotes must contain only Isophote or '
+                       f'EllipseGeometry instances, got {type(isophote)}')
+                raise TypeError(msg)
+
+        # The samples make deep copies of the input geometries, so the
+        # inputs are not modified.
+        isophote_list = []
+        for geometry in geometries:
+            if geometry.sma == 0:
+                sample = CentralEllipseSample(self.image, 0.0,
+                                              geometry=geometry)
+                isophote = CentralEllipseFitter(sample).fit()
+            else:
+                isophote = self._non_iterative(geometry.sma, geometry, sclip,
+                                               n_clip, integrmode)
+            isophote_list.append(isophote)
+
+        isophote_list.sort()
+
+        return IsophoteList(isophote_list)
+
     def _iterative(self, sma, geometry, sclip, n_clip, integrmode, conver,
                    minit, maxit, fflag):
         if sma > 0.0:
