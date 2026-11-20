@@ -380,6 +380,11 @@ Bug Fixes
     that extends past a polar angle of 2 pi now also includes all of
     its pixels. [#2564]
 
+  - Fixed the deprecated ``grad_rerror`` column name of the
+    ``IsophoteList.to_table`` output table, which was removed by
+    mistake in version 3.1.0. It works again (with a deprecation
+    warning) until version 4.0. [#2564]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
