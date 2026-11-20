@@ -311,6 +311,10 @@ Bug Fixes
     masks are now centered on a pixel, as in the STSDAS ``ellipse``
     task. [#2554]
 
+  - Fixed NumPy ``RuntimeWarning`` messages emitted by
+    ``EllipseGeometry.find_center`` for an image without any scatter
+    (e.g., a flat image). [#2554]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
