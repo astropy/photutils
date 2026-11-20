@@ -86,6 +86,32 @@ the ellipses directly. See :ref:`isophote_fixed_ellipses` for more
 details.
 
 
+Limiting the Isophote Center Shift
+==================================
+
+:meth:`~photutils.isophote.Ellipse.fit_image` and
+:meth:`~photutils.isophote.Ellipse.fit_isophote` have a new
+``max_center_shift`` keyword that limits how far the fitted ellipse
+centers can move from the center of the input
+`~photutils.isophote.EllipseGeometry`. In the outer, low
+surface-brightness regions of a galaxy, a nearby star or companion
+galaxy can pull the fitted centers away from the galaxy nucleus. Unlike
+``fix_center``, the centers are still fitted within that distance::
+
+    >>> from photutils.isophote import Ellipse, EllipseGeometry
+    >>> geometry = EllipseGeometry(x0=256, y0=256, sma=20, eps=0.2, pa=0.2)
+    >>> ellipse = Ellipse(data, geometry=geometry)
+    >>> isolist = ellipse.fit_image(max_center_shift=2.0)
+
+If a fit would move the center of an isophote farther than this
+distance, the center is placed at this distance from the input center
+and held there for the rest of that fit, while the ellipticity and
+position angle continue to be fitted. The keyword limits the total
+shift from the input center, which is different from the ``wander``
+parameter of the IRAF ``ellipse`` task. See the :ref:`isophote-faq` for
+more details.
+
+
 Dependency Version Updates
 ==========================
 
