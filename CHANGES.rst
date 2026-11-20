@@ -224,8 +224,9 @@ Bug Fixes
     keyword) when sampling the image. The ``astep`` of the input
     ``EllipseGeometry`` was used instead. The step now defines the
     elliptical annulus that sets the sector areas of the ``'mean'``
-    and ``'median'`` integration modes, as documented. Fits with the
-    default step are unchanged. [#2553]
+    and ``'median'`` integration modes, as documented. Fits are
+    unchanged if both the ``step`` keyword and the ``astep`` of the
+    input ``EllipseGeometry`` have their default values. [#2553]
 
   - Fixed the sampling of diverged isophotes (stop code 5) in
     ``Ellipse.fit_image``. Their geometry is replaced by that of a
@@ -261,6 +262,13 @@ Bug Fixes
   - Fixed the isophote fitter changing a fixed ellipticity of zero to
     0.05. The position angle, which is undefined for a circle, is then
     not fit. [#2553]
+
+  - Fixed the isophote fitter rotating a fixed position angle by 90
+    degrees when the ellipticity correction crosses zero. The ellipse
+    is now made nearly round instead. [#2553]
+
+  - Fixed ``Ellipse.fit_image`` ignoring a ``linear`` value that is
+    not a Python `bool` (e.g., a NumPy boolean). [#2553]
 
   - Fixed the sampling of the ``'mean'`` and ``'median'`` integration
     modes when the semimajor axis step is larger than twice the
@@ -430,8 +438,16 @@ API Changes
     previously ignored. Also, ``maxsma`` and ``maxrit`` values of zero
     are now used instead of being treated as `None`. [#2550]
 
-  - ``Ellipse.fit_image`` now raises a ``ValueError`` if ``step`` is
-    not positive. Previously, it never returned. [#2553]
+  - ``Ellipse.fit_image`` and ``Ellipse.fit_isophote`` now raise a
+    ``ValueError`` if ``step`` is not positive. Previously,
+    ``fit_image`` never returned. [#2553]
+
+  - The ``step`` keyword of ``Ellipse.fit_image`` and
+    ``Ellipse.fit_isophote`` now replaces the ``astep`` of the input
+    ``EllipseGeometry`` when sampling the image. Previously, the
+    ``astep`` value set the sampling annulus and the gradient radius,
+    so fits with a nondefault ``astep`` and the default ``step`` are
+    changed. [#2553]
 
   - The default of the ``linear`` keyword of ``Ellipse.fit_isophote``
     is now `None`, which uses the ``linear_growth`` attribute of the
