@@ -26,7 +26,7 @@ New Features
     integrators select the pixels of each sector at once, and masked
     images are no longer indexed pixel by pixel. ``Ellipse.fit_image``
     is ~3x faster for the ``'bilinear'`` and ``'nearest_neighbor'``
-    modes, ~1.7x faster for the ``'mean'`` and ``'median'`` modes, and
+    modes, ~5x faster for the ``'mean'`` and ``'median'`` modes, and
     ~25x faster for masked images with the ``'bilinear'`` mode.
     [#2551]
 
