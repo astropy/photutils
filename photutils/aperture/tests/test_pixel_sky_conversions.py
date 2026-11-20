@@ -724,7 +724,7 @@ def _make_nonsquare_wcs():
     return wcs
 
 
-def _pixel_ellipse_boundary(aperture, n_points=90):
+def _pixel_ellipse_boundary(aperture, *, n_points=90):
     """
     Return the (x, y) pixel coordinates of points on the boundary of a
     single-position elliptical pixel aperture.

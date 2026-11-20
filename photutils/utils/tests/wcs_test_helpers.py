@@ -72,7 +72,7 @@ def make_simple_wcs(skycoord, resolution, size, *, rotation_deg=0.0):
     return wcs
 
 
-def make_sip_wcs(shape=(20, 20), *, center=WCS_CENTER, coeffs=None):
+def make_sip_wcs(*, shape=(20, 20), center=WCS_CENTER, coeffs=None):
     """
     Build a TAN-SIP WCS with the standard test pixel scale.
 

@@ -61,7 +61,7 @@ def _make_sip_wcs(ra_deg, dec_deg):
     return make_sip_wcs(center=center, coeffs={'A_2_0': 1e-6, 'B_0_2': 1e-6})
 
 
-def _make_rotated_wcs(rotation_deg, scale_arcsec=0.25,
+def _make_rotated_wcs(rotation_deg, *, scale_arcsec=0.25,
                       crval=(150.0, 30.0)):
     wcs = APWCS(naxis=2)
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
@@ -809,7 +809,7 @@ class TestSVDScales:
         assert 0.0 <= sky_angle.deg < 360.0
 
 
-def _make_quadratic_sip_wcs(coeff=1e-3):
+def _make_quadratic_sip_wcs(*, coeff=1e-3):
     """
     Build a TAN-SIP WCS whose distortion is a pure quadratic in the
     pixel offset from CRPIX.
@@ -822,7 +822,7 @@ def _make_quadratic_sip_wcs(coeff=1e-3):
     """
     center = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
     coeffs = {'A_2_0': coeff, 'B_0_2': coeff}
-    return make_sip_wcs((100, 100), center=center, coeffs=coeffs)
+    return make_sip_wcs(shape=(100, 100), center=center, coeffs=coeffs)
 
 
 class TestCentralDifferences:

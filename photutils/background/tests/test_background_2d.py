@@ -1116,7 +1116,7 @@ def test_deprecations(test_data):
         assert bkg.npixels_map.shape == data.shape
 
 
-def _make_sigma_clip_biweight(cenfunc='biweight', stdfunc='biweight',
+def _make_sigma_clip_biweight(*, cenfunc='biweight', stdfunc='biweight',
                               **kwargs):
     """
     Create a SigmaClip instance using the 'biweight' cenfunc/stdfunc

@@ -53,7 +53,7 @@ def fixture_image_data():
     return data, mask
 
 
-def run_concurrently(task, n_threads=N_THREADS):
+def run_concurrently(task, *, n_threads=N_THREADS):
     """
     Run ``task`` in ``n_threads`` threads and return all results.
 

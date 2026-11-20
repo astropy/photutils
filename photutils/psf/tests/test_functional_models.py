@@ -171,7 +171,7 @@ class TestFitDeriv:
     gaussian_params = (71.4, 24.3, 25.2, 10.1, 5.82, 21.7)
     circular_params = (71.4, 24.3, 25.2, 10.1)
 
-    def numerical_deriv(self, model, params, index, step=1e-6):
+    def numerical_deriv(self, model, params, index, *, step=1e-6):
         """
         Calculate the central-difference derivative of a model with
         respect to a single parameter.
@@ -470,7 +470,7 @@ def test_gaussian_prf_matches_analytic_integral():
     assert_allclose(model(xx, yy), expected)
 
 
-def _numerical_pixel_integral(model, xx, yy, n_sub=101):
+def _numerical_pixel_integral(model, xx, yy, *, n_sub=101):
     """
     Integrate a model over the unit pixels centered at the input
     positions with the midpoint rule.

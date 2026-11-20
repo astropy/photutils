@@ -3334,7 +3334,7 @@ class TestInputDtypes:
                 assert_equal(value, expected, err_msg=name)
 
     @staticmethod
-    def make_inputs(size=200):
+    def make_inputs(*, size=200):
         """
         Make float64 data, error, background, and convolved data arrays
         and a segmentation image.

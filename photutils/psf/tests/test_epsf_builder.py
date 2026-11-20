@@ -3096,7 +3096,7 @@ def test_invalid_recentering_maxiters(value, error):
         EPSFBuilder(recentering_maxiters=value)
 
 
-def _make_heterogeneous_stars(seed=0, n_side=14):
+def _make_heterogeneous_stars(*, seed=0, n_side=14):
     """
     Make a star sample that mimics nonideal data.
 
@@ -3899,7 +3899,7 @@ def test_invalid_wing_smoothing(value):
         EPSFBuilder(wing_smoothing=value)
 
 
-def _noisy_gaussian_epsf(fwhm=6.0, size=101, noise=0.002, seed=0):
+def _noisy_gaussian_epsf(*, fwhm=6.0, size=101, noise=0.002, seed=0):
     """
     A Gaussian ePSF image with a FWHM of ``fwhm`` grid points, with
     and without white noise.
@@ -4231,7 +4231,7 @@ class TestMeasureFWHM:
     """
 
     @staticmethod
-    def _gaussian(fwhm_y, fwhm_x, size=61):
+    def _gaussian(fwhm_y, fwhm_x, *, size=61):
         yy, xx = np.mgrid[0:size, 0:size] - size // 2
         sig_y = fwhm_y / 2.3548
         sig_x = fwhm_x / 2.3548

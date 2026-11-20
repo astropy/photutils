@@ -70,7 +70,7 @@ def encode_position(x, y):
     return float(x) + 10000.0 * float(y)
 
 
-def make_webbpsf_file(filename, xgrid, ygrid, psf_shape=(8, 8),
+def make_webbpsf_file(filename, xgrid, ygrid, *, psf_shape=(8, 8),
                       oversampling=4, keys_to_remove=(), data_2d=False):
     """
     Write a mock WebbPSF gridded-ePSF FITS file.

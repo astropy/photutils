@@ -20,7 +20,7 @@ N_THREADS = 8
 N_CALLS = 25
 
 
-def _run_concurrently(task, n_threads=N_THREADS):
+def _run_concurrently(task, *, n_threads=N_THREADS):
     """
     Run ``task`` in ``n_threads`` threads and return all results.
 
