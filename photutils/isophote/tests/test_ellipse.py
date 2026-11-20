@@ -12,13 +12,13 @@ import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.datasets import make_noise_image
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.isophote import CentralPixel, Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -733,3 +733,136 @@ class TestEllipse:
         assert_allclose(isolist.sma, [15.0, 20.0, 25.0, 30.0, 35.0])
         isophote = ellipse.fit_isophote(20.0, linear=np.True_)
         assert isophote.sample.geometry.linear_growth is True
+
+
+class TestMeasureIsophotes:
+    def setup_class(self):
+        self.data = make_test_image(pa=PA, seed=0)
+        self.isolist = Ellipse(self.data).fit_image()
+
+    def test_same_image(self):
+        """
+        Test that measuring the fitted image along its own isophotes
+        reproduces the fitted intensities.
+        """
+        ellipse = Ellipse(self.data)
+        isolist = ellipse.measure_isophotes(self.isolist)
+
+        assert isinstance(isolist, IsophoteList)
+        assert len(isolist) == len(self.isolist)
+        for name in ('sma', 'x0', 'y0', 'eps', 'pa'):
+            assert_allclose(getattr(isolist, name),
+                            getattr(self.isolist, name))
+        assert_equal(isolist.n_iter, 0)
+
+        # The diverged isophotes (stop_code 5), whose geometry is
+        # replaced by that of a neighbor, are included.
+        assert np.any(self.isolist.stop_code == 5)
+        assert_allclose(isolist.intens, self.isolist.intens)
+
+        # The central pixel is a CentralPixel with stop_code 0.
+        assert isinstance(isolist[0], CentralPixel)
+        assert isolist[0].sma == 0.0
+        assert_equal(isolist.stop_code[1:], 4)
+
+    def test_scaled_image(self):
+        """
+        Test measuring a scaled image along the isophotes of a reference
+        image.
+        """
+        isolist1 = Ellipse(self.data).measure_isophotes(self.isolist)
+        isolist2 = Ellipse(2.0 * self.data).measure_isophotes(self.isolist)
+        assert_allclose(isolist2.intens, 2.0 * isolist1.intens)
+        assert_allclose(isolist2.eps, self.isolist.eps)
+        assert_allclose(isolist2.pa, self.isolist.pa)
+
+    def test_input_unchanged(self):
+        """
+        Test that the input isophotes and geometries are not modified.
+        """
+        names = ('sma', 'x0', 'y0', 'eps', 'pa', 'intens')
+        values = {name: getattr(self.isolist, name).copy()
+                  for name in names}
+        fixed = [iso.sample.geometry.fix.copy() for iso in self.isolist]
+        ellipse = Ellipse(2.0 * self.data)
+        isolist = ellipse.measure_isophotes(self.isolist)
+
+        for name in names:
+            assert_equal(getattr(self.isolist, name), values[name])
+        for iso, iso_ref, fix in zip(isolist, self.isolist, fixed,
+                                     strict=True):
+            assert_equal(iso_ref.sample.geometry.fix, fix)
+            assert iso.sample.geometry is not iso_ref.sample.geometry
+
+    def test_geometries(self):
+        """
+        Test that EllipseGeometry inputs give the same result as the
+        equivalent Isophote inputs, sorted by semimajor axis length.
+        """
+        ellipse = Ellipse(self.data)
+        isolist1 = ellipse.measure_isophotes(self.isolist[1:])
+        geometries = [iso.sample.geometry for iso in self.isolist[1:]]
+        isolist2 = ellipse.measure_isophotes(geometries[::-1])
+
+        assert len(isolist2) == len(isolist1)
+        for name in ('sma', 'x0', 'y0', 'eps', 'pa', 'intens'):
+            assert_allclose(getattr(isolist2, name),
+                            getattr(isolist1, name))
+
+    def test_user_geometries(self):
+        """
+        Test user-defined geometries, including mixed Isophote and
+        EllipseGeometry inputs.
+        """
+        geometries = [EllipseGeometry(256.0, 256.0, sma, 0.2, PA)
+                      for sma in (0.0, 10.0, 20.0)]
+        ellipse = Ellipse(self.data)
+        isolist = ellipse.measure_isophotes([self.isolist[-1],
+                                             *geometries])
+
+        assert len(isolist) == 4
+        assert_allclose(isolist.sma[:3], [0.0, 10.0, 20.0])
+        assert_allclose(isolist.eps[1:3], 0.2)
+        assert_allclose(isolist.pa[1:3], PA)
+        assert_allclose(isolist.x0[:3], 256.0)
+        assert isolist[-1].sma == self.isolist[-1].sma
+        assert np.all(np.diff(isolist.intens) < 0)
+
+    def test_measure_options(self):
+        """
+        Test that the sampling options are passed to the samples.
+        """
+        ellipse = Ellipse(self.data)
+        isolist = ellipse.measure_isophotes(self.isolist[1:5],
+                                            integrmode='median', sclip=2.5,
+                                            n_clip=3)
+        for iso in isolist:
+            assert iso.sample.integrmode == 'median'
+            assert iso.sample.sclip == 2.5
+            assert iso.sample.n_clip == 3
+
+    def test_outside_image(self):
+        """
+        Test that an ellipse entirely outside the image is kept with a
+        NaN intensity.
+        """
+        geometry = EllipseGeometry(-500.0, -500.0, 20.0, 0.2, PA)
+        ellipse = Ellipse(self.data)
+        isolist = ellipse.measure_isophotes([geometry])
+
+        assert len(isolist) == 1
+        assert np.isnan(isolist[0].intens)
+        assert isolist[0].n_data == 0
+        assert isolist[0].stop_code == 3
+
+    def test_empty(self):
+        ellipse = Ellipse(self.data)
+        isolist = ellipse.measure_isophotes([])
+        assert isinstance(isolist, IsophoteList)
+        assert len(isolist) == 0
+
+    def test_invalid_input(self):
+        ellipse = Ellipse(self.data)
+        match = 'must contain only Isophote or EllipseGeometry'
+        with pytest.raises(TypeError, match=match):
+            ellipse.measure_isophotes([self.isolist[1], 10.0])
