@@ -352,3 +352,53 @@ class TestM51:
         assert isophote.n_data == 1
         assert isophote.intens <= 7560.0
         assert isophote.intens >= 7550.0
+
+
+def test_fitting_round_start():
+    """
+    Test a starting ellipse with an ellipticity of exactly zero.
+
+    The position angle correction diverges for a circle, so the starting
+    ellipse is made slightly flat before it is sampled.
+    """
+    data = make_test_image(pa=np.pi / 4, seed=0)
+    sample = EllipseSample(data, 40.0, eps=0.0)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == 0
+    assert_allclose(isophote.eps, 0.2, atol=0.01)
+    assert_allclose(isophote.pa, np.pi / 4, atol=0.05)
+
+
+@pytest.mark.parametrize('fix_center', [False, True])
+def test_fixed_round_ellipse(fix_center):
+    """
+    Test that a fixed ellipticity of zero is not changed.
+
+    The position angle of a circle is undefined, so it is not fit.
+    """
+    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5, fix_eps=True,
+                               fix_center=fix_center)
+    sample = EllipseSample(DATA, 40.0, geometry=geometry)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.eps == 0.0
+    assert isophote.pa == 0.5
+    if fix_center:
+        assert isophote.stop_code == 4
+        assert (isophote.x0, isophote.y0) == (257.0, 255.0)
+    else:
+        assert isophote.n_iter > 1
+        assert_allclose((isophote.x0, isophote.y0), DEFAULT_POS, atol=0.5)
+
+
+def test_everything_fixed_no_data():
+    """
+    Test that an isophote extracted without fitting is invalid if it has
+    no valid data points.
+    """
+    geometry = EllipseGeometry(250.0, 260.0, 2000.0, 0.3, 1.0,
+                               fix_center=True, fix_pa=True, fix_eps=True)
+    sample = EllipseSample(DATA, 2000.0, geometry=geometry)
+    isophote = EllipseFitter(sample).fit()
+    assert not isophote.valid
+    assert isophote.stop_code == 3
+    assert isophote.n_data == 0

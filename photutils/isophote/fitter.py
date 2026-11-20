@@ -30,6 +30,11 @@ DEFAULT_MAXIT = 50
 DEFAULT_FFLAG = 0.7
 DEFAULT_MAXGERR = 0.5
 
+# The indices of the position angle and ellipticity in the ``fix`` array
+# of EllipseGeometry.
+_PA_INDEX = list(_HARMONIC_PARAMETERS.values()).index('pa')
+_EPS_INDEX = list(_HARMONIC_PARAMETERS.values()).index('eps')
+
 
 class EllipseFitter:
     """
@@ -132,12 +137,29 @@ class EllipseFitter:
         # These must be passed throughout the execution chain.
         fixed_parameters = self._sample.geometry.fix
 
+        # The position angle of a circle is undefined and its correction
+        # diverges, so it is not fit if the ellipticity is fixed at
+        # zero.
+        if fixed_parameters[_EPS_INDEX] and sample.geometry.eps == 0.0:
+            fixed_parameters = np.array(fixed_parameters)
+            fixed_parameters[_PA_INDEX] = True
+
         # If all the ellipse parameters are fixed, there is nothing to
         # fit. As in the STSDAS ellipse task, the isophote is extracted
-        # with the input geometry, as in the noniterative mode.
+        # with the input geometry, as in the noniterative mode. An
+        # isophote without any valid data points is invalid.
         if np.all(fixed_parameters):
             sample.update(fixed_parameters=fixed_parameters)
-            return Isophote(sample, 0, valid=True, stop_code=4)
+            valid = sample.actual_points > 0
+            return Isophote(sample, 0, valid=valid,
+                            stop_code=4 if valid else 3)
+
+        # A starting ellipse that is round or has a negative ellipticity
+        # must be fixed before it is sampled, like the corrected
+        # ellipses below.
+        if sample.geometry.eps <= 0.0 and not fixed_parameters[_EPS_INDEX]:
+            self._fix_round_ellipse(sample.geometry, fixed_parameters)
+            sample.values = None
 
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
@@ -241,7 +263,8 @@ class EllipseFitter:
                 if self._is_diverged(sample):
                     proceed = False
                 else:
-                    self._fix_round_ellipse(sample.geometry)
+                    self._fix_round_ellipse(sample.geometry,
+                                            fixed_parameters)
                     sample.update(fixed_parameters=fixed_parameters)
 
             # If iterations cannot proceed, return the best-fit sample
@@ -260,22 +283,32 @@ class EllipseFitter:
                         stop_code=2)
 
     @staticmethod
-    def _fix_round_ellipse(geometry):
+    def _fix_round_ellipse(geometry, fixed_parameters):
         """
         Fix an ellipse geometry whose ellipticity crossed or reached
         zero.
 
         This must be called before the sample with this geometry is
-        extracted.
+        extracted. A fixed ellipticity is not changed. A fixed position
+        angle is not changed either.
         """
-        # See if eps == 0 (round isophote) was crossed.
-        # If so, fix it but still proceed.
+        if fixed_parameters[_EPS_INDEX]:
+            return
+
+        # See if eps == 0 (round isophote) was crossed. If so, fix it
+        # but still proceed. An ellipse with a negative ellipticity is
+        # the same as an ellipse rotated by 90 degrees with a positive
+        # ellipticity. A fixed position angle cannot be rotated, so the
+        # ellipse is then made nearly round below.
         if geometry.eps < 0.0:
-            geometry.eps = min(-geometry.eps, MAX_EPS)
-            if geometry.pa < PI2:
-                geometry.pa += PI2
+            if fixed_parameters[_PA_INDEX]:
+                geometry.eps = 0.0
             else:
-                geometry.pa -= PI2
+                geometry.eps = min(-geometry.eps, MAX_EPS)
+                if geometry.pa < PI2:
+                    geometry.pa += PI2
+                else:
+                    geometry.pa -= PI2
 
         # If ellipse is an exact circle, computations will diverge.
         # Make it slightly flat, but still proceed.

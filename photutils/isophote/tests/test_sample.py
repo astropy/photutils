@@ -6,7 +6,7 @@ Tests for the sample module.
 import astropy.units as u
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
@@ -193,3 +193,160 @@ def test_nonfinite_values(integrmode):
 
     unmasked = EllipseSample(DATA, 40.0, integrmode=integrmode).extract()
     assert not np.array_equal(values[2], unmasked[2])
+
+
+@pytest.mark.parametrize(('astep', 'linear_growth'),
+                         [(0.3, False), (2.0, True), (5.0, True)])
+def test_gradient_radius(astep, linear_growth):
+    """
+    Test that the local gradient is measured at a fixed relative
+    distance from the ellipse, as in the STSDAS ellipse task,
+    regardless of the semimajor axis step.
+
+    The gradient samples start at slightly different polar angles for
+    different steps, so the gradients are not identical.
+    """
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 20.0, astep=0.1)
+    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample_step = EllipseSample(data, 20.0, astep=astep,
+                                linear_growth=linear_growth)
+    sample_step.update(fixed_parameters=DEFAULT_FIX)
+    assert_allclose(sample_step.gradient, sample.gradient, rtol=1e-3)
+
+
+def test_update_keeps_fixed_parameters():
+    """
+    Test that update without fixed_parameters keeps the fixed parameters
+    of the geometry.
+    """
+    data = make_test_image(seed=0)
+    geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0,
+                               fix_center=True, fix_eps=True)
+    sample = EllipseSample(data, 20.0, geometry=geometry)
+    sample.update()
+    assert list(sample.geometry.fix) == [True, True, False, True]
+
+    sample.update(fixed_parameters=np.array([False, False, True, False]))
+    assert list(sample.geometry.fix) == [False, False, True, False]
+
+
+@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+def test_large_step_sectors(integrmode):
+    """
+    Test the area integration modes when the step is larger than twice
+    the semimajor axis length.
+
+    The sampling annulus then extends to the center, as for a step of
+    exactly twice the semimajor axis length.
+    """
+    data = make_test_image(seed=0)
+    n_points = []
+    for astep in (4.0, 5.0):
+        sample = EllipseSample(data, 2.0, astep=astep, linear_growth=True,
+                               integrmode=integrmode)
+        sample.update(fixed_parameters=DEFAULT_FIX)
+        assert sample.actual_points == sample.total_points
+        assert np.isfinite(sample.mean)
+        n_points.append(sample.total_points)
+    assert n_points[0] == n_points[1]
+
+
+@pytest.mark.parametrize(('x0', 'y0'), [(30.0, None), (None, 40.0)])
+def test_partial_center(x0, y0):
+    """
+    Test that only the center coordinate that is not input is set to the
+    image center.
+    """
+    sample = EllipseSample(DATA, 10.0, x0=x0, y0=y0)
+    assert sample.geometry.x0 == (DATA.shape[1] / 2 if x0 is None else x0)
+    assert sample.geometry.y0 == (DATA.shape[0] / 2 if y0 is None else y0)
+
+
+def test_sclip_constant_sample():
+    """
+    Test that sigma clipping keeps a sample without any scatter.
+    """
+    data = np.full((100, 100), 5.0)
+    sample = EllipseSample(data, 10.0, n_clip=3,
+                           integrmode=NEAREST_NEIGHBOR)
+    sample.extract()
+    assert sample.total_points > 50
+    assert sample.actual_points == sample.total_points
+
+
+def test_update_repeated():
+    """
+    Test that a repeated update does not change the gradient.
+
+    The intensity of this image increases outward, so no meaningful
+    gradient can be measured and the gradient is estimated from a
+    reference value.
+    """
+    yy, xx = np.mgrid[0:201, 0:201]
+    data = 10.0 + 0.5 * np.hypot(xx - 100, yy - 100)
+    sample = EllipseSample(data, 20.0, x0=100.0, y0=100.0)
+    sample.update()
+    gradient = sample.gradient
+    assert gradient > 0
+    assert sample.gradient_err is None
+    sample.update()
+    assert sample.gradient == gradient
+
+    # The gradient is computed again if the sample values change.
+    sample.geometry.x0 = 120.0
+    sample.values = None
+    sample.update()
+    assert sample.gradient != gradient
+
+
+def test_mixed_infinities():
+    """
+    Test that neighboring pixels with infinities of opposite sign are
+    excluded without numpy warnings.
+    """
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 40.0)
+    sample.update()
+    x, y = sample.coordinates()
+    i = int(x[10])
+    j = int(y[10])
+    data[j, i] = np.inf
+    data[j + 1, i] = -np.inf
+    data[j, i + 1] = -np.inf
+    sample_inf = EllipseSample(data, 40.0)
+    sample_inf.update()
+    assert sample_inf.total_points == sample.total_points
+    assert sample_inf.actual_points < sample.actual_points
+    assert np.all(np.isfinite(sample_inf.values))
+
+
+@pytest.mark.parametrize('sma', [1e20, 1e300])
+def test_sampling_path_huge_sma(sma):
+    """
+    Test that the sampling path of a huge ellipse, whose angle step is
+    too small to change the polar angle, ends at its first point.
+    """
+    sample = EllipseSample(DATA, sma)
+    values = sample.extract()
+    assert values.shape == (3, 0)
+    assert sample.total_points == 1
+    assert sample.actual_points == 0
+
+
+@pytest.mark.parametrize('sma', [1.0, 40.0])
+def test_sampling_path(sma):
+    """
+    Test that the sample points lie on the ellipse and are spaced by
+    about one pixel, but by at most 0.5 radians.
+    """
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, sma, eps=0.3)
+    angles, radii, _ = sample.extract()
+    assert sample.actual_points == sample.total_points
+    assert angles[0] == sample.geometry.initial_polar_angle
+    assert_allclose(radii, sample.geometry.radius(angles))
+    steps = np.minimum(1.0 / radii, 0.5)
+    assert_allclose(np.diff(angles), steps[:-1])
+    phi_max = 2.0 * np.pi + 0.05
+    assert angles[-1] <= phi_max < angles[-1] + steps[-1]

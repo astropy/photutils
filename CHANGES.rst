@@ -24,11 +24,12 @@ New Features
     ``'bilinear'`` and ``'nearest_neighbor'`` integrators now sample
     the whole elliptical path at once, the ``'mean'`` and ``'median'``
     integrators select the pixels of each sector at once, and masked
-    images are no longer indexed pixel by pixel. ``Ellipse.fit_image``
-    is ~3x faster for the ``'bilinear'`` and ``'nearest_neighbor'``
-    modes, ~5x faster for the ``'mean'`` and ``'median'`` modes, and
-    ~25x faster for masked images with the ``'bilinear'`` mode.
-    [#2551]
+    images are no longer indexed pixel by pixel. The elliptical path
+    is computed by a compiled function, and the sample used to measure
+    the local gradient is no longer extracted twice.
+    ``Ellipse.fit_image`` is about 5x faster for all integration modes
+    and about 70x faster for masked images with the ``'bilinear'``
+    mode. [#2551, #2553]
 
   - The harmonic fits of the isophote fitter now use linear least
     squares instead of an iterative nonlinear fitter. The fitted
@@ -210,6 +211,101 @@ Bug Fixes
     ``EllipseFitter.fit`` extract the isophote without fitting (stop
     code 4). [#2552]
 
+  - Fixed the local radial gradient of the isophote samples, which was
+    measured from a sample at a relative distance equal to the
+    semimajor axis step. In linear growth mode the step is in pixels,
+    so the gradient was measured far from the ellipse (e.g., at three
+    times the semimajor axis length for a step of 2 pixels). As in the
+    STSDAS ``ellipse`` task, the gradient is now always measured from
+    a sample at a 10% (or 20%) larger semimajor axis length. [#2553]
+
+  - Fixed ``Ellipse.fit_image`` and ``Ellipse.fit_isophote`` ignoring
+    their ``step`` keyword (and ``fit_isophote`` its ``linear``
+    keyword) when sampling the image. The ``astep`` of the input
+    ``EllipseGeometry`` was used instead. The step now defines the
+    elliptical annulus that sets the sector areas of the ``'mean'``
+    and ``'median'`` integration modes, as documented. Fits are
+    unchanged if both the ``step`` keyword and the ``astep`` of the
+    input ``EllipseGeometry`` have their default values. [#2553]
+
+  - Fixed the sampling of diverged isophotes (stop code 5) in
+    ``Ellipse.fit_image``. Their geometry is replaced by that of a
+    neighboring isophote, but they were sampled with the initial
+    polar radius of the diverged ellipse, about 0.3 pixels off the
+    reported ellipse. [#2553]
+
+  - Fixed ``Ellipse.fit_image`` repeating the same failed fit forever
+    when an isophote beyond the first one has no valid data points
+    (e.g., an ellipse inside a masked annulus). The outward growth now
+    stops at such an isophote. [#2553]
+
+  - Fixed ``IsophoteList.to_table`` raising an ``AttributeError`` when
+    ``'main'`` or ``'all'`` is input in a list with other column names
+    (it now raises a ``ValueError``) and rejecting the table column
+    names of renamed properties (e.g., ``'ellipticity'``). A deprecated
+    column name now emits one warning instead of one per isophote.
+    [#2553]
+
+  - Fixed the ``'median'`` integration mode, which used the upper of
+    the two middle pixel values for sectors with an even number of
+    pixels. As in the STSDAS ``ellipse`` task, it now averages the two
+    middle values. [#2553]
+
+  - Fixed ``EllipseSample.update`` clearing the fixed parameters of
+    the sample geometry when ``fixed_parameters`` is `None`. [#2553]
+
+  - Fixed the isophote fits for a starting ellipticity of exactly
+    zero, which raised a ``ValueError`` because the position angle
+    correction of a circle diverges. The starting ellipse is now made
+    slightly flat, like the corrected ellipses. [#2553]
+
+  - Fixed the isophote fitter changing a fixed ellipticity of zero to
+    0.05. The position angle, which is undefined for a circle, is then
+    not fit. [#2553]
+
+  - Fixed the isophote fitter rotating a fixed position angle by 90
+    degrees when the ellipticity correction crosses zero. The ellipse
+    is now made nearly round instead. [#2553]
+
+  - Fixed ``Ellipse.fit_image`` ignoring a ``linear`` value that is
+    not a Python `bool` (e.g., a NumPy boolean). [#2553]
+
+  - Fixed the sampling of the ``'mean'`` and ``'median'`` integration
+    modes when the semimajor axis step is larger than twice the
+    semimajor axis length. The inner bounding ellipse of the sectors
+    was negative, which gave many narrow sectors.
+    ``EllipseGeometry.bounding_ellipses`` now returns zero for the
+    inner bounding ellipse in that case. [#2553]
+
+  - Fixed ``Ellipse.fit_image`` fitting the first inward isophote
+    without checking its semimajor axis length. It could be smaller
+    than ``minsma``, and a linear step larger than the starting
+    semimajor axis length gave two central-pixel isophotes. [#2553]
+
+  - Fixed ``Ellipse.fit_image`` returning isophotes without any valid
+    data points (with a NaN intensity) when the semimajor axis grows
+    in noniterative mode beyond the image. The outward growth now stops
+    at such an isophote. [#2553]
+
+  - Fixed the sigma clipping of the isophote samples, which removed
+    all the points of a sample without any scatter. Values equal to
+    the upper clipping limit are now kept, as in the STSDAS
+    ``ellipse`` task. [#2553]
+
+  - Fixed ``EllipseSample.update`` changing the local gradient when
+    called again on an unchanged sample for which no meaningful
+    gradient could be measured. [#2553]
+
+  - Fixed ``EllipseSample`` replacing both center coordinates with the
+    image center when only one of ``x0`` and ``y0`` is input. [#2553]
+
+  - Fixed NumPy ``RuntimeWarning`` messages emitted by the isophote
+    fits for isophotes with very few data points and for neighboring
+    pixels with infinities of opposite sign. [#2553]
+
+  - Fixed the reported location of the deprecation warning for a
+    deprecated column name in ``IsophoteList.to_table``. [#2553]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -341,6 +437,27 @@ API Changes
     semimajor axis length is not positive. An ``sma0`` of zero was
     previously ignored. Also, ``maxsma`` and ``maxrit`` values of zero
     are now used instead of being treated as `None`. [#2550]
+
+  - ``Ellipse.fit_image`` and ``Ellipse.fit_isophote`` now raise a
+    ``ValueError`` if ``step`` is not positive. Previously,
+    ``fit_image`` never returned. [#2553]
+
+  - The ``step`` keyword of ``Ellipse.fit_image`` and
+    ``Ellipse.fit_isophote`` now replaces the ``astep`` of the input
+    ``EllipseGeometry`` when sampling the image. Previously, the
+    ``astep`` value set the sampling annulus and the gradient radius,
+    so fits with a nondefault ``astep`` and the default ``step`` are
+    changed. [#2553]
+
+  - The default of the ``linear`` keyword of ``Ellipse.fit_isophote``
+    is now `None`, which uses the ``linear_growth`` attribute of the
+    starting geometry, as in ``Ellipse.fit_image``. [#2553]
+
+  - The columns of the tables returned by ``IsophoteList.to_table``
+    and ``Isophote.to_table`` now always have a numerical data type.
+    Values that are not defined (e.g., the gradient error of the
+    central pixel) are NaN. Previously, such columns had an object
+    data type with `None` values. [#2553]
 
 
 3.1.1 (2026-10-16)

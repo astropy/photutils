@@ -3,6 +3,8 @@
 Tools for storing the results of isophote fits.
 """
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 
@@ -14,6 +16,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['Isophote', 'IsophoteList']
 
@@ -144,9 +147,7 @@ class Isophote:
                 # fell entirely outside the image). Operating on the
                 # empty sample arrays would emit numpy warnings (e.g.,
                 # "Mean of empty slice"), so set nonmeaningful values
-                # directly and skip the harmonic computations. Such a
-                # degenerate isophote is transient. It is either
-                # discarded or replaced by `_fix_last_isophote`.
+                # directly and skip the harmonic computations.
                 self.rms = np.nan
                 self.int_err = np.nan
                 self.pix_stddev = np.nan
@@ -318,6 +319,11 @@ class Isophote:
         Note that we first subtract the first and second harmonics from
         the raw data.
         """
+        # The residual variance needs more data points than fitted
+        # coefficients.
+        if sample.actual_points <= 3:
+            return None, None, None, None
+
         try:
             # Upper (third and fourth) harmonics
             up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.values[0],
@@ -361,6 +367,12 @@ class Isophote:
         matrix of the four harmonic coefficients for harmonics n=1 and
         n=2.0.
         """
+        # The residual variance needs more data points than fitted
+        # coefficients.
+        if self.sample.actual_points <= 5:
+            self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
+            return
+
         try:
             coeffs, covariance = fit_first_and_second_harmonics(
                 self.sample.values[0], self.sample.values[2])
@@ -412,6 +424,10 @@ class Isophote:
         self.sample.geometry.pa = isophote.sample.geometry.pa
         self.sample.geometry.x0 = isophote.sample.geometry.x0
         self.sample.geometry.y0 = isophote.sample.geometry.y0
+
+        # The initial polar radius and sector width depend on the
+        # ellipticity, so they must be recomputed for the new geometry.
+        self.sample.geometry._reset_sma_dependent_attributes()
 
     def sampled_coordinates(self):
         """
@@ -894,15 +910,24 @@ class IsophoteList:
 
         Parameters
         ----------
-        columns : list of str
-            A list of properties to export from the isophote list. If
-            ``columns`` is 'all' or 'main', it will pick all or few of the
-            main properties.
+        columns : {'main', 'all'} or list of str, optional
+            The columns to include in the table. ``'main'`` (default)
+            selects the main isophote properties and ``'all'`` selects
+            all of them. Otherwise, ``columns`` is a list of property
+            names (see :meth:`get_names`) or table column names (e.g.,
+            ``'ellipticity'`` for the ``eps`` property). ``'main'``
+            and ``'all'`` must be input by themselves.
 
         Returns
         -------
         result : `~astropy.table.QTable`
             An astropy QTable with the main isophote parameters.
+
+        Raises
+        ------
+        ValueError
+            If any name in ``columns`` is not a valid column name, or if
+            ``'main'`` or ``'all'`` is input together with other names.
         """
         return _isophote_list_to_table(self, columns=columns)
 
@@ -1004,33 +1029,59 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         If any name in ``columns`` is not a valid (or deprecated)
         column name.
     """
+    # The IsophoteList properties are arrays with a numerical dtype,
+    # where missing values (None) are NaN.
+    if not isinstance(isophote_list, IsophoteList):
+        isophote_list = IsophoteList(isophote_list)
+
     _deprecation_map = _DEPRECATED_ATTRIBUTES.copy()
     all_names = _get_properties(isophote_list).keys()
 
-    allowed_columns = {*all_names, 'main', 'all'}
+    # The table column names of the renamed properties are also
+    # accepted.
+    column_aliases = {column: name for name, column in _RENAME_MAP.items()}
+
+    allowed_columns = {*all_names, *column_aliases, 'main', 'all'}
     table_columns = validate_table_columns(
         columns, allowed_columns, deprecated_names=_deprecation_map)
+    if len(table_columns) > 1 and {'main', 'all'} & set(table_columns):
+        msg = ("'main' and 'all' must be input by themselves, not in a "
+               'list with other column names.')
+        raise ValueError(msg)
 
     # Replace with QTable in 4.0
+    since = '3.0'
+    until = '4.0'
     isotable = create_empty_deprecated_qtable(
-        _deprecation_map, since='3.0', until='4.0')
+        _deprecation_map, since=since, until=until)
 
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 
+    # Pairs of the property that holds the values of a column and the
+    # table column name.
     if table_columns == ['all']:
-        properties = _rename_properties(all_names)
+        properties = list(_rename_properties(all_names).items())
     elif table_columns == ['main']:
-        properties = _rename_properties(_MAIN_PROPERTIES)
+        properties = list(_rename_properties(_MAIN_PROPERTIES).items())
     else:
-        # Use the canonical (nondeprecated) column name so that
-        # assigning into ``isotable`` does not trigger a second,
-        # redundant deprecation warning (the deprecated attribute access
-        # below already warns once).
-        properties = {name: _deprecation_map.get(name, name)
-                      for name in table_columns}
+        # A deprecated name uses the new property and column names,
+        # with a single deprecation warning instead of one per isophote.
+        # A property and its table column name can both be requested.
+        properties = []
+        for name in table_columns:
+            if name in _deprecation_map:
+                new_name = _deprecation_map[name]
+                msg = (f'The {name!r} attribute was deprecated in version '
+                       f'{since}. Use {new_name!r} instead. It will be '
+                       f'removed in version {until}.')
+                warnings.warn(msg, PhotutilsDeprecationWarning,
+                              stacklevel=4)
+                properties.append((new_name, new_name))
+            else:
+                properties.append((column_aliases.get(name, name), name))
 
-    for k, v in properties.items():
-        isotable[v] = np.array([getattr(iso, k) for iso in isophote_list])
+    for k, v in properties:
+        isotable[v] = getattr(isophote_list, k)
 
         if k in ('pa', 'pa_err'):
             isotable[v] = np.rad2deg(isotable[v]) << u.deg

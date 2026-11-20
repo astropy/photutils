@@ -3,6 +3,8 @@
 Tests for the isophote module.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -153,6 +155,31 @@ def test_isophote_comparisons():
         assert not iso1 == other  # noqa: SIM201
 
 
+def test_fix_geometry():
+    """
+    Test that a sample re-extracted after ``fix_geometry`` lies on the
+    new ellipse.
+    """
+    data = make_test_image(seed=0)
+    geometry1 = EllipseGeometry(256.0, 256.0, 20.0, 0.1, 0.0)
+    geometry2 = EllipseGeometry(257.0, 255.0, 20.0, 0.5, 1.0)
+    sample1 = EllipseSample(data, 20.0, geometry=geometry1)
+    sample2 = EllipseSample(data, 20.0, geometry=geometry2)
+    sample1.update(fixed_parameters=DEFAULT_FIX)
+    sample2.update(fixed_parameters=DEFAULT_FIX)
+    iso1 = Isophote(sample1, 0, valid=True, stop_code=0)
+    iso2 = Isophote(sample2, 0, valid=True, stop_code=0)
+
+    iso1.fix_geometry(iso2)
+    sample1.values = None
+    sample1.update(fixed_parameters=DEFAULT_FIX)
+
+    angles, radii, _ = sample1.values
+    assert_allclose(radii, geometry2.radius(angles))
+    assert_allclose(sample1.values, sample2.values)
+    assert_allclose(sample1.mean, sample2.mean)
+
+
 def test_isophote_small_flux_box():
     """
     Test the fluxes of an isophote whose enclosing box at the image
@@ -246,6 +273,39 @@ class TestIsophoteList:
         assert isinstance(iso, Isophote)
         assert_allclose(iso.sma, 14.0, atol=1e-6)
 
+    def test_to_table_columns(self):
+        isolist = self.isolist_sma10
+        match = "'main' and 'all' must be input by themselves"
+        for columns in (['main', 'sma'], ['sma', 'all']):
+            with pytest.raises(ValueError, match=match):
+                isolist.to_table(columns=columns)
+
+        # The table column names of renamed properties are accepted.
+        columns = ['sma', 'ellipticity', 'intens_err', 'ellipticity_err']
+        tbl = isolist.to_table(columns=columns)
+        assert tbl.colnames == columns
+        assert_allclose(tbl['ellipticity'], isolist.eps)
+        assert_allclose(tbl['intens_err'], isolist.int_err)
+
+        tbl = isolist.to_table(columns=['eps'])
+        assert tbl.colnames == ['eps']
+
+        # A property and its table column name can both be requested.
+        columns = ['eps', 'ellipticity', 'intens_err', 'int_err']
+        tbl = isolist.to_table(columns=columns)
+        assert tbl.colnames == columns
+        assert_allclose(tbl['eps'], tbl['ellipticity'])
+        assert_allclose(tbl['int_err'], tbl['intens_err'])
+
+    def test_to_table_deprecated_column_warns_once(self):
+        match = "'niter' attribute was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match=match) as record:
+            tbl = self.isolist_sma10.to_table(columns=['sma', 'niter'])
+        assert len(record) == 1
+        assert record[0].filename == __file__
+        assert tbl.colnames == ['sma', 'n_iter']
+
     def test_mutators(self):
         isolist = IsophoteList(list(self.isolist_sma10))
         n_isophotes = len(isolist)
@@ -287,6 +347,13 @@ class TestIsophoteList:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             n_iter = self.isolist_sma10.niter
         assert_allclose(n_iter, self.isolist_sma10.n_iter)
+
+    def test_isophote_deprecated_attribute(self):
+        isophote = self.isolist_sma10[2]
+        match = "'niter' attribute was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            n_iter = isophote.niter
+        assert n_iter == isophote.n_iter
 
     def test_isophote_methods(self):
         isophote = self.isolist_sma10[2]
@@ -431,3 +498,82 @@ class TestIsophoteList:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = isolist.to_table(columns=['grad_error'])
         assert tbl.colnames == ['gradient_err']
+
+
+@pytest.mark.parametrize(('width', 'n_data'),
+                         [(0.22, 3), (0.3, 4), (0.33, 5), (0.4, 6)])
+def test_isophote_few_points_warnings(width, n_data):
+    """
+    Test that no warnings are emitted for an isophote with as many or
+    slightly more data points than harmonic coefficients.
+
+    The warnings are recorded because the errors raised for them by the
+    pytest warning filter are caught in the harmonic computations.
+    """
+    data = make_test_image(seed=0)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    angle = np.arctan2(yy - 256, xx - 256)
+    mask = ~((angle > 0.0) & (angle < width))
+    sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter('always')
+        sample.update(fixed_parameters=DEFAULT_FIX)
+        isophote = Isophote(sample, 1, valid=False, stop_code=3)
+    assert len(record) == 0
+    assert isophote.n_data == n_data
+
+    # The third and fourth harmonic fits have 3 coefficients and the
+    # first and second harmonic fit has 5.
+    assert (isophote.a3 is None) == (n_data <= 3)
+    assert (isophote.x0_err == 0.0) == (n_data <= 5)
+
+
+@pytest.mark.parametrize(('width', 'has_deviations'),
+                         [(0.22, False), (0.3, True)])
+def test_isophote_few_points(width, has_deviations):
+    """
+    Test an isophote with too few data points to estimate the residual
+    variance of the harmonic fits.
+    """
+    data = make_test_image(seed=0)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    angle = np.arctan2(yy - 256, xx - 256)
+    mask = ~((angle > 0.0) & (angle < width))
+    sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
+    sample.update(fixed_parameters=DEFAULT_FIX)
+    isophote = Isophote(sample, 1, valid=False, stop_code=3)
+    assert 0 < isophote.n_data <= 5
+    assert isophote.x0_err == 0.0
+    assert isophote.ellip_err == 0.0
+    if has_deviations:
+        assert isophote.n_data > 3
+        assert np.isfinite(isophote.a3)
+        assert np.isfinite(isophote.a3_err)
+    else:
+        assert isophote.n_data <= 3
+        assert isophote.a3 is None
+        assert isophote.a4_err is None
+
+
+def test_to_table_dtypes():
+    """
+    Test that the table columns have a numerical dtype, with NaN for the
+    values that are not defined for the central pixel.
+    """
+    data = make_test_image(nx=200, ny=200, seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=20.0)
+    assert isinstance(isolist[0], CentralPixel)
+
+    for columns in ('main', 'all'):
+        tbl = isolist.to_table(columns=columns)
+        for name in tbl.colnames:
+            assert tbl[name].dtype.kind in 'fib'
+        assert np.isnan(tbl['gradient_err'][0])
+        assert np.all(np.isfinite(tbl['gradient_err'][1:]))
+    assert tbl['n_data'].dtype.kind == 'i'
+    assert tbl['valid'].dtype == bool
+    assert np.isnan(tbl['tflux_e'][0])
+
+    tbl = isolist[0].to_table()
+    assert tbl['gradient_rel_err'].dtype.kind == 'f'
+    assert np.isnan(tbl['gradient_rel_err'][0])

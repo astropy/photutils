@@ -256,3 +256,17 @@ def test_find_center_below_threshold():
     assert geometry.x0 == 52.0
     assert geometry.y0 == 48.0
     assert 'below the threshold' in log_list[0].msg
+
+
+@pytest.mark.parametrize(('astep', 'linear_growth'),
+                         [(5.0, True), (2.5, False)])
+def test_bounding_ellipses_large_step(astep, linear_growth):
+    """
+    Test that the inner bounding ellipse is not negative if the step is
+    larger than twice the semimajor axis length.
+    """
+    geometry = EllipseGeometry(10.0, 10.0, 2.0, 0.2, 0.0, astep=astep,
+                               linear_growth=linear_growth)
+    sma1, sma2 = geometry.bounding_ellipses()
+    assert sma1 == 0.0
+    assert_allclose(sma2, 4.5)

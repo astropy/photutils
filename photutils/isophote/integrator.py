@@ -371,7 +371,9 @@ class _MeanIntegrator(_AreaIntegrator):
 
 class _MedianIntegrator(_AreaIntegrator):
     def compute_sample_value(self, values):
-        return np.sort(values)[values.size // 2]
+        # As in the STSDAS ellipse task, the median of an even number of
+        # values is the average of the two middle values.
+        return np.median(values)
 
 
 # Specific integrator subclasses can be instantiated from here.

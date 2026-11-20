@@ -256,7 +256,7 @@ class Ellipse:
             This value must not be the minimum or maximum semimajor
             axis length, but something in between. The algorithm can't
             start from the very center of the galaxy image because
-            the modelling of elliptical isophotes on that region is
+            the modeling of elliptical isophotes on that region is
             poor and it will diverge very easily if not tied to other
             previously fit isophotes. It can't start from the maximum
             value either because the maximum is not known beforehand,
@@ -286,8 +286,13 @@ class Ellipse:
         step : float, optional
             The step value used to grow/shrink the semimajor axis
             length (pixels if ``linear=True``, or a relative value if
-            ``linear=False``). See the ``linear`` parameter. The default
-            is 0.1.
+            ``linear=False``). See the ``linear`` parameter. It also
+            defines the elliptical annulus used by the sampling
+            algorithm, which sets the areas of the elliptical sectors
+            for the area integration modes (see the ``integrmode``
+            parameter). It replaces the ``astep`` attribute of the
+            `~photutils.isophote.EllipseGeometry` instance used by this
+            class. The step must be positive. The default is 0.1.
 
         conver : float, optional
             The main convergence criterion. Iterations stop when the
@@ -419,14 +424,16 @@ class Ellipse:
             msg = ('The starting semimajor axis length (sma0 or the sma of '
                    'the input geometry) must be positive')
             raise ValueError(msg)
+        if not step > 0:  # also rejects NaN
+            msg = 'step must be positive'
+            raise ValueError(msg)
 
         # Override the geometry parameters set in this call on a copy
         # so that they do not persist in the input geometry instance.
         geometry = copy.deepcopy(self._geometry)
-        if isinstance(linear, bool):
-            geometry.linear_growth = linear
-        else:
-            linear = geometry.linear_growth
+        geometry.astep = step
+        if linear is not None:
+            geometry.linear_growth = bool(linear)
         if fix_center or fix_pa or fix_eps:
             geometry.fix = _make_fix_array(fix_center=fix_center,
                                            fix_pa=fix_pa, fix_eps=fix_eps)
@@ -440,8 +447,7 @@ class Ellipse:
         fit = functools.partial(self._fit_isophote, conver=conver,
                                 maxit=maxit, fflag=fflag, sclip=sclip,
                                 n_clip=n_clip, integrmode=integrmode,
-                                linear=linear, maxrit=maxrit,
-                                isophote_list=isophote_list)
+                                maxrit=maxrit, isophote_list=isophote_list)
 
         # First, go from initial sma outwards until
         # hitting one of several stopping criteria.
@@ -455,8 +461,7 @@ class Ellipse:
                 geometry = isophote_list[-1].sample.geometry
             else:
                 minit_a = 2 * minit
-            isophote = fit(geometry, sma, step=step, minit=minit_a,
-                           noniterate=noiter)
+            isophote = fit(geometry, sma, minit=minit_a, noniterate=noiter)
 
             # An invalid isophote (e.g., no valid data points) is not
             # stored, so an empty list means that the first isophote
@@ -465,6 +470,14 @@ class Ellipse:
                 msg = 'No meaningful fit was possible.'
                 warnings.warn(msg, AstropyUserWarning)
                 return IsophoteList([])
+
+            # If a later isophote could not be fit or extracted at all
+            # (e.g., no valid data points), it is not stored. Stop
+            # growing outwards, as in the inward loop below. Otherwise,
+            # the next sma would be computed again from the last stored
+            # isophote, repeating the same failed fit forever.
+            if isophote.stop_code == 3:
+                break
 
             # Check for failed fit.
             if isophote.stop_code < 0 or isophote.stop_code == 1:
@@ -514,7 +527,7 @@ class Ellipse:
             # trigger it, but it counts as the first of the two.
             gradient_rel_err = isophote.gradient_rel_err
             exceeded = gradient_rel_err is None or gradient_rel_err > maxgerr
-            if exceeded and previous_exceeded and len(isophote_list) > 1:
+            if exceeded and previous_exceeded:
                 if maxsma is not None and maxsma > isophote.sma:
                     noiter = True
                 else:
@@ -534,9 +547,10 @@ class Ellipse:
         sma, step = first_isophote.sample.geometry.reset_sma(step)
         geometry = first_isophote.sample.geometry
 
-        # Now, go from initial sma inwards towards center.
-        while True:
-            isophote = fit(geometry, sma, step=step, minit=minit)
+        # Now, go from initial sma inwards towards center, until the
+        # sma reaches the user-defined minimum or is too small.
+        while sma > max(minsma, 0.5):
+            isophote = fit(geometry, sma, minit=minit)
 
             # If abnormal condition, fix isophote but keep going.
             if isophote.stop_code < 0:
@@ -553,16 +567,15 @@ class Ellipse:
             isophote = isophote_list[-1]
             geometry = isophote.sample.geometry
 
-            # Figure out the next sma. If it exceeded the user-defined
-            # minimum, or is too small, bail out from this loop.
+            # Figure out the next sma.
             sma = isophote.sample.geometry.update_sma(step)
-            if sma <= max(minsma, 0.5):
-                break
 
         # If user asked for minsma=0, extract special isophote there.
+        # It is centered on the innermost fitted isophote, whose
+        # geometry is the last one set above, and it is appended to
+        # isophote_list.
         if minsma == 0.0:
-            # The isophote is appended to isophote_list.
-            _ = self.fit_isophote(0.0, isophote_list=isophote_list)
+            fit(geometry, 0.0, minit=minit)
 
         # Sort list of isophotes according to sma.
         isophote_list.sort()
@@ -577,7 +590,7 @@ class Ellipse:
                      minit=DEFAULT_MINIT, maxit=DEFAULT_MAXIT,
                      fflag=DEFAULT_FFLAG, maxgerr=None,  # noqa: ARG002
                      sclip=3.0, n_clip=0, integrmode=BILINEAR,
-                     linear=False, maxrit=None, noniterate=False,
+                     linear=None, maxrit=None, noniterate=False,
                      going_inwards=None,  # noqa: ARG002
                      isophote_list=None):
         """
@@ -585,10 +598,12 @@ class Ellipse:
 
         The ``step`` and ``linear`` parameters do not directly control
         the growth or reduction of the current fitting semimajor axis
-        length. Instead, they are used by the sampling algorithm to
-        determine the starting point for gradient computation and
-        to calculate the areas of the elliptical sectors (when area
-        integration mode is enabled).
+        length. Instead, they define the elliptical annulus used by
+        the sampling algorithm, which sets the areas of the elliptical
+        sectors for the area integration modes (see the ``integrmode``
+        parameter). The ``step`` parameter replaces the ``astep``
+        attribute of the starting geometry. The ``linear`` parameter,
+        if set, replaces its ``linear_growth`` attribute.
 
         If the center, position angle, and ellipticity are all fixed
         by the `~photutils.isophote.EllipseGeometry` instance, there
@@ -603,8 +618,8 @@ class Ellipse:
         step : float, optional
             The step value used to grow/shrink the semimajor axis
             length (pixels if ``linear=True``, or a relative value if
-            ``linear=False``). See the ``linear`` parameter. The default
-            is 0.1.
+            ``linear=False``). See the ``linear`` parameter. The step
+            must be positive. The default is 0.1.
 
         conver : float, optional
             The main convergence criterion. Iterations stop when the
@@ -662,12 +677,14 @@ class Ellipse:
                 optional
             The area integration mode. The default is 'bilinear'.
 
-        linear : bool, optional
+        linear : bool or `None`, optional
             The semimajor axis growing/shrinking mode. When fitting
             just one isophote, this parameter is used only by the code
             that define the details of how elliptical arc segments
             ("sectors") are extracted from the image when using area
-            extraction modes (see the ``integrmode`` parameter).
+            extraction modes (see the ``integrmode`` parameter). If
+            `None` (default), the ``linear_growth`` attribute of the
+            starting geometry is used.
 
         maxrit : float or `None`, optional
             The maximum value of semimajor axis to perform an actual
@@ -712,37 +729,49 @@ class Ellipse:
             The fitted isophote. The fitted isophote is also appended to
             the input list input to the ``isophote_list`` parameter.
         """
+        if not step > 0:  # also rejects NaN
+            msg = 'step must be positive'
+            raise ValueError(msg)
+
         # If available, geometry from last fitted isophote will be
         # used as initial guess for next isophote.
         geometry = self._geometry
         if isophote_list:
             geometry = isophote_list[-1].sample.geometry
 
-        return self._fit_isophote(geometry, sma, step=step,
-                                  conver=conver, minit=minit, maxit=maxit,
-                                  fflag=fflag, sclip=sclip, n_clip=n_clip,
-                                  integrmode=integrmode, linear=linear,
+        # The step and linear values define the sampling annulus. They
+        # are set on a copy so that the input geometry is not modified.
+        geometry = copy.deepcopy(geometry)
+        geometry.astep = step
+        if linear is not None:
+            geometry.linear_growth = bool(linear)
+
+        return self._fit_isophote(geometry, sma, conver=conver, minit=minit,
+                                  maxit=maxit, fflag=fflag, sclip=sclip,
+                                  n_clip=n_clip, integrmode=integrmode,
                                   maxrit=maxrit, noniterate=noniterate,
                                   isophote_list=isophote_list)
 
-    def _fit_isophote(self, geometry, sma, *, step, conver, minit, maxit,
-                      fflag, sclip, n_clip, integrmode, linear, maxrit,
-                      noniterate=False, isophote_list=None):
+    def _fit_isophote(self, geometry, sma, *, conver, minit, maxit, fflag,
+                      sclip, n_clip, integrmode, maxrit, noniterate=False,
+                      isophote_list=None):
         """
         Fit a single isophote, starting from the input geometry.
 
         See `fit_isophote` for a description of the parameters. The
-        input ``geometry`` is the initial guess. If ``isophote_list``
-        is not `None`, a valid fitted isophote is appended to it.
+        input ``geometry`` is the initial guess. Its ``astep`` and
+        ``linear_growth`` attributes define the sampling annulus. If
+        ``isophote_list`` is not `None`, a valid fitted isophote is
+        appended to it.
         """
         # Do the fit.
         if noniterate or (maxrit is not None and sma > maxrit):
-            isophote = self._non_iterative(sma, step, linear, geometry,
-                                           sclip, n_clip, integrmode)
+            isophote = self._non_iterative(sma, geometry, sclip, n_clip,
+                                           integrmode)
         else:
-            isophote = self._iterative(sma, step, linear, geometry, sclip,
-                                       n_clip, integrmode, conver, minit,
-                                       maxit, fflag)
+            isophote = self._iterative(sma, geometry, sclip, n_clip,
+                                       integrmode, conver, minit, maxit,
+                                       fflag)
 
         # Store result in list.
         if isophote_list is not None and isophote.valid:
@@ -750,13 +779,13 @@ class Ellipse:
 
         return isophote
 
-    def _iterative(self, sma, step, linear, geometry, sclip, n_clip,
-                   integrmode, conver, minit, maxit, fflag):
+    def _iterative(self, sma, geometry, sclip, n_clip, integrmode, conver,
+                   minit, maxit, fflag):
         if sma > 0.0:
             # Iterative fitter
-            sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
-                                   n_clip=n_clip, linear_growth=linear,
-                                   geometry=geometry, integrmode=integrmode)
+            sample = EllipseSample(self.image, sma, sclip=sclip,
+                                   n_clip=n_clip, geometry=geometry,
+                                   integrmode=integrmode)
             fitter = EllipseFitter(sample)
         else:
             # sma == 0 requires special handling.
@@ -766,12 +795,15 @@ class Ellipse:
         return fitter.fit(conver=conver, minit=minit, maxit=maxit,
                           fflag=fflag)
 
-    def _non_iterative(self, sma, step, linear, geometry, sclip, n_clip,
-                       integrmode):
-        sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
-                               n_clip=n_clip, linear_growth=linear,
+    def _non_iterative(self, sma, geometry, sclip, n_clip, integrmode):
+        sample = EllipseSample(self.image, sma, sclip=sclip, n_clip=n_clip,
                                geometry=geometry, integrmode=integrmode)
         sample.update(fixed_parameters=geometry.fix)
+
+        # An isophote without any valid data points (e.g., an ellipse
+        # outside of the image) is invalid.
+        if sample.actual_points == 0:
+            return Isophote(sample, 0, valid=False, stop_code=3)
 
         # Build isophote without iterating with an EllipseFitter.
         return Isophote(sample, 0, valid=True, stop_code=4)

@@ -121,8 +121,8 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 64
         # Intensities
-        assert_allclose(np.mean(s[2]), 199.9, atol=0.1)
-        assert_allclose(np.std(s[2]), 21.3, atol=0.1)
+        assert_allclose(np.mean(s[2]), 199.5, atol=0.1)
+        assert_allclose(np.std(s[2]), 21.2, atol=0.1)
         # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.01, atol=0.01)
@@ -228,6 +228,21 @@ def test_very_large_path_coordinates(integrmode, x0):
     assert values.shape == (3, 0)
     assert sample.total_points > 0
     assert sample.actual_points == 0
+
+
+@pytest.mark.parametrize(('values', 'expected'),
+                         [([3.0, 1.0, 2.0], 2.0),
+                          ([4.0, 1.0, 3.0, 2.0], 2.5),
+                          ([10.0, 1.0, 2.0, 3.0, 4.0, 100.0], 3.5)])
+def test_median_integrator_value(values, expected):
+    """
+    Test that the median of an even number of pixel values is the
+    average of the two middle values, as in the STSDAS ellipse task.
+    """
+    geometry = EllipseGeometry(10.0, 10.0, 5.0, 0.2, 0.0)
+    integrator = INTEGRATORS[MEDIAN](np.zeros((20, 20)), geometry, [], [],
+                                     [])
+    assert integrator.compute_sample_value(np.array(values)) == expected
 
 
 def _sample_point(integrmode, data, x, y):
