@@ -566,6 +566,49 @@ class TestEllipse:
         _assert_fflag_stop(isophote_list)
         _assert_sma_grid(isophote_list)
 
+    def test_max_center_shift(self):
+        # A companion source pulls the centers of the outer isophotes
+        # away from the galaxy center.
+        yy, xx = np.mgrid[0:512, 0:512]
+        companion = Gaussian2D(50.0, 330, 290, 8.0, 8.0)(xx, yy)
+        data = self.data + companion
+
+        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        isolist = Ellipse(data, geometry=g).fit_image()
+        shift = np.hypot(isolist.x0 - 256, isolist.y0 - 256)
+        assert np.max(shift) > 5.0
+
+        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        isolist_bound = Ellipse(data, geometry=g).fit_image(
+            max_center_shift=1.0)
+        shift = np.hypot(isolist_bound.x0 - 256, isolist_bound.y0 - 256)
+        assert np.all(shift <= 1.0 + 1.0e-10)
+
+        # Isophotes with the center held on the bound are still fitted,
+        # and the fit covers the same isophotes as without the bound.
+        at_bound = np.isclose(shift, 1.0)
+        assert np.count_nonzero(at_bound) > 1
+        assert np.all(isolist_bound.stop_code[at_bound] == 0)
+        assert_allclose(isolist_bound.sma, isolist.sma)
+        assert np.array_equal(isolist_bound.stop_code, isolist.stop_code)
+
+        # Ellipticity is still fitted with the center on the bound, so
+        # it follows a fit with a fixed center.
+        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        isolist_fixed = Ellipse(data, geometry=g).fit_image(fix_center=True)
+        assert_allclose(isolist_bound.eps[at_bound],
+                        isolist_fixed.eps[at_bound], atol=0.01)
+
+    def test_max_center_shift_fit_isophote(self):
+        x0 = POS + 5
+        y0 = POS + 5
+        g = EllipseGeometry(x0, y0, 40.0, eps=0.2, pa=PA, astep=0.1)
+        ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
+        isophote = ellipse.fit_isophote(40.0, max_center_shift=2.0)
+
+        geom = isophote.sample.geometry
+        assert_allclose(np.hypot(geom.x0 - x0, geom.y0 - y0), 2.0)
+
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to go beyond the image
         # frame limits.

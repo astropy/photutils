@@ -211,3 +211,32 @@ locator. To use it, call the
 :meth:`~photutils.isophote.EllipseGeometry.find_center` method of the
 `~photutils.isophote.EllipseGeometry` instance before it is input to
 `~photutils.isophote.Ellipse`.
+
+
+8. How can I limit how far the ellipse center moves?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, the center of each isophote is fitted freely. In the
+outer, low surface-brightness regions of a galaxy, a nearby star or
+companion galaxy can pull the fitted center away from the galaxy
+nucleus. There are two ways to control this in
+:meth:`~photutils.isophote.Ellipse.fit_image`.
+
+Setting ``fix_center=True`` holds the center of every isophote at the
+center of the input `~photutils.isophote.EllipseGeometry`.
+
+Setting ``max_center_shift`` to a distance in pixels lets the center
+move freely within a circle of that radius around the center of the
+input `~photutils.isophote.EllipseGeometry`. If the fit of an isophote
+would move the center outside this circle, the center of that isophote
+is placed on the circle and held fixed for the rest of its fit, while
+the ellipticity and position angle continue to be fitted. The next
+isophote starts from that position and may move its center back
+inside the circle.
+
+The ``wander`` parameter of the IRAF ``ellipse`` task is different. It
+limits the x and y sizes of each individual center correction during
+the iterations, not the total distance from the input center. When a
+single correction exceeds ``wander``, IRAF stops iterating and extracts
+the following isophotes in the same direction (outward or inward)
+without fitting them.

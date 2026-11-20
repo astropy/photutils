@@ -54,7 +54,8 @@ class EllipseFitter:
     @deprecated_renamed_argument('going_inwards', None, '3.2', until='4.0')
     def fit(self, *, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
             maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
-            maxgerr=None, going_inwards=None):  # noqa: ARG002
+            maxgerr=None, going_inwards=None,  # noqa: ARG002
+            max_center_shift=None, reference_center=None):
         """
         Fit an elliptical isophote.
 
@@ -112,11 +113,32 @@ class EllipseFitter:
                This keyword argument is deprecated and will be removed
                in version 4.0.
 
+        max_center_shift : float or `None`, optional
+            The maximum distance (in pixels) that the ellipse center
+            may move from ``reference_center``. If an iteration would
+            move the center farther than this, the center is placed on
+            the boundary at this distance and held fixed for the rest
+            of the fit, while the other free parameters continue to be
+            fitted. If holding the center fixed leaves no free
+            parameters, the fit stops with ``stop_code=0``. If `None`
+            (default), the center is not limited.
+
+        reference_center : tuple of 2 floats or `None`, optional
+            The ``(x, y)`` position from which ``max_center_shift``
+            is measured. If `None` (default), the center of the input
+            sample is used. This parameter is ignored if
+            ``max_center_shift`` is `None`.
+
         Returns
         -------
         result : `~photutils.isophote.Isophote` instance
             The fitted isophote, which also contains fit status
             information.
+
+        Raises
+        ------
+        ValueError
+            If ``max_center_shift`` is negative or NaN.
 
         Examples
         --------
@@ -125,7 +147,13 @@ class EllipseFitter:
         >>> fitter = EllipseFitter(sample)
         >>> isophote = fitter.fit()
         """
+        if max_center_shift is not None and not max_center_shift >= 0:
+            msg = 'max_center_shift must be a non-negative number'
+            raise ValueError(msg)
+
         sample = self._sample
+        if reference_center is None:
+            reference_center = (sample.geometry.x0, sample.geometry.y0)
 
         # Here we keep track of the sample that caused the minimum harmonic
         # amplitude(in absolute value). This will eventually be used to
@@ -162,6 +190,13 @@ class EllipseFitter:
             self._fix_round_ellipse(sample.geometry, fixed_parameters)
             sample.values = None
 
+        # The parameters held fixed during this fit. These include the
+        # center once it reaches the ``max_center_shift`` boundary. The
+        # isophote geometry keeps ``fixed_parameters`` so that the next
+        # isophote can move its center again.
+        fit_fixed = np.array(fixed_parameters, dtype=bool)
+        center_at_bound = False
+
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
             sample.update(fixed_parameters=fixed_parameters)
@@ -194,7 +229,7 @@ class EllipseFitter:
                 return Isophote(sample, i + 1, valid=False, stop_code=3)
 
             # Mask out coefficients that control fixed ellipse parameters.
-            free_coeffs = np.ma.masked_array(coeffs[1:], mask=fixed_parameters)
+            free_coeffs = np.ma.masked_array(coeffs[1:], mask=fit_fixed)
 
             # Largest nonmasked harmonic in absolute value drives the
             # correction.
@@ -257,6 +292,14 @@ class EllipseFitter:
                 # EllipseSample constructor.
                 sample = corrector.correct(sample, largest_harmonic)
 
+                # Only the position correctors (indices 0 and 1) move
+                # the center.
+                if max_center_shift is not None and largest_harmonic_index < 2:
+                    sample, center_at_bound = _limit_center_shift(
+                        sample, reference_center, max_center_shift)
+                    if center_at_bound:
+                        fit_fixed[:2] = True
+
                 # If the corrected ellipse diverged, stop without
                 # sampling it. Otherwise, fix a round ellipse before the
                 # new sample is extracted so that its values match its
@@ -269,12 +312,15 @@ class EllipseFitter:
                     sample.update(fixed_parameters=fixed_parameters)
 
             # If iterations cannot proceed, return the best-fit sample
-            # instead of the current one.
-            if not proceed:
-                minimum_amplitude_sample.update(
-                    fixed_parameters=fixed_parameters)
-                return Isophote(minimum_amplitude_sample, i + 1, valid=True,
-                                stop_code=-1)
+            # instead of the current one. Holding the center at the
+            # boundary can leave no free parameters, in which case the
+            # fit is complete and the current sample is returned.
+            complete = proceed and center_at_bound and fit_fixed.all()
+            if complete or not proceed:
+                final_sample = sample if complete else minimum_amplitude_sample
+                final_sample.update(fixed_parameters=fixed_parameters)
+                return Isophote(final_sample, i + 1, valid=True,
+                                stop_code=0 if complete else -1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
@@ -348,6 +394,45 @@ class _PositionCorrector(_ParameterCorrector):
     def finalize_correction(dx, dy, sample):
         return sample._make_sample(x0=sample.geometry.x0 + dx,
                                    y0=sample.geometry.y0 + dy)
+
+
+def _limit_center_shift(sample, reference_center, max_shift):
+    """
+    Move the sample center onto the ``max_shift`` boundary if it is
+    beyond it.
+
+    Parameters
+    ----------
+    sample : `~photutils.isophote.EllipseSample` instance
+        The sample whose center is checked.
+
+    reference_center : tuple of 2 floats
+        The ``(x, y)`` position from which the shift is measured.
+
+    max_shift : float
+        The maximum allowed distance (in pixels) from
+        ``reference_center``.
+
+    Returns
+    -------
+    sample : `~photutils.isophote.EllipseSample` instance
+        The input sample if its center is within ``max_shift``.
+        Otherwise, a new sample whose center is on the boundary, along
+        the direction from ``reference_center`` to the input center.
+
+    at_bound : bool
+        Whether the center was moved onto the boundary.
+    """
+    dx = sample.geometry.x0 - reference_center[0]
+    dy = sample.geometry.y0 - reference_center[1]
+    shift = math.hypot(dx, dy)
+    if shift <= max_shift:
+        return sample, False
+
+    scale = max_shift / shift - 1.0
+    sample = _PositionCorrector.finalize_correction(dx * scale, dy * scale,
+                                                    sample)
+    return sample, True
 
 
 class _PositionCorrector0(_PositionCorrector):
