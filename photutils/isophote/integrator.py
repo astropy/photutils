@@ -366,8 +366,7 @@ class _AreaIntegrator(_Integrator):
 
 class _MeanIntegrator(_AreaIntegrator):
     def compute_sample_value(self, values):
-        # The sum is accumulated sequentially, in the pixel order.
-        return np.cumsum(values, dtype=float)[-1] / values.size
+        return values.mean(dtype=float)
 
 
 class _MedianIntegrator(_AreaIntegrator):
