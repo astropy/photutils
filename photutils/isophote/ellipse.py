@@ -264,7 +264,10 @@ class Ellipse:
 
         minsma : float, optional
             The minimum value for the semimajor axis length (pixels).
-            The default is 0.
+            The default is 0, which also adds the central pixel to the
+            returned list as an isophote with a semimajor axis length
+            of 0. Its intensity is NaN if it cannot be measured (e.g.,
+            the central pixel is masked or nonfinite).
 
         maxsma : float or `None`, optional
             The maximum value for the semimajor axis length (pixels).
