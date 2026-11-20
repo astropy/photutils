@@ -190,6 +190,46 @@ def test_masked_and_nonfinite(integrmode):
     assert_array_equal(sample_masked.values, sample_nan.values)
 
 
+@pytest.mark.parametrize('integrmode',
+                         [NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN])
+def test_masked_infinite_values(integrmode):
+    """
+    Test that infinite values of both signs in masked pixels do not
+    change the sample.
+    """
+    data = make_test_image(nx=128, ny=128, seed=0)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[60:70, 80:90] = True
+    data_inf = data.copy()
+    data_inf[mask] = np.inf
+    data_inf[62:66, 82:86] = -np.inf
+
+    kwargs = {'x0': 64.0, 'y0': 64.0, 'integrmode': integrmode}
+    sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0,
+                           **kwargs)
+    sample_inf = EllipseSample(np.ma.masked_array(data_inf, mask=mask), 20.0,
+                               **kwargs)
+
+    assert sample.extract().shape[1] > 0
+    assert_array_equal(sample_inf.extract(), sample.extract())
+
+
+@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR])
+@pytest.mark.parametrize('x0', [np.nan, np.inf, 1.0e30])
+def test_nonfinite_path(integrmode, x0):
+    """
+    Test that path points with nonfinite or very large coordinates
+    are skipped like the points outside of the image.
+    """
+    data = make_test_image(nx=128, ny=128, seed=0)
+    sample = EllipseSample(data, 10.0, x0=x0, y0=64.0,
+                           integrmode=integrmode)
+    values = sample.extract()
+    assert values.shape == (3, 0)
+    assert sample.total_points > 0
+    assert sample.actual_points == 0
+
+
 def _sample_point(integrmode, data, x, y):
     """
     Sample a single image point using the given integrator.

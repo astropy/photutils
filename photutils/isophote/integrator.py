@@ -192,15 +192,16 @@ class _NearestNeighborIntegrator(_PixelIntegrator):
         # centers are at integer coordinates, so the nearest pixel is
         # found by rounding.
         angle = phis + self._geometry.pa
-        i = np.floor(radii * np.cos(angle) + self._geometry.x0
-                     + 0.5).astype(int)
-        j = np.floor(radii * np.sin(angle) + self._geometry.y0
-                     + 0.5).astype(int)
+        x = np.floor(radii * np.cos(angle) + self._geometry.x0 + 0.5)
+        y = np.floor(radii * np.sin(angle) + self._geometry.y0 + 0.5)
 
-        # Ignore data points outside image boundaries.
-        good = (i >= 0) & (i < nx) & (j >= 0) & (j < ny)
-        i = i[good]
-        j = j[good]
+        # Ignore data points outside image boundaries. The floating
+        # point coordinates are checked before they are converted to
+        # integers because nonfinite and very large coordinates do not
+        # have a defined integer value.
+        good = (x >= 0) & (x < nx) & (y >= 0) & (y < ny)
+        i = x[good].astype(int)
+        j = y[good].astype(int)
         radii = radii[good]
         phis = phis[good]
 
@@ -227,25 +228,32 @@ class _BiLinearIntegrator(_PixelIntegrator):
 
         # Use floor so that points before the first pixel center are
         # skipped instead of extrapolated.
-        i = np.floor(x).astype(int)
-        j = np.floor(y).astype(int)
+        x_floor = np.floor(x)
+        y_floor = np.floor(y)
 
-        # Ignore data points outside image boundaries.
-        good = (i >= 0) & (i < nx - 1) & (j >= 0) & (j < ny - 1)
-        i = i[good]
-        j = j[good]
+        # Ignore data points outside image boundaries. The floating
+        # point coordinates are checked before they are converted to
+        # integers because nonfinite and very large coordinates do not
+        # have a defined integer value.
+        good = ((x_floor >= 0) & (x_floor < nx - 1)
+                & (y_floor >= 0) & (y_floor < ny - 1))
+        i = x_floor[good].astype(int)
+        j = y_floor[good].astype(int)
         fx = x[good] - i
         fy = y[good] - j
         radii = radii[good]
         phis = phis[good]
 
+        # Nonfinite pixels can give invalid operations (e.g., inf - inf).
+        # The resulting nonfinite samples are skipped below.
         qx = 1.0 - fx
         qy = 1.0 - fy
         data = self._data
-        values = (data[j, i] * qx * qy
-                  + data[j + 1, i] * qx * fy
-                  + data[j, i + 1] * fx * qy
-                  + data[j + 1, i + 1] * fy * fx)
+        with np.errstate(invalid='ignore'):
+            values = (data[j, i] * qx * qy
+                      + data[j + 1, i] * qx * fy
+                      + data[j, i + 1] * fx * qy
+                      + data[j + 1, i + 1] * fy * fx)
 
         # Skip samples that include masked or nonfinite pixels.
         good = np.isfinite(values)
