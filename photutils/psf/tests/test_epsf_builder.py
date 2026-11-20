@@ -2716,7 +2716,8 @@ class TestEPSFBuilder:
             def __init__(self):
                 self.fit_info = {'ierr': 1}
 
-            def __call__(self, model, x, y, z, maxiter=None):  # noqa: ARG002
+            def __call__(self, model, x, y, z, *,  # noqa: ARG002
+                         maxiter=None):  # noqa: ARG002
                 return model
 
         no_weights_fitter = NoWeightsFitter()
@@ -4476,7 +4477,7 @@ class _ShiftingFitter(TRFLSQFitter):
         self.n_shift = n_shift
         self.n_calls = 0
 
-    def __call__(self, model, x, y, z=None, weights=None, **kwargs):
+    def __call__(self, model, x, y, *, z=None, weights=None, **kwargs):
         fitted = super().__call__(model, x, y, z=z, weights=weights,
                                   **kwargs)
         if self.n_calls % self.n_stars < self.n_shift:
@@ -4496,7 +4497,7 @@ class _FailingFitter(TRFLSQFitter):
         super().__init__()
         self.flux = flux
 
-    def __call__(self, model, x, y, z=None, weights=None, **kwargs):
+    def __call__(self, model, x, y, *, z=None, weights=None, **kwargs):
         fitted = super().__call__(model, x, y, z=z, weights=weights,
                                   **kwargs)
         if model.flux.value == self.flux:

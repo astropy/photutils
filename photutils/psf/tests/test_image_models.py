@@ -461,7 +461,7 @@ class TestImagePSF:
             def __init__(self, spline):
                 self.spline = spline
 
-            def __call__(self, xi, yi, grid=False):
+            def __call__(self, xi, yi, *, grid=False):
                 return self.spline(xi, yi, grid=grid)
 
             def partial_derivative(self, dx, dy):

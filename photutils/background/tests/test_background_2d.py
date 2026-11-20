@@ -1124,10 +1124,10 @@ def _make_sigma_clip_biweight(*, cenfunc='biweight', stdfunc='biweight',
     support these options.
     """
 
-    def nanbiloc(data, axis=None):
+    def nanbiloc(data, *, axis=None):
         return biweight_location(data, axis=axis, ignore_nan=True)
 
-    def nanbiscale(data, axis=None):
+    def nanbiscale(data, *, axis=None):
         return biweight_scale(data, axis=axis, ignore_nan=True)
 
     try:

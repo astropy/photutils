@@ -2552,7 +2552,7 @@ class TestThreadSafety:
             cat = SourceCatalog(self.data, self.segm)
             barrier = threading.Barrier(n_threads)
 
-            def worker(start, cat=cat, barrier=barrier):
+            def worker(start, *, cat=cat, barrier=barrier):
                 barrier.wait()
                 result = []
                 for i in range(start, start + len(names)):
@@ -2600,7 +2600,7 @@ class TestThreadSafety:
             cat = SourceCatalog(self.data, self.segm)
             barrier = threading.Barrier(n_threads)
 
-            def worker(start, cat=cat, barrier=barrier):
+            def worker(start, *, cat=cat, barrier=barrier):
                 barrier.wait()
                 result = []
                 for i in range(start, start + len(names)):

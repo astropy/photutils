@@ -255,7 +255,7 @@ class TestApertureStatsThreadSafety:
             expected = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(len(names))
 
-            def read(first, stats=stats, barrier=barrier):
+            def read(first, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 return np.asarray(getattr(stats, first))
 
@@ -292,7 +292,7 @@ class TestApertureStatsThreadSafety:
             stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(N_THREADS)
 
-            def read(start, stats=stats, barrier=barrier):
+            def read(start, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 order = names[start:] + names[:start]
                 return {name: np.asarray(getattr(stats, name))
@@ -330,7 +330,7 @@ class TestApertureStatsThreadSafety:
             stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(N_THREADS)
 
-            def read(start, stats=stats, barrier=barrier):
+            def read(start, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 result = []
                 for name in names[start:] + names[:start]:
@@ -371,7 +371,7 @@ class TestApertureStatsThreadSafety:
             stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(N_THREADS)
 
-            def read(start, stats=stats, barrier=barrier):
+            def read(start, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 result = []
                 for name in names[start:] + names[:start]:

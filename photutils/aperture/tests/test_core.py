@@ -75,7 +75,7 @@ class _CachedMaskAperture(CircularAperture):
     any in-place modification of the mask data is observable.
     """
 
-    def to_mask(self, method='exact', subpixels=5):
+    def to_mask(self, *, method='exact', subpixels=5):
         """
         Return the cached aperture mask, computing it if needed.
         """
@@ -572,7 +572,7 @@ class TestApertureIteration:
             names = aper._cached_properties
             barrier = threading.Barrier(n_threads)
 
-            def worker(start, aper=aper, names=names, barrier=barrier):
+            def worker(start, *, aper=aper, names=names, barrier=barrier):
                 barrier.wait()
                 copies = []
                 for name in names[start:] + names[:start]:
