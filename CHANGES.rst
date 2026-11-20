@@ -355,6 +355,31 @@ Bug Fixes
     reference is also accepted if its relative error is smaller than
     20%, unlike in the STSDAS task. [#2560]
 
+  - Fixed ``build_ellipse_model`` with ``high_harmonics=True``, which
+    flipped the sign of the harmonics where the interpolated local
+    gradient is positive. [#2564]
+
+  - Fixed ``build_ellipse_model`` with ``high_harmonics=True``
+    returning NaN over large regions of the model if any isophote
+    has a harmonic that could not be computed. Such harmonics are now
+    treated as zero. [#2564]
+
+  - Fixed ``EllipseFitter.fit`` modifying the geometry of its input
+    sample when the starting ellipticity is zero or fixed at
+    zero. [#2564]
+
+  - Fixed the ``tflux_e``, ``tflux_c``, ``npix_e``, and ``npix_c``
+    isophote attributes, which were computed with truncated pixel
+    distances for an ellipse center with integer coordinates.
+    [#2564]
+
+  - Fixed the sector areas of the ``'mean'`` and ``'median'``
+    integration modes for sectors that straddle a polar angle of 0
+    or pi, which affected the convergence criterion and the
+    ``pix_stddev`` and ``sarea`` isophote attributes. The sector
+    that extends past a polar angle of 2 pi now also includes all of
+    its pixels. [#2564]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -474,6 +499,10 @@ API Changes
     attribute now returns ``False`` for ``==`` and raises a
     ``TypeError`` for the ordering operators, instead of raising an
     ``AttributeError``. [#2550]
+
+  - ``Ellipse`` and ``EllipseSample`` now raise a ``ValueError`` for an
+    invalid ``integrmode`` instead of a ``KeyError`` when the image is
+    sampled. [#2564]
 
   - The ``n_iter``, ``n_data``, ``n_flag``, and ``stop_code``
     properties of ``IsophoteList`` now return integer arrays, and
