@@ -9,7 +9,7 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.isophote.geometry import _HARMONIC_PARAMETERS
+from photutils.isophote.geometry import _HARMONIC_PARAMETERS, _make_fix_array
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
 from photutils.isophote.isophote import CentralPixel, Isophote
@@ -402,7 +402,8 @@ class CentralEllipseFitter(EllipseFitter):
             hardcoded to `None` or other default value when appropriate.
         """
         # Default values
-        fixed_parameters = np.array([False, False, False, False])
+        fixed_parameters = _make_fix_array(fix_center=False, fix_pa=False,
+                                           fix_eps=False)
 
         self._sample.update(fixed_parameters=fixed_parameters)
         return CentralPixel(self._sample)

@@ -542,9 +542,9 @@ class Ellipse:
             if isophote.stop_code < 0:
                 self._fix_last_isophote(isophote_list, first_isophote)
 
-            # But if we get an error from the scipy fitter, bail out
-            # immediately. This usually happens at very small radii
-            # when the number of data points is too small.
+            # But if the harmonic fit failed, bail out immediately.
+            # This usually happens at very small radii when the number
+            # of data points is too small.
             if isophote.stop_code == 3:
                 break
 
