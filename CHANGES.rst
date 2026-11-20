@@ -54,6 +54,11 @@ New Features
     keyword to set the position from which the shift is measured.
     [#2559]
 
+  - The "No meaningful fit was possible" warning emitted by
+    ``Ellipse.fit_image`` now includes the semimajor axis length and
+    the stop code of the first isophote, the reason why it failed,
+    and what to check. [#2560]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -338,6 +343,15 @@ Bug Fixes
   - Fixed ``EllipseGeometry.find_center`` setting the center to (0, 0)
     for a negative ``threshold`` if no position had a positive figure
     of merit. [#2556]
+
+  - Fixed ``Ellipse.fit_image`` often failing at the first isophote
+    with the "No meaningful fit was possible" warning for low surface
+    brightness galaxies. ``EllipseFitter.fit`` now keeps the gradient
+    of the previous iteration as the reference when no meaningful
+    gradient can be measured, as in the STSDAS ``ellipse`` task. This
+    changes the fitted isophotes of noisy images. An image without a
+    detectable galaxy is now more likely to return isophotes that
+    follow the noise. [#2560]
 
 - ``photutils.profiles``
 

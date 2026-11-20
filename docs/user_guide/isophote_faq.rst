@@ -80,22 +80,30 @@ similar ellipse with a 10% larger semimajor axis.
 
 If the gradient so estimated is not meaningful, the algorithm extracts
 another #2 sample, this time using a 20% larger radius. In this
-context, a meaningful gradient means "shallower", but still close to
-within a factor of 3 of the previous isophote's gradient estimate.
+context, a meaningful gradient is negative and is either steeper than
+one third of a reference gradient or measured with a relative error
+smaller than 20%. The reference is the gradient of the previous
+iteration of the fit of the same isophote.
 
 If still no meaningful gradient can be measured, the algorithm uses
-the value measured at the last fitted isophote, but decreased (in
-absolute value) by a factor of 0.8. This factor is roughly what is
-expected from semimajor-axis geometrical-sampling steps of 10 - 20%
-and a de Vaucouleurs law or an exponential disk in its inner region (r
-<~ 5 req). When using the last isophote's gradient as an estimator for
-the current one, the current gradient error cannot be computed and is
-set to `None`.
+the reference gradient, but decreased (in absolute value) by a factor
+of 0.8. The current gradient error then cannot be computed and is set
+to `None`.
 
-As a last resort, if no previous gradient estimate is available, the
-algorithm uses the current gradient plus its error as the reference
-value. This case usually happens only at the first isophote fitted by
-the algorithm.
+As a last resort, if no reference is available, the algorithm uses the
+current gradient plus its error as the reference. This is the case for
+the first iteration of each isophote.
+
+These rules follow the STSDAS ``ellipse`` task, with two differences.
+The STSDAS task also keeps the reference from one isophote to the
+next, starting from a fixed guess. Its factor of 0.8 is roughly what
+is expected between two isophotes from semimajor-axis
+geometrical-sampling steps of 10 - 20% and a de Vaucouleurs law or an
+exponential disk in its inner region (r <~ 5 req). The STSDAS task
+also never accepts a gradient that is shallower than one third of the
+reference. Here such a gradient is accepted if its relative error is
+smaller than 20%. Otherwise, a single gradient that is much steeper
+than the following ones would replace them for several iterations.
 
 The use of approximate gradient estimators may seem in contradiction
 with the fact that isophote fitting errors depend on gradient error,
@@ -240,3 +248,80 @@ the iterations, not the total distance from the input center. When a
 single correction exceeds ``wander``, IRAF stops iterating and extracts
 the following isophotes in the same direction (outward or inward)
 without fitting them.
+
+
+9. Why does the fit fail for images with a low signal-to-noise ratio?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The fitting algorithm corrects the ellipse parameters by dividing the
+harmonic amplitudes by the local radial gradient, as described above.
+The gradient is measured from the mean intensities of two ellipses
+whose semimajor axis lengths differ by only 10%. For a low surface
+brightness galaxy, or any image where the noise of a pixel is
+comparable to the galaxy intensity, the difference between these two
+means can be smaller than its noise. The corrections are then
+dominated by noise. The ellipse wanders or diverges, and the fit
+stops after a few isophotes. If the first isophote cannot be
+fit, :meth:`~photutils.isophote.Ellipse.fit_image` emits a "No
+meaningful fit was possible" warning and returns an empty list.
+
+No setting of the fit parameters solves this reliably. In particular,
+the ``maxgerr`` parameter only controls where the outward growth
+stops, so it does not help the first isophote. Multiplying the image
+by a constant does not help either, because the algorithm does not
+depend on the intensity scale.
+
+Whether the first isophote can be fit depends on the noise along one
+ellipse. A fit that fails therefore often succeeds from a slightly
+different starting semimajor axis length (the ``sma0`` parameter),
+e.g., one that is 10% larger or smaller.
+
+The opposite failure is also possible.
+:meth:`~photutils.isophote.Ellipse.fit_image` is not a detection
+test. If there is no detectable galaxy at the starting position, the
+fit can follow the noise and return isophotes without a warning.
+Check that the galaxy is detected before fitting it, e.g., with the
+tools described in :ref:`image_segmentation`.
+
+The most effective solution is to increase the signal-to-noise ratio
+of the pixels by smoothing the image before fitting it, e.g., with a
+Gaussian kernel with a standard deviation of 2 to 3 pixels:
+
+.. doctest-skip::
+
+    >>> from astropy.convolution import Gaussian2DKernel, convolve
+    >>> from photutils.isophote import Ellipse
+    >>> smoothed = convolve(data, Gaussian2DKernel(2.0))
+    >>> ellipse = Ellipse(smoothed, geometry=geometry)
+    >>> isolist = ellipse.fit_image()
+
+Fits of the smoothed image are much more likely to succeed, and they
+reach larger semimajor axis lengths.
+
+Smoothing lowers the central intensities and makes the isophotes
+rounder at semimajor axis lengths comparable to the kernel size. To
+measure intensities that are not affected by the smoothing, use the
+:meth:`~photutils.isophote.Ellipse.measure_isophotes` method to
+measure the original image along the ellipses that were fit to the
+smoothed image (see :ref:`isophote_fixed_ellipses`):
+
+.. doctest-skip::
+
+    >>> isolist_data = Ellipse(data).measure_isophotes(isolist)
+
+If the ellipse geometry of the galaxy is already known, the isophotes
+can also be extracted without fitting them. With ``maxrit=0``, all the
+isophotes have the geometry of the input
+`~photutils.isophote.EllipseGeometry`. The ``maxsma`` parameter must
+then be set, because otherwise the outward growth stops where the
+gradient error exceeds ``maxgerr``:
+
+.. doctest-skip::
+
+    >>> ellipse = Ellipse(data, geometry=geometry)
+    >>> isolist = ellipse.fit_image(maxrit=0.0, maxsma=60.0)
+
+The ``'mean'`` and ``'median'`` integration modes with a larger
+``step`` (e.g., 0.3) average more pixels for each sample point. They
+can help for moderately noisy images, but they are less reliable than
+smoothing the image.

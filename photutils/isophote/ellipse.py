@@ -481,7 +481,8 @@ class Ellipse:
             # stored, so an empty list means that the first isophote
             # could not be fit at all.
             if not isophote_list:
-                msg = 'No meaningful fit was possible.'
+                msg = self._first_isophote_failure_message(isophote,
+                                                           fflag)
                 warnings.warn(msg, AstropyUserWarning)
                 return IsophoteList([])
 
@@ -501,7 +502,8 @@ class Ellipse:
                 # the fitting algorithm to find any meaningful solution.
 
                 if len(isophote_list) == 1:
-                    msg = 'No meaningful fit was possible.'
+                    msg = self._first_isophote_failure_message(isophote,
+                                                               fflag)
                     warnings.warn(msg, AstropyUserWarning)
                     return IsophoteList([])
 
@@ -916,6 +918,36 @@ class Ellipse:
 
         # Build isophote without iterating with an EllipseFitter.
         return Isophote(sample, 0, valid=True, stop_code=4)
+
+    @staticmethod
+    def _first_isophote_failure_message(isophote, fflag):
+        """
+        Return the warning message for a first isophote that could not
+        be fit, with the reason given by its stop code.
+        """
+        check_data = ('Check that the starting ellipse is inside the image '
+                      'and that its data are not masked.')
+        if not isophote.valid:
+            reason = ('it has too few valid data points or its harmonic '
+                      'fit failed')
+            advice = check_data
+        elif isophote.stop_code == 1:
+            reason = ('the fraction of valid data points is smaller than '
+                      f'fflag ({fflag})')
+            advice = check_data
+        else:
+            reason = ('the ellipse diverged or no meaningful intensity '
+                      'gradient could be measured')
+            advice = ('Check the starting ellipse geometry, or try a '
+                      'slightly different starting semimajor axis length '
+                      '(sma0). For an image with a low signal-to-noise '
+                      'ratio, see the isophote FAQ '
+                      '(https://photutils.readthedocs.io/en/latest/'
+                      'user_guide/isophote_faq.html).')
+
+        return ('No meaningful fit was possible. The first isophote '
+                f'(sma={isophote.sma:g}) failed with stop code '
+                f'{isophote.stop_code} because {reason}. {advice}')
 
     @staticmethod
     def _fix_last_isophote(isophote_list, reference):

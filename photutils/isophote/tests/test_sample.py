@@ -300,6 +300,57 @@ def test_update_repeated():
     assert sample.gradient != gradient
 
 
+@pytest.mark.parametrize(('profile', 'modulation', 'expected'),
+                         [('rising', 0.0, None),
+                          ('shallow', 0.0, -1.478),
+                          ('shallow', 1.0, None),
+                          ('similar', 1.0, -10.92)])
+def test_meaningful_gradient(profile, modulation, expected):
+    """
+    Test which measured gradients are meaningful with respect to the
+    reference gradient from the last update.
+
+    The reference is the gradient of a steep galaxy. The sample is then
+    moved to a second source. Its gradient is not meaningful if it is
+    positive, or if it is more than 3 times shallower than the
+    reference and its relative error is larger than 20%. The gradient
+    is then 0.8 times the reference and has no error. An azimuthal
+    modulation of the second source increases the gradient error
+    without changing the gradient.
+    """
+    yy, xx = np.mgrid[0:201, 0:301]
+    galaxy = 1000.0 * np.exp(-np.hypot(xx - 60, yy - 100) / 10.0)
+    radius = np.hypot(xx - 220, yy - 100)
+    theta = np.arctan2(yy - 100, xx - 220)
+    profiles = {'rising': 10.0 + 0.5 * radius,
+                'shallow': 100.0 * np.exp(-radius / 40.0),
+                'similar': 900.0 * np.exp(-radius / 10.0)}
+    source = profiles[profile] * (1.0 + modulation * np.cos(6.0 * theta))
+    data = np.where(xx < 140, galaxy, source)
+
+    sample = EllipseSample(data, 20.0, x0=60.0, y0=100.0, eps=0.0)
+    sample.update()
+    reference = sample.gradient
+    assert_allclose(reference, -12.27, atol=0.01)
+
+    sample.geometry.x0 = 220.0
+    sample.values = None
+    sample.update()
+    if expected is None:
+        assert_allclose(sample.gradient, 0.8 * reference)
+        assert sample.gradient_err is None
+        assert sample.gradient_rel_err is None
+    else:
+        assert_allclose(sample.gradient, expected, rtol=0.01)
+
+        # The modulated source has a large gradient error, so its
+        # gradient is meaningful only because it is steep enough.
+        if modulation:
+            assert sample.gradient_rel_err > 0.2
+        else:
+            assert sample.gradient_rel_err < 0.2
+
+
 def test_mixed_infinities():
     """
     Test that neighboring pixels with infinities of opposite sign are
