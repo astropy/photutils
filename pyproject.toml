@@ -165,11 +165,9 @@ addopts = [
     '-ra',
     '--color=yes',
     '--doctest-rst',
-    '--strict-config',
-    '--strict-markers',
 ]
 log_level = 'INFO'
-xfail_strict = true
+strict = true
 remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
