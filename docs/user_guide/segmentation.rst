@@ -104,7 +104,8 @@ image showing the detected sources:
     from astropy.visualization import simple_norm
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import detect_sources, make_2dgaussian_kernel
+    from photutils.segmentation import (detect_sources,
+                                        make_2dgaussian_kernel)
 
     data = make_100gaussians_image()
 
@@ -404,8 +405,7 @@ segmentation image and the science image:
     from astropy.visualization import simple_norm
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
-    from photutils.segmentation import (SourceFinder,
-                                        make_2dgaussian_kernel)
+    from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
 
     data = make_100gaussians_image()
 

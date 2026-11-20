@@ -275,7 +275,6 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-
         from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import CurveOfGrowth
@@ -308,7 +307,6 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-
         from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import CurveOfGrowth
@@ -343,7 +341,6 @@ class CurveOfGrowth(_CurveOfGrowthBase):
         import numpy as np
         from astropy.modeling.models import Gaussian2D
         from astropy.visualization import simple_norm
-
         from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import CurveOfGrowth
@@ -623,7 +620,6 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-
         from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import EnsquaredCurveOfGrowth
@@ -658,7 +654,6 @@ class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
         import numpy as np
         from astropy.modeling.models import Gaussian2D
         from astropy.visualization import simple_norm
-
         from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import EnsquaredCurveOfGrowth
@@ -988,7 +983,6 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         import matplotlib.pyplot as plt
         import numpy as np
         from astropy.modeling.models import Gaussian2D
-
         from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import EllipticalCurveOfGrowth
@@ -1024,7 +1018,6 @@ class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
         import numpy as np
         from astropy.modeling.models import Gaussian2D
         from astropy.visualization import simple_norm
-
         from photutils.centroids import centroid_2dg
         from photutils.datasets import make_noise_image
         from photutils.profiles import EllipticalCurveOfGrowth

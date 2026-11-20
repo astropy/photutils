@@ -593,10 +593,9 @@ channel 4 PSF:
     import matplotlib.pyplot as plt
     from astropy.io import fits
     from astropy.visualization import SimpleNorm
-    from scipy.signal import fftconvolve
-
     from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
+    from scipy.signal import fftconvolve
 
     url = ('https://github.com/astropy/photutils-datasets/raw/main/'
            'data/irac_ch{}_flight.fits')
@@ -663,10 +662,9 @@ channel 4 PSF target:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.io import fits
-    from scipy.signal import fftconvolve
-
     from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
+    from scipy.signal import fftconvolve
 
     url = ('https://github.com/astropy/photutils-datasets/raw/main/'
            'data/irac_ch{}_flight.fits')
@@ -728,11 +726,10 @@ agrees with the channel 4 target:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.io import fits
-    from scipy.signal import fftconvolve
-
     from photutils.profiles import CurveOfGrowth
     from photutils.psf_matching import (SplitCosineBellWindow, make_kernel,
                                         make_wiener_kernel)
+    from scipy.signal import fftconvolve
 
     url = ('https://github.com/astropy/photutils-datasets/raw/main/'
            'data/irac_ch{}_flight.fits')
