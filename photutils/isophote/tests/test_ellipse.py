@@ -54,6 +54,15 @@ def _assert_fflag_stop(isolist, fflag=0.7):
     assert flagged[-2] <= 1.0 - fflag
 
 
+def _assert_same_geometry(isophote1, isophote2):
+    """
+    Assert that two isophotes have the same center, ellipticity, and
+    position angle.
+    """
+    for name in ('x0', 'y0', 'eps', 'pa'):
+        assert getattr(isophote1, name) == getattr(isophote2, name)
+
+
 class TestEllipse:
     def setup_class(self):
         # Centered, tilted galaxy
@@ -211,6 +220,63 @@ class TestEllipse:
         assert isophote.y0 == expected.y0
         assert isophote.eps == expected.eps
         assert isophote.pa == expected.pa
+
+    def test_first_isophote_minit(self):
+        """
+        Test that only the first isophote runs twice the minimum number
+        of iterations.
+        """
+        minit = 10
+        isolist = Ellipse(self.data).fit_image(minit=minit, maxsma=20.0)
+        first = isolist.get_closest(10.0)
+        assert first.sma == 10.0
+        assert first.n_iter >= 2 * minit
+        outer = isolist.sma > first.sma
+        assert np.all(isolist.n_iter[outer] >= minit)
+        assert np.all(isolist.n_iter[outer] < 2 * minit)
+
+    def test_failed_outward_isophote_geometry(self):
+        """
+        Test that an isophote whose outward fit failed is extracted
+        with the geometry of the previous isophote.
+
+        A bright ring makes the gradient positive for the isophotes
+        just inside of it, so their fits fail.
+        """
+        yy, xx = np.mgrid[0:201, 0:201]
+        galaxy_radius = np.hypot(xx - 100, (yy - 100) / 0.8)
+        ring_radius = np.hypot(xx - 100, yy - 100)
+        data = (1000.0 * np.exp(-galaxy_radius / 10.0)
+                + 100.0 * np.exp(-0.125 * (ring_radius - 40.0)**2))
+        geometry = EllipseGeometry(100.0, 100.0, 10.0, 0.2, 0.0)
+        isolist = Ellipse(data, geometry=geometry).fit_image()
+
+        # The outward growth stops after two consecutive failed fits.
+        assert_array_equal(isolist.stop_code[-3:], [0, 5, 5])
+        _assert_same_geometry(isolist[-2], isolist[-3])
+        _assert_same_geometry(isolist[-1], isolist[-2])
+        first = isolist.get_closest(10.0)
+        assert isolist[-3].eps != first.eps
+
+    def test_failed_inward_isophote_geometry(self):
+        """
+        Test that the isophotes whose inward fits failed are extracted
+        with the geometry of the first fitted isophote.
+        """
+        isolist = Ellipse(self.data).fit_image(maxsma=20.0)
+        first = isolist.get_closest(10.0)
+        failed = [isophote for isophote in isolist
+                  if isophote.stop_code == 5]
+        assert len(failed) > 0
+        for isophote in failed:
+            assert isophote.sma < first.sma
+            _assert_same_geometry(isophote, first)
+
+        # The isophote next to the first one was fitted, so its geometry
+        # is not the same.
+        neighbor = isolist.get_closest(10.0 / 1.1)
+        assert neighbor.stop_code == 0
+        assert neighbor.eps != first.eps
 
     def test_threshold_deprecated(self):
         geometry = EllipseGeometry(250.0, 260.0, 10.0, 0.2, PA)

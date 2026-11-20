@@ -111,6 +111,25 @@ def test_everything_fixed():
         250.0, 260.0, 0.3, 1.0)
 
 
+def test_fit_keeps_sample_settings():
+    """
+    Test that the sample of the fitted isophote, which is made by the
+    parameter correctors, keeps the settings of the input sample.
+    """
+    sample = EllipseSample(DATA, 40.0, astep=0.2, eps=0.3, sclip=2.5,
+                           n_clip=2, integrmode=MEAN)
+    isophote = EllipseFitter(sample).fit()
+    fitted_sample = isophote.sample
+    assert isophote.stop_code == 0
+    assert fitted_sample is not sample
+    assert fitted_sample.sclip == 2.5
+    assert fitted_sample.n_clip == 2
+    assert fitted_sample.integrmode == MEAN
+    assert fitted_sample.geometry.sma == 40.0
+    assert fitted_sample.geometry.astep == 0.2
+    assert not fitted_sample.geometry.linear_growth
+
+
 def test_fitting_raw():
     """
     This test performs a raw (no EllipseFitter), 1-step correction in
