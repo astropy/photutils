@@ -54,6 +54,11 @@ New Features
     keyword to set the position from which the shift is measured.
     [#2559]
 
+  - The "No meaningful fit was possible" warning emitted by
+    ``Ellipse.fit_image`` now includes the semimajor axis length and
+    the stop code of the first isophote, the reason why it failed,
+    and what to check. [#2560]
+
 Bug Fixes
 ^^^^^^^^^
 
