@@ -71,21 +71,19 @@ def first_and_second_harmonic_function(phi, c):
     Compute the harmonic function value used to calculate the
     corrections for ellipse fitting.
 
-    This function includes simultaneously both the first and second
-    order harmonics:
+    This function includes both the first- and second-order harmonics:
 
     .. math::
 
-        f(phi) = c[0] + c[1]*\sin(phi) + c[2]*\cos(phi) +
-                 c[3]*\sin(2*phi) + c[4]*\cos(2*phi)
+        f(\phi) = c[0] + c[1]*\sin(\phi) + c[2]*\cos(\phi) +
+                  c[3]*\sin(2*\phi) + c[4]*\cos(2*\phi)
 
     Parameters
     ----------
     phi : float or `~numpy.ndarray`
-        The angle(s) along the elliptical path, going towards the positive
-        y-axis, starting coincident with the position angle. That is, the
-        angles are defined from the semimajor axis that lies in
-        the positive x quadrant.
+        The angle(s) (radians) along the elliptical path, measured
+        counterclockwise from the end of the semimajor axis that points
+        in the direction of the position angle.
     c : `~numpy.ndarray` of shape (5,)
         Array containing the five harmonic coefficients.
 
@@ -100,23 +98,22 @@ def first_and_second_harmonic_function(phi, c):
 
 def fit_first_and_second_harmonics(phi, intensities):
     r"""
-    Fit the first and second harmonic function values to a set of
-    (angle, intensity) pairs.
+    Fit the first and second harmonics to a set of (angle, intensity)
+    pairs.
 
     This function is used to compute corrections for ellipse fitting:
 
     .. math::
 
-        f(phi) = y0 + a1*\sin(phi) + b1*\cos(phi) + a2*\sin(2*phi) +
-                 b2*\cos(2*phi)
+        f(\phi) = y0 + a1*\sin(\phi) + b1*\cos(\phi) + a2*\sin(2*\phi) +
+                  b2*\cos(2*\phi)
 
     Parameters
     ----------
-    phi : float or `~numpy.ndarray`
-        The angle(s) along the elliptical path, going towards the positive
-        y-axis, starting coincident with the position angle. That is, the
-        angles are defined from the semimajor axis that lies in
-        the positive x quadrant.
+    phi : 1D `~numpy.ndarray`
+        The angle(s) (radians) along the elliptical path, measured
+        counterclockwise from the end of the semimajor axis that points
+        in the direction of the position angle.
     intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.
@@ -148,25 +145,25 @@ def fit_first_and_second_harmonics(phi, intensities):
 
 def fit_upper_harmonic(phi, intensities, order):
     r"""
-    Fit upper harmonic function to a set of (angle, intensity) pairs.
+    Fit an upper harmonic function to a set of (angle, intensity) pairs.
 
     With ``order`` set to 3 or 4, the resulting amplitudes, divided by
-    the semimajor axis length and local gradient, measure the deviations
-    from perfect ellipticity.
+    the semimajor axis length and the absolute value of the local
+    radial intensity gradient, measure the deviations from perfect
+    ellipticity.
 
     The harmonic function that is fit is:
 
     .. math::
 
-        y(phi, order) = y0 + An*\sin(order*phi) + Bn*\cos(order*phi)
+        y(\phi, order) = y0 + An*\sin(order*\phi) + Bn*\cos(order*\phi)
 
     Parameters
     ----------
-    phi : float or `~numpy.ndarray`
-        The angle(s) along the elliptical path, going towards the positive
-        y-axis, starting coincident with the position angle. That is, the
-        angles are defined from the semimajor axis that lies in
-        the positive x quadrant.
+    phi : 1D `~numpy.ndarray`
+        The angle(s) (radians) along the elliptical path, measured
+        counterclockwise from the end of the semimajor axis that points
+        in the direction of the position angle.
     intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.
@@ -176,7 +173,7 @@ def fit_upper_harmonic(phi, intensities, order):
     Returns
     -------
     coeffs : 1D `~numpy.ndarray`
-        The fitted harmonic values ``(y0, An, Bn)``.
+        The fitted harmonic coefficient values ``(y0, An, Bn)``.
 
     covariance : 2D `~numpy.ndarray` or `None`
         The unscaled covariance matrix of the coefficients. It must be
