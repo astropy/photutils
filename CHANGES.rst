@@ -339,6 +339,15 @@ Bug Fixes
     for a negative ``threshold`` if no position had a positive figure
     of merit. [#2556]
 
+  - Fixed ``Ellipse.fit_image`` often failing at the first isophote
+    with the "No meaningful fit was possible" warning for low surface
+    brightness galaxies. ``EllipseFitter.fit`` now keeps the gradient
+    of the previous iteration as the reference when no meaningful
+    gradient can be measured, as in the STSDAS ``ellipse`` task. This
+    changes the fitted isophotes of noisy images. An image without a
+    detectable galaxy is now more likely to return isophotes that
+    follow the noise. [#2560]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
