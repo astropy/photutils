@@ -196,6 +196,23 @@ def test_isophote_small_flux_box():
     assert isophote.npix_c == 0
 
 
+def test_isophote_fluxes_integer_center():
+    """
+    Test that an integer ellipse center gives the same fluxes as the
+    equivalent float center.
+    """
+    data = np.ones((51, 51))
+    npix = []
+    for x0 in (25, 25.0):
+        geometry = EllipseGeometry(x0, x0, 10.0, 0.3, 0.5)
+        sample = EllipseSample(data, 10.0, geometry=geometry)
+        sample.update()
+        isophote = Isophote(sample, 1, valid=True, stop_code=0)
+        npix.append((isophote.npix_c, isophote.npix_e))
+    assert npix[0] == npix[1]
+    assert_allclose(npix[1][0], np.pi * 10.0**2, rtol=0.02)
+
+
 def test_isophote_round_pa_err():
     """
     Test that the position angle error of a round isophote is zero.

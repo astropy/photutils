@@ -33,6 +33,21 @@ def test_geometry(astep, linear_growth):
     assert_allclose(vertex_y, [316.1, 329.7, 312.5, 325.3], atol=0.1)
 
 
+def test_to_polar_integer_input():
+    """
+    Test that integer coordinates and centers do not truncate the
+    polar radii.
+    """
+    geometry = EllipseGeometry(0, 0, 10.0, 0.3, 0.5)
+    x = np.array([[1, 2], [3, 4]])
+    y = np.array([[1, 1], [2, 2]])
+    radius, angle = geometry.to_polar(x, y)
+    expected = EllipseGeometry(0.0, 0.0, 10.0, 0.3, 0.5).to_polar(
+        x.astype(float), y.astype(float))
+    assert_allclose(radius, expected[0])
+    assert_allclose(angle, expected[1])
+
+
 def test_to_polar():
     # Trivial case of a circle centered in (0.0, 0.0)
     geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,

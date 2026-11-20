@@ -533,8 +533,9 @@ class EllipseGeometry:
         return radius, angle
 
     def _to_polar_vectorized(self, x, y):
-        x1 = np.atleast_2d(x) - self.x0
-        y1 = np.atleast_2d(y) - self.y0
+        # Integer coordinates and centers would truncate the radii.
+        x1 = np.atleast_2d(x).astype(float) - self.x0
+        y1 = np.atleast_2d(y).astype(float) - self.y0
 
         radius = x1**2 + y1**2
         angle = np.ones(radius.shape)
