@@ -240,3 +240,80 @@ the iterations, not the total distance from the input center. When a
 single correction exceeds ``wander``, IRAF stops iterating and extracts
 the following isophotes in the same direction (outward or inward)
 without fitting them.
+
+
+9. Why does the fit fail for images with a low signal-to-noise ratio?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The fitting algorithm corrects the ellipse parameters by dividing the
+harmonic amplitudes by the local radial gradient, as described above.
+The gradient is measured from the mean intensities of two ellipses
+whose semimajor axis lengths differ by only 10%. For a low surface
+brightness galaxy, or any image where the noise of a pixel is
+comparable to the galaxy intensity, the difference between these two
+means can be smaller than its noise. The corrections are then
+dominated by noise. The ellipse wanders or diverges, and the fit
+stops after a few isophotes. If the first isophote cannot be
+fit, :meth:`~photutils.isophote.Ellipse.fit_image` emits a "No
+meaningful fit was possible" warning and returns an empty list.
+
+No setting of the fit parameters solves this reliably. In particular,
+the ``maxgerr`` parameter only controls where the outward growth
+stops, so it does not help the first isophote. Multiplying the image
+by a constant does not help either, because the algorithm does not
+depend on the intensity scale.
+
+Whether the first isophote can be fit depends on the noise along one
+ellipse. A fit that fails therefore often succeeds from a slightly
+different starting semimajor axis length (the ``sma0`` parameter),
+e.g., one that is 10% larger or smaller.
+
+The opposite failure is also possible.
+:meth:`~photutils.isophote.Ellipse.fit_image` is not a detection
+test. If there is no detectable galaxy at the starting position, the
+fit can follow the noise and return isophotes without a warning.
+Check that the galaxy is detected before fitting it, e.g., with the
+tools described in :ref:`image_segmentation`.
+
+The most effective solution is to increase the signal-to-noise ratio
+of the pixels by smoothing the image before fitting it, e.g., with a
+Gaussian kernel with a standard deviation of 2 to 3 pixels:
+
+.. doctest-skip::
+
+    >>> from astropy.convolution import Gaussian2DKernel, convolve
+    >>> from photutils.isophote import Ellipse
+    >>> smoothed = convolve(data, Gaussian2DKernel(2.0))
+    >>> ellipse = Ellipse(smoothed, geometry=geometry)
+    >>> isolist = ellipse.fit_image()
+
+Fits of the smoothed image are much more likely to succeed, and they
+reach larger semimajor axis lengths.
+
+Smoothing lowers the central intensities and makes the isophotes
+rounder at semimajor axis lengths comparable to the kernel size. To
+measure intensities that are not affected by the smoothing, use the
+:meth:`~photutils.isophote.Ellipse.measure_isophotes` method to
+measure the original image along the ellipses that were fit to the
+smoothed image (see :ref:`isophote_fixed_ellipses`):
+
+.. doctest-skip::
+
+    >>> isolist_data = Ellipse(data).measure_isophotes(isolist)
+
+If the ellipse geometry of the galaxy is already known, the isophotes
+can also be extracted without fitting them. With ``maxrit=0``, all the
+isophotes have the geometry of the input
+`~photutils.isophote.EllipseGeometry`. The ``maxsma`` parameter must
+then be set, because otherwise the outward growth stops where the
+gradient error exceeds ``maxgerr``:
+
+.. doctest-skip::
+
+    >>> ellipse = Ellipse(data, geometry=geometry)
+    >>> isolist = ellipse.fit_image(maxrit=0.0, maxsma=60.0)
+
+The ``'mean'`` and ``'median'`` integration modes with a larger
+``step`` (e.g., 0.3) average more pixels for each sample point. They
+can help for moderately noisy images, but they are less reliable than
+smoothing the image.
