@@ -79,12 +79,16 @@ def test_positive_gradient():
 @pytest.mark.parametrize('ring_radius', [21.0, 23.0])
 def test_nonmeaningful_gradient_uses_previous(ring_radius):
     """
-    Test that the iterations continue when no meaningful gradient can
-    be measured for a corrected ellipse.
+    Test that the iterations continue when the gradient first measured
+    for a corrected ellipse is not meaningful.
 
-    A bright ring just outside of the fitted ellipse makes the gradient
-    measured for the fourth ellipse positive. As in the STSDAS ellipse
-    task, the gradient of the previous iteration is then used instead,
+    A bright ring just outside of the fitted ellipse distorts the
+    gradient. For a ring radius of 21, the gradient measured for the
+    third ellipse is 20 times shallower than the gradient of the
+    previous iteration and has a large error. The gradient measured
+    at a larger radius is used instead. For a ring radius of 23, the
+    gradient measured for the fourth ellipse is positive at both
+    radii. The gradient of the previous iteration is then used instead,
     made slightly shallower.
     """
     yy, xx = np.mgrid[0:201, 0:201]
@@ -401,7 +405,11 @@ class TestM51:
 
         # Last sample taken by the original code, before turning
         # inwards. The original code ran this fit for the maximum
-        # number of iterations.
+        # number of iterations and measured an intensity of 153, an
+        # ellipticity of 0.015, and 380 data points. The corrected
+        # ellipses cycle through three ellipticities that are far
+        # apart, so the best one does not depend on rounding. The
+        # tolerances below include the values of the original code.
         sample = EllipseSample(self.data, 61.16, x0=253.15, y0=260.15,
                                eps=0.219,
                                position_angle=np.deg2rad(77.5 + 90))
@@ -410,8 +418,9 @@ class TestM51:
 
         assert isophote.stop_code == 2
         assert isophote.n_iter == 50
-        assert isophote.n_data == 383
-        assert_allclose(isophote.intens, 153.2, atol=0.1)
+        assert_allclose(isophote.n_data, 383, atol=3)
+        assert_allclose(isophote.intens, 153.2, atol=0.5)
+        assert_allclose(isophote.eps, 0.016, atol=0.005)
 
     def test_m51_outer(self):
         # Sample taken at the outskirts of the image, so many

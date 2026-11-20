@@ -219,6 +219,38 @@ def test_upper_harmonics_sign():
                       < 0.2 * isolist.b4[30:][complete])
 
 
+@pytest.mark.parametrize('sign', [1, -1])
+def test_upper_harmonics_values(sign):
+    """
+    Test that the upper harmonics of an image with known deviations
+    from elliptical isophotes are measured with the correct signs and
+    amplitudes.
+
+    The isophotes are ellipses whose radius at the polar angle ``phi``
+    from the semimajor axis is multiplied by ``1 + a3 * sin(3 * phi)
+    + b3 * cos(3 * phi) + a4 * sin(4 * phi) + b4 * cos(4 * phi)``.
+    """
+    coeffs = sign * np.array([0.02, -0.03, -0.015, 0.025])
+    eps = 0.3
+    pa = 0.5
+    yy, xx = np.mgrid[0:201, 0:201]
+    radius = np.hypot(xx - 100, yy - 100)
+    phi = np.arctan2(yy - 100, xx - 100) - pa
+    ellipse_radius = ((1.0 - eps)
+                      / np.hypot((1.0 - eps) * np.cos(phi), np.sin(phi)))
+    deviation = (coeffs[0] * np.sin(3 * phi) + coeffs[1] * np.cos(3 * phi)
+                 + coeffs[2] * np.sin(4 * phi) + coeffs[3] * np.cos(4 * phi))
+    sma = radius / ellipse_radius / (1.0 + deviation)
+    data = 1000.0 * np.exp(-sma / 15.0)
+
+    geometry = EllipseGeometry(x0=100, y0=100, sma=20, eps=eps, pa=pa)
+    isolist = Ellipse(data, geometry=geometry).fit_image(maxsma=50.0)
+    mask = (isolist.sma > 10) & (isolist.sma < 45)
+    assert np.count_nonzero(mask) > 10
+    for name, coeff in zip(('a3', 'b3', 'a4', 'b4'), coeffs, strict=True):
+        assert_allclose(getattr(isolist, name)[mask], coeff, rtol=0.3)
+
+
 def test_harmonic_fits_exact():
     """
     Test that the harmonic fits recover the exact coefficients and the
