@@ -3,6 +3,8 @@
 Tests for the isophote module.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -288,6 +290,13 @@ class TestIsophoteList:
         tbl = isolist.to_table(columns=['eps'])
         assert tbl.colnames == ['eps']
 
+        # A property and its table column name can both be requested.
+        columns = ['eps', 'ellipticity', 'intens_err', 'int_err']
+        tbl = isolist.to_table(columns=columns)
+        assert tbl.colnames == columns
+        assert_allclose(tbl['eps'], tbl['ellipticity'])
+        assert_allclose(tbl['int_err'], tbl['intens_err'])
+
     def test_to_table_deprecated_column_warns_once(self):
         match = "'niter' attribute was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning,
@@ -338,6 +347,13 @@ class TestIsophoteList:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             n_iter = self.isolist_sma10.niter
         assert_allclose(n_iter, self.isolist_sma10.n_iter)
+
+    def test_isophote_deprecated_attribute(self):
+        isophote = self.isolist_sma10[2]
+        match = "'niter' attribute was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            n_iter = isophote.niter
+        assert n_iter == isophote.n_iter
 
     def test_isophote_methods(self):
         isophote = self.isolist_sma10[2]
@@ -482,6 +498,34 @@ class TestIsophoteList:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = isolist.to_table(columns=['grad_error'])
         assert tbl.colnames == ['gradient_err']
+
+
+@pytest.mark.parametrize(('width', 'n_data'),
+                         [(0.22, 3), (0.3, 4), (0.33, 5), (0.4, 6)])
+def test_isophote_few_points_warnings(width, n_data):
+    """
+    Test that no warnings are emitted for an isophote with as many or
+    slightly more data points than harmonic coefficients.
+
+    The warnings are recorded because the errors raised for them by the
+    pytest warning filter are caught in the harmonic computations.
+    """
+    data = make_test_image(seed=0)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    angle = np.arctan2(yy - 256, xx - 256)
+    mask = ~((angle > 0.0) & (angle < width))
+    sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter('always')
+        sample.update(fixed_parameters=DEFAULT_FIX)
+        isophote = Isophote(sample, 1, valid=False, stop_code=3)
+    assert len(record) == 0
+    assert isophote.n_data == n_data
+
+    # The third and fourth harmonic fits have 3 coefficients and the
+    # first and second harmonic fit has 5.
+    assert (isophote.a3 is None) == (n_data <= 3)
+    assert (isophote.x0_err == 0.0) == (n_data <= 5)
 
 
 @pytest.mark.parametrize(('width', 'has_deviations'),

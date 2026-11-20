@@ -1050,34 +1050,37 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         raise ValueError(msg)
 
     # Replace with QTable in 4.0
+    since = '3.0'
+    until = '4.0'
     isotable = create_empty_deprecated_qtable(
-        _deprecation_map, since='3.0', until='4.0')
+        _deprecation_map, since=since, until=until)
 
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 
+    # Pairs of the property that holds the values of a column and the
+    # table column name.
     if table_columns == ['all']:
-        properties = _rename_properties(all_names)
+        properties = list(_rename_properties(all_names).items())
     elif table_columns == ['main']:
-        properties = _rename_properties(_MAIN_PROPERTIES)
+        properties = list(_rename_properties(_MAIN_PROPERTIES).items())
     else:
-        # Map each requested name to the property that holds its values
-        # and to its table column name. A deprecated name uses the new
-        # property and column names, with a single deprecation warning
-        # instead of one per isophote.
-        properties = {}
+        # A deprecated name uses the new property and column names,
+        # with a single deprecation warning instead of one per isophote.
+        # A property and its table column name can both be requested.
+        properties = []
         for name in table_columns:
             if name in _deprecation_map:
                 new_name = _deprecation_map[name]
                 msg = (f'The {name!r} attribute was deprecated in version '
-                       f'3.0. Use {new_name!r} instead. It will be removed '
-                       'in version 4.0.')
+                       f'{since}. Use {new_name!r} instead. It will be '
+                       f'removed in version {until}.')
                 warnings.warn(msg, PhotutilsDeprecationWarning,
                               stacklevel=4)
-                properties[new_name] = new_name
+                properties.append((new_name, new_name))
             else:
-                properties[column_aliases.get(name, name)] = name
+                properties.append((column_aliases.get(name, name), name))
 
-    for k, v in properties.items():
+    for k, v in properties:
         isotable[v] = getattr(isophote_list, k)
 
         if k in ('pa', 'pa_err'):
