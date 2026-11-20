@@ -64,6 +64,28 @@ larger semimajor axis lengths. See the :ref:`changelog` for the
 complete list of fixes.
 
 
+Isophote Measurements on Fixed Ellipses
+=======================================
+
+The new :meth:`~photutils.isophote.Ellipse.measure_isophotes` method
+measures an image along a given set of ellipses without fitting them,
+like the IRAF ``ellipse`` task with an input ellipse table (the
+``inellip`` parameter). A common use is to measure an image in a second
+band along the isophotes fit to a reference image, so that both
+intensity profiles are measured along the same elliptical paths (e.g.,
+for a color profile). For two aligned images ``data1`` and ``data2``::
+
+    >>> from photutils.isophote import Ellipse
+    >>> isolist1 = Ellipse(data1).fit_image()
+    >>> isolist2 = Ellipse(data2).measure_isophotes(isolist1)
+
+The returned `~photutils.isophote.IsophoteList` has one isophote for
+each input ellipse, with the same geometry. The input can also be a
+sequence of `~photutils.isophote.EllipseGeometry` objects that define
+the ellipses directly. See :ref:`isophote_fixed_ellipses` for more
+details.
+
+
 Dependency Version Updates
 ==========================
 

@@ -245,6 +245,8 @@ the elliptical model image, and the residual image:
     ax3.set_title('Residual')
 
 
+.. _isophote_fixed_ellipses:
+
 Measuring Along Fixed Ellipses
 ------------------------------
 
