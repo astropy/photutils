@@ -8,6 +8,7 @@ import pytest
 from astropy import log
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose, assert_array_equal
+from scipy.integrate import quad
 
 from photutils.datasets import make_noise_image
 from photutils.isophote.geometry import IN_MASK, OUT_MASK, EllipseGeometry
@@ -114,6 +115,29 @@ def test_area2():
     vertex_x, vertex_y = geometry.initialize_sector_geometry(np.deg2rad(225))
     assert_allclose(vertex_x, [34.79, 20.30, 37.97, 24.19], atol=0.01)
     assert_allclose(vertex_y, [37.97, 24.19, 34.79, 20.30], atol=0.01)
+
+
+@pytest.mark.parametrize('phi', [0.0, 0.05, 1.0, np.pi / 2, np.pi, 4.0,
+                                 6.2, 2.0 * np.pi])
+def test_sector_area(phi):
+    """
+    Test the elliptical sector area against a numerical integration,
+    including sectors that straddle a polar angle of 0, pi, or 2 pi.
+    """
+    eps = 0.4
+    geometry = EllipseGeometry(100.0, 100.0, 20.0, eps, 0.3, astep=0.1)
+    geometry.initialize_sector_geometry(phi)
+    sma1, sma2 = geometry.bounding_ellipses()
+    phi1, phi2 = geometry.polar_angle_sector_limits()
+
+    def radius_squared(angle, sma):
+        q = 1.0 - eps
+        return (sma * q)**2 / ((q * np.cos(angle))**2 + np.sin(angle)**2)
+
+    expected = quad(lambda angle: 0.5 * (radius_squared(angle, sma2)
+                                         - radius_squared(angle, sma1)),
+                    phi1, phi2)[0]
+    assert_allclose(geometry.sector_area, expected, rtol=1e-10)
 
 
 def test_reset_sma():

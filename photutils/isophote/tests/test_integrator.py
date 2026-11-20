@@ -97,7 +97,7 @@ class TestUnmasked(TestData):
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert_allclose(sample.sector_area, 12.4, atol=0.1)
+        assert_allclose(sample.sector_area, 12.63, atol=0.01)
         assert sample.total_points == 64
         assert sample.actual_points == 64
 
@@ -127,7 +127,7 @@ class TestUnmasked(TestData):
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.01, atol=0.01)
 
-        assert_allclose(sample.sector_area, 12.4, atol=0.1)
+        assert_allclose(sample.sector_area, 12.63, atol=0.01)
         assert sample.total_points == 64
         assert sample.actual_points == 64
 
@@ -159,7 +159,7 @@ class TestMasked(TestData):
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert_allclose(sample.sector_area, 12.4, atol=0.1)
+        assert_allclose(sample.sector_area, 12.63, atol=0.01)
         assert sample.total_points == 64
         assert sample.actual_points == 51
 
@@ -332,3 +332,25 @@ def test_fit_center(integrmode):
                                 maxsma=25.0)
     assert_allclose(np.median(isolist.x0), 50.0, atol=0.05)
     assert_allclose(np.median(isolist.y0), 50.0, atol=0.05)
+
+
+@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+def test_area_integrator_full_sectors(integrmode):
+    """
+    Test that the area integrators sample whole sectors, including a
+    sector that extends past a polar angle of 2 pi.
+
+    The image values are the polar angles of the pixels, so each sector
+    value is close to the polar angle of the sector.
+    """
+    yy, xx = np.mgrid[0:121, 0:121]
+    data = np.arctan2(yy - 60.0, xx - 60.0)
+    sample = EllipseSample(data, 40.0, x0=60.0, y0=60.0, eps=0.2,
+                           integrmode=integrmode)
+    angles, _, values = sample.extract()
+    angles = np.angle(np.exp(1j * angles))  # wrap to (-pi, pi]
+
+    # Exclude the sectors at the discontinuity of the image values.
+    good = np.abs(angles) < 3.0
+    assert np.any(angles[good] < 0.0)
+    assert_allclose(values[good], angles[good], atol=0.012)

@@ -57,16 +57,19 @@ def _make_centerer_masks():
 IN_MASK, OUT_MASK = _make_centerer_masks()
 
 
-def _area(sma, eps, phi, r):
+def _eccentric_anomaly(phi, eps):
     """
-    Compute elliptical sector area.
+    Compute the eccentric anomaly of the point at polar angle ``phi``
+    (radians) on an ellipse with ellipticity ``eps``.
+
+    The area of the elliptical sector from polar angle 0 to ``phi``
+    is the product of the eccentric anomaly and half the product of
+    the semimajor and semiminor axis lengths. The result is continuous
+    in ``phi`` and differs from it by less than pi / 2, so it can be
+    used for any polar angle, including angles outside of [0, 2 pi].
     """
-    # An ellipse with zero size (e.g., the inner bounding ellipse of
-    # the innermost sectors) has zero area.
-    if sma == 0:
-        return 0.0
-    aux = min(max(r * math.cos(phi) / sma, -1.0), 1.0)
-    return abs(sma**2 * (1.0 - eps) / 2.0 * math.acos(aux))
+    anomaly = math.atan2(math.sin(phi), (1.0 - eps) * math.cos(phi))
+    return phi + (anomaly - phi + math.pi) % (2.0 * math.pi) - math.pi
 
 
 class EllipseGeometry:
@@ -384,12 +387,12 @@ class EllipseGeometry:
         r4 = (sma1 * eps_ / math.sqrt((eps_ * math.cos(self._phi2))**2
                                       + (math.sin(self._phi2))**2))
 
-        # Sector area
-        sa1 = _area(sma1, self.eps, self._phi1, r1)
-        sa2 = _area(sma2, self.eps, self._phi1, r2)
-        sa3 = _area(sma2, self.eps, self._phi2, r3)
-        sa4 = _area(sma1, self.eps, self._phi2, r4)
-        self.sector_area = abs((sa3 - sa2) - (sa4 - sa1))
+        # Sector area. The two bounding ellipses have the same
+        # eccentric anomalies at the sector limits.
+        delta_anomaly = (_eccentric_anomaly(self._phi2, self.eps)
+                         - _eccentric_anomaly(self._phi1, self.eps))
+        self.sector_area = (eps_ * (sma2**2 - sma1**2) / 2.0
+                            * delta_anomaly)
 
         # Angular width of sector. It is calculated such that the sectors
         # come out with roughly constant area along the ellipse. The
