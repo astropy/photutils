@@ -196,6 +196,11 @@ Bug Fixes
   - Fixed the errors of the higher-order harmonic amplitudes, which
     were NaN when an amplitude was exactly zero. [#2550]
 
+  - Fixed an infinite loop when sampling an ellipse with an
+    ellipticity larger than 1. ``EllipseSample.extract`` and the
+    ``Ellipse`` fit methods now raise a ``ValueError`` for an input
+    ellipticity of 1 or larger or a nonfinite center. [#2551]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
