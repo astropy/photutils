@@ -46,6 +46,14 @@ New Features
     The ellipses can be an ``IsophoteList`` fit to another image or
     user-defined ``EllipseGeometry`` objects. [#2558]
 
+  - Added a ``max_center_shift`` keyword to ``Ellipse.fit_image``,
+    ``Ellipse.fit_isophote``, and ``EllipseFitter.fit`` that limits
+    how far the fitted ellipse centers can move from the input center.
+    Unlike ``fix_center``, the center is still fitted within that
+    distance. ``EllipseFitter.fit`` also has a new ``reference_center``
+    keyword to set the position from which the shift is measured.
+    [#2559]
+
 Bug Fixes
 ^^^^^^^^^
 
