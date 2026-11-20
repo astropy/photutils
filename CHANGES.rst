@@ -86,6 +86,12 @@ Bug Fixes
     boxes that are at the same distance as the last nearest neighbor.
     [#2548]
 
+- ``photutils.datasets``
+
+  - Fixed a ``ResourceWarning`` that was emitted when a remote dataset
+    download from the astropy data server failed and the file was
+    downloaded from the photutils-datasets repository instead. [#2557]
+
 - ``photutils.detection``
 
   - Fixed a race condition on free-threaded Python builds where
