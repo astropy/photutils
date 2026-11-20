@@ -377,11 +377,12 @@ def test_build_ellipse_model_c_harmonic_length_mismatch(index):
     n = 16
     sma = np.linspace(0.5, 20.0, n)
     arrays = [np.full(n, value) for value in (1.0, 0.3, 0.5, 50.0, 50.0)]
-    harmonics = [np.full(n, 0.01) for _ in range(4)]
-    harmonics[index] = harmonics[index][:-1]
+    names = ('a3_array', 'b3_array', 'a4_array', 'b4_array')
+    harmonics = {name: np.full(n, 0.01) for name in names}
+    harmonics[names[index]] = harmonics[names[index]][:-1]
     match = 'All input arrays must be same length'
     with pytest.raises(ValueError, match=match):
-        build_ellipse_model_c(100, 100, sma, *arrays, *harmonics)
+        build_ellipse_model_c(100, 100, sma, *arrays, **harmonics)
 
 
 def test_build_ellipse_model_c_partial_harmonics():

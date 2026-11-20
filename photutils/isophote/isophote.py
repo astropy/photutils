@@ -627,7 +627,7 @@ class IsophoteList:
         index = (np.abs(self.sma - sma)).argmin()
         return self._list[index]
 
-    def _collect_as_array(self, attr_name, dtype=float):
+    def _collect_as_array(self, attr_name, *, dtype=float):
         return np.array(self._collect_as_list(attr_name), dtype=dtype)
 
     def _collect_as_list(self, attr_name):

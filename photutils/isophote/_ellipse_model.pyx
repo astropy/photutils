@@ -25,6 +25,7 @@ def build_ellipse_model_c(
     const double[:] pa_array,
     const double[:] x0_array,
     const double[:] y0_array,
+    *,
     const double[:] a3_array = None,
     const double[:] b3_array = None,
     const double[:] a4_array = None,

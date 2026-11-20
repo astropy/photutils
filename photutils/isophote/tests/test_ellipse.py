@@ -34,7 +34,7 @@ OFFSET_GALAXY = make_test_image(x0=POS, y0=POS, pa=PA, noise=1.0e-12,
                                 seed=0)
 
 
-def _assert_sma_grid(isolist, step=0.1):
+def _assert_sma_grid(isolist, *, step=0.1):
     """
     Assert that the isophotes, excluding the central pixel, are on a
     contiguous geometric grid of semimajor axis lengths.
@@ -43,7 +43,7 @@ def _assert_sma_grid(isolist, step=0.1):
     assert_allclose(sma[1:] / sma[:-1], 1.0 + step)
 
 
-def _assert_fflag_stop(isolist, fflag=0.7):
+def _assert_fflag_stop(isolist, *, fflag=0.7):
     """
     Assert that the outward growth stopped because more than a fraction
     1 - fflag of the sample points of the last isophote were flagged.
