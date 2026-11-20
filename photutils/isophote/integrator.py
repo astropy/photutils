@@ -90,8 +90,9 @@ class _Integrator:
         Return the polar angle step used to walk over the elliptical
         path.
 
-        The polar angle step is defined by the actual integrator
-        subclass.
+        The polar angle step is defined by the area integrator
+        subclasses. The pixel integrators sample the whole path at
+        once.
 
         Returns
         -------
@@ -148,7 +149,6 @@ class _PixelIntegrator(_Integrator):
     """
 
     def integrate(self, radius, phi):
-        self._r = radius
         angles, radii, values = self.integrate_path(np.array([radius]),
                                                     np.array([phi]))
         if len(values) > 0:
@@ -176,9 +176,6 @@ class _PixelIntegrator(_Integrator):
             valid points.
         """
         raise NotImplementedError
-
-    def get_polar_angle_step(self):
-        return 1.0 / self._r
 
     def is_area(self):
         return False
