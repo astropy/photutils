@@ -190,7 +190,7 @@ def bench_scalar_helpers(*, shape=(2000, 2000), n_iter=50, repeats=3):
     for _, wcs in cases:
         skycoord = wcs.pixel_to_world(*pixcoord)
         for name, func in make_scalar_cases(skycoord, pixcoord, wcs):
-            def run(func=func):
+            def run(*, func=func):
                 for _ in range(n_iter):
                     func()
 
@@ -240,7 +240,7 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
             # to n_positions
             n_calls = min(n_positions, MAX_LOOP_CALLS)
 
-            def loop(x=x, y=y, wcs=wcs, n_calls=n_calls):
+            def loop(*, x=x, y=y, wcs=wcs, n_calls=n_calls):
                 for i in range(n_calls):
                     pixel_to_sky_mean_scale(wcs, (x[i], y[i]))
 
@@ -327,7 +327,7 @@ def bench_aperture_conversions(*, shape=(2000, 2000), n_iter=20, repeats=3):
              partial(sky_ellipse.to_pixel, wcs)),
         ]
         for name, func in funcs:
-            def run(func=func):
+            def run(*, func=func):
                 for _ in range(n_iter):
                     func()
 

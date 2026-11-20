@@ -1062,7 +1062,7 @@ def benchmark(scene, scenarios, *, repeats=3):
                                          kron_flux, seg_kwargs)
         sigma = window_sigma(half_light)
 
-        def make_fresh_catalog(method=scenario['method']):
+        def make_fresh_catalog(*, method=scenario['method']):
             return make_catalog(scene, method)
 
         def warm_kron_radius(catalog):
@@ -1082,25 +1082,25 @@ def benchmark(scene, scenarios, *, repeats=3):
              lambda: run_sep_extract(scene)),
             ('kron_radius', compute_isophotal,
              lambda cat: cat.kron_radius,
-             lambda sk=seg_kwargs: run_sep_kron_radius(scene, shape, sk)),
+             lambda *, sk=seg_kwargs: run_sep_kron_radius(scene, shape, sk)),
             ('kron_flux', warm_kron_radius,
              lambda cat: cat.kron_flux,
-             lambda kr=kron_radius, sk=seg_kwargs:
+             lambda *, kr=kron_radius, sk=seg_kwargs:
              run_sep_kron_flux(scene, shape, kr, sk)),
             (f'flux_radius({FRACTION})', warm_kron_flux,
              lambda cat: cat.flux_radius(FRACTION),
-             lambda kr=kron_radius, kf=kron_flux, sk=seg_kwargs:
+             lambda *, kr=kron_radius, kf=kron_flux, sk=seg_kwargs:
              run_sep_flux_radius(scene, shape, kr, kf, sk)),
             ('centroid_win', warm_flux_radius,
              lambda cat: cat.centroid_win,
              None if scenario['use_segm']
-             else lambda sig=sigma: run_sep_winpos(scene, shape, sig)),
+             else lambda *, sig=sigma: run_sep_winpos(scene, shape, sig)),
             (f'circular_photometry({RADIUS:g})',
              lambda cat: cat.x_centroid,
              lambda cat: cat.circular_photometry(RADIUS),
-             lambda sk=seg_kwargs: run_sep_sum_circle(scene, shape, sk)),
+             lambda *, sk=seg_kwargs: run_sep_sum_circle(scene, shape, sk)),
             ('full chain (cold catalog)', None, run_catalog_chain,
-             lambda sc=scenario: run_sep_chain(scene, sc)),
+             lambda *, sc=scenario: run_sep_chain(scene, sc)),
         ]
 
         print(f'\nScenario: {scenario["name"]}')

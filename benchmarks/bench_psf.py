@@ -283,7 +283,7 @@ def bench_model_eval(*, sizes=(25, 361), n_iter=20, repeats=3):
         print(f'{name:>26}{cells}')
 
 
-def run_photometry(phot, data, init_params, error=None):
+def run_photometry(phot, data, init_params, *, error=None):
     """
     Run a PSF photometry instance once.
 
@@ -352,7 +352,7 @@ def bench_photometry(*, size=2048, n_sources_list=(100, 400, 1600),
             phot = PSFPhotometry(psf_model, fit_shape=(5, 5),
                                  group_warning_threshold=10**9, **kwargs)
             bench = partial(run_photometry, phot, data, init_params,
-                            error if use_error else None)
+                            error=error if use_error else None)
             t_call = time_best(bench, repeats=repeats)
             per_source = t_call / n_sources * 1e3
             cells += f'{f"{t_call:.3f}s ({per_source:.2f}ms/src)":>22}'
@@ -684,7 +684,7 @@ def bench_fit_helpers(*, size=1024, n_sources=100, n_iter=5, repeats=3,
     print(f'{"function":>34}{"1 source":>14}{f"{n_sources} sources":>14}')
     for name, func in variants:
 
-        def run_single(func=func):
+        def run_single(*, func=func):
             for _ in range(n_iter):
                 func(cutout, fit_shape=7)
 

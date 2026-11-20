@@ -784,7 +784,7 @@ def benchmark(data, positions, labels, segm, maskarr, error, shapes,
         for scenario in scenarios:
             for method in scenario['methods']:
                 t_ap = time_best(
-                    lambda a=aper, sc=scenario, m=method:
+                    lambda *, a=aper, sc=scenario, m=method:
                     run_aperture_photometry(
                         data, a, error, sc, m, segm_img, labels,
                         maskarr, n_threads=n_threads), repeats=repeats)
@@ -794,20 +794,20 @@ def benchmark(data, positions, labels, segm, maskarr, error, shapes,
                     lg_ms = f'{"--":>9s}'
                 else:
                     t_lg = time_best(
-                        lambda a=aper, sc=scenario, m=method:
+                        lambda *, a=aper, sc=scenario, m=method:
                         run_legacy_photometry(
                             data, a, error, sc, m, segm_img, labels,
                             maskarr), repeats=repeats)
                     lg_ms = f'{t_lg * 1e3:9.2f}'
                 t_st = time_best(
-                    lambda a=aper, sc=scenario, m=method:
+                    lambda *, a=aper, sc=scenario, m=method:
                     run_aperture_stats(
                         data, a, error, sc, m, segm_img, labels,
                         maskarr, n_threads=n_threads), repeats=repeats)
 
                 if _sep_supported(shape, scenario, method):
                     t_sep = time_best(
-                        lambda s=shape, sc=scenario, m=method:
+                        lambda *, s=shape, sc=scenario, m=method:
                         run_sep(s, data, positions, error, sc, m,
                                 segm32), repeats=repeats)
                     sep_ms = f'{t_sep * 1e3:9.2f}'
@@ -871,7 +871,7 @@ def bench_thread_sweep(data, positions, error, shapes, n_threads_list,
     for shape in shapes:
         aper = shape['aperture'](positions)
         times = [time_best(
-            lambda a=aper, n=n_threads:
+            lambda *, a=aper, n=n_threads:
             run_aperture_photometry(
                 data, a, error, scenario, method, None, None, None,
                 n_threads=n), repeats=repeats)
@@ -879,7 +879,7 @@ def bench_thread_sweep(data, positions, error, shapes, n_threads_list,
 
         if HAS_SEP and shape['sep'] is not None:
             t_sep = time_best(
-                lambda s=shape:
+                lambda *, s=shape:
                 run_sep(s, data, positions, error, scenario, method,
                         None), repeats=repeats)
             sep_ms = f'{t_sep * 1e3:9.2f}'

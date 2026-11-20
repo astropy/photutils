@@ -29,7 +29,7 @@ def fixture_splines():
     return splines, np.ascontiguousarray(tx), np.ascontiguousarray(ty), coeffs
 
 
-def _points(nx=41, ny=33, n=500, seed=2):
+def _points(*, nx=41, ny=33, n=500, seed=2):
     rng = np.random.default_rng(seed)
     # Include points beyond the grid, which the splines clamp
     x = rng.uniform(-5, nx + 4, n)
@@ -37,7 +37,7 @@ def _points(nx=41, ny=33, n=500, seed=2):
     return x, y
 
 
-def _partial_derivatives(spline, x, y, nx=41, ny=33):
+def _partial_derivatives(spline, x, y, *, nx=41, ny=33):
     """
     The x and y partial derivatives of the clamped spline.
 

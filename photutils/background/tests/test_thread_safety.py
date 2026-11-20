@@ -53,7 +53,7 @@ def fixture_image_data():
     return data, mask
 
 
-def run_concurrently(task, n_threads=N_THREADS):
+def run_concurrently(task, *, n_threads=N_THREADS):
     """
     Run ``task`` in ``n_threads`` threads and return all results.
 
@@ -177,7 +177,7 @@ def test_concurrent_local_background(image_data):
     for local_bkg in local_bkgs:
         expected = local_bkg(data, x, y, mask=mask)
 
-        def task(local_bkg=local_bkg):
+        def task(*, local_bkg=local_bkg):
             return local_bkg(data, x, y, mask=mask)
 
         for result in run_concurrently(task):

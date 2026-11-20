@@ -106,10 +106,10 @@ class TestBatchApertureGather:
 
         none_result = batch_aperture_gather(data, mask, positions,
                                             SHAPE_CIRCLE, params, 8.0, 8.0,
-                                            0.0, 0.0, None)
+                                            0.0, 0.0, local_bkg=None)
         zero_result = batch_aperture_gather(data, mask, positions,
                                             SHAPE_CIRCLE, params, 8.0, 8.0,
-                                            0.0, 0.0, zeros)
+                                            0.0, 0.0, local_bkg=zeros)
 
         _assert_gather_equal(none_result, zero_result)
 
@@ -123,7 +123,7 @@ class TestBatchApertureGather:
         def fn():
             return batch_aperture_gather(data, mask, positions, shape_code,
                                          params, ext_x, ext_y, 0.0, 0.0,
-                                         local_bkg)
+                                         local_bkg=local_bkg)
 
         expected = fn()
         with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
@@ -148,7 +148,7 @@ class TestBatchApertureGather:
             params = np.array(params, dtype=np.float64)
             return batch_aperture_gather(data, mask, positions, shape_code,
                                          params, ext_x, ext_y, 0.0, 0.0,
-                                         local_bkg)
+                                         local_bkg=local_bkg)
 
         expected = {spec[0]: task(spec) for spec in _GATHER_SPECS}
 
@@ -255,7 +255,7 @@ class TestApertureStatsThreadSafety:
             expected = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(len(names))
 
-            def read(first, stats=stats, barrier=barrier):
+            def read(first, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 return np.asarray(getattr(stats, first))
 
@@ -292,7 +292,7 @@ class TestApertureStatsThreadSafety:
             stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(N_THREADS)
 
-            def read(start, stats=stats, barrier=barrier):
+            def read(start, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 order = names[start:] + names[:start]
                 return {name: np.asarray(getattr(stats, name))
@@ -330,7 +330,7 @@ class TestApertureStatsThreadSafety:
             stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(N_THREADS)
 
-            def read(start, stats=stats, barrier=barrier):
+            def read(start, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 result = []
                 for name in names[start:] + names[:start]:
@@ -371,7 +371,7 @@ class TestApertureStatsThreadSafety:
             stats = ApertureStats(data, aperture, sigma_clip=sigma_clip)
             barrier = threading.Barrier(N_THREADS)
 
-            def read(start, stats=stats, barrier=barrier):
+            def read(start, *, stats=stats, barrier=barrier):
                 barrier.wait()
                 result = []
                 for name in names[start:] + names[:start]:

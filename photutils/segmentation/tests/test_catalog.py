@@ -2552,7 +2552,7 @@ class TestThreadSafety:
             cat = SourceCatalog(self.data, self.segm)
             barrier = threading.Barrier(n_threads)
 
-            def worker(start, cat=cat, barrier=barrier):
+            def worker(start, *, cat=cat, barrier=barrier):
                 barrier.wait()
                 result = []
                 for i in range(start, start + len(names)):
@@ -2600,7 +2600,7 @@ class TestThreadSafety:
             cat = SourceCatalog(self.data, self.segm)
             barrier = threading.Barrier(n_threads)
 
-            def worker(start, cat=cat, barrier=barrier):
+            def worker(start, *, cat=cat, barrier=barrier):
                 barrier.wait()
                 result = []
                 for i in range(start, start + len(names)):
@@ -3334,7 +3334,7 @@ class TestInputDtypes:
                 assert_equal(value, expected, err_msg=name)
 
     @staticmethod
-    def make_inputs(size=200):
+    def make_inputs(*, size=200):
         """
         Make float64 data, error, background, and convolved data arrays
         and a segmentation image.

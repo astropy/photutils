@@ -371,7 +371,7 @@ def bench_catalog(*, n_sources=1000, repeats=3, seed=0):
     ])
 
     for name, func in benchmarks:
-        def _bench(func=func):
+        def _bench(*, func=func):
             func(_make_catalog())
 
         t_best = time_best(_bench, repeats=repeats)
@@ -386,7 +386,7 @@ def bench_catalog(*, n_sources=1000, repeats=3, seed=0):
         (f'to_table (width {local_bkg_width})', lambda cat: cat.to_table()),
     ]
     for name, func in benchmarks:
-        def _bench(func=func):
+        def _bench(*, func=func):
             func(_make_catalog(local_bkg_width=local_bkg_width))
 
         t_best = time_best(_bench, repeats=repeats)

@@ -149,7 +149,7 @@ def test_missing_effgain_units():
                          EFFGAIN)
 
 
-def make_dtype_inputs(shape=(40, 50)):
+def make_dtype_inputs(*, shape=(40, 50)):
     """
     Make float64 data (with negative values), bkg_error, and
     effective_gain (with zero values) arrays.

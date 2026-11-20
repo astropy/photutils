@@ -1377,10 +1377,10 @@ class TestSigmaClipBiweightStrings:
         do not support these options.
         """
 
-        def nanbiloc(data, axis=None):
+        def nanbiloc(data, *, axis=None):
             return biweight_location(data, axis=axis, ignore_nan=True)
 
-        def nanbiscale(data, axis=None):
+        def nanbiscale(data, *, axis=None):
             return biweight_scale(data, axis=axis, ignore_nan=True)
 
         try:
@@ -2063,9 +2063,9 @@ class TestInputDtypes:
         # A float64 copy of one image needs 8 bytes per pixel, while the
         # uint8 mask plane needs 1 byte per pixel.
         for func in (run_stats, run_photometry):
-            assert self.traced_peak(lambda f=func: f(error)) < 4 * data.size
+            assert self.traced_peak(lambda *, f=func: f(error)) < 4 * data.size
             # The images are copied when their dtypes differ.
-            peak = self.traced_peak(lambda f=func: f(error.astype(float)))
+            peak = self.traced_peak(lambda *, f=func: f(error.astype(float)))
             assert peak >= 8 * data.size
 
 

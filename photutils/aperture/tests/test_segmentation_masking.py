@@ -437,7 +437,8 @@ class TestBatchDriverSegmentation:
 
         sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            0.0, 0.0, 1, 8, segm, labels, 1)[0]
+            0.0, 0.0, 1, 8, segmentation=segm, labels=labels,
+            seg_method=1)[0]
 
         # Reference via global mask
         manual_mask = ((segm > 0) & (segm != 1)).astype(np.uint8)
@@ -460,7 +461,8 @@ class TestBatchDriverSegmentation:
 
         sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            0.0, 0.0, 1, 8, segm, labels, 2)[0]
+            0.0, 0.0, 1, 8, segmentation=segm, labels=labels,
+            seg_method=2)[0]
 
         manual_mask = (segm != 1).astype(np.uint8)
         ref = batch_aperture_sums(
@@ -486,7 +488,8 @@ class TestBatchDriverSegmentation:
 
         sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            0.0, 0.0, 1, 8, segm, labels, 3)[0]
+            0.0, 0.0, 1, 8, segmentation=segm, labels=labels,
+            seg_method=3)[0]
 
         manual_mask = (segm > 0).astype(np.uint8)
         ref = batch_aperture_sums(
@@ -509,7 +512,8 @@ class TestBatchDriverSegmentation:
 
         sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            0.0, 0.0, 1, 8, segm, labels, 1)[0]
+            0.0, 0.0, 1, 8, segmentation=segm, labels=labels,
+            seg_method=1)[0]
         ref = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
             0.0, 0.0, 1, 8)[0]

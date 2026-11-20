@@ -22,15 +22,15 @@ from photutils.utils.wcs import compute_pixel_area_map, compute_pixel_areas
 UNIFORM_AREA = WCS_CDELT_ARCSEC**2
 
 
-def _make_sip_wcs(shape, coeff=2e-5):
+def _make_sip_wcs(shape, *, coeff=2e-5):
     """
     Build a TAN-SIP WCS whose pixel area varies smoothly across an array
     of the given shape.
     """
-    return make_sip_wcs(shape, coeffs={'A_2_0': coeff, 'B_0_2': coeff})
+    return make_sip_wcs(shape=shape, coeffs={'A_2_0': coeff, 'B_0_2': coeff})
 
 
-def _make_wide_tan_wcs(shape, deg_per_pix=0.01):
+def _make_wide_tan_wcs(shape, *, deg_per_pix=0.01):
     """
     Build a TAN WCS whose pixels are large enough that the pixel area
     varies non-polynomially across the field.

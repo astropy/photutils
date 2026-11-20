@@ -197,7 +197,7 @@ class TestFastLocalBackground:
         cls.x = np.array([30.0, 50.0, 75.0, 115.0, 3.0, -50.0])
         cls.y = np.array([30.0, 50.0, 75.0, 115.0, 3.0, -50.0])
 
-    def _run_both_paths(self, local_bkg, monkeypatch, data=None):
+    def _run_both_paths(self, local_bkg, monkeypatch, *, data=None):
         if data is None:
             data = self.data
         fast = local_bkg(data, self.x, self.y, mask=self.mask)

@@ -224,7 +224,7 @@ def fixture_make_catalog(minimal_catalog_cls):
     Factory fixture for minimal catalogs with common single-source
     (11x11 image) and three-source (21x21 image) layouts.
     """
-    def _make(n_sources=1, **kwargs):
+    def _make(*, n_sources=1, **kwargs):
         kernel = np.ones((3, 3))
         if n_sources == 1:
             data = np.zeros((11, 11))

@@ -293,7 +293,7 @@ class TestFindPeaks:
         """
         received_errors = []
 
-        def my_centroid(data, mask=None, error=None):
+        def my_centroid(data, *, mask=None, error=None):
             received_errors.append(error)
             return centroid_com(data, mask=mask)
 

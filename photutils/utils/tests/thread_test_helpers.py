@@ -47,7 +47,7 @@ def check_concurrent_deepcopy(make_obj, *, names=None, n_threads=8,
             names = get_cached_property_names(type(obj))
         barrier = threading.Barrier(n_threads)
 
-        def worker(start, obj=obj, names=names, barrier=barrier):
+        def worker(start, *, obj=obj, names=names, barrier=barrier):
             barrier.wait()
             for name in names[start:] + names[:start]:
                 deepcopy(obj)

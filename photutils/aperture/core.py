@@ -1043,8 +1043,9 @@ class PixelAperture(Aperture):
                 inputs.data, inputs.error, inputs.mask, pos,
                 inputs.shape_code, inputs.params, inputs.ext_x,
                 inputs.ext_y, inputs.off_x, inputs.off_y, inputs.use_exact,
-                inputs.subpixels, inputs.segmentation, src_labels,
-                inputs.seg_method, mask_nonfinite=int(mask_nonfinite))
+                inputs.subpixels, segmentation=inputs.segmentation,
+                labels=src_labels, seg_method=inputs.seg_method,
+                mask_nonfinite=int(mask_nonfinite))
 
         # The per-source outside-weight indicator of the driver is not
         # used here, because the aperture flags resolve the clipped

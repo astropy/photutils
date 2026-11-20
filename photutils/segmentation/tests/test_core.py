@@ -2734,7 +2734,7 @@ class TestThreadSafety:
             segm = SegmentationImage(self.data.copy())
             barrier = threading.Barrier(n_threads)
 
-            def worker(start, segm=segm, barrier=barrier):
+            def worker(start, *, segm=segm, barrier=barrier):
                 barrier.wait()
                 result = []
                 for name in names[start:] + names[:start]:
