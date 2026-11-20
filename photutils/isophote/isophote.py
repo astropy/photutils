@@ -1091,7 +1091,10 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     if not isinstance(isophote_list, IsophoteList):
         isophote_list = IsophoteList(isophote_list)
 
-    _deprecation_map = _DEPRECATED_ATTRIBUTES.copy()
+    # Remove in 4.0
+    # The 'grad_rerror' name was a table column name, not an attribute.
+    _deprecation_map = {**_DEPRECATED_ATTRIBUTES,
+                        'grad_rerror': 'gradient_rel_err'}
     all_names = _get_properties(isophote_list).keys()
 
     # The table column names of the renamed properties are also

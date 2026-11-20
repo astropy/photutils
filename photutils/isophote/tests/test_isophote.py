@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 import pytest
 from astropy.io import fits
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
@@ -515,6 +515,33 @@ class TestIsophoteList:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = isolist.to_table(columns=['grad_error'])
         assert tbl.colnames == ['gradient_err']
+
+    def test_deprecated_grad_rerror_column(self):
+        """
+        Regression test for the deprecated ``grad_rerror`` column name,
+        which was removed by mistake in version 3.1.
+        """
+        test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
+                                   background=100.0, noise=1.0e-6, i0=100.0,
+                                   sma=10.0, eps=0.2, pa=0.0, seed=1)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        ellipse = Ellipse(test_img, geometry=g)
+        isolist = ellipse.fit_image(maxsma=27)
+        tbl = isolist.to_table(columns='all')
+        assert 'grad_rerror' not in tbl.colnames
+
+        match = "'grad_rerror' was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match) as rec:
+            values = tbl['grad_rerror']
+        assert len(rec) == 1
+        assert_equal(values, tbl['gradient_rel_err'])
+
+        match = "'grad_rerror' attribute was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match) as rec:
+            tbl2 = isolist.to_table(columns=['grad_rerror'])
+        assert len(rec) == 1
+        assert tbl2.colnames == ['gradient_rel_err']
+        assert_equal(tbl2['gradient_rel_err'], isolist.gradient_rel_err)
 
 
 @pytest.mark.parametrize(('width', 'n_data'),
