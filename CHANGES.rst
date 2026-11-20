@@ -42,7 +42,7 @@ New Features
 
   - Added an ``Ellipse.measure_isophotes`` method to measure an image
     along a given set of ellipses without fitting, similar to the
-    IRAF ``ellipse`` task with an input ellipse table (``inellip``).
+    STSDAS ``ellipse`` task with an input ellipse table (``inellip``).
     The ellipses can be an ``IsophoteList`` fit to another image or
     user-defined ``EllipseGeometry`` objects. [#2558]
 
@@ -165,7 +165,7 @@ Bug Fixes
     previous isophote. As documented, it now stops the semimajor axis
     growth (or starts the noniterative mode if ``maxsma`` is set) when
     two consecutive isophotes exceed ``maxgerr``. The fits now
-    typically extend to larger semimajor axes. Also, parameter
+    typically extend to larger semimajor axis lengths. Also, parameter
     corrections are no longer computed from a positive local
     gradient. [#2549]
 
@@ -198,9 +198,9 @@ Bug Fixes
     exactly zero to the ``fill`` value. Only the pixels with no
     contribution from any isophote are now filled. [#2549]
 
-  - Fixed ``Ellipse.fit_image`` to start the first isophote fit inwards
-    from the geometry of the first fitted isophote, as in the STSDAS
-    ``ellipse`` task, instead of the outermost isophote. [#2549]
+  - Fixed ``Ellipse.fit_image`` to start the inward fits from the
+    geometry of the first fitted isophote, as in the STSDAS ``ellipse``
+    task, instead of the outermost isophote. [#2549]
 
   - Fixed the isophote fits for images with nonfinite (NaN or
     infinity) values, which propagated into the fitted intensities and
@@ -351,7 +351,9 @@ Bug Fixes
     gradient can be measured, as in the STSDAS ``ellipse`` task. This
     changes the fitted isophotes of noisy images. An image without a
     detectable galaxy is now more likely to return isophotes that
-    follow the noise. [#2560]
+    follow the noise. A gradient that is shallower than a third of the
+    reference is also accepted if its relative error is smaller than
+    20%, unlike in the STSDAS task. [#2560]
 
 - ``photutils.profiles``
 
@@ -464,8 +466,9 @@ API Changes
     such as a nested list. [#2550]
 
   - ``build_ellipse_model`` now raises a ``ValueError`` if the input
-    isophote list contains fewer than 4 isophotes or is not sorted by
-    strictly increasing semimajor axis length. [#2550]
+    isophote list contains fewer than 4 isophotes with a finite
+    intensity or is not sorted by strictly increasing semimajor axis
+    length. [#2550]
 
   - Comparing an ``Isophote`` with an object without an ``sma``
     attribute now returns ``False`` for ``==`` and raises a
