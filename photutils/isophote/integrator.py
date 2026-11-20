@@ -3,7 +3,6 @@
 Tools for integrating over pixels.
 """
 
-import math
 
 import numpy as np
 
@@ -48,6 +47,13 @@ class _Integrator:
         self._image = image
         self._geometry = geometry
 
+        # Split a masked image into its data and mask arrays once,
+        # because indexing a MaskedArray pixel by pixel is slow. The
+        # mask is None if no pixels can be masked.
+        self._data = np.ma.getdata(image)
+        mask = np.ma.getmask(image)
+        self._mask = None if mask is np.ma.nomask else mask
+
         self._angles = angles
         self._radii = radii
         self._intensities = intensities
@@ -74,17 +80,6 @@ class _Integrator:
         """
         raise NotImplementedError
 
-    def _reset(self):
-        """
-        Reset the lists containing results.
-
-        This method is for internal use and shouldn't be used by
-        external callers.
-        """
-        self._angles = []
-        self._radii = []
-        self._intensities = []
-
     def _store_results(self, phi, radius, sample):
         self._angles.append(phi)
         self._radii.append(radius)
@@ -95,8 +90,9 @@ class _Integrator:
         Return the polar angle step used to walk over the elliptical
         path.
 
-        The polar angle step is defined by the actual integrator
-        subclass.
+        The polar angle step is defined by the area integrator
+        subclasses. The pixel integrators sample the whole path at
+        once.
 
         Returns
         -------
@@ -143,77 +139,130 @@ class _Integrator:
         raise NotImplementedError
 
 
-class _NearestNeighborIntegrator(_Integrator):
+class _PixelIntegrator(_Integrator):
+    """
+    Base class for the integrators that sample single pixel positions.
+
+    The path along the ellipse is sampled at once by the
+    ``integrate_path`` method. The ``integrate`` method samples a single
+    point.
+    """
+
     def integrate(self, radius, phi):
-        self._r = radius
+        angles, radii, values = self.integrate_path(np.array([radius]),
+                                                    np.array([phi]))
+        if len(values) > 0:
+            self._store_results(angles[0], radii[0], values[0])
 
-        # Get image coordinates of (radius, phi) pixel. Pixel centers
-        # are at integer coordinates, so the nearest pixel is found by
-        # rounding.
-        i = math.floor(radius * math.cos(phi + self._geometry.pa)
-                       + self._geometry.x0 + 0.5)
-        j = math.floor(radius * math.sin(phi + self._geometry.pa)
-                       + self._geometry.y0 + 0.5)
+    def integrate_path(self, radii, phis):
+        """
+        Sample the image at the input polar coordinates.
 
-        # ignore data point if outside image boundaries
-        if (0 <= i < self._image.shape[1]) and (0 <= j < self._image.shape[0]):
-            sample = self._image[j][i]
+        Points outside of the image, or whose sample includes masked or
+        nonfinite pixels, are skipped.
 
-            # Skip masked and nonfinite pixels.
-            if sample is not np.ma.masked and math.isfinite(sample):
-                self._store_results(phi, radius, sample)
+        Parameters
+        ----------
+        radii : 1D `~numpy.ndarray`
+            The polar radii (pixels).
 
-    def get_polar_angle_step(self):
-        return 1.0 / self._r
+        phis : 1D `~numpy.ndarray`
+            The polar angles (radians).
+
+        Returns
+        -------
+        angles, radii, values : 1D `~numpy.ndarray`
+            The polar angles, polar radii, and sampled values of the
+            valid points.
+        """
+        raise NotImplementedError
+
+    def is_area(self):
+        return False
+
+
+class _NearestNeighborIntegrator(_PixelIntegrator):
+    def integrate_path(self, radii, phis):
+        ny, nx = self._data.shape
+
+        # Get image coordinates of the (radius, phi) points. Pixel
+        # centers are at integer coordinates, so the nearest pixel is
+        # found by rounding.
+        angle = phis + self._geometry.pa
+        x = np.floor(radii * np.cos(angle) + self._geometry.x0 + 0.5)
+        y = np.floor(radii * np.sin(angle) + self._geometry.y0 + 0.5)
+
+        # Ignore data points outside image boundaries. The floating
+        # point coordinates are checked before they are converted to
+        # integers because nonfinite and very large coordinates do not
+        # have a defined integer value.
+        good = (x >= 0) & (x < nx) & (y >= 0) & (y < ny)
+        i = x[good].astype(int)
+        j = y[good].astype(int)
+        radii = radii[good]
+        phis = phis[good]
+
+        # Skip masked and nonfinite pixels.
+        values = self._data[j, i]
+        good = np.isfinite(values)
+        if self._mask is not None:
+            good &= ~self._mask[j, i]
+
+        return phis[good], radii[good], values[good]
 
     def get_sector_area(self):
         return 1.0
 
-    def is_area(self):
-        return False
 
+class _BiLinearIntegrator(_PixelIntegrator):
+    def integrate_path(self, radii, phis):
+        ny, nx = self._data.shape
 
-class _BiLinearIntegrator(_Integrator):
-    def integrate(self, radius, phi):
-        self._r = radius
+        # Get image coordinates of the (radius, phi) points.
+        angle = phis + self._geometry.pa
+        x = radii * np.cos(angle) + self._geometry.x0
+        y = radii * np.sin(angle) + self._geometry.y0
 
-        # Get image coordinates of (radius, phi) pixel
-        x_ = radius * math.cos(phi + self._geometry.pa) + self._geometry.x0
-        y_ = radius * math.sin(phi + self._geometry.pa) + self._geometry.y0
         # Use floor so that points before the first pixel center are
         # skipped instead of extrapolated.
-        i = math.floor(x_)
-        j = math.floor(y_)
-        fx = x_ - i
-        fy = y_ - j
+        x_floor = np.floor(x)
+        y_floor = np.floor(y)
 
-        # ignore data point if outside image boundaries
-        if (i in self._i_range) and (j in self._j_range):
-            qx = 1.0 - fx
-            qy = 1.0 - fy
+        # Ignore data points outside image boundaries. The floating
+        # point coordinates are checked before they are converted to
+        # integers because nonfinite and very large coordinates do not
+        # have a defined integer value.
+        good = ((x_floor >= 0) & (x_floor < nx - 1)
+                & (y_floor >= 0) & (y_floor < ny - 1))
+        i = x_floor[good].astype(int)
+        j = y_floor[good].astype(int)
+        fx = x[good] - i
+        fy = y[good] - j
+        radii = radii[good]
+        phis = phis[good]
 
-            if (self._image[j][i] is not np.ma.masked
-                    and self._image[j + 1][i] is not np.ma.masked
-                    and self._image[j][i + 1] is not np.ma.masked
-                    and self._image[j + 1][i + 1] is not np.ma.masked):
+        # Nonfinite pixels can give invalid operations (e.g., inf - inf).
+        # The resulting nonfinite samples are skipped below.
+        qx = 1.0 - fx
+        qy = 1.0 - fy
+        data = self._data
+        with np.errstate(invalid='ignore'):
+            values = (data[j, i] * qx * qy
+                      + data[j + 1, i] * qx * fy
+                      + data[j, i + 1] * fx * qy
+                      + data[j + 1, i + 1] * fy * fx)
 
-                sample = (self._image[j][i] * qx * qy
-                          + self._image[j + 1][i] * qx * fy
-                          + self._image[j][i + 1] * fx * qy
-                          + self._image[j + 1][i + 1] * fy * fx)
+        # Skip samples that include masked or nonfinite pixels.
+        good = np.isfinite(values)
+        if self._mask is not None:
+            mask = self._mask
+            good &= ~(mask[j, i] | mask[j + 1, i] | mask[j, i + 1]
+                      | mask[j + 1, i + 1])
 
-                # Skip samples that include nonfinite pixels.
-                if math.isfinite(sample):
-                    self._store_results(phi, radius, sample)
-
-    def get_polar_angle_step(self):
-        return 1.0 / self._r
+        return phis[good], radii[good], values[good]
 
     def get_sector_area(self):
         return 2.0
-
-    def is_area(self):
-        return False
 
 
 class _AreaIntegrator(_Integrator):
@@ -253,51 +302,38 @@ class _AreaIntegrator(_Integrator):
         # partially, or totally, outside image boundaries.
         if ((i1 in self._i_range) and (j1 in self._j_range)
                 and (i2 in self._i_range) and (j2 in self._j_range)):
-            # Scan rectangular image area, compute sample value.
-            n_pixels = 0
-            accumulator = self.initialize_accumulator()
-            for j in range(j1, j2):
-                for i in range(i1, i2):
-                    # Check if polar coordinates of each pixel
-                    # put it inside elliptical sector.
-                    rp, phip = self._geometry.to_polar(i, j)
+            # Scan rectangular image area. Find the pixels whose polar
+            # coordinates put them inside the elliptical sector, i.e.,
+            # inside the angular limits and between the bounding
+            # ellipses.
+            geometry = self._geometry
+            dx = np.arange(i1, i2) - geometry.x0
+            dy = (np.arange(j1, j2) - geometry.y0)[:, np.newaxis]
+            rp = np.hypot(dx, dy)
+            phip = np.mod(np.arctan2(dy, dx) - geometry.pa, 2.0 * np.pi)
+            sma1, sma2 = geometry.bounding_ellipses()
+            eps_ = 1.0 - geometry.eps
+            aux = eps_ / np.sqrt((eps_ * np.cos(phip))**2
+                                 + np.sin(phip)**2)
+            inside = ((phip < phi2) & (phip >= phi1)
+                      & (rp < sma2 * aux) & (rp >= sma1 * aux))
 
-                    # check if inside angular limits
-                    if phip < phi2 and phip >= phi1:
-
-                        # check if radius is inside bounding ellipses
-                        sma1, sma2 = self._geometry.bounding_ellipses()
-                        aux = ((1.0 - self._geometry.eps)
-                               / math.sqrt(((1.0 - self._geometry.eps)
-                                            * math.cos(phip))**2
-                                           + (math.sin(phip))**2))
-
-                        r1 = sma1 * aux
-                        r2 = sma2 * aux
-
-                        if rp < r2 and rp >= r1:
-                            # update accumulator with pixel value
-                            pix_value = self._image[j][i]
-                            if (pix_value is not np.ma.masked
-                                    and math.isfinite(pix_value)):
-                                accumulator, n_pixels = self.accumulate(
-                                    pix_value, accumulator)
+            # Skip masked and nonfinite pixels.
+            values = self._data[j1:j2, i1:i2][inside]
+            good = np.isfinite(values)
+            if self._mask is not None:
+                good &= ~self._mask[j1:j2, i1:i2][inside]
+            values = values[good]
 
             # If 6 or less pixels were sampled, get the bilinear
             # interpolated value instead.
-            if n_pixels in range(7):
-                # must reset integrator to remove older samples.
-                self._bilinear_integrator._reset()
-                self._bilinear_integrator.integrate(radius, phi)
-                # because it was reset, current value is the only one stored
-                # internally in the bilinear integrator instance. Move it
-                # from the internal integrator to this instance.
-                if len(self._bilinear_integrator._intensities) > 0:
-                    sample_value = self._bilinear_integrator._intensities[0]
-                    self._store_results(phi, radius, sample_value)
-
-            elif n_pixels > 6:
-                sample_value = self.compute_sample_value(accumulator)
+            if values.size <= 6:
+                _, _, values = self._bilinear_integrator.integrate_path(
+                    np.array([radius]), np.array([phi]))
+                if values.size > 0:
+                    self._store_results(phi, radius, values[0])
+            else:
+                sample_value = self.compute_sample_value(values)
                 self._store_results(phi, radius, sample_value)
 
     def get_polar_angle_step(self):
@@ -310,45 +346,32 @@ class _AreaIntegrator(_Integrator):
     def is_area(self):
         return True
 
-    def initialize_accumulator(self):
-        raise NotImplementedError
+    def compute_sample_value(self, values):
+        """
+        Compute the sample value from the values of the pixels inside
+        the elliptical sector.
 
-    def accumulate(self, pixel_value, accumulator):
-        raise NotImplementedError
+        Parameters
+        ----------
+        values : 1D `~numpy.ndarray`
+            The pixel values, in row-major order.
 
-    def compute_sample_value(self, accumulator):
+        Returns
+        -------
+        result : float
+            The sample value.
+        """
         raise NotImplementedError
 
 
 class _MeanIntegrator(_AreaIntegrator):
-    def initialize_accumulator(self):
-        accumulator = 0.0
-        self._npix = 0
-        return accumulator
-
-    def accumulate(self, pixel_value, accumulator):
-        accumulator += pixel_value
-        self._npix += 1
-        return accumulator, self._npix
-
-    def compute_sample_value(self, accumulator):
-        return accumulator / self._npix
+    def compute_sample_value(self, values):
+        return values.mean(dtype=float)
 
 
 class _MedianIntegrator(_AreaIntegrator):
-    def initialize_accumulator(self):
-        accumulator = []
-        self._npix = 0
-        return accumulator
-
-    def accumulate(self, pixel_value, accumulator):
-        accumulator.append(pixel_value)
-        self._npix += 1
-        return accumulator, self._npix
-
-    def compute_sample_value(self, accumulator):
-        accumulator.sort()
-        return accumulator[int(self._npix / 2)]
+    def compute_sample_value(self, values):
+        return np.sort(values)[values.size // 2]
 
 
 # Specific integrator subclasses can be instantiated from here.

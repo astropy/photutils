@@ -75,82 +75,91 @@ def build_ellipse_model_c(
     cdef Py_ssize_t index
     cdef bint i_ge_zero, i_p1_le_max
 
-    # Define output array
+    # Define output array.
     cdef double[:, ::1] result = np.zeros([n_rows, n_cols], dtype=DTYPE)
     cdef double[:, ::1] weight = np.zeros([n_rows, n_cols], dtype=DTYPE)
 
     i_max = n_cols - 1
     j_max = n_rows - 1
 
-    for index in range(1, len_sma):
-        sma = finely_spaced_sma[index]
-        q = 1.0 - eps_array[index]
-        pa = pa_array[index]
-        x0 = x0_array[index]
-        y0 = y0_array[index]
-        intens0 = intens_array[index]
-        phi = phi_min
-        r = sma
-        if do_harmonics:
-            a3 = a3_array[index]
-            b3 = b3_array[index]
-            a4 = a4_array[index]
-            b4 = b4_array[index]
+    # The loop only uses C variables and typed memoryviews, so it
+    # runs without the GIL.
+    with nogil:
+        for index in range(1, len_sma):
+            sma = finely_spaced_sma[index]
+            q = 1.0 - eps_array[index]
+            pa = pa_array[index]
+            x0 = x0_array[index]
+            y0 = y0_array[index]
+            intens0 = intens_array[index]
+            phi = phi_min
+            r = sma
+            if do_harmonics:
+                a3 = a3_array[index]
+                b3 = b3_array[index]
+                a4 = a4_array[index]
+                b4 = b4_array[index]
 
-        while phi <= phi_max:
-            # get image coordinates of (r, phi) pixel
-            x = r * cos(phi + pa) + x0
-            y = r * sin(phi + pa) + y0
-            # round down (this is equivalent to int(floor(x)))
-            i = int(x) - (x < 0)
-            j = int(y) - (y < 0)
+            while phi <= phi_max:
+                # Get image coordinates of (r, phi) pixel.
+                x = r * cos(phi + pa) + x0
+                y = r * sin(phi + pa) + y0
+                # Skip points outside of the image. The coordinates are
+                # checked before they are converted to integers because
+                # nonfinite and very large coordinates do not have a
+                # defined integer value.
+                if (-1.0 < x < n_cols) and (-1.0 < y < n_rows):
+                    # Round down (this is equivalent to int(floor(x))).
+                    i = <int>x - (x < 0)
+                    j = <int>y - (y < 0)
 
-            if (-1 <= i <= i_max) and (-1 <= j <= j_max):
-                # get fractional deviations relative to target array
-                fx = x - float(i)
-                fy = y - float(j)
+                    # Get fractional deviations relative to target array.
+                    fx = x - <double>i
+                    fy = y - <double>j
 
-                intens = intens0
-                if do_harmonics:
-                    intens += (a3 * sin(3.0 * phi)
-                               + b3 * cos(3.0 * phi)
-                               + a4 * sin(4.0 * phi)
-                               + b4 * cos(4.0 * phi))
+                    intens = intens0
+                    if do_harmonics:
+                        intens += (a3 * sin(3.0 * phi)
+                                   + b3 * cos(3.0 * phi)
+                                   + a4 * sin(4.0 * phi)
+                                   + b4 * cos(4.0 * phi))
 
-                one_m_fx = (1.0 - fx)
-                one_m_fy = (1.0 - fy)
+                    one_m_fx = (1.0 - fx)
+                    one_m_fy = (1.0 - fy)
 
-                i_ge_zero = i >= 0
-                i_p1_le_max = (i + 1) <= i_max
+                    i_ge_zero = i >= 0
+                    i_p1_le_max = (i + 1) <= i_max
 
-                if j >= 0:
-                    if i_ge_zero:
-                        weight_pix = one_m_fx * one_m_fy
-                        # add up the isophote contribution to the
-                        # overlapping pixels
-                        result[j, i] += intens * weight_pix
-                        # add up the fractional area contribution to the
-                        # overlapping pixels
-                        weight[j, i] += weight_pix
-                    if i_p1_le_max:
-                        weight_pix = one_m_fy * fx
-                        result[j, i + 1] += intens * weight_pix
-                        weight[j, i + 1] += weight_pix
-                if (j + 1) <= j_max:
-                    if i_ge_zero:
-                        weight_pix = one_m_fx * fy
-                        result[j + 1, i] += intens * weight_pix
-                        weight[j + 1, i] += weight_pix
-                    if i_p1_le_max:
-                        weight_pix = fy * fx
-                        result[j + 1, i + 1] += intens * weight_pix
-                        weight[j + 1, i + 1] += weight_pix
+                    if j >= 0:
+                        if i_ge_zero:
+                            weight_pix = one_m_fx * one_m_fy
+                            # Add up the isophote contribution to the
+                            # overlapping pixels.
+                            result[j, i] += intens * weight_pix
+                            # Add up the fractional area contribution to the
+                            # overlapping pixels.
+                            weight[j, i] += weight_pix
+                        if i_p1_le_max:
+                            weight_pix = one_m_fy * fx
+                            result[j, i + 1] += intens * weight_pix
+                            weight[j, i + 1] += weight_pix
+                    if (j + 1) <= j_max:
+                        if i_ge_zero:
+                            weight_pix = one_m_fx * fy
+                            result[j + 1, i] += intens * weight_pix
+                            weight[j + 1, i] += weight_pix
+                        if i_p1_le_max:
+                            weight_pix = fy * fx
+                            result[j + 1, i + 1] += intens * weight_pix
+                            weight[j + 1, i + 1] += weight_pix
 
-            # step towards next pixel on ellipse
-            phi = max((phi + 0.75 / r), phi_min)
-            r = sma * q / sqrt((q * cos(phi))**2 + sin(phi)**2)
-            # max(r, 0.5) could return nan - this is safer
-            if not (r >= 0.5):
-                r = 0.5
+                # Step towards next pixel on ellipse.
+                phi = phi + 0.75 / r
+                if phi < phi_min:
+                    phi = phi_min
+                r = sma * q / sqrt((q * cos(phi))**2 + sin(phi)**2)
+                # max(r, 0.5) could return NaN, so this is safer.
+                if not (r >= 0.5):
+                    r = 0.5
 
     return np.asarray(result), np.asarray(weight)

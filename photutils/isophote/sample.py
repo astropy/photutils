@@ -4,6 +4,7 @@ Tools for sampling data along an elliptical path.
 """
 
 import copy
+import math
 
 import astropy.units as u
 import numpy as np
@@ -77,14 +78,16 @@ class EllipseSample:
     sma : float
         The semimajor axis length in pixels.
     x0, y0 : float, optional
-        The (x, y) coordinate of the ellipse center.
+        The (x, y) coordinate of the ellipse center. The coordinates
+        must be finite.
     astep : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
         as a relative value (when ``linear_growth=False``). The default
         is 0.1.
     eps : float, optional
-        The ellipticity of the ellipse. The default is 0.2.
+        The ellipticity of the ellipse. It must be less than 1. The
+        default is 0.2.
     position_angle : float, optional
         The position angle of ellipse in relation to the positive x-axis
         of the image array (rotating towards the positive y-axis). The
@@ -204,11 +207,31 @@ class EllipseSample:
         result : 2D `~numpy.ndarray`
             The rows of the array contain the angles, radii, and
             extracted intensity values, respectively.
+
+        Raises
+        ------
+        ValueError
+            If the ellipticity of the ellipse is 1 or larger or if its
+            center is not finite.
         """
         # The sample values themselves are kept cached to prevent
         # multiple calls to the integrator code.
         if self.values is not None:
             return self.values
+
+        # An ellipse with an ellipticity of 1 or larger or a nonfinite
+        # center has no elliptical path. The geometry is checked here
+        # instead of in the constructor because the fitter makes trial
+        # samples with any geometry and discards the invalid ones
+        # without extracting them.
+        geometry = self.geometry
+        if geometry.eps >= 1.0:
+            msg = f'The ellipticity must be less than 1, got {geometry.eps}'
+            raise ValueError(msg)
+        if not (np.isfinite(geometry.x0) and np.isfinite(geometry.y0)):
+            msg = ('The center of the ellipse must be finite, got '
+                   f'({geometry.x0}, {geometry.y0})')
+            raise ValueError(msg)
 
         s = self._extract()
         self.values = s
@@ -266,22 +289,33 @@ class EllipseSample:
         # Walk along elliptical path, integrating at specified places
         # defined by polar vector. Need to go a bit beyond full circle
         # to ensure full coverage.
-        while phi <= np.pi * 2.0 + phi_min:
-            # Do the integration at phi-radius position, and append
-            # results to the angles, radii, and intensities lists.
-            integrator.integrate(radius, phi)
+        phi_max = np.pi * 2.0 + phi_min
+        if integrator.is_area():
+            while phi <= phi_max:
+                # Do the integration at phi-radius position, and append
+                # results to the angles, radii, and intensities lists.
+                integrator.integrate(radius, phi)
 
-            # Store sector area locally
+                # Store sector area locally.
+                sector_areas.append(integrator.get_sector_area())
+
+                # Update total number of points.
+                self.total_points += 1
+
+                # Update angle and radius to be used to define next
+                # polar vector along the elliptical path.
+                phistep_ = integrator.get_polar_angle_step()
+                phi += min(phistep_, 0.5)
+                radius = self.geometry.radius(phi)
+        else:
+            # The pixel integrators step along the path by about one
+            # pixel (an angle step of 1 / radius), so the path can be
+            # computed first and then sampled at once.
+            phis, path_radii = self._get_polar_path(phi, radius, phi_max)
+            angles, radii, intensities = integrator.integrate_path(
+                path_radii, phis)
             sector_areas.append(integrator.get_sector_area())
-
-            # Update total number of points
-            self.total_points += 1
-
-            # Update angle and radius to be used to define next polar
-            # vector along the elliptical path
-            phistep_ = integrator.get_polar_angle_step()
-            phi += min(phistep_, 0.5)
-            radius = self.geometry.radius(phi)
+            self.total_points = len(phis)
 
         # Average sector area is calculated after the integrator had
         # the opportunity to step over the entire elliptical path.
@@ -298,39 +332,51 @@ class EllipseSample:
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
 
+    def _get_polar_path(self, phi, radius, phi_max):
+        """
+        Compute the polar angles and radii of the points along the
+        elliptical path for the pixel integrators.
+
+        The angle step is the inverse of the radius (about one pixel
+        along the path), but at most 0.5 radians.
+        """
+        q = 1.0 - self.geometry.eps
+        sma_q = self.geometry.sma * q
+        phis = []
+        radii = []
+        while phi <= phi_max:
+            phis.append(phi)
+            radii.append(radius)
+            phi += min(1.0 / radius, 0.5)
+            radius = sma_q / math.sqrt((q * math.cos(phi))**2
+                                       + math.sin(phi)**2)
+
+        return np.array(phis), np.array(radii)
+
     def _sigma_clip(self, angles, radii, intensities):
-        if self.n_clip > 0:
-            for _ in range(self.n_clip):
-                angles, radii, intensities = self._iter_sigma_clip(
-                    angles, radii, intensities)
+        # Can't use scipy or astropy tools because they use masked
+        # arrays. Also, they operate on a single array, and we need to
+        # operate on three arrays simultaneously. We need something
+        # that physically removes the clipped points from the arrays,
+        # since that is what the remaining of the `ellipse` code
+        # expects.
+        angles = np.asarray(angles)
+        radii = np.asarray(radii)
+        intensities = np.asarray(intensities)
 
-        return np.array(angles), np.array(radii), np.array(intensities)
+        for _ in range(self.n_clip):
+            if intensities.size == 0:
+                break
+            mean = np.mean(intensities)
+            sig = np.std(intensities)
+            lower = mean - self.sclip * sig
+            upper = mean + self.sclip * sig
+            keep = (intensities >= lower) & (intensities < upper)
+            angles = angles[keep]
+            radii = radii[keep]
+            intensities = intensities[keep]
 
-    def _iter_sigma_clip(self, angles, radii, intensities):
-        # Can't use scipy or astropy tools because they use masked arrays.
-        # Also, they operate on a single array, and we need to operate on
-        # three arrays simultaneously. We need something that physically
-        # removes the clipped points from the arrays, since that is what
-        # the remaining of the `ellipse` code expects.
-        r_angles = []
-        r_radii = []
-        r_intensities = []
-
-        values = np.array(intensities)
-        mean = np.mean(values)
-        sig = np.std(values)
-        lower = mean - self.sclip * sig
-        upper = mean + self.sclip * sig
-
-        count = 0
-        for k, intensity in enumerate(intensities):
-            if lower <= intensity < upper:
-                r_angles.append(angles[k])
-                r_radii.append(radii[k])
-                r_intensities.append(intensity)
-                count += 1
-
-        return r_angles, r_radii, r_intensities
+        return angles, radii, intensities
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def update(self, fixed_parameters=None):

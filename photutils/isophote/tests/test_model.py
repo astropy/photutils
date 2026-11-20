@@ -98,15 +98,10 @@ def test_model_minimum_radius():
         g.find_center(data)
         ellipse = Ellipse(data, geometry=g)
 
-        match1 = 'Degrees of freedom'
-        match2 = 'Mean of empty slice'
-        match3 = 'invalid value encountered'
-        ctx1 = pytest.warns(RuntimeWarning, match=match1)
-        ctx2 = pytest.warns(RuntimeWarning, match=match2)
-        ctx3 = pytest.warns(RuntimeWarning, match=match3)
-        with ctx1, ctx2, ctx3:
-            isophote_list = ellipse.fit_image(sma0=40, minsma=0,
-                                              maxsma=350.0, step=0.4, n_clip=3)
+        # Sigma clipping of samples with no valid data points does not
+        # emit numpy RuntimeWarnings.
+        isophote_list = ellipse.fit_image(sma0=40, minsma=0, maxsma=350.0,
+                                          step=0.4, n_clip=3)
 
         model = build_ellipse_model(data.shape, isophote_list,
                                     fill=np.mean(data[0:50, 0:50]))
@@ -268,6 +263,34 @@ def test_build_ellipse_model_c_threadsafe():
             result = future.result()
             assert_array_equal(result[0], expected[0])
             assert_array_equal(result[1], expected[1])
+
+
+@pytest.mark.parametrize('value', [np.nan, np.inf, -np.inf, 1.0e30])
+def test_build_ellipse_model_c_invalid_center(value):
+    """
+    Test that build_ellipse_model_c skips an isophote whose center
+    coordinates are nonfinite or too large to be pixel indices.
+    """
+    n = 16
+    sma = np.linspace(0.5, 20.0, n)
+    intens = np.full(n, 1.0)
+    eps = np.full(n, 0.3)
+    pa = np.full(n, 0.5)
+    x0 = np.full(n, 50.0)
+    y0 = np.full(n, 50.0)
+
+    # The reference isophote lies outside of the image.
+    x0[8] = -1000.0
+    expected = build_ellipse_model_c(100, 100, sma, intens, eps, pa, x0, y0)
+
+    x0[8] = value
+    result = build_ellipse_model_c(100, 100, sma, intens, eps, pa, x0, y0)
+    assert_array_equal(result[0], expected[0])
+    assert_array_equal(result[1], expected[1])
+
+    result = build_ellipse_model_c(100, 100, sma, intens, eps, pa, y0, x0)
+    assert np.all(np.isfinite(result[0]))
+    assert np.all(np.isfinite(result[1]))
 
 
 def test_build_ellipse_model_c_readonly_arrays():
