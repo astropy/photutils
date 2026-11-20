@@ -61,7 +61,8 @@ class Isophote:
               the same constant geometric parameters. It's also
               used when the user turns off the fitting algorithm
               via the ``maxrit`` fitting parameter (see the
-              `~photutils.isophote.Ellipse` class).
+              `~photutils.isophote.Ellipse` class) and when all the
+              ellipse parameters are fixed.
            *  5: Ellipse diverged. Not even the minimum number of
               iterations could be executed. Subsequent ellipses at
               larger or smaller semimajor axis may have the same

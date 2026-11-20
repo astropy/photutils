@@ -52,6 +52,10 @@ class EllipseFitter:
         """
         Fit an elliptical isophote.
 
+        If all the ellipse parameters are fixed by the geometry of
+        the sample, there is nothing to fit. The isophote is then
+        extracted with that geometry and its stop code is 4.
+
         Parameters
         ----------
         conver : float, optional

@@ -243,6 +243,12 @@ class Ellipse:
         of that instance. These overrides apply only to this call. The
         `~photutils.isophote.EllipseGeometry` instance is not modified.
 
+        If the center, position angle, and ellipticity are all fixed,
+        by the fix_XXX parameters or by the
+        `~photutils.isophote.EllipseGeometry` instance, there is
+        nothing to fit. A warning is emitted and an empty
+        `~photutils.isophote.IsophoteList` is returned.
+
         Parameters
         ----------
         sma0 : float, optional
@@ -583,6 +589,11 @@ class Ellipse:
         determine the starting point for gradient computation and
         to calculate the areas of the elliptical sectors (when area
         integration mode is enabled).
+
+        If the center, position angle, and ellipticity are all fixed
+        by the `~photutils.isophote.EllipseGeometry` instance, there
+        is nothing to fit. The isophote is then extracted with that
+        geometry and its stop code is 4.
 
         Parameters
         ----------
