@@ -424,7 +424,7 @@ class Ellipse:
             msg = ('The starting semimajor axis length (sma0 or the sma of '
                    'the input geometry) must be positive')
             raise ValueError(msg)
-        if step <= 0:
+        if not step > 0:  # also rejects NaN
             msg = 'step must be positive'
             raise ValueError(msg)
 
@@ -432,8 +432,8 @@ class Ellipse:
         # so that they do not persist in the input geometry instance.
         geometry = copy.deepcopy(self._geometry)
         geometry.astep = step
-        if isinstance(linear, bool):
-            geometry.linear_growth = linear
+        if linear is not None:
+            geometry.linear_growth = bool(linear)
         if fix_center or fix_pa or fix_eps:
             geometry.fix = _make_fix_array(fix_center=fix_center,
                                            fix_pa=fix_pa, fix_eps=fix_eps)
@@ -571,9 +571,11 @@ class Ellipse:
             sma = isophote.sample.geometry.update_sma(step)
 
         # If user asked for minsma=0, extract special isophote there.
+        # It is centered on the innermost fitted isophote, whose
+        # geometry is the last one set above, and it is appended to
+        # isophote_list.
         if minsma == 0.0:
-            # The isophote is appended to isophote_list.
-            _ = self.fit_isophote(0.0, isophote_list=isophote_list)
+            fit(geometry, 0.0, minit=minit)
 
         # Sort list of isophotes according to sma.
         isophote_list.sort()
@@ -616,8 +618,8 @@ class Ellipse:
         step : float, optional
             The step value used to grow/shrink the semimajor axis
             length (pixels if ``linear=True``, or a relative value if
-            ``linear=False``). See the ``linear`` parameter. The default
-            is 0.1.
+            ``linear=False``). See the ``linear`` parameter. The step
+            must be positive. The default is 0.1.
 
         conver : float, optional
             The main convergence criterion. Iterations stop when the
@@ -727,6 +729,10 @@ class Ellipse:
             The fitted isophote. The fitted isophote is also appended to
             the input list input to the ``isophote_list`` parameter.
         """
+        if not step > 0:  # also rejects NaN
+            msg = 'step must be positive'
+            raise ValueError(msg)
+
         # If available, geometry from last fitted isophote will be
         # used as initial guess for next isophote.
         geometry = self._geometry
@@ -738,7 +744,7 @@ class Ellipse:
         geometry = copy.deepcopy(geometry)
         geometry.astep = step
         if linear is not None:
-            geometry.linear_growth = linear
+            geometry.linear_growth = bool(linear)
 
         return self._fit_isophote(geometry, sma, conver=conver, minit=minit,
                                   maxit=maxit, fflag=fflag, sclip=sclip,

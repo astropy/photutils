@@ -289,19 +289,26 @@ class EllipseFitter:
         zero.
 
         This must be called before the sample with this geometry is
-        extracted. A fixed ellipticity is not changed.
+        extracted. A fixed ellipticity is not changed. A fixed position
+        angle is not changed either.
         """
         if fixed_parameters[_EPS_INDEX]:
             return
 
-        # See if eps == 0 (round isophote) was crossed.
-        # If so, fix it but still proceed.
+        # See if eps == 0 (round isophote) was crossed. If so, fix it
+        # but still proceed. An ellipse with a negative ellipticity is
+        # the same as an ellipse rotated by 90 degrees with a positive
+        # ellipticity. A fixed position angle cannot be rotated, so the
+        # ellipse is then made nearly round below.
         if geometry.eps < 0.0:
-            geometry.eps = min(-geometry.eps, MAX_EPS)
-            if geometry.pa < PI2:
-                geometry.pa += PI2
+            if fixed_parameters[_PA_INDEX]:
+                geometry.eps = 0.0
             else:
-                geometry.pa -= PI2
+                geometry.eps = min(-geometry.eps, MAX_EPS)
+                if geometry.pa < PI2:
+                    geometry.pa += PI2
+                else:
+                    geometry.pa -= PI2
 
         # If ellipse is an exact circle, computations will diverge.
         # Make it slightly flat, but still proceed.

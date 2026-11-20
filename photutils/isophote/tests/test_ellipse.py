@@ -345,9 +345,9 @@ class TestEllipse:
     def test_array_like_image(self):
         data = make_test_image(nx=100, ny=100, seed=0)
         isophote = Ellipse(data).fit_isophote(20.0)
-        isophote_list = Ellipse(data.tolist()).fit_isophote(20.0)
-        assert isophote_list.intens == isophote.intens
-        assert isophote_list.eps == isophote.eps
+        isophote_from_list = Ellipse(data.tolist()).fit_isophote(20.0)
+        assert isophote_from_list.intens == isophote.intens
+        assert isophote_from_list.eps == isophote.eps
 
     @pytest.mark.parametrize(('sma0', 'geometry_sma'),
                              [(0.0, 10.0), (-1.0, 10.0), (np.nan, 10.0),
@@ -450,7 +450,8 @@ class TestEllipse:
         for step in (0.1, 0.3):
             isolist = ellipse.fit_image(sma0=20.0, maxsma=40.0, minsma=15.0,
                                         step=step, integrmode='mean')
-            assert np.all(isolist.sample[-1].geometry.astep == step)
+            assert np.all([iso.sample.geometry.astep == step
+                           for iso in isolist])
             sarea[step] = isolist.get_closest(20.0).sarea
             isophote = ellipse.fit_isophote(20.0, step=step,
                                             integrmode='mean')
@@ -655,16 +656,41 @@ class TestEllipse:
             step=5.0, linear=True, maxsma=15.0)
         assert_allclose(isolist.sma, [0.0, 3.0, 8.0, 13.0])
 
+        # The central pixel is at the center of the innermost fitted
+        # isophote, not of the last fitted (outermost) one.
+        assert isolist[0].x0 == isolist[1].x0
+        assert isolist[0].y0 == isolist[1].y0
+        assert isolist[0].x0 != isolist[-1].x0
+
         geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA)
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
             minsma=9.5, maxsma=12.0)
         assert_allclose(isolist.sma, [10.0, 11.0])
 
-    @pytest.mark.parametrize('step', [0.0, -0.1])
+    @pytest.mark.parametrize('step', [0.0, -0.1, np.nan])
     def test_invalid_step(self, step):
         match = 'step must be positive'
+        ellipse = Ellipse(self.data)
         with pytest.raises(ValueError, match=match):
-            Ellipse(self.data).fit_image(step=step)
+            ellipse.fit_image(step=step)
+        with pytest.raises(ValueError, match=match):
+            ellipse.fit_isophote(20.0, step=step)
+
+    def test_fixed_pa_round_galaxy(self):
+        """
+        Test that a fixed position angle is not rotated by 90 degrees
+        when the ellipticity corrections cross zero.
+        """
+        data = make_test_image(eps=0.0, noise=1.0, seed=0)
+        pa = 0.3
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.05, pa,
+                                   fix_pa=True)
+        isolist = Ellipse(data, geometry=geometry).fit_image(maxsma=60.0)
+        mask = isolist.sma > 0
+        assert np.count_nonzero(mask) > 40
+        assert np.all(isolist.pa[mask] == pa)
+        assert np.all(isolist.eps[mask] > 0)
+        assert np.median(isolist.eps[isolist.sma > 5]) < 0.06
 
     def test_maxsma_outside_image(self):
         """
@@ -695,3 +721,15 @@ class TestEllipse:
 
         assert geometry.linear_growth
         assert geometry.astep == 0.1
+
+    def test_linear_numpy_bool(self):
+        """
+        Test that fit_image and fit_isophote accept a NumPy boolean
+        for the linear keyword.
+        """
+        ellipse = Ellipse(self.data)
+        isolist = ellipse.fit_image(sma0=20.0, minsma=10.0, maxsma=40.0,
+                                    step=5.0, linear=np.True_)
+        assert_allclose(isolist.sma, [15.0, 20.0, 25.0, 30.0, 35.0])
+        isophote = ellipse.fit_isophote(20.0, linear=np.True_)
+        assert isophote.sample.geometry.linear_growth is True
