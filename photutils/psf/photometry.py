@@ -390,9 +390,9 @@ class _FitEngine:
             source_residuals = residuals[starts[idx]:starts[idx + 1]]
 
             # The residuals are (model - data) / error when errors are
-            # input. qfit and cfit need the raw residuals, so multiply
-            # by the errors, which run_fitter has validated as positive
-            # and finite.
+            # input. The qfit and cfit metrics need the raw residuals,
+            # so multiply by the errors, which run_fitter has validated
+            # as positive and finite.
             raw_residuals = source_residuals
             error_vals = None
             if self.error is not None:
