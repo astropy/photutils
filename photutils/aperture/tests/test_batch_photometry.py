@@ -34,19 +34,30 @@ POSITIONS = np.array([[70.0, 80.0], [50.3, 71.8], [20.49999, 30.50001],
                       [-50.0, -50.0], [250.0, 250.0], [1e9, -1e9]])
 
 APERTURES = [
-    CircularAperture(POSITIONS, r=5.5),
-    CircularAperture(POSITIONS, r=0.4),
-    CircularAnnulus(POSITIONS, r_in=4.0, r_out=6.0),
-    EllipticalAperture(POSITIONS, a=5.0, b=3.0, theta=0.7),
-    EllipticalAnnulus(POSITIONS, a_in=3.0, a_out=6.0, b_out=4.0, theta=-1.1),
-    RectangularAperture(POSITIONS, w=7.0, h=4.0, theta=0.4),
-    RectangularAnnulus(POSITIONS, w_in=3.0, w_out=8.0, h_out=5.0, theta=2.2),
-    PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
-    PolygonAperture(POSITIONS, [[-4.0, -3.0], [6.0, -2.0], [3.0, 5.0],
-                                [-5.0, 4.0]]),
+    pytest.param(CircularAperture(POSITIONS, r=5.5), id='circle'),
+    pytest.param(CircularAperture(POSITIONS, r=0.4), id='circle_small'),
+    pytest.param(CircularAnnulus(POSITIONS, r_in=4.0, r_out=6.0),
+                 id='circular_annulus'),
+    pytest.param(EllipticalAperture(POSITIONS, a=5.0, b=3.0, theta=0.7),
+                 id='ellipse'),
+    pytest.param(EllipticalAnnulus(POSITIONS, a_in=3.0, a_out=6.0, b_out=4.0,
+                                   theta=-1.1),
+                 id='elliptical_annulus'),
+    pytest.param(RectangularAperture(POSITIONS, w=7.0, h=4.0, theta=0.4),
+                 id='rectangle'),
+    pytest.param(RectangularAnnulus(POSITIONS, w_in=3.0, w_out=8.0, h_out=5.0,
+                                    theta=2.2),
+                 id='rectangular_annulus'),
+    pytest.param(PolygonAperture.from_regular_polygon(POSITIONS, 6,
+                                                      radius=5.5),
+                 id='polygon_hexagon'),
+    pytest.param(PolygonAperture(POSITIONS, [[-4.0, -3.0], [6.0, -2.0],
+                                             [3.0, 5.0], [-5.0, 4.0]]),
+                 id='polygon_quadrilateral'),
     # A nonconvex (concave arrowhead) polygon offset shape
-    PolygonAperture(POSITIONS, [[-5.0, -4.0], [5.0, -4.0], [0.0, 6.0],
-                                [0.0, 0.0]]),
+    pytest.param(PolygonAperture(POSITIONS, [[-5.0, -4.0], [5.0, -4.0],
+                                             [0.0, 6.0], [0.0, 0.0]]),
+                 id='polygon_nonconvex'),
 ]
 
 METHODS = [('exact', 5), ('center', 5), ('subpixel', 1), ('subpixel', 7)]
@@ -232,7 +243,7 @@ class TestErrorArrayShape:
     @pytest.mark.parametrize('aperture', [
         CircularAperture(POSITIONS, r=5.5),
         PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
-    ])
+    ], ids=['circle', 'polygon_hexagon'])
     def test_no_error_input(self, aperture):
         """
         Test that `photometry` returns a ``flux_err`` array that always
