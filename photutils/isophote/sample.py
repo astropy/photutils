@@ -31,6 +31,10 @@ __all__ = ['EllipseSample']
 _GRADIENT_RADIUS = 0.1
 _GRADIENT_RADIUS_RETRY = 0.2
 
+# The largest relative error of a gradient that is meaningful by itself,
+# without being compared to a reference gradient.
+_MAX_GRADIENT_REL_ERR = 0.2
+
 
 def _validate_image(image):
     """
@@ -133,11 +137,14 @@ class EllipseSample:
         The geometry of the elliptical path.
     gradient : float
         The local radial intensity gradient.
-    gradient_err : float
+    gradient_err : float or `None`
         The error associated with the local radial intensity gradient.
-    gradient_rel_err : float
+        It is `None` if no meaningful gradient could be measured (see
+        :meth:`~photutils.isophote.EllipseSample.update`).
+    gradient_rel_err : float or `None`
         The relative error associated with the local radial intensity
-        gradient.
+        gradient. It is `None` if no meaningful gradient could be
+        measured.
     sector_area : float
         The average area of the sectors along the elliptical path from
         which the sample values were integrated.
@@ -388,6 +395,16 @@ class EllipseSample:
         larger if the first estimate is not meaningful), as in the
         STSDAS ``ellipse`` task, regardless of the ``astep`` value.
 
+        A meaningful gradient is negative and is either steeper than
+        one third of a reference gradient or measured with a relative
+        error smaller than 20%. The STSDAS task does not use the
+        relative error. The reference is the gradient from the last
+        update of this sample. `~photutils.isophote.EllipseFitter`
+        sets it to the gradient of its previous iteration. If there is
+        no reference, the first estimate plus its error is used. If
+        neither estimate is meaningful, the gradient is set to 0.8
+        times the reference and its error is set to `None`.
+
         The mean intensity and the gradient are computed only if the
         sample values changed since the last call.
 
@@ -433,32 +450,26 @@ class EllipseSample:
         gradient, gradient_err = self._get_gradient(_GRADIENT_RADIUS)
 
         # Check for meaningful gradient. If no meaningful gradient, try
-        # another sample, this time using larger radius. Meaningful
-        # gradient means something  shallower, but still close to within
-        # a factor 3 from previous gradient estimate. If no previous
-        # estimate is available, guess it by adding the error to the
-        # current gradient.
+        # another sample, this time using larger radius. If no previous
+        # estimate is available as the reference, guess it by adding
+        # the error to the current gradient.
         previous_gradient = self._reference_gradient
         if not previous_gradient:
             previous_gradient = gradient + gradient_err
 
-        # A meaningful gradient must also be negative (the isophote
-        # intensity decreases outward). A gradient of exactly zero can
-        # occur with the nearest-neighbor integrator when the samples at
-        # both radii extract identical pixel sets, and it would cause
-        # divisions by zero in the fitter's parameter correctors.
-        if (gradient >= (previous_gradient / 3.0)  # gradient is negative!
-                or gradient >= 0.0):
+        if not self._is_meaningful_gradient(gradient, gradient_err,
+                                            previous_gradient):
             gradient, gradient_err = self._get_gradient(
                 _GRADIENT_RADIUS_RETRY)
 
-        # If still no meaningful gradient can be measured, try with
-        # previous one, slightly shallower. A factor 0.8 is not too far
-        # from what is expected from geometrical sampling steps of 10-20%
-        # and a deVaucouleurs law or an exponential disk (at least at its
-        # inner parts, r <~ 5 req). Gradient error is meaningless in this
-        # case.
-        if gradient >= (previous_gradient / 3.0) or gradient >= 0.0:
+        # If still no meaningful gradient can be measured, use the
+        # reference, slightly shallower. The factor of 0.8 comes from
+        # the STSDAS ellipse task, where the reference can also be the
+        # gradient of the previous isophote (see the isophote FAQ in
+        # the documentation). The gradient error is meaningless in
+        # this case.
+        if not self._is_meaningful_gradient(gradient, gradient_err,
+                                            previous_gradient):
             gradient = previous_gradient * 0.8
             gradient_err = None
 
@@ -469,6 +480,36 @@ class EllipseSample:
             self.gradient_rel_err = gradient_err / np.abs(gradient)
         else:
             self.gradient_rel_err = None
+
+    @staticmethod
+    def _is_meaningful_gradient(gradient, gradient_err, reference):
+        """
+        Return whether a measured gradient is meaningful.
+
+        A meaningful gradient is negative and is either steeper than a
+        third of the ``reference`` gradient or measured with a relative
+        error smaller than 20%. The STSDAS ellipse task has only the
+        first of these two alternatives. With only that one, a single
+        gradient that is much steeper than the following ones would
+        make them not meaningful for several iterations.
+        """
+        # The isophote intensity must decrease outward. A gradient of
+        # exactly zero can occur with the nearest-neighbor integrator
+        # when the samples at both radii extract identical pixel sets,
+        # and it would cause divisions by zero in the fitter's parameter
+        # correctors.
+        if gradient >= 0.0:
+            return False
+
+        # This is true only for a negative reference. The gradient is
+        # then shallower than a third of the reference.
+        if gradient >= reference / 3.0:
+            return gradient_err < _MAX_GRADIENT_REL_ERR * abs(gradient)
+
+        # A NaN gradient (e.g., from a gradient sample without valid
+        # points) also gets here, because all the comparisons above
+        # are false. It is kept, and the fitter stops on it.
+        return True
 
     def _make_sample(self, *, sma=None, x0=None, y0=None, eps=None,
                      pa=None):

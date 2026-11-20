@@ -80,22 +80,30 @@ similar ellipse with a 10% larger semimajor axis.
 
 If the gradient so estimated is not meaningful, the algorithm extracts
 another #2 sample, this time using a 20% larger radius. In this
-context, a meaningful gradient means "shallower", but still close to
-within a factor of 3 of the gradient estimate of the previous
-iteration of the fit.
+context, a meaningful gradient is negative and is either steeper than
+one third of a reference gradient or measured with a relative error
+smaller than 20%. The reference is the gradient of the previous
+iteration of the fit of the same isophote.
 
 If still no meaningful gradient can be measured, the algorithm uses
-the value of the previous iteration, but decreased (in absolute value)
-by a factor of 0.8. This factor is roughly what is expected from
-semimajor-axis geometrical-sampling steps of 10 - 20% and a de
-Vaucouleurs law or an exponential disk in its inner region (r <~ 5
-req). When using the gradient of the previous iteration as an
-estimator for the current one, the current gradient error cannot be
-computed and is set to `None`.
+the reference gradient, but decreased (in absolute value) by a factor
+of 0.8. The current gradient error then cannot be computed and is set
+to `None`.
 
-As a last resort, if no previous gradient estimate is available, the
-algorithm uses the current gradient plus its error as the reference
-value. This is the case for the first iteration of each isophote.
+As a last resort, if no reference is available, the algorithm uses the
+current gradient plus its error as the reference. This is the case for
+the first iteration of each isophote.
+
+These rules follow the STSDAS ``ellipse`` task, with two differences.
+The STSDAS task also keeps the reference from one isophote to the
+next, starting from a fixed guess. Its factor of 0.8 is roughly what
+is expected between two isophotes from semimajor-axis
+geometrical-sampling steps of 10 - 20% and a de Vaucouleurs law or an
+exponential disk in its inner region (r <~ 5 req). The STSDAS task
+also never accepts a gradient that is shallower than one third of the
+reference. Here such a gradient is accepted if its relative error is
+smaller than 20%. Otherwise, a single gradient that is much steeper
+than the following ones would replace them for several iterations.
 
 The use of approximate gradient estimators may seem in contradiction
 with the fact that isophote fitting errors depend on gradient error,
