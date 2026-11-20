@@ -26,10 +26,13 @@ in most of the parameters (mean isophotal intensity agrees within a
 fraction of 1% mostly), but every now and then the ellipticity and
 position angle of the semimajor axis may differ by a large amount from
 what the SPP code measures. For the noisy images (M51 and
-synth_lowsnr), the fit extends by about one isophote beyond the SPP
-code. The ``maxgerr`` criterion stops the outward growth after two
+synth_lowsnr), the fit extends by one or more isophotes beyond the
+SPP code. The ``maxgerr`` criterion stops the outward growth after two
 consecutive isophotes exceed it (soft stopping), while the SPP code
-default is to stop after the first one.
+default is to stop after the first one. That accounts for one
+isophote. The outermost isophotes of these images are also dominated
+by noise, so the semimajor axis length where the growth stops changes
+with rounding differences.
 
 The not-so-good behavior observed in the case of the M51 image is to
 be expected though. This image is exactly the type of galaxy image for
@@ -224,15 +227,20 @@ def test_regression(name):
         tbl.write('test_regression.ecsv', overwrite=True)
 
 
-@pytest.mark.parametrize(('name', 'max_extra'), [('synth_highsnr', 2),
-                                                 ('synth', 2),
-                                                 ('synth_lowsnr', 10),
-                                                 ('M51', 10)])
+@pytest.mark.parametrize(('name', 'max_extra', 'noisy'),
+                         [('synth_highsnr', 2, False),
+                          ('synth', 2, False),
+                          ('synth_lowsnr', 10, True),
+                          ('M51', 10, True)])
 @pytest.mark.remote_data
-def test_regression_summary(name, max_extra):
+def test_regression_summary(name, max_extra, noisy):
     """
-    Compare summary statistics of the fitted isophotes with the results
-    of the SPP code for all the test images.
+    Compare the fitted isophotes with the results of the SPP code for
+    all the test images.
+
+    Every isophote of the synthetic images with a high signal-to-noise
+    ratio must agree with the SPP results. For the noisy images, only
+    the median differences are limited.
     """
     path = op.join(op.dirname(op.abspath(__file__)), 'data',
                    f'{name}_table.fits')
@@ -260,8 +268,8 @@ def test_regression_summary(name, max_extra):
     assert np.count_nonzero(matched) >= len(table) - 2
     mask = matched & (table_sma > 3)
     index = index[mask]
-    ref = {name: np.asarray(table[name][mask], dtype=float)
-           for name in ('INTENS', 'ELLIP', 'PA', 'X0', 'Y0')}
+    ref = {colname: np.asarray(table[colname][mask], dtype=float)
+           for colname in ('INTENS', 'ELLIP', 'PA', 'X0', 'Y0')}
 
     intens_diff = isolist.intens[index] / ref['INTENS'] - 1.0
     eps_diff = isolist.eps[index] - ref['ELLIP']
@@ -271,7 +279,16 @@ def test_regression_summary(name, max_extra):
     pa_diff = (np.rad2deg(isolist.pa[index]) - pa_ref + 90.0) % 180.0 - 90.0
     center_diff = np.hypot(isolist.x0[index] + 1 - ref['X0'],
                            isolist.y0[index] + 1 - ref['Y0'])
-    assert np.median(np.abs(intens_diff)) < 0.005
-    assert np.median(np.abs(eps_diff)) < 0.01
-    assert np.median(np.abs(pa_diff)) < 1.0
-    assert np.median(center_diff) < 0.1
+
+    # The limits are for the relative intensity, the ellipticity, the
+    # position angle in degrees, and the center in pixels.
+    if noisy:
+        statistic = np.median
+        limits = (0.005, 0.01, 1.0, 0.1)
+    else:
+        statistic = np.max
+        limits = (0.001, 0.001, 0.2, 0.01)
+    assert statistic(np.abs(intens_diff)) < limits[0]
+    assert statistic(np.abs(eps_diff)) < limits[1]
+    assert statistic(np.abs(pa_diff)) < limits[2]
+    assert statistic(center_diff) < limits[3]
