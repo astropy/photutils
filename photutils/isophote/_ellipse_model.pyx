@@ -104,11 +104,15 @@ def build_ellipse_model_c(
                 # Get image coordinates of (r, phi) pixel.
                 x = r * cos(phi + pa) + x0
                 y = r * sin(phi + pa) + y0
-                # Round down (this is equivalent to int(floor(x))).
-                i = <int>x - (x < 0)
-                j = <int>y - (y < 0)
+                # Skip points outside of the image. The coordinates are
+                # checked before they are converted to integers because
+                # nonfinite and very large coordinates do not have a
+                # defined integer value.
+                if (-1.0 < x < n_cols) and (-1.0 < y < n_rows):
+                    # Round down (this is equivalent to int(floor(x))).
+                    i = <int>x - (x < 0)
+                    j = <int>y - (y < 0)
 
-                if (-1 <= i <= i_max) and (-1 <= j <= j_max):
                     # Get fractional deviations relative to target array.
                     fx = x - <double>i
                     fy = y - <double>j

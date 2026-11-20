@@ -265,6 +265,34 @@ def test_build_ellipse_model_c_threadsafe():
             assert_array_equal(result[1], expected[1])
 
 
+@pytest.mark.parametrize('value', [np.nan, np.inf, -np.inf, 1.0e30])
+def test_build_ellipse_model_c_invalid_center(value):
+    """
+    Test that build_ellipse_model_c skips an isophote whose center
+    coordinates are nonfinite or too large to be pixel indices.
+    """
+    n = 16
+    sma = np.linspace(0.5, 20.0, n)
+    intens = np.full(n, 1.0)
+    eps = np.full(n, 0.3)
+    pa = np.full(n, 0.5)
+    x0 = np.full(n, 50.0)
+    y0 = np.full(n, 50.0)
+
+    # The reference isophote lies outside of the image.
+    x0[8] = -1000.0
+    expected = build_ellipse_model_c(100, 100, sma, intens, eps, pa, x0, y0)
+
+    x0[8] = value
+    result = build_ellipse_model_c(100, 100, sma, intens, eps, pa, x0, y0)
+    assert_array_equal(result[0], expected[0])
+    assert_array_equal(result[1], expected[1])
+
+    result = build_ellipse_model_c(100, 100, sma, intens, eps, pa, y0, x0)
+    assert np.all(np.isfinite(result[0]))
+    assert np.all(np.isfinite(result[1]))
+
+
 def test_build_ellipse_model_c_readonly_arrays():
     """
     Test that read-only (nonwritable) input arrays are accepted by
