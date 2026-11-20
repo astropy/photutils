@@ -4,6 +4,7 @@ Tools for fitting elliptical isophotes.
 """
 
 import copy
+import functools
 import warnings
 
 import numpy as np
@@ -13,7 +14,7 @@ from photutils.isophote.fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG,
                                        DEFAULT_MAXGERR, DEFAULT_MAXIT,
                                        DEFAULT_MINIT, CentralEllipseFitter,
                                        EllipseFitter)
-from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.geometry import EllipseGeometry, _make_fix_array
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import (CentralEllipseSample, EllipseSample,
@@ -242,6 +243,12 @@ class Ellipse:
         of that instance. These overrides apply only to this call. The
         `~photutils.isophote.EllipseGeometry` instance is not modified.
 
+        If the center, position angle, and ellipticity are all fixed,
+        by the fix_XXX parameters or by the
+        `~photutils.isophote.EllipseGeometry` instance, there is
+        nothing to fit. A warning is emitted and an empty
+        `~photutils.isophote.IsophoteList` is returned.
+
         Parameters
         ----------
         sma0 : float, optional
@@ -420,36 +427,36 @@ class Ellipse:
             geometry.linear_growth = linear
         else:
             linear = geometry.linear_growth
-        if fix_center and fix_pa and fix_eps:
-            msg = ': Everything is fixed. Fit not possible.'
+        if fix_center or fix_pa or fix_eps:
+            geometry.fix = _make_fix_array(fix_center=fix_center,
+                                           fix_pa=fix_pa, fix_eps=fix_eps)
+        if np.all(geometry.fix):
+            msg = 'Everything is fixed. Fit not possible.'
             warnings.warn(msg, AstropyUserWarning)
             return IsophoteList([])
-        if fix_center or fix_pa or fix_eps:
-            geometry.fix = np.array([fix_center, fix_center, fix_pa,
-                                     fix_eps])
+
+        # The fit parameters that are the same for all isophotes. The
+        # fitted isophotes are appended to isophote_list.
+        fit = functools.partial(self._fit_isophote, conver=conver,
+                                maxit=maxit, fflag=fflag, sclip=sclip,
+                                n_clip=n_clip, integrmode=integrmode,
+                                linear=linear, maxrit=maxrit,
+                                isophote_list=isophote_list)
 
         # First, go from initial sma outwards until
         # hitting one of several stopping criteria.
         noiter = False
-        first_isophote = True
         previous_exceeded = False
         while True:
-            # first isophote runs longer
-            minit_a = 2 * minit if first_isophote else minit
-            first_isophote = False
-
-            # The geometry of the last fitted isophote is the initial
-            # guess for the next one.
+            # The first isophote runs longer. The geometry of the last
+            # fitted isophote is the initial guess for the next one.
             if isophote_list:
+                minit_a = minit
                 geometry = isophote_list[-1].sample.geometry
-            isophote = self._fit_isophote(geometry, sma, step=step,
-                                          conver=conver, minit=minit_a,
-                                          maxit=maxit, fflag=fflag,
-                                          sclip=sclip, n_clip=n_clip,
-                                          integrmode=integrmode,
-                                          linear=linear, maxrit=maxrit,
-                                          noniterate=noiter,
-                                          isophote_list=isophote_list)
+            else:
+                minit_a = 2 * minit
+            isophote = fit(geometry, sma, step=step, minit=minit_a,
+                           noniterate=noiter)
 
             # An invalid isophote (e.g., no valid data points) is not
             # stored, so an empty list means that the first isophote
@@ -471,7 +478,7 @@ class Ellipse:
                     warnings.warn(msg, AstropyUserWarning)
                     return IsophoteList([])
 
-                self._fix_last_isophote(isophote_list, -1)
+                self._fix_last_isophote(isophote_list, isophote_list[-2])
 
                 # Get last isophote from the actual list, since the last
                 # `isophote` instance in this context may no longer be OK.
@@ -529,21 +536,15 @@ class Ellipse:
 
         # Now, go from initial sma inwards towards center.
         while True:
-            isophote = self._fit_isophote(geometry, sma, step=step,
-                                          conver=conver, minit=minit,
-                                          maxit=maxit, fflag=fflag,
-                                          sclip=sclip, n_clip=n_clip,
-                                          integrmode=integrmode,
-                                          linear=linear, maxrit=maxrit,
-                                          isophote_list=isophote_list)
+            isophote = fit(geometry, sma, step=step, minit=minit)
 
             # If abnormal condition, fix isophote but keep going.
             if isophote.stop_code < 0:
-                self._fix_last_isophote(isophote_list, 0)
+                self._fix_last_isophote(isophote_list, first_isophote)
 
-            # But if we get an error from the scipy fitter, bail out
-            # immediately. This usually happens at very small radii
-            # when the number of data points is too small.
+            # But if the harmonic fit failed, bail out immediately.
+            # This usually happens at very small radii when the number
+            # of data points is too small.
             if isophote.stop_code == 3:
                 break
 
@@ -588,6 +589,11 @@ class Ellipse:
         determine the starting point for gradient computation and
         to calculate the areas of the elliptical sectors (when area
         integration mode is enabled).
+
+        If the center, position angle, and ellipticity are all fixed
+        by the `~photutils.isophote.EllipseGeometry` instance, there
+        is nothing to fit. The isophote is then extracted with that
+        geometry and its stop code is 4.
 
         Parameters
         ----------
@@ -771,29 +777,26 @@ class Ellipse:
         return Isophote(sample, 0, valid=True, stop_code=4)
 
     @staticmethod
-    def _fix_last_isophote(isophote_list, index):
-        if isophote_list:
-            isophote = isophote_list.pop()
+    def _fix_last_isophote(isophote_list, reference):
+        """
+        Replace the last isophote in the list, whose fit failed, with
+        an isophote extracted with the geometry of the ``reference``
+        isophote.
+        """
+        isophote = isophote_list[-1]
+        isophote.fix_geometry(reference)
 
-            # Check if the isophote is bad. If so, fix its geometry
-            # to be like the geometry of the index-th isophote
-            # in the list.
-            isophote.fix_geometry(isophote_list[index])
+        # Force new extraction of raw data, since
+        # geometry changed.
+        isophote.sample.values = None
+        isophote.sample.update(
+            fixed_parameters=isophote.sample.geometry.fix)
 
-            # force new extraction of raw data, since
-            # geometry changed.
-            isophote.sample.values = None
-            isophote.sample.update(
-                fixed_parameters=isophote.sample.geometry.fix)
+        # We take the opportunity to change an eventual
+        # negative stop code to its positive equivalent.
+        code = 5 if isophote.stop_code < 0 else isophote.stop_code
 
-            # we take the opportunity to change an eventual
-            # negative stop code to its' positive equivalent.
-            code = 5 if isophote.stop_code < 0 else isophote.stop_code
-
-            # build new instance so it can have its attributes
-            # populated from the updated sample attributes.
-            new_isophote = Isophote(isophote.sample, isophote.n_iter,
-                                    isophote.valid, code)
-
-            # add new isophote to list
-            isophote_list.append(new_isophote)
+        # Build new instance so it can have its attributes
+        # populated from the updated sample attributes.
+        isophote_list[-1] = Isophote(isophote.sample, isophote.n_iter,
+                                     isophote.valid, code)

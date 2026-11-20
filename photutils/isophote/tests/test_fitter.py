@@ -96,6 +96,40 @@ def test_abnormal_stop_returns_best_fit(ring_radius):
     assert isophote.grad < 0
 
 
+def test_everything_fixed():
+    """
+    Test that the isophote is extracted with the input geometry,
+    without fitting, if all the ellipse parameters are fixed.
+    """
+    geometry = EllipseGeometry(250.0, 260.0, 40.0, 0.3, 1.0, fix_center=True,
+                               fix_pa=True, fix_eps=True)
+    sample = EllipseSample(DATA, 40.0, geometry=geometry)
+    isophote = EllipseFitter(sample).fit()
+    assert isophote.stop_code == 4
+    assert isophote.n_iter == 0
+    assert (isophote.x0, isophote.y0, isophote.eps, isophote.pa) == (
+        250.0, 260.0, 0.3, 1.0)
+
+
+def test_fit_keeps_sample_settings():
+    """
+    Test that the sample of the fitted isophote, which is made by the
+    parameter correctors, keeps the settings of the input sample.
+    """
+    sample = EllipseSample(DATA, 40.0, astep=0.2, eps=0.3, sclip=2.5,
+                           n_clip=2, integrmode=MEAN)
+    isophote = EllipseFitter(sample).fit()
+    fitted_sample = isophote.sample
+    assert isophote.stop_code == 0
+    assert fitted_sample is not sample
+    assert fitted_sample.sclip == 2.5
+    assert fitted_sample.n_clip == 2
+    assert fitted_sample.integrmode == MEAN
+    assert fitted_sample.geometry.sma == 40.0
+    assert fitted_sample.geometry.astep == 0.2
+    assert not fitted_sample.geometry.linear_growth
+
+
 def test_fitting_raw():
     """
     This test performs a raw (no EllipseFitter), 1-step correction in
@@ -175,8 +209,7 @@ def test_fitting_eps():
 
     assert isinstance(isophote, Isophote)
     g = isophote.sample.geometry
-    assert g.eps >= 0.19
-    assert g.eps <= 0.21
+    assert_allclose(g.eps, 0.2, atol=0.01)
 
 
 @pytest.mark.parametrize('galaxy_eps', [0.97, 0.98])
@@ -212,8 +245,7 @@ def test_fitting_pa():
     isophote = fitter.fit()
     g = isophote.sample.geometry
 
-    assert g.pa >= (np.pi / 4 - 0.05)
-    assert g.pa <= (np.pi / 4 + 0.05)
+    assert_allclose(g.pa, np.pi / 4, atol=0.05)
 
 
 def test_fitting_xy():
@@ -226,10 +258,7 @@ def test_fitting_xy():
     isophote = fitter.fit()
     g = isophote.sample.geometry
 
-    assert g.x0 >= (pos - 1)
-    assert g.x0 <= (pos + 1)
-    assert g.y0 >= (pos - 1)
-    assert g.y0 <= (pos + 1)
+    assert_allclose((g.x0, g.y0), pos, atol=1.0)
 
 
 def test_fitting_all():
@@ -251,14 +280,9 @@ def test_fitting_all():
     assert isophote.stop_code == 0
 
     g = isophote.sample.geometry
-    assert g.x0 >= (pos - 1.5)  # position within 1.5 pixel
-    assert g.x0 <= (pos + 1.5)
-    assert g.y0 >= (pos - 1.5)
-    assert g.y0 <= (pos + 1.5)
-    assert g.eps >= (eps - 0.01)  # eps within 0.01
-    assert g.eps <= (eps + 0.01)
-    assert g.pa >= (angle - 0.05)  # pa within 5 deg
-    assert g.pa <= (angle + 0.05)
+    assert_allclose((g.x0, g.y0), pos, atol=1.5)  # within 1.5 pixel
+    assert_allclose(g.eps, eps, atol=0.01)
+    assert_allclose(g.pa, angle, atol=0.05)  # within ~3 deg
 
     sample_m = EllipseSample(data, sma, position_angle=(1.2 * angle),
                              integrmode=MEAN)

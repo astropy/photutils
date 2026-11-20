@@ -61,7 +61,8 @@ class Isophote:
               the same constant geometric parameters. It's also
               used when the user turns off the fitting algorithm
               via the ``maxrit`` fitting parameter (see the
-              `~photutils.isophote.Ellipse` class).
+              `~photutils.isophote.Ellipse` class) and when all the
+              ellipse parameters are fixed.
            *  5: Ellipse diverged. Not even the minimum number of
               iterations could be executed. Subsequent ellipses at
               larger or smaller semimajor axis may have the same
@@ -327,12 +328,10 @@ class Isophote:
             a = up_coeffs[1] / scale
             b = up_coeffs[2] / scale
 
-            def errfunc(x, phi, order, intensities):
-                return (x[0] + x[1] * np.sin(order * phi)
-                        + x[2] * np.cos(order * phi) - intensities)
-
-            up_var_residual = np.std(errfunc(up_coeffs, self.sample.values[0],
-                                             n, self.sample.values[2]),
+            phi = sample.values[0]
+            up_model = (up_coeffs[0] + up_coeffs[1] * np.sin(n * phi)
+                        + up_coeffs[2] * np.cos(n * phi))
+            up_var_residual = np.std(up_model - sample.values[2],
                                      ddof=len(up_coeffs))**2
             up_covariance = up_inv_hessian * up_var_residual
 
@@ -571,7 +570,7 @@ class IsophoteList:
         value : `~photutils.isophote.Isophote`
             The isophote to be appended.
         """
-        self.insert(len(self) + 1, value)
+        self._list.append(value)
 
     def extend(self, value):
         """

@@ -52,7 +52,7 @@ def test_angles():
         sa4 = sector_area(a1, eps, phi2, r4)
         area = abs((sa3 - sa2) - (sa4 - sa1))
 
-        # Compute step to next sector and its angular span
+        # Compute step to next sector and its angular span.
         dphi = max(min((sarea / (r3 - r4) / r4), phi_max), phi_min)
         phistep = dphi / 2.0 + phi2 - phi
 

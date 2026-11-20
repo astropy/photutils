@@ -138,6 +138,8 @@ def fit_first_and_second_harmonics(phi, intensities):
     ValueError
         If there are fewer than 5 data points.
     """
+    # The isophote fitter relies on the coefficient order (mean, A1,
+    # B1, A2, B2). See _HARMONIC_PARAMETERS in the geometry module.
     phi = np.asarray(phi)
     design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
                               np.sin(2 * phi), np.cos(2 * phi)])

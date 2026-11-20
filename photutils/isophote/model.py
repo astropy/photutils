@@ -15,13 +15,8 @@ __all__ = ['build_ellipse_model']
 
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
-def build_ellipse_model(
-    shape,
-    isolist,
-    fill: float = 0.0,
-    high_harmonics=False,
-    sma_interval: float = 0.1,
-):
+def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
+                        sma_interval=0.1):
     """
     Build a model elliptical galaxy image from a list of isophotes.
 

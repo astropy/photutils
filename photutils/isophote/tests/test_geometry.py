@@ -5,6 +5,7 @@ Tests for the geometry module.
 
 import numpy as np
 import pytest
+from astropy import log
 from numpy.testing import assert_allclose
 
 from photutils.isophote.geometry import EllipseGeometry
@@ -203,3 +204,55 @@ def test_find_center_masked():
                                 verbose=False)
     assert geometry_masked.x0 == geometry.x0
     assert geometry_masked.y0 == geometry.y0
+
+
+@pytest.mark.parametrize('pa', [0.3, -0.5])
+def test_to_polar_scalar_vectorized(pa):
+    """
+    Test that the scalar and vectorized polar coordinates agree in all
+    quadrants, including at the ellipse center.
+    """
+    geometry = EllipseGeometry(10.0, 20.0, 5.0, 0.2, pa)
+    x = np.array([10.0, 15.0, 5.0, 5.0, 15.0, 10.0, 7.0])
+    y = np.array([20.0, 23.0, 23.0, 17.0, 17.0, 25.0, 20.0])
+    radius, angle = geometry.to_polar(x, y)
+    for i, (xi, yi) in enumerate(zip(x, y, strict=True)):
+        radius_i, angle_i = geometry.to_polar(float(xi), float(yi))
+        assert_allclose(radius_i, radius[0, i])
+        assert_allclose(angle_i, angle[0, i], atol=1e-12)
+
+    assert radius[0, 0] == 0
+    dx = x[1:] - 10.0
+    dy = y[1:] - 20.0
+    assert_allclose(radius[0, 1:], np.hypot(dx, dy))
+    expected = np.mod(np.arctan2(dy, dx) - pa, 2 * np.pi)
+    assert_allclose(angle[0, 1:], expected, atol=1e-12)
+    assert np.all((angle >= 0) & (angle < 2 * np.pi))
+
+
+def test_find_center_outside_image():
+    """
+    Test that find_center starts from the image center if the initial
+    center is outside of the image.
+    """
+    data = make_test_image(nx=100, ny=100, x0=50, y0=50, sma=10.0,
+                           noise=1.0, seed=0)
+    geometry = EllipseGeometry(-20.0, 150.0, 10.0, 0.2, 0.1)
+    geometry.find_center(data, verbose=False)
+    assert abs(geometry.x0 - 50) <= 1
+    assert abs(geometry.y0 - 50) <= 1
+
+
+def test_find_center_below_threshold():
+    """
+    Test that the center is not changed if the figure of merit is below
+    the threshold.
+    """
+    data = make_test_image(nx=100, ny=100, x0=50, y0=50, sma=10.0,
+                           noise=1.0, seed=0)
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    with log.log_to_list() as log_list:
+        geometry.find_center(data, threshold=1e10)
+    assert geometry.x0 == 52.0
+    assert geometry.y0 == 48.0
+    assert 'below the threshold' in log_list[0].msg

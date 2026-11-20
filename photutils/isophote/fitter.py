@@ -9,10 +9,10 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.isophote.geometry import _HARMONIC_PARAMETERS, _make_fix_array
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
 from photutils.isophote.isophote import CentralPixel, Isophote
-from photutils.isophote.sample import EllipseSample
 from photutils.utils._deprecation import deprecated_renamed_argument
 
 __all__ = ['EllipseFitter']
@@ -51,6 +51,10 @@ class EllipseFitter:
             maxgerr=None, going_inwards=None):  # noqa: ARG002
         """
         Fit an elliptical isophote.
+
+        If all the ellipse parameters are fixed by the geometry of
+        the sample, there is nothing to fit. The isophote is then
+        extracted with that geometry and its stop code is 4.
 
         Parameters
         ----------
@@ -128,6 +132,13 @@ class EllipseFitter:
         # These must be passed throughout the execution chain.
         fixed_parameters = self._sample.geometry.fix
 
+        # If all the ellipse parameters are fixed, there is nothing to
+        # fit. As in the STSDAS ellipse task, the isophote is extracted
+        # with the input geometry, as in the noniterative mode.
+        if np.all(fixed_parameters):
+            sample.update(fixed_parameters=fixed_parameters)
+            return Isophote(sample, 0, valid=True, stop_code=4)
+
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
             sample.update(fixed_parameters=fixed_parameters)
@@ -139,25 +150,22 @@ class EllipseFitter:
             # values[2] = 1-d array with intensity
             values = sample.extract()
 
-            # The harmonic fit has 5 coefficients, so it needs at least
-            # 5 data points. We have to check for that condition here,
-            # and bail out in case it is detected.
+            # Fit harmonic coefficients. A sample with fewer data points
+            # than the 5 harmonic coefficients or a failure in the fit
+            # is a fatal error, so terminate immediately with the sample
+            # marked as invalid.
+            msg = None
             if len(values[2]) < 5:
                 msg = ('Too small sample to warrant a fit. SMA is '
                        f'{sample.geometry.sma}')
-                warnings.warn(msg, AstropyUserWarning)
-                sample.geometry.fix = fixed_parameters
-                return Isophote(sample, i + 1, valid=False, stop_code=3)
-
-            # Fit harmonic coefficients. Failure in fitting is a fatal
-            # error, so terminate immediately with sample marked as
-            # invalid.
-            try:
-                coeffs = fit_first_and_second_harmonics(values[0], values[2])
-                coeffs = coeffs[0]
-            except Exception as exc:
-                msg = (f'The harmonic fit failed at SMA {sample.geometry.sma}'
-                       f': {exc}')
+            else:
+                try:
+                    coeffs = fit_first_and_second_harmonics(values[0],
+                                                            values[2])[0]
+                except Exception as exc:
+                    msg = ('The harmonic fit failed at SMA '
+                           f'{sample.geometry.sma}: {exc}')
+            if msg is not None:
                 warnings.warn(msg, AstropyUserWarning)
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, valid=False, stop_code=3)
@@ -300,16 +308,8 @@ class _ParameterCorrector:
 class _PositionCorrector(_ParameterCorrector):
     @staticmethod
     def finalize_correction(dx, dy, sample):
-        new_x0 = sample.geometry.x0 + dx
-        new_y0 = sample.geometry.y0 + dy
-
-        return EllipseSample(sample.image, sample.geometry.sma, x0=new_x0,
-                             y0=new_y0, astep=sample.geometry.astep,
-                             sclip=sample.sclip, n_clip=sample.n_clip,
-                             eps=sample.geometry.eps,
-                             position_angle=sample.geometry.pa,
-                             linear_growth=sample.geometry.linear_growth,
-                             integrmode=sample.integrmode)
+        return sample._make_sample(x0=sample.geometry.x0 + dx,
+                                   y0=sample.geometry.y0 + dy)
 
 
 class _PositionCorrector0(_PositionCorrector):
@@ -344,13 +344,7 @@ class _AngleCorrector(_ParameterCorrector):
         # Make the angle lie between 0 and np.pi radians.
         new_pa = (sample.geometry.pa + correction) % np.pi
 
-        return EllipseSample(sample.image, sample.geometry.sma,
-                             x0=sample.geometry.x0, y0=sample.geometry.y0,
-                             astep=sample.geometry.astep, sclip=sample.sclip,
-                             n_clip=sample.n_clip, eps=sample.geometry.eps,
-                             position_angle=new_pa,
-                             linear_growth=sample.geometry.linear_growth,
-                             integrmode=sample.integrmode)
+        return sample._make_sample(pa=new_pa)
 
 
 class _EllipticityCorrector(_ParameterCorrector):
@@ -363,18 +357,21 @@ class _EllipticityCorrector(_ParameterCorrector):
 
         new_eps = sample.geometry.eps - correction
 
-        return EllipseSample(sample.image, sample.geometry.sma,
-                             x0=sample.geometry.x0, y0=sample.geometry.y0,
-                             astep=sample.geometry.astep, sclip=sample.sclip,
-                             n_clip=sample.n_clip, eps=new_eps,
-                             position_angle=sample.geometry.pa,
-                             linear_growth=sample.geometry.linear_growth,
-                             integrmode=sample.integrmode)
+        return sample._make_sample(eps=new_eps)
 
 
-# Instances of corrector code
-_CORRECTORS = [_PositionCorrector0(), _PositionCorrector1(),
-               _AngleCorrector(), _EllipticityCorrector()]
+# The parameter corrector for each harmonic coefficient. The correctors
+# are listed in the order of the coefficients returned by
+# fit_first_and_second_harmonics, which is also the order of the
+# ``fix`` array of EllipseGeometry.
+_CORRECTORS_BY_COEFFICIENT = {
+    'a1': _PositionCorrector0(),
+    'b1': _PositionCorrector1(),
+    'a2': _AngleCorrector(),
+    'b2': _EllipticityCorrector(),
+}
+_CORRECTORS = [_CORRECTORS_BY_COEFFICIENT[name]
+               for name in _HARMONIC_PARAMETERS]
 
 
 class CentralEllipseFitter(EllipseFitter):
@@ -405,7 +402,8 @@ class CentralEllipseFitter(EllipseFitter):
             hardcoded to `None` or other default value when appropriate.
         """
         # Default values
-        fixed_parameters = np.array([False, False, False, False])
+        fixed_parameters = _make_fix_array(fix_center=False, fix_pa=False,
+                                           fix_eps=False)
 
         self._sample.update(fixed_parameters=fixed_parameters)
         return CentralPixel(self._sample)

@@ -459,16 +459,30 @@ class EllipseSample:
         else:
             self.gradient_rel_err = None
 
+    def _make_sample(self, *, sma=None, x0=None, y0=None, eps=None,
+                     pa=None):
+        """
+        Make a new sample of the same image, with the same settings and
+        with the given ellipse parameters changed.
+
+        The new sample is not extracted. The ellipse parameters that
+        are `None` are taken from this sample.
+        """
+        geometry = self.geometry
+        return EllipseSample(
+            self.image, geometry.sma if sma is None else sma,
+            x0=geometry.x0 if x0 is None else x0,
+            y0=geometry.y0 if y0 is None else y0,
+            astep=geometry.astep, sclip=self.sclip, n_clip=self.n_clip,
+            eps=geometry.eps if eps is None else eps,
+            position_angle=geometry.pa if pa is None else pa,
+            linear_growth=geometry.linear_growth,
+            integrmode=self.integrmode)
+
     def _get_gradient(self, step):
         gradient_sma = (1.0 + step) * self.geometry.sma
 
-        gradient_sample = EllipseSample(
-            self.image, gradient_sma, x0=self.geometry.x0,
-            y0=self.geometry.y0, astep=self.geometry.astep, sclip=self.sclip,
-            n_clip=self.n_clip, eps=self.geometry.eps,
-            position_angle=self.geometry.pa,
-            linear_growth=self.geometry.linear_growth,
-            integrmode=self.integrmode)
+        gradient_sample = self._make_sample(sma=gradient_sma)
 
         sg = gradient_sample.extract()
 

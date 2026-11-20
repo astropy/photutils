@@ -310,3 +310,14 @@ def test_short_arc_isophote_errors():
         value = getattr(isophote, name)
         assert np.isfinite(value)
         assert value > 0
+
+
+def test_harmonic_fit_singular():
+    """
+    Test that the covariance matrix is None for a singular fit.
+    """
+    phi = np.zeros(10)
+    coeffs, covariance = fit_first_and_second_harmonics(phi,
+                                                        np.arange(10.0))
+    assert coeffs.shape == (5,)
+    assert covariance is None

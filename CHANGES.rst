@@ -201,6 +201,15 @@ Bug Fixes
     ``Ellipse`` fit methods now raise a ``ValueError`` for an input
     ellipticity of 1 or larger or a nonfinite center. [#2551]
 
+  - Fixed ``Ellipse.fit_image``, ``Ellipse.fit_isophote``, and
+    ``EllipseFitter.fit`` raising an ``AttributeError`` when all the
+    ellipse parameters are fixed by the input ``EllipseGeometry``.
+    ``fit_image`` now emits a warning and returns an empty
+    ``IsophoteList``, as it already did for the ``fix_center``,
+    ``fix_pa``, and ``fix_eps`` keywords. ``fit_isophote`` and
+    ``EllipseFitter.fit`` extract the isophote without fitting (stop
+    code 4). [#2552]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,

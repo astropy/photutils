@@ -23,7 +23,7 @@ class TestEllipsePositionalKwargs:
 
     def setup_method(self):
         # A small image with a capped fit is sufficient (and fast)
-        # for testing the deprecation warnings
+        # for testing the deprecation warnings.
         self.data = make_test_image(nx=128, ny=128, sma=10.0, seed=0)
 
     def test_init_positional_warns(self):
