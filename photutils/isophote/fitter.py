@@ -306,7 +306,7 @@ class EllipseFitter:
                 # gradient measured for the corrected ellipse is
                 # meaningful. It is set after the center is limited,
                 # which can make a new sample.
-                sample.gradient = previous_gradient
+                sample._reference_gradient = previous_gradient
 
                 # If the corrected ellipse diverged, stop without
                 # sampling it. Otherwise, fix a round ellipse before the

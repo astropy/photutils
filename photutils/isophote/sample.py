@@ -192,6 +192,12 @@ class EllipseSample:
         self.gradient_rel_err = None
         self.sector_area = None
 
+        # The gradient that tells whether a measured gradient is
+        # meaningful. It is the gradient from the last update of this
+        # sample, or the gradient of the previous iteration set by the
+        # fitter.
+        self._reference_gradient = None
+
         # The total_points attribute is the number of angle-radius pairs
         # that were attempted. The actual_points attribute is the number
         # of sampled pairs that resulted in valid values.
@@ -432,7 +438,7 @@ class EllipseSample:
         # a factor 3 from previous gradient estimate. If no previous
         # estimate is available, guess it by adding the error to the
         # current gradient.
-        previous_gradient = self.gradient
+        previous_gradient = self._reference_gradient
         if not previous_gradient:
             previous_gradient = gradient + gradient_err
 
@@ -457,6 +463,7 @@ class EllipseSample:
             gradient_err = None
 
         self.gradient = gradient
+        self._reference_gradient = gradient
         self.gradient_err = gradient_err
         if gradient_err and gradient < 0.0:
             self.gradient_rel_err = gradient_err / np.abs(gradient)
