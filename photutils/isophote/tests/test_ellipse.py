@@ -163,7 +163,7 @@ class TestEllipse:
 
         # The isophotes that exceed maxgerr are fitted instead of
         # being stopped and replaced by the geometry of the previous
-        # isophote (stop code 5)
+        # isophote (stop code 5).
         assert np.all(stop_code[fitted][-2:] != 5)
 
         if maxsma is None:

@@ -788,7 +788,7 @@ class Ellipse:
                                    integrmode=integrmode)
             fitter = EllipseFitter(sample)
         else:
-            # sma == 0 requires special handling.
+            # A zero sma requires special handling.
             sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
             fitter = CentralEllipseFitter(sample)
 

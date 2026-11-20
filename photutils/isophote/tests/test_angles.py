@@ -61,7 +61,5 @@ def test_angles():
         assert 11.0 < area < 12.4
 
         phi = phi + min(phistep, 0.5)
-        # r = (a * (1.0 - eps) / np.sqrt(((1.0 - eps) * np.cos(phi))**2 +
-        #                               (np.sin(phi))**2))
 
     assert ncount == 72

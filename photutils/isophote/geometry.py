@@ -171,7 +171,7 @@ class EllipseGeometry:
             if hasattr(self, attr):
                 delattr(self, attr)
 
-        # sma can eventually be zero!
+        # The sma can eventually be zero.
         if self.sma > 0.0:
             self.sector_angular_width = max(min((inner_sma / self.sma),
                                                 self._phi_max), self._phi_min)
