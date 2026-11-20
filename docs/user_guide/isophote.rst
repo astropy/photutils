@@ -245,6 +245,42 @@ the elliptical model image, and the residual image:
     ax3.set_title('Residual')
 
 
+Measuring Along Fixed Ellipses
+------------------------------
+
+The :meth:`~photutils.isophote.Ellipse.measure_isophotes` method
+measures an image along a given set of ellipses without fitting them.
+This is equivalent to running the IRAF ``ellipse`` task with an input
+ellipse table (the ``inellip`` parameter). A common use is to measure
+an image in a second band along the isophotes fit to a reference image,
+so that both intensity profiles are measured along the same elliptical
+paths (e.g., for a color profile). The two images must be aligned on the
+same pixel grid.
+
+Here we simulate a second-band image of the same galaxy that is half as
+bright, and measure it along the isophotes fit above. The outermost
+isophotes are dominated by noise and can have negative intensities, so
+the color is calculated only where both intensities are positive::
+
+    >>> noise2 = make_noise_image((ny, nx), distribution='gaussian',
+    ...                           mean=0.0, stddev=2.0, seed=5678)
+    >>> data2 = 0.5 * g(x, y) + noise2
+    >>> isolist2 = Ellipse(data2).measure_isophotes(isolist)
+    >>> mask = (isolist.intens > 0) & (isolist2.intens > 0)
+    >>> color = -2.5 * np.log10(isolist2.intens[mask] / isolist.intens[mask])
+
+The returned `~photutils.isophote.IsophoteList` has one isophote for
+each input ellipse, with the same geometry. The input can also be a
+sequence of `~photutils.isophote.EllipseGeometry` objects, which is
+useful for measuring an image along user-defined ellipses::
+
+    >>> geometries = [EllipseGeometry(x0=75, y0=75, sma=sma, eps=0.4,
+    ...                               pa=np.deg2rad(40.0))
+    ...               for sma in (5.0, 10.0, 20.0)]
+    >>> isolist3 = Ellipse(data).measure_isophotes(geometries)
+    >>> print(isolist3.sma)
+    [ 5. 10. 20.]
+
 Additional Example Notebooks (online)
 -------------------------------------
 
