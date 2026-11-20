@@ -7,6 +7,8 @@ Faster computation of the elliptical sampling path from sample.py.
 
 import numpy as np
 
+from cpython.exc cimport PyErr_CheckSignals
+
 
 cdef extern from "math.h" nogil:
     double cos(double x)
@@ -25,15 +27,16 @@ cdef Py_ssize_t walk_path(
     double[::1] phis,
     double[::1] radii,
     bint store,
-) noexcept nogil:
+) except -1 nogil:
     """
     Walk along the elliptical path and return the number of points.
 
     The points are stored in ``phis`` and ``radii`` only if ``store``
-    is true.
+    is true. The walk of a very long path (a very large semimajor
+    axis length) can be interrupted.
     """
     cdef Py_ssize_t n = 0
-    cdef double step, cos2, sin2
+    cdef double step, next_phi, cos2, sin2
 
     while phi <= phi_max:
         if store:
@@ -41,19 +44,27 @@ cdef Py_ssize_t walk_path(
             radii[n] = radius
         n += 1
 
+        # Check for a keyboard interrupt about every million points.
+        if (n & 0xFFFFF) == 0:
+            with gil:
+                PyErr_CheckSignals()
+
         # The angle step is about one pixel along the path, but at most
         # 0.5 radians. Stop if the path cannot advance (a nonpositive or
-        # NaN radius).
+        # NaN radius, or a radius so large that the step does not change
+        # the angle).
         step = 1.0 / radius
         if step > 0.5:
             step = 0.5
-        if not (step > 0.0):
+        next_phi = phi + step
+        if not (next_phi > phi):
             break
 
-        # The squares are computed in separate statements so that the
-        # compiler does not fuse them with the sum (a fused multiply-add
-        # rounds differently).
-        phi += step
+        # The squares are computed in separate statements so that a
+        # compiler that contracts floating-point expressions only within
+        # a statement (e.g., clang) does not fuse them with the sum. A
+        # fused multiply-add rounds differently.
+        phi = next_phi
         cos2 = q * cos(phi)
         cos2 = cos2 * cos2
         sin2 = sin(phi)

@@ -321,6 +321,19 @@ def test_mixed_infinities():
     assert np.all(np.isfinite(sample_inf.values))
 
 
+@pytest.mark.parametrize('sma', [1e20, 1e300])
+def test_sampling_path_huge_sma(sma):
+    """
+    Test that the sampling path of a huge ellipse, whose angle step is
+    too small to change the polar angle, ends at its first point.
+    """
+    sample = EllipseSample(DATA, sma)
+    values = sample.extract()
+    assert values.shape == (3, 0)
+    assert sample.total_points == 1
+    assert sample.actual_points == 0
+
+
 @pytest.mark.parametrize('sma', [1.0, 40.0])
 def test_sampling_path(sma):
     """
