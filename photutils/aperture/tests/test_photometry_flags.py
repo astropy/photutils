@@ -19,10 +19,13 @@ from photutils.aperture.tests.conftest import (UNIT_SHAPE,
 from photutils.segmentation import SegmentationImage
 
 APERTURE_FACTORIES = [
-    lambda xy: CircularAperture(xy, r=3.0),
-    lambda xy: CircularAnnulus(xy, r_in=2.0, r_out=4.0),
-    lambda xy: EllipticalAperture(xy, a=4.0, b=2.5, theta=0.5),
-    lambda xy: RectangularAperture(xy, w=5.0, h=4.0, theta=0.3),
+    pytest.param(lambda xy: CircularAperture(xy, r=3.0), id='circle'),
+    pytest.param(lambda xy: CircularAnnulus(xy, r_in=2.0, r_out=4.0),
+                 id='circular_annulus'),
+    pytest.param(lambda xy: EllipticalAperture(xy, a=4.0, b=2.5, theta=0.5),
+                 id='ellipse'),
+    pytest.param(lambda xy: RectangularAperture(xy, w=5.0, h=4.0, theta=0.3),
+                 id='rectangle'),
 ]
 
 METHODS = [('exact', 5), ('center', 1), ('subpixel', 4)]

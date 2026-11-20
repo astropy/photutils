@@ -427,7 +427,8 @@ class TestSpecificEstimators:
     @pytest.mark.parametrize('cls', [BiweightLocationBackground,
                                      BiweightScaleBackgroundRMS])
     @pytest.mark.parametrize('m_value', [40.0, 40, np.float64(40.0),
-                                         np.array(40.0)])
+                                         np.array(40.0)],
+                             ids=['float', 'int', 'np_float64', 'array_0d'])
     @pytest.mark.parametrize('axis', [None, 0, 1, -1, (0, 2), (0, 1, 2)])
     def test_biweight_scalar_location(self, cls, m_value, axis):
         """
