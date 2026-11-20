@@ -129,7 +129,6 @@ error bars:
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
-
     from photutils.centroids import centroid_2dg
     from photutils.datasets import make_noise_image
     from photutils.profiles import RadialProfile
