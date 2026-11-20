@@ -163,3 +163,43 @@ def test_find_center_near_edge(x0, y0):
     geometry.find_center(data, verbose=False)
     assert abs(geometry.x0 - x0) <= 3
     assert abs(geometry.y0 - y0) <= 3
+
+
+def test_find_center_nonfinite():
+    """
+    Test that nonfinite values are excluded by find_center.
+    """
+    data = make_test_image(nx=100, ny=100, x0=50, y0=50, sma=10.0,
+                           noise=1.0, seed=0)
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry.find_center(data, verbose=False)
+
+    data[49, 48] = np.nan
+    data[51, 53] = np.inf
+    geometry_nan = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry_nan.find_center(data, verbose=False)
+    assert geometry_nan.x0 == geometry.x0
+    assert geometry_nan.y0 == geometry.y0
+
+
+def test_find_center_masked():
+    """
+    Test that masked pixels are excluded by find_center.
+    """
+    data = make_test_image(nx=100, ny=100, x0=50, y0=50, sma=10.0,
+                           noise=1.0, seed=0)
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry.find_center(data, verbose=False)
+
+    data[49:52, 49:52] = 1.0e9
+    geometry_bad = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry_bad.find_center(data, verbose=False)
+    assert (geometry_bad.x0, geometry_bad.y0) != (geometry.x0, geometry.y0)
+
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[49:52, 49:52] = True
+    geometry_masked = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry_masked.find_center(np.ma.masked_array(data, mask=mask),
+                                verbose=False)
+    assert geometry_masked.x0 == geometry.x0
+    assert geometry_masked.y0 == geometry.y0

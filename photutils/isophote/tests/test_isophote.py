@@ -137,18 +137,20 @@ def test_isophote_comparisons():
     assert iso1 != iso2
     assert iso0 == iso1
 
-    with pytest.raises(AttributeError):
-        assert iso1 < sample1
-    with pytest.raises(AttributeError):
-        assert iso1 > sample1
-    with pytest.raises(AttributeError):
-        assert iso1 <= sample1
-    with pytest.raises(AttributeError):
-        assert iso1 >= sample1
-    with pytest.raises(AttributeError):
-        assert iso1 == sample1
-    with pytest.raises(AttributeError):
-        assert iso1 != sample1
+    # Objects without a semimajor axis length cannot be ordered and
+    # are never equal to an isophote.
+    match = 'not supported between instances'
+    for other in (sample1, None, 1.0):
+        with pytest.raises(TypeError, match=match):
+            assert iso1 < other
+        with pytest.raises(TypeError, match=match):
+            assert iso1 > other
+        with pytest.raises(TypeError, match=match):
+            assert iso1 <= other
+        with pytest.raises(TypeError, match=match):
+            assert iso1 >= other
+        assert iso1 != other
+        assert not iso1 == other  # noqa: SIM201
 
 
 class TestIsophoteList:
@@ -201,6 +203,12 @@ class TestIsophoteList:
         assert isinstance(result.a4, np.ndarray)
         assert isinstance(result.b3, np.ndarray)
         assert isinstance(result.b4, np.ndarray)
+
+        # The counts and stop codes are integers and the validity flags
+        # are booleans.
+        for name in ('n_iter', 'n_data', 'n_flag', 'stop_code'):
+            assert getattr(result, name).dtype.kind == 'i'
+        assert result.valid.dtype == bool
 
         samples = result.sample
         assert isinstance(samples, list)
@@ -290,7 +298,7 @@ class TestIsophoteList:
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
-        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(maxsma=27)
 
         assert len(isolist.get_names()) >= 30  # test for get_names
@@ -318,7 +326,7 @@ class TestIsophoteList:
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
-        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(maxsma=27)
         match = 'Invalid column name'
         with pytest.raises(ValueError, match=match):
@@ -334,7 +342,7 @@ class TestIsophoteList:
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
-        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(maxsma=27)
         match = "'grad_error' attribute was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):

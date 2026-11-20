@@ -3,8 +3,10 @@
 Tests for the sample module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
+from numpy.testing import assert_array_equal
 
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
@@ -108,3 +110,43 @@ def test_zero_inner_sma(integrmode):
     sample.update(fixed_parameters=DEFAULT_FIX)
     assert sample.actual_points > 0
     assert np.isfinite(sample.mean)
+
+
+def test_invalid_image():
+    match = 'image must not be a Quantity array'
+    with pytest.raises(TypeError, match=match):
+        EllipseSample(DATA * u.Jy, 10.0)
+
+    match = 'image must be a 2D array'
+    with pytest.raises(ValueError, match=match):
+        EllipseSample(DATA[0], 10.0)
+
+
+def test_array_like_image():
+    sample = EllipseSample(DATA.tolist(), 10.0)
+    assert isinstance(sample.image, np.ndarray)
+    expected = EllipseSample(DATA, 10.0)
+    assert_array_equal(sample.extract(), expected.extract())
+
+
+@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
+                                        MEDIAN])
+def test_nonfinite_values(integrmode):
+    """
+    Test that nonfinite values are excluded from the sample, like
+    masked pixels.
+    """
+    # The nonfinite pixels are on the major and minor axes of the
+    # elliptical path.
+    data = DATA.copy()
+    data[254:259, 294:299] = np.nan
+    data[286:291, 254:259] = np.inf
+    values = EllipseSample(data, 40.0, integrmode=integrmode).extract()
+    assert np.all(np.isfinite(values[2]))
+
+    masked = np.ma.masked_invalid(data)
+    expected = EllipseSample(masked, 40.0, integrmode=integrmode).extract()
+    assert_array_equal(values, expected)
+
+    unmasked = EllipseSample(DATA, 40.0, integrmode=integrmode).extract()
+    assert not np.array_equal(values[2], unmasked[2])

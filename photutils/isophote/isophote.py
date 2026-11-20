@@ -116,7 +116,7 @@ class Isophote:
         The number of discarded data points. Data points can be
         discarded either because they are physically outside the image
         frame boundaries, because they were rejected by sigma-clipping,
-        or they are masked.
+        or they are masked or nonfinite.
     a3, b3, a4, b4 : float
         The higher order harmonics that measure the deviations from a
         perfect ellipse. These values are actually the raw harmonic
@@ -173,13 +173,13 @@ class Isophote:
             self.n_data = sample.actual_points
             self.n_flag = sample.total_points - sample.actual_points
 
-            # flux contained inside ellipse and circle
+            # Flux contained inside ellipse and circle
             (self.tflux_e, self.tflux_c, self.npix_e,
              self.npix_c) = self._compute_fluxes()
 
             self._compute_errors()
 
-            # deviations from a perfect ellipse
+            # Deviations from a perfect ellipse
             (self.a3, self.b3, self.a3_err,
              self.b3_err) = self._compute_deviations(sample, 3)
             (self.a4, self.b4, self.a4_err,
@@ -190,48 +190,38 @@ class Isophote:
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since='3.0', until='4.0')
 
-    @staticmethod
-    def _raise_sma_error(err):
-        msg = "Comparison object does not have a 'sma' attribute"
-        raise AttributeError(msg) from err
-
-    # This method is useful for sorting lists of instances. Note
-    # that __lt__ is the python3 way of supporting sorting.
+    # These methods are useful for sorting lists of instances. The
+    # isophotes are compared by their semimajor axis length. Objects
+    # without a semimajor axis length are not comparable.
     def __lt__(self, other):
         try:
             return self.sma < other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __gt__(self, other):
         try:
             return self.sma > other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __le__(self, other):
         try:
             return self.sma <= other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __ge__(self, other):
         try:
             return self.sma >= other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __eq__(self, other):
         try:
             return self.sma == other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
-
-    def __ne__(self, other):
-        try:
-            return self.sma != other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
+        except AttributeError:
+            return NotImplemented
 
     def __str__(self):
         return str(self.to_table())
@@ -294,19 +284,21 @@ class Isophote:
         imax = min(xsize, int(x0 + sma + 0.5) + 1)
         jmax = min(ysize, int(y0 + sma + 0.5) + 1)
 
-        # Integrate
+        # Integrate.
         if (jmax - jmin > 1) and (imax - imin) > 1:
             y, x = np.mgrid[jmin:jmax, imin:imax]
             radius, angle = self.sample.geometry.to_polar(x, y)
             radius_e = self.sample.geometry.radius(angle)
 
             midx = (radius <= sma)
-            values = self.sample.image[y[midx], x[midx]]
+            # Exclude masked and nonfinite pixels.
+            values = np.ma.masked_invalid(self.sample.image[y[midx], x[midx]])
             tflux_c = np.ma.sum(values)
             npix_c = np.ma.count(values)
 
             midx2 = (radius <= radius_e)
-            values = self.sample.image[y[midx2], x[midx2]]
+            values = np.ma.masked_invalid(
+                self.sample.image[y[midx2], x[midx2]])
             tflux_e = np.ma.sum(values)
             npix_e = np.ma.count(values)
         else:
@@ -326,13 +318,14 @@ class Isophote:
         the raw data.
         """
         try:
-            # upper (third and fourth) harmonics
+            # Upper (third and fourth) harmonics
             up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.values[0],
                                                            sample.values[2],
                                                            n)
 
-            a = up_coeffs[1] / self.sma / abs(sample.gradient)
-            b = up_coeffs[2] / self.sma / abs(sample.gradient)
+            scale = self.sma * abs(sample.gradient)
+            a = up_coeffs[1] / scale
+            b = up_coeffs[2] / scale
 
             def errfunc(x, phi, order, intensities):
                 return (x[0] + x[1] * np.sin(order * phi)
@@ -345,14 +338,18 @@ class Isophote:
 
             ce = np.sqrt(np.diag(up_covariance))
 
-            # this comes from the old code. Likely it was based on
+            # This comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
             # it here without too much thought.
             gre = (self.gradient_rel_err
                    if self.gradient_rel_err is not None else 0.8)
 
-            a_err = abs(a) * np.sqrt((ce[1] / up_coeffs[1])**2 + gre**2)
-            b_err = abs(b) * np.sqrt((ce[2] / up_coeffs[2])**2 + gre**2)
+            # The relative amplitude error is combined in quadrature with
+            # the relative gradient error. The errors are written in a
+            # form that does not divide by the amplitudes, which can be
+            # zero.
+            a_err = np.sqrt((ce[1] / scale)**2 + (a * gre)**2)
+            b_err = np.sqrt((ce[2] / scale)**2 + (b * gre)**2)
 
         except Exception:  # we want to catch everything
             a = b = a_err = b_err = None
@@ -377,7 +374,7 @@ class Isophote:
             eps = self.sample.geometry.eps
             pa = self.sample.geometry.pa
 
-            # parameter errors result from direct projection of
+            # Parameter errors result from direct projection of
             # coefficient errors. These showed to be the error estimators
             # that best convey the errors measured in Monte Carlo
             # experiments (see Busko 1996, ASPC 101, 139).
@@ -462,8 +459,8 @@ class CentralPixel(Isophote):
 
         self.intens = sample.mean
 
-        # some values are set to zero to ease certain tasks
-        # such as model building and plotting magnitude errors
+        # Some values are set to zero to ease certain tasks
+        # such as model building and plotting magnitude errors.
         self.rms = None
         self.int_err = 0.0
         self.pix_stddev = None
@@ -485,12 +482,6 @@ class CentralPixel(Isophote):
         self.pa_err = 0.0
         self.x0_err = 0.0
         self.y0_err = 0.0
-
-    def __eq__(self, other):
-        try:
-            return self.sma == other.sma
-        except AttributeError as err:
-            self._raise_sma_error(err)
 
     @property
     def eps(self):
@@ -621,8 +612,8 @@ class IsophoteList:
         index = (np.abs(self.sma - sma)).argmin()
         return self._list[index]
 
-    def _collect_as_array(self, attr_name):
-        return np.array(self._collect_as_list(attr_name), dtype=float)
+    def _collect_as_array(self, attr_name, dtype=float):
+        return np.array(self._collect_as_list(attr_name), dtype=dtype)
 
     def _collect_as_list(self, attr_name):
         return [getattr(iso, attr_name) for iso in self._list]
@@ -760,7 +751,7 @@ class IsophoteList:
         """
         The number of extracted data points.
         """
-        return self._collect_as_array('n_data')
+        return self._collect_as_array('n_data', dtype=int)
 
     @property
     def n_flag(self):
@@ -769,30 +760,30 @@ class IsophoteList:
 
         Data points can be discarded either because they are physically
         outside the image frame boundaries, because they were rejected
-        by sigma-clipping, or they are masked.
+        by sigma-clipping, or they are masked or nonfinite.
         """
-        return self._collect_as_array('n_flag')
+        return self._collect_as_array('n_flag', dtype=int)
 
     @property
     def n_iter(self):
         """
         The number of iterations used to fit the isophote.
         """
-        return self._collect_as_array('n_iter')
+        return self._collect_as_array('n_iter', dtype=int)
 
     @property
     def valid(self):
         """
         The status of the fitting operation.
         """
-        return self._collect_as_array('valid')
+        return self._collect_as_array('valid', dtype=bool)
 
     @property
     def stop_code(self):
         """
         The fitting stop code.
         """
-        return self._collect_as_array('stop_code')
+        return self._collect_as_array('stop_code', dtype=int)
 
     @property
     def tflux_e(self):
@@ -947,7 +938,7 @@ def _get_properties(isophote_list):
     properties = {}
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
-        # Exclude the sample property
+        # Exclude the sample property.
         if isinstance(p_type, property) and 'sample' not in an_item:
             properties[str(an_item)] = str(an_item)
     return properties

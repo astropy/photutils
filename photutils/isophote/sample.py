@@ -5,6 +5,7 @@ Tools for sampling data along an elliptical path.
 
 import copy
 
+import astropy.units as u
 import numpy as np
 
 from photutils.isophote.geometry import EllipseGeometry
@@ -23,6 +24,40 @@ _DEPRECATED_SAMPLE_ATTRIBUTES = {
 __all__ = ['EllipseSample']
 
 
+def _validate_image(image):
+    """
+    Validate the input image for the isophote fitting tools.
+
+    Parameters
+    ----------
+    image : 2D array_like
+        The input image.
+
+    Returns
+    -------
+    image : 2D `~numpy.ndarray`
+        The input image as an array. Array subclasses (e.g.,
+        `~numpy.ma.MaskedArray`) are passed through.
+
+    Raises
+    ------
+    TypeError
+        If ``image`` is a `~astropy.units.Quantity` array.
+
+    ValueError
+        If ``image`` is not a 2D array.
+    """
+    if isinstance(image, u.Quantity):
+        msg = ('image must not be a Quantity array. Input the image '
+               'values without units, e.g., image.value.')
+        raise TypeError(msg)
+    image = np.asanyarray(image)
+    if image.ndim != 2:
+        msg = 'image must be a 2D array'
+        raise ValueError(msg)
+    return image
+
+
 class EllipseSample:
     """
     Class to sample image data along an elliptical path.
@@ -36,7 +71,9 @@ class EllipseSample:
     Parameters
     ----------
     image : 2D `~numpy.ndarray`
-        The input image.
+        The input image. Masked pixels (if ``image`` is a
+        `~numpy.ma.MaskedArray`) and nonfinite (NaN or infinity) values
+        are excluded from the sample.
     sma : float
         The semimajor axis length in pixels.
     x0, y0 : float, optional
@@ -98,8 +135,9 @@ class EllipseSample:
     actual_points : int
         The actual number of sample values that were taken from the
         image. It can be smaller than ``total_points`` when the ellipse
-        encompasses regions outside the image, or when sigma-clipping
-        removed some of the points.
+        encompasses regions outside the image, when it encompasses
+        masked or nonfinite pixels, or when sigma-clipping removed some
+        of the points.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -108,6 +146,7 @@ class EllipseSample:
                  position_angle=0.0, sclip=3.0, n_clip=0,
                  linear_growth=False,
                  integrmode='bilinear', geometry=None):
+        image = _validate_image(image)
         self.image = image
         self.integrmode = integrmode
 
@@ -447,7 +486,9 @@ class CentralEllipseSample(EllipseSample):
             keyword is ignored in this subclass.
         """
         s = self.extract()
-        self.mean = s[2][0]
+
+        # The central pixel may be masked or nonfinite.
+        self.mean = s[2][0] if self.actual_points > 0 else np.nan
 
         self.gradient = None
         self.gradient_err = None
@@ -463,7 +504,7 @@ class CentralEllipseSample(EllipseSample):
         integrator.integrate(0.0, 0.0)
 
         self.total_points = 1
-        self.actual_points = 1
+        self.actual_points = len(intensities)
 
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])

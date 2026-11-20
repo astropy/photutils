@@ -185,9 +185,9 @@ class EllipseGeometry:
         Parameters
         ----------
         image : 2D `~numpy.ndarray`
-            The image array. Masked arrays are not recognized here.
-            This assumes that centering should always be done on valid
-            pixels.
+            The image array. Masked pixels (if ``image`` is a
+            `~numpy.ma.MaskedArray`) and nonfinite (NaN or infinity)
+            values are excluded.
 
         threshold : float, optional
             The centerer threshold. To turn off the centerer, set this
@@ -261,7 +261,8 @@ class EllipseGeometry:
                 j1_clip = max(j1, 0)
                 i2_clip = min(i + half_size, shape[1])
                 j2_clip = min(j + half_size, shape[0])
-                window = image[j1_clip:j2_clip, i1_clip:i2_clip]
+                window = np.ma.masked_invalid(
+                    image[j1_clip:j2_clip, i1_clip:i2_clip])
                 mask_slices = (slice(j1_clip - j1, j2_clip - j1),
                                slice(i1_clip - i1, i2_clip - i1))
 

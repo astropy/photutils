@@ -11,7 +11,8 @@ import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.data import get_pkg_data_filename
-from numpy.testing import assert_array_equal
+from astropy.utils.exceptions import AstropyUserWarning
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.datasets.load import _get_path
 from photutils.isophote._ellipse_model import build_ellipse_model_c
@@ -31,7 +32,7 @@ def test_model():
     hdu.close()
 
     g = EllipseGeometry(530.0, 511, 10.0, 0.1, np.deg2rad(10.0))
-    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
+    ellipse = Ellipse(data, geometry=g)
 
     # NOTE: this sometimes emits warnings (e.g., py38, ubuntu), but
     # sometimes not. Here we simply ignore any RuntimeWarning, whether
@@ -60,7 +61,7 @@ def fixture_simulated_isolist():
                            pa=np.pi / 3.0, noise=0.05, seed=0)
 
     g = EllipseGeometry(100.0, 100.0, 5.0, 0.5, np.pi / 3.0)
-    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
+    ellipse = Ellipse(data, geometry=g)
 
     # Catch warnings that may arise from empty slices. This started
     # to happen on windows with scipy 1.15.0.
@@ -119,6 +120,37 @@ def test_model_inputs():
     match = 'isolist must not be empty'
     with pytest.raises(ValueError, match=match):
         build_ellipse_model((10, 10), IsophoteList([]))
+
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=20.0)
+    match = 'isolist must contain at least 4 isophotes'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist[-3:])
+    model = build_ellipse_model(data.shape, isolist[-4:])
+    assert np.all(np.isfinite(model))
+    assert np.max(model) > 0
+
+    match = 'must be sorted by strictly increasing semimajor axis'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist[::-1])
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist + isolist[-1:])
+
+
+def test_model_outer_isophote():
+    """
+    Test that the model extends to the outermost isophote.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=40.0)
+    model = build_ellipse_model(data.shape, isolist, fill=np.nan,
+                                sma_interval=10.0)
+
+    # The fitted isophotes have position angles near 0 or pi, so the
+    # major axis is along the x axis.
+    sma = isolist[-1].sma
+    assert np.isfinite(model[256, 256 + int(sma)])
+    assert np.isfinite(model[256, 256 - int(sma)])
 
 
 def test_model_pa_wrap():
@@ -201,7 +233,7 @@ def test_model_integration():
     data = make_test_image(nx=80, ny=110, i0=100.0, sma=60.0, eps=0.5,
                            pa=np.pi / 3.0, noise=0.05, seed=0)
     g = EllipseGeometry(40, 55, 5.0, 0.5, np.pi / 3.0)
-    ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
+    ellipse = Ellipse(data, geometry=g)
     isophote_list = ellipse.fit_image()
     model = build_ellipse_model(data.shape, isophote_list,
                                 fill=np.nanmean(data[105:, :5]),
@@ -341,3 +373,33 @@ def test_build_ellipse_model_c_partial_harmonics():
     with pytest.raises(ValueError, match=match):
         build_ellipse_model_c(100, 100, sma, *arrays,
                               a3_array=np.full(n, 0.01))
+
+
+def test_model_nonfinite_central_pixel():
+    """
+    Test that isophotes with a nonfinite intensity, such as the central
+    pixel of a galaxy with a masked center, are ignored.
+    """
+    data = make_test_image(nx=200, ny=200, seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=30.0)
+    expected = build_ellipse_model(data.shape, isolist)
+
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[100, 100] = True
+    ellipse = Ellipse(np.ma.masked_array(data, mask=mask))
+    match = 'Too small sample to warrant a fit'
+    with pytest.warns(AstropyUserWarning, match=match):
+        isolist = ellipse.fit_image(maxsma=30.0)
+    assert isolist[0].sma == 0
+    assert np.isnan(isolist[0].intens)
+
+    model = build_ellipse_model(data.shape, isolist)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    radius = np.hypot(xx - 100, yy - 100)
+    annulus = (radius > 3) & (radius < 20)
+    assert np.all(np.isfinite(model))
+    assert_allclose(model[annulus], expected[annulus], rtol=0.01)
+
+    match = 'at least 4 isophotes with a finite intensity'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model(data.shape, isolist[:4])

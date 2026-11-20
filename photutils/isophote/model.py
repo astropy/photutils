@@ -8,6 +8,7 @@ import numpy as np
 from scipy.interpolate import LSQUnivariateSpline
 
 from photutils.isophote._ellipse_model import build_ellipse_model_c
+from photutils.isophote.isophote import IsophoteList
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['build_ellipse_model']
@@ -41,7 +42,9 @@ def build_ellipse_model(
 
     isolist : `~photutils.isophote.IsophoteList` instance
         The isophote list created by the `~photutils.isophote.Ellipse`
-        class.
+        class. It must contain at least 4 isophotes, sorted by strictly
+        increasing semimajor axis length. Isophotes with a nonfinite
+        intensity (e.g., the central pixel if it is masked) are ignored.
 
     fill : float, optional
         The constant value to fill empty pixels. If an output pixel has
@@ -61,16 +64,43 @@ def build_ellipse_model(
     -------
     result : 2D `~numpy.ndarray`
         The image with the model galaxy.
+
+    Raises
+    ------
+    ValueError
+        If ``isolist`` contains fewer than 4 isophotes with a finite
+        intensity or if its isophotes are not sorted by strictly
+        increasing semimajor axis length.
     """
     if len(isolist) == 0:
         msg = 'isolist must not be empty'
         raise ValueError(msg)
 
-    # the target grid is spaced in 0.1 pixel intervals so as
-    # to ensure no gaps will result on the output array.
-    finely_spaced_sma = np.arange(
-        isolist[0].sma, isolist[-1].sma, sma_interval,
-    )
+    # A nonfinite intensity would make the interpolated intensities
+    # nonfinite over a range of semimajor axis lengths.
+    finite = np.isfinite(isolist.intens)
+    if not np.all(finite):
+        isolist = IsophoteList([isophote for isophote, keep
+                                in zip(isolist, finite, strict=True)
+                                if keep])
+
+    # The spline interpolation below requires at least 4 data points
+    # (cubic splines) with strictly increasing sma values.
+    if len(isolist) < 4:
+        msg = ('isolist must contain at least 4 isophotes with a finite '
+               'intensity')
+        raise ValueError(msg)
+    if np.any(np.diff(isolist.sma) <= 0):
+        msg = ('The isophotes in isolist must be sorted by strictly '
+               'increasing semimajor axis length')
+        raise ValueError(msg)
+
+    # The target grid is spaced in sma_interval intervals so as to
+    # ensure no gaps will result on the output array. The last
+    # isophote is appended because np.arange excludes the stop value.
+    finely_spaced_sma = np.append(
+        np.arange(isolist[0].sma, isolist[-1].sma, sma_interval),
+        isolist[-1].sma)
 
     # Interpolate ellipse parameters.
 

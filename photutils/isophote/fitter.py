@@ -4,9 +4,10 @@ Tools for fitting ellipses.
 """
 
 import math
+import warnings
 
 import numpy as np
-from astropy import log
+from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
@@ -81,8 +82,8 @@ class EllipseFitter:
             smaller than this, the iterations will stop and the current
             `~photutils.isophote.Isophote` will be returned. Flagged
             data points are points that either lie outside the image
-            frame, are masked, or were rejected by sigma-clipping. The
-            default is 0.7.
+            frame, are masked or nonfinite, or were rejected by
+            sigma-clipping. The default is 0.7.
 
         maxgerr : float, optional
             This keyword has no effect.
@@ -138,14 +139,16 @@ class EllipseFitter:
             # values[2] = 1-d array with intensity
             values = sample.extract()
 
-            # We have to check for a zero-length condition here, and
-            # bail out in case it is detected. The scipy fitter won't
-            # raise an exception for zero-length input arrays, but just
-            # prints an "INFO" message. This may result in an infinite
-            # loop.
-            if len(values[2]) < 1:
-                s = str(sample.geometry.sma)
-                log.warning('Too small sample to warrant a fit. SMA is ' + s)
+            # The harmonic fit has 5 coefficients, so it needs at least
+            # 5 data points. We have to check for that condition here,
+            # and bail out in case it is detected. The scipy fitter
+            # won't raise an exception for zero-length input arrays, but
+            # just prints an "INFO" message. This may result in an
+            # infinite loop.
+            if len(values[2]) < 5:
+                msg = ('Too small sample to warrant a fit. SMA is '
+                       f'{sample.geometry.sma}')
+                warnings.warn(msg, AstropyUserWarning)
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, valid=False, stop_code=3)
 
@@ -155,8 +158,10 @@ class EllipseFitter:
             try:
                 coeffs = fit_first_and_second_harmonics(values[0], values[2])
                 coeffs = coeffs[0]
-            except Exception as e:
-                log.warning(e)
+            except Exception as exc:
+                msg = (f'The harmonic fit failed at SMA {sample.geometry.sma}'
+                       f': {exc}')
+                warnings.warn(msg, AstropyUserWarning)
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, valid=False, stop_code=3)
 

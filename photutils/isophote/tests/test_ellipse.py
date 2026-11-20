@@ -5,6 +5,7 @@ Tests for the ellipse module.
 
 import math
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -189,6 +190,102 @@ class TestEllipse:
         assert isophote.eps == expected.eps
         assert isophote.pa == expected.pa
 
+    def test_threshold_deprecated(self):
+        geometry = EllipseGeometry(250.0, 260.0, 10.0, 0.2, PA)
+        match = "'threshold' was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            ellipse = Ellipse(self.data, geometry=geometry, threshold=0.1)
+
+        match = 'Use EllipseGeometry.find_center instead'
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            ellipse.set_threshold(0.1)
+
+        # The object centerer is not run.
+        assert geometry.x0 == 250.0
+        assert geometry.y0 == 260.0
+
+    def test_nonfinite_values(self):
+        """
+        Test that nonfinite values are excluded from the fits, like
+        masked pixels.
+        """
+        isolist = Ellipse(self.data).fit_image(maxsma=60.0)
+
+        data = self.data.copy()
+        data[256, 294:296] = np.nan  # on the sma ~38 isophote
+        data[250, 240] = np.inf
+        match = 'Input image contains nonfinite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            ellipse = Ellipse(data)
+        isolist_nan = ellipse.fit_image(maxsma=60.0)
+        assert_allclose(isolist_nan.sma, isolist.sma)
+        assert_allclose(isolist_nan.intens, isolist.intens, rtol=1e-4)
+        assert np.all(np.isfinite(isolist_nan.tflux_e[1:]))
+        assert np.all(np.isfinite(isolist_nan.tflux_c[1:]))
+
+        masked = np.ma.masked_invalid(data)
+        isolist_masked = Ellipse(masked).fit_image(maxsma=60.0)
+        assert_allclose(isolist_masked.intens, isolist_nan.intens)
+
+    def test_nonfinite_center(self):
+        """
+        Test a nonfinite central pixel.
+
+        The central pixel intensity is NaN, and the innermost isophotes,
+        whose samples all include the central pixel, are not fitted.
+        """
+        data = self.data.copy()
+        data[256, 256] = np.nan
+        match = 'Input image contains nonfinite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            ellipse = Ellipse(data)
+        match = 'Too small sample to warrant a fit'
+        with pytest.warns(AstropyUserWarning, match=match):
+            isolist = ellipse.fit_image(maxsma=20.0)
+        assert isolist[0].sma == 0
+        assert np.isnan(isolist[0].intens)
+        assert isolist[0].n_data == 0
+        assert np.all(np.isfinite(isolist.intens[1:]))
+
+    def test_invalid_image(self):
+        match = 'image must not be a Quantity array'
+        with pytest.raises(TypeError, match=match):
+            Ellipse(self.data * u.Jy)
+
+        match = 'image must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            Ellipse(self.data[0])
+
+    def test_array_like_image(self):
+        ellipse = Ellipse(self.data.tolist())
+        assert isinstance(ellipse.image, np.ndarray)
+        assert_allclose(ellipse.image, self.data)
+
+    @pytest.mark.parametrize(('sma0', 'geometry_sma'),
+                             [(0.0, 10.0), (-1.0, 10.0), (np.nan, 10.0),
+                              (None, 0.0)])
+    def test_invalid_sma0(self, sma0, geometry_sma):
+        geometry = EllipseGeometry(256.0, 256.0, geometry_sma, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        match = 'The starting semimajor axis length'
+        with pytest.raises(ValueError, match=match):
+            ellipse.fit_image(sma0=sma0)
+
+    def test_zero_maxsma_maxrit(self):
+        """
+        Test that zero values of maxsma and maxrit are used instead of
+        being treated as None.
+        """
+        ellipse = Ellipse(self.data)
+
+        # No isophotes are fit outwards from sma0.
+        isolist = ellipse.fit_image(sma0=10.0, maxsma=0.0)
+        assert isolist.sma[-1] == 10.0
+
+        # All isophotes are extracted in noniterative mode.
+        isolist = ellipse.fit_image(sma0=10.0, maxsma=20.0, maxrit=0.0)
+        assert np.all(isolist.stop_code[isolist.sma > 0] == 4)
+
     def test_fit_one_ellipse(self):
         ellipse = Ellipse(self.data)
         isophote = ellipse.fit_isophote(40.0)
@@ -240,8 +337,10 @@ class TestEllipse:
             data = self.data
             geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
         ellipse = Ellipse(data, geometry=geometry)
-        match = 'No meaningful fit was possible'
-        with pytest.warns(AstropyUserWarning, match=match):
+        match1 = 'Too small sample to warrant a fit'
+        match2 = 'No meaningful fit was possible'
+        with (pytest.warns(AstropyUserWarning, match=match1),
+              pytest.warns(AstropyUserWarning, match=match2)):
             isophote_list = ellipse.fit_image()
         assert isinstance(isophote_list, IsophoteList)
         assert len(isophote_list) == 0
