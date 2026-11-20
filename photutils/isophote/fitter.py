@@ -18,8 +18,6 @@ from photutils.utils._deprecation import deprecated_renamed_argument
 
 __all__ = ['EllipseFitter']
 
-__doctest_skip__ = ['EllipseFitter.fit']
-
 
 PI2 = np.pi / 2
 MAX_EPS = 0.95
@@ -61,7 +59,9 @@ class EllipseFitter:
 
         If all the ellipse parameters are fixed by the geometry of
         the sample, there is nothing to fit. The isophote is then
-        extracted with that geometry and its stop code is 4.
+        extracted with that geometry and its stop code is 4, or 3
+        (invalid) if it has no valid data points. If the ellipticity
+        is fixed at zero, the position angle is also treated as fixed.
 
         Parameters
         ----------
@@ -78,23 +78,20 @@ class EllipseFitter:
             10 (the default) iterations guarantees that, on average, 2
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
-            level). For the first isophote, the minimum number of
-            iterations is 2 * ``minit`` to ensure that, even departing
-            from not-so-good initial values, the algorithm has a better
-            chance to converge to a sensible solution.
+            level).
 
         maxit : int, optional
             The maximum number of iterations to perform. The default is
             50.
 
         fflag : float, optional
-            The acceptable fraction of flagged data points in the
-            sample. If the actual fraction of valid data points is
-            smaller than this, the iterations will stop and the current
-            `~photutils.isophote.Isophote` will be returned. Flagged
-            data points are points that either lie outside the image
-            frame, are masked or nonfinite, or were rejected by
-            sigma-clipping. The default is 0.7.
+            The minimum acceptable fraction of valid (nonflagged)
+            data points in the sample. If the fraction of valid data
+            points is smaller than this, the iterations stop and the
+            isophote with the smallest harmonic amplitude found so far
+            is returned with a stop code of 1. Flagged data points are
+            those that lie outside the image, are masked or nonfinite,
+            or were rejected by sigma clipping. The default is 0.7.
 
         maxgerr : float, optional
             This keyword has no effect.
@@ -140,12 +137,31 @@ class EllipseFitter:
         ValueError
             If ``max_center_shift`` is negative or NaN.
 
+        Warns
+        -----
+        AstropyUserWarning
+            If the sample has fewer than 5 valid data points or the
+            harmonic fit fails. The returned isophote is then invalid
+            and has a stop code of 3.
+
         Examples
         --------
-        >>> from photutils.isophote import EllipseSample, EllipseFitter
-        >>> sample = EllipseSample(data, sma=10.0)
+        >>> import numpy as np
+        >>> from astropy.modeling.models import Gaussian2D
+        >>> from photutils.datasets import make_noise_image
+        >>> from photutils.isophote import (EllipseFitter, EllipseGeometry,
+        ...                                 EllipseSample)
+        >>> model = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40))
+        >>> y, x = np.mgrid[0:150, 0:150]
+        >>> data = model(x, y) + make_noise_image((150, 150), mean=0.0,
+        ...                                       stddev=2.0, seed=0)
+        >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
+        ...                            pa=np.deg2rad(30))
+        >>> sample = EllipseSample(data, geometry.sma, geometry=geometry)
         >>> fitter = EllipseFitter(sample)
         >>> isophote = fitter.fit()
+        >>> isophote.stop_code
+        0
         """
         if max_center_shift is not None and not max_center_shift >= 0:
             msg = 'max_center_shift must be a non-negative number'
@@ -340,8 +356,8 @@ class EllipseFitter:
     @staticmethod
     def _fix_round_ellipse(geometry, fixed_parameters):
         """
-        Fix an ellipse geometry whose ellipticity crossed or reached
-        zero.
+        Adjust an ellipse geometry whose ellipticity crossed or
+        reached zero.
 
         This must be called before the sample with this geometry is
         extracted. A fixed ellipticity is not changed. A fixed position
@@ -524,13 +540,14 @@ class CentralEllipseFitter(EllipseFitter):
 
         Returns
         -------
-        result : `~photutils.isophote.CentralEllipsePixel` instance
+        result : ``CentralPixel`` instance
             The central pixel value. For convenience, the
-            `~photutils.isophote.CentralEllipsePixel` class inherits
-            from the `~photutils.isophote.Isophote` class, although it's
-            not really a true isophote but just a single intensity value
+            ``CentralPixel`` class inherits from the
+            `~photutils.isophote.Isophote` class, although it's not
+            really a true isophote but just a single intensity value
             at the central position. Thus, most of its attributes are
-            hardcoded to `None` or other default value when appropriate.
+            hardcoded to `None` or another default value when
+            appropriate.
         """
         # Default values
         fixed_parameters = _make_fix_array(fix_center=False, fix_pa=False,
