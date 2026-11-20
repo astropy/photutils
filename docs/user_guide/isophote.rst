@@ -124,28 +124,28 @@ semimajor axis length. Let's print the fit position angles
      6.87365632e-01 6.78462107e-01 6.91947810e-01 6.88590345e-01
      6.89747001e-01 7.04595575e-01 6.98160861e-01 7.01980599e-01
      6.86722137e-01 6.86722137e-01 6.86722137e-01 7.09026632e-01
-     7.09026632e-01 7.09026632e-01]
+     7.09026632e-01 6.56348640e-01 6.56348640e-01]
 
 We can also show the isophote values as a table, which is again sorted
 by the semimajor axis length (``sma``)::
 
     >>> print(isolist.to_table())  # doctest: +SKIP
-           sma               intens       ... n_iter stop_code
-                                          ...
-    ------------------ ------------------ ... ------ ---------
-                   0.0 103.36486267669721 ...      0         0
-    0.5346972612827552 101.85758347160414 ...     10         0
-    0.5881669874110307 101.68719303286363 ...     10         0
-    0.6469836861521338  101.5058988661627 ...     11         0
-    0.7116820547673471 101.37369354568321 ...     10         0
-                   ...                ... ...    ...       ...
-     47.15895382000003  5.944082559338406 ...     50         2
-    51.874849202000036  3.406252920574752 ...     10         0
-     57.06233412220004 1.5402218528922258 ...     50         2
-     62.76856753442005 0.7335240348369152 ...     50         2
-     69.04542428786206 0.3611664673700657 ...     50         2
-     75.94996671664828 0.1317745785212354 ...     19         1
-    Length = 54 rows
+           sma                 intens         ... n_iter stop_code
+                                              ...
+    ------------------ ---------------------- ... ------ ---------
+                   0.0     103.36486267669721 ...      0         0
+    0.5346972612827552     101.85758347160414 ...     10         0
+    0.5881669874110307     101.68719303286363 ...     10         0
+    0.6469836861521338      101.5058988661627 ...     11         0
+    0.7116820547673471     101.37369354568321 ...     10         0
+                   ...                    ... ...    ...       ...
+    51.874849202000036      3.406252920574752 ...     10         0
+     57.06233412220004     1.5402218528922258 ...     50         2
+     62.76856753442005     0.7335240348369152 ...     50         2
+     69.04542428786206     0.3611664673700657 ...     50         2
+     75.94996671664828 -0.0020389321260497247 ...     38         0
+      83.5449633883131   -0.04143562472379122 ...      1         5
+    Length = 55 rows
 
 Let's plot the ellipticity, position angle, and the center x and y
 position as a function of the semimajor axis length:
@@ -252,7 +252,7 @@ Measuring Along Fixed Ellipses
 
 The :meth:`~photutils.isophote.Ellipse.measure_isophotes` method
 measures an image along a given set of ellipses without fitting them.
-This is equivalent to running the IRAF ``ellipse`` task with an input
+This is similar to running the STSDAS ``ellipse`` task with an input
 ellipse table (the ``inellip`` parameter). A common use is to measure
 an image in a second band along the isophotes fit to a reference image,
 so that both intensity profiles are measured along the same elliptical
@@ -283,7 +283,7 @@ useful for measuring an image along user-defined ellipses::
     >>> print(isolist3.sma)
     [ 5. 10. 20.]
 
-Additional Example Notebooks (online)
+Additional Example Notebooks (Online)
 -------------------------------------
 
 Additional example notebooks showing examples with real data and
@@ -291,7 +291,7 @@ advanced usage are available online:
 
 * `Basic example of the Ellipse fitting tool <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example1.ipynb>`_
 
-* `Running Ellipse with sigma-clipping <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example2.ipynb>`_
+* `Running Ellipse with sigma clipping <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example2.ipynb>`_
 
 * `Building an image model from results obtained by Ellipse fitting <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example3.ipynb>`_
 
