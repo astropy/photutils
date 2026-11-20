@@ -31,49 +31,30 @@ def _make_fix_array(*, fix_center, fix_pa, fix_eps):
     return np.array([fixed[name] for name in _HARMONIC_PARAMETERS.values()])
 
 
-# The masks of the object centerer. They are centered on the central
-# pixel of a 17x17 pixel box. A value of 0 marks the pixels that are
-# used. The inner mask selects a disk with a radius of 3.5 pixels and
-# the outer mask selects a ring with radii from 7.5 to 8.5 pixels.
-IN_MASK = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-]
+def _make_centerer_masks():
+    """
+    Make the masks of the object centerer.
 
-OUT_MASK = [
-    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-    [1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
-    [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
-    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
-    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    [1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1],
-    [1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
-    [1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-]
+    The masks are centered on the central pixel of a 17x17 pixel box.
+    As in a masked array, a value of `False` marks the pixels that are
+    used. The inner mask selects a disk with a radius of 3.5 pixels and
+    the outer mask selects a ring with radii from 7.5 to 8.5 pixels.
+
+    Returns
+    -------
+    in_mask, out_mask : 2D bool `~numpy.ndarray`
+        The inner and outer masks.
+    """
+    half_size = 8
+    y, x = np.mgrid[-half_size:half_size + 1, -half_size:half_size + 1]
+    radius = np.hypot(x, y)
+    in_mask = radius > 3.5
+    out_mask = (radius < 7.5) | (radius >= 8.5)
+
+    return in_mask, out_mask
+
+
+IN_MASK, OUT_MASK = _make_centerer_masks()
 
 
 def _area(sma, eps, phi, r):
@@ -256,8 +237,6 @@ class EllipseGeometry:
         """
         self.centerer_threshold = threshold
         half_size = len(IN_MASK) // 2
-        in_mask = np.array(IN_MASK, dtype=bool)
-        out_mask = np.array(OUT_MASK, dtype=bool)
 
         # Check if center coordinates point to somewhere inside the frame.
         # If not, set then to frame center.
@@ -297,9 +276,9 @@ class EllipseGeometry:
                                slice(i1_clip - i1, i2_clip - i1))
 
                 # Averages in inner and outer regions.
-                inner = np.ma.masked_array(window, mask=in_mask[mask_slices])
+                inner = np.ma.masked_array(window, mask=IN_MASK[mask_slices])
                 outer = np.ma.masked_array(window,
-                                           mask=out_mask[mask_slices])
+                                           mask=OUT_MASK[mask_slices])
                 inner_avg = np.ma.mean(inner)
                 outer_avg = np.ma.mean(outer)
 
@@ -307,6 +286,12 @@ class EllipseGeometry:
                 inner_std = np.std(inner)
                 outer_std = np.std(outer)
                 stddev = np.sqrt(inner_std**2 + outer_std**2)
+
+                # As in the STSDAS ellipse task, a position without any
+                # scatter (e.g., in a flat image), where the figure of
+                # merit is not defined, is skipped.
+                if not stddev > 0:
+                    continue
 
                 fom = (inner_avg - outer_avg) / stddev
 
