@@ -487,6 +487,24 @@ def test_fixed_round_ellipse(fix_center):
         assert_allclose((isophote.x0, isophote.y0), DEFAULT_POS, atol=0.5)
 
 
+@pytest.mark.parametrize(('fix_eps', 'fix_center'),
+                         [(False, False), (True, False), (True, True)])
+def test_fit_does_not_modify_input(fix_eps, fix_center):
+    """
+    Test that fitting a round starting ellipse does not modify the
+    geometry of the input sample.
+    """
+    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5, fix_eps=fix_eps,
+                               fix_center=fix_center)
+    sample = EllipseSample(DATA, 40.0, geometry=geometry)
+    fix = sample.geometry.fix.copy()
+    EllipseFitter(sample).fit()
+    assert sample.geometry.eps == 0.0
+    assert sample.geometry.pa == 0.5
+    assert (sample.geometry.x0, sample.geometry.y0) == (257.0, 255.0)
+    assert np.array_equal(sample.geometry.fix, fix)
+
+
 def test_everything_fixed_no_data():
     """
     Test that an isophote extracted without fitting is invalid if it has

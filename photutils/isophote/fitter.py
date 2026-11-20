@@ -4,6 +4,7 @@ Tools for fitting ellipses.
 """
 
 import abc
+import copy
 import math
 import warnings
 
@@ -56,6 +57,8 @@ class EllipseFitter:
             max_center_shift=None, reference_center=None):
         """
         Fit an elliptical isophote.
+
+        The input sample is not modified.
 
         If all the ellipse parameters are fixed by the geometry of
         the sample, there is nothing to fit. The isophote is then
@@ -167,7 +170,12 @@ class EllipseFitter:
             msg = 'max_center_shift must be a non-negative number'
             raise ValueError(msg)
 
-        sample = self._sample
+        # The fit works on a copy of the input sample with its own
+        # geometry, because a round starting ellipse and the fixed
+        # parameters change the geometry. The copy keeps any values
+        # already extracted from the image.
+        sample = copy.copy(self._sample)
+        sample.geometry = copy.deepcopy(self._sample.geometry)
         if reference_center is None:
             reference_center = (sample.geometry.x0, sample.geometry.y0)
 
@@ -180,7 +188,7 @@ class EllipseFitter:
         minimum_amplitude_sample = None
 
         # These must be passed throughout the execution chain.
-        fixed_parameters = self._sample.geometry.fix
+        fixed_parameters = sample.geometry.fix
 
         # The position angle of a circle is undefined and its correction
         # diverges, so it is not fit if the ellipticity is fixed at
