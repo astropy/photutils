@@ -71,7 +71,17 @@ class Isophote:
               iterations could be executed. Subsequent ellipses at
               larger or smaller semimajor axis may have the same
               constant geometric parameters.
-           * -1: Internal use.
+           * -1: No meaningful gradient could be measured, or the
+              corrected ellipse diverged (its ellipticity exceeded 0.95
+              or its center moved outside of the image). The isophote
+              has the best geometry found before that. This code is
+              returned by
+              :meth:`~photutils.isophote.Ellipse.fit_isophote` and
+              :meth:`~photutils.isophote.EllipseFitter.fit`.
+              :meth:`~photutils.isophote.Ellipse.fit_image` replaces
+              such an isophote with one that has the geometry of a
+              previously fitted isophote and a stop code of 5. If it is
+              the first isophote, an empty list is returned instead.
 
     Attributes
     ----------

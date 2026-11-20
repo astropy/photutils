@@ -528,7 +528,28 @@ class TestEllipse:
         # off-center by a large offset.
         ellipse = Ellipse(OFFSET_GALAXY)
 
-        match = 'No meaningful fit was possible'
+        match = (r'No meaningful fit was possible\. The first isophote '
+                 r'\(sma=10\) failed with stop code -1 because the ellipse '
+                 'diverged or no meaningful intensity gradient could be '
+                 'measured.*try a slightly different starting semimajor '
+                 r'axis length \(sma0\).*low signal-to-noise ratio.*'
+                 r'user_guide/isophote_faq\.html')
+        with pytest.warns(AstropyUserWarning, match=match):
+            isophote_list = ellipse.fit_image()
+        assert len(isophote_list) == 0
+
+    def test_first_isophote_flagged_fail(self):
+        """
+        Test the warning emitted when too many data points of the first
+        isophote are flagged.
+
+        A large part of the starting ellipse is outside of the image.
+        """
+        geometry = EllipseGeometry(10.0, 256.0, 50.0, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        match = (r'No meaningful fit was possible\. The first isophote '
+                 r'\(sma=50\) failed with stop code 1 because the fraction '
+                 r'of valid data points is smaller than fflag \(0\.7\)')
         with pytest.warns(AstropyUserWarning, match=match):
             isophote_list = ellipse.fit_image()
         assert len(isophote_list) == 0
@@ -547,11 +568,26 @@ class TestEllipse:
             geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
         ellipse = Ellipse(data, geometry=geometry)
         match1 = 'Too small sample to warrant a fit'
-        match2 = 'No meaningful fit was possible'
+        match2 = (r'No meaningful fit was possible\. The first isophote '
+                  r'\(sma=\d+\) failed with stop code 3 because it has too '
+                  'few valid data points')
         with (pytest.warns(AstropyUserWarning, match=match1),
               pytest.warns(AstropyUserWarning, match=match2)):
             isophote_list = ellipse.fit_image()
         assert isinstance(isophote_list, IsophoteList)
+        assert len(isophote_list) == 0
+
+    def test_no_valid_data_noniterative(self):
+        """
+        Test the warning emitted when the first isophote is extracted
+        without being fit and has no valid data points.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        match = (r'The first isophote \(sma=2000\) failed with stop code 3 '
+                 'because it has too few valid data points')
+        with pytest.warns(AstropyUserWarning, match=match):
+            isophote_list = ellipse.fit_image(maxrit=10.0)
         assert len(isophote_list) == 0
 
     def test_offcenter_fit(self):
