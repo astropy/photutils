@@ -21,8 +21,9 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
     nx, ny : int, optional
         The image size.
 
-    x0, y0 : int, optional
-        The center position. If `None`, the default is the image center.
+    x0, y0 : float, optional
+        The center position. A coordinate that is `None` (the default)
+        is set to the image center.
 
     background : float, optional
         The constant background level to add to the image values.
@@ -51,12 +52,8 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
     data : 2D `~numpy.ndarray`
         The resulting simulated image.
     """
-    if x0 is None or y0 is None:
-        xcen = nx / 2
-        ycen = ny / 2
-    else:
-        xcen = x0
-        ycen = y0
+    xcen = nx / 2 if x0 is None else x0
+    ycen = ny / 2 if y0 is None else y0
 
     g = EllipseGeometry(xcen, ycen, sma, eps, pa, astep=0.1,
                         linear_growth=False)
