@@ -206,18 +206,17 @@ def test_upper_harmonics_sign():
     # isophotes have b4 < 0).
     assert np.all(isolist.b4[30:] > 0)
 
-    # Check the sign of the upper harmonics at the outermost
-    # well-sampled isophote. The very last isophote(s) can be
-    # degenerate, with a large fraction of the elliptical path falling
-    # outside the image, in which case the near-zero upper harmonics
-    # are dominated by noise and their signs are not meaningful.
-    n_total = isolist.n_data + isolist.n_flag
-    well_sampled = isolist.n_flag < (0.3 * n_total)
-    idx = np.where(well_sampled)[0][-1]
-    assert isolist.a3[idx] < 0
-    assert isolist.a4[idx] < 0
-    assert isolist.b3[idx] > 0
-    assert isolist.b4[idx] > 0
+    # The test image is symmetric about both axes of the ellipses, so
+    # the other upper harmonics vanish. Their measured values are
+    # small compared to b4 and their signs are not meaningful. The
+    # outermost isophotes can have part of the elliptical path outside
+    # of the image, which breaks the symmetry.
+    complete = isolist.n_flag[30:] == 0
+    assert np.any(complete)
+    for name in ('a3', 'b3', 'a4'):
+        harmonic = getattr(isolist, name)[30:]
+        assert np.all(np.abs(harmonic[complete])
+                      < 0.2 * isolist.b4[30:][complete])
 
 
 def test_harmonic_fits_exact():

@@ -81,21 +81,21 @@ similar ellipse with a 10% larger semimajor axis.
 If the gradient so estimated is not meaningful, the algorithm extracts
 another #2 sample, this time using a 20% larger radius. In this
 context, a meaningful gradient means "shallower", but still close to
-within a factor of 3 of the previous isophote's gradient estimate.
+within a factor of 3 of the gradient estimate of the previous
+iteration of the fit.
 
 If still no meaningful gradient can be measured, the algorithm uses
-the value measured at the last fitted isophote, but decreased (in
-absolute value) by a factor of 0.8. This factor is roughly what is
-expected from semimajor-axis geometrical-sampling steps of 10 - 20%
-and a de Vaucouleurs law or an exponential disk in its inner region (r
-<~ 5 req). When using the last isophote's gradient as an estimator for
-the current one, the current gradient error cannot be computed and is
-set to `None`.
+the value of the previous iteration, but decreased (in absolute value)
+by a factor of 0.8. This factor is roughly what is expected from
+semimajor-axis geometrical-sampling steps of 10 - 20% and a de
+Vaucouleurs law or an exponential disk in its inner region (r <~ 5
+req). When using the gradient of the previous iteration as an
+estimator for the current one, the current gradient error cannot be
+computed and is set to `None`.
 
 As a last resort, if no previous gradient estimate is available, the
 algorithm uses the current gradient plus its error as the reference
-value. This case usually happens only at the first isophote fitted by
-the algorithm.
+value. This is the case for the first iteration of each isophote.
 
 The use of approximate gradient estimators may seem in contradiction
 with the fact that isophote fitting errors depend on gradient error,

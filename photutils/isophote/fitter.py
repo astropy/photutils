@@ -290,6 +290,7 @@ class EllipseFitter:
                 # calls to the area integrators, we pay a (hopefully
                 # smaller) price here, by having multiple calls to the
                 # EllipseSample constructor.
+                previous_gradient = sample.gradient
                 sample = corrector.correct(sample, largest_harmonic)
 
                 # Only the position correctors (indices 0 and 1) move
@@ -299,6 +300,13 @@ class EllipseFitter:
                         sample, reference_center, max_center_shift)
                     if center_at_bound:
                         fit_fixed[:2] = True
+
+                # As in the STSDAS ellipse task, the gradient of this
+                # iteration is the reference that tells whether the
+                # gradient measured for the corrected ellipse is
+                # meaningful. It is set after the center is limited,
+                # which can make a new sample.
+                sample.gradient = previous_gradient
 
                 # If the corrected ellipse diverged, stop without
                 # sampling it. Otherwise, fix a round ellipse before the

@@ -77,13 +77,15 @@ def test_positive_gradient():
 
 
 @pytest.mark.parametrize('ring_radius', [21.0, 23.0])
-def test_abnormal_stop_returns_best_fit(ring_radius):
+def test_nonmeaningful_gradient_uses_previous(ring_radius):
     """
-    Test that the best-fit sample is returned when the iterations stop
-    because the gradient of the current sample is not negative.
+    Test that the iterations continue when no meaningful gradient can
+    be measured for a corrected ellipse.
 
     A bright ring just outside of the fitted ellipse makes the gradient
-    positive for some of the corrected ellipses.
+    measured for the fourth ellipse positive. As in the STSDAS ellipse
+    task, the gradient of the previous iteration is then used instead,
+    made slightly shallower.
     """
     yy, xx = np.mgrid[0:201, 0:201]
     radius = np.hypot(xx - 100, yy - 100)
@@ -91,9 +93,27 @@ def test_abnormal_stop_returns_best_fit(ring_radius):
             + 100.0 * np.exp(-0.5 * (radius - ring_radius)**2))
     sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, eps=0.1)
     isophote = EllipseFitter(sample).fit()
-    assert isophote.stop_code == -1
-    assert isophote.n_iter > 1
+    assert isophote.stop_code != -1
+    assert isophote.n_iter > 4
     assert isophote.grad < 0
+
+
+def test_nonmeaningful_gradient_center_at_bound():
+    """
+    Test that the gradient of the previous iteration is also used for
+    a corrected ellipse whose center was moved onto the
+    ``max_center_shift`` boundary.
+    """
+    yy, xx = np.mgrid[0:201, 0:201]
+    radius = np.hypot(xx - 100, yy - 100)
+    data = (1000.0 * np.exp(-radius / 10.0)
+            + 100.0 * np.exp(-0.5 * (radius - 23.0)**2))
+    sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, eps=0.1)
+    isophote = EllipseFitter(sample).fit(max_center_shift=0.5)
+    assert isophote.stop_code != -1
+    assert isophote.n_iter > 5
+    assert isophote.grad < 0
+    assert_allclose(isophote.x0, 100.5)
 
 
 def test_everything_fixed():
@@ -379,14 +399,19 @@ class TestM51:
         assert isophote.n_data == 119
         assert_allclose(isophote.intens, 685.4, atol=0.1)
 
-        # Last sample taken by the original code, before turning inwards
-        sample = EllipseSample(self.data, 61.16, eps=0.219,
+        # Last sample taken by the original code, before turning
+        # inwards. The original code ran this fit for the maximum
+        # number of iterations.
+        sample = EllipseSample(self.data, 61.16, x0=253.15, y0=260.15,
+                               eps=0.219,
                                position_angle=np.deg2rad(77.5 + 90))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
-        assert isophote.n_data == 382
-        assert_allclose(isophote.intens, 155.0, atol=0.1)
+        assert isophote.stop_code == 2
+        assert isophote.n_iter == 50
+        assert isophote.n_data == 383
+        assert_allclose(isophote.intens, 153.2, atol=0.1)
 
     def test_m51_outer(self):
         # Sample taken at the outskirts of the image, so many
