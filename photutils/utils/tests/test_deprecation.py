@@ -375,6 +375,23 @@ class TestDeprecatedColumn:
             col = table['old']
         assert np.all(col == [1, 2, 3])
 
+    def test_since_per_column(self):
+        """
+        Test the message when "since" maps each column name to its
+        version.
+        """
+        since = {'old': '3.0', 'old_b': '3.2'}
+        table = create_empty_deprecated_qtable(DEPRECATION_MAP,
+                                               since=since)
+        table['new'] = [1, 2, 3]
+        table['new_b'] = [4, 5, 6]
+        match = "'old' was deprecated in version 3.0"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            _ = table['old']
+        match = "'old_b' was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            _ = table['old_b']
+
     def test_slice_preserves_deprecation(self, raw_data):
         """
         Test that slicing preserves deprecation behavior.
@@ -1044,6 +1061,21 @@ class TestDeprecatedGetattr:
         assert 'version 5.0' in msg
         # since was not given, so "deprecated in version" should not appear
         assert 'deprecated in version' not in msg
+
+    def test_message_with_since_per_name(self):
+        """
+        Test the message when "since" maps each name to its version.
+        """
+        obj = _ExampleObj()
+        dep_map = {'x': 'y', 'z': 'y'}
+        obj.y = 99
+        since = {'x': '2.0', 'z': '2.1'}
+        match = "'x' attribute was deprecated in version 2.0"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            deprecated_getattr(obj, 'x', dep_map, since=since)
+        match = "'z' attribute was deprecated in version 2.1"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            deprecated_getattr(obj, 'z', dep_map, since=since)
 
 
 @deprecated('1.0', until='2.0')

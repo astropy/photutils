@@ -52,10 +52,10 @@ class TestIsophote:
         assert abs(iso.grad) >= 4.20
 
         # Integrals
-        assert iso.tflux_e <= 1.85e6
-        assert iso.tflux_e >= 1.82e6
-        assert iso.tflux_c <= 2.025e6
-        assert iso.tflux_c >= 2.022e6
+        assert iso.total_flux_ellipse <= 1.85e6
+        assert iso.total_flux_ellipse >= 1.82e6
+        assert iso.total_flux_circle <= 2.025e6
+        assert iso.total_flux_circle >= 2.022e6
 
         # Deviations from perfect ellipticity. The amplitudes are None
         # if the upper harmonic fit failed.
@@ -91,10 +91,10 @@ class TestIsophote:
         assert_allclose(iso.grad, -36.08, atol=0.1)
 
         # Integrals
-        assert iso.tflux_e <= 1.20e6
-        assert iso.tflux_e >= 1.19e6
-        assert iso.tflux_c <= 1.38e6
-        assert iso.tflux_c >= 1.36e6
+        assert iso.total_flux_ellipse <= 1.20e6
+        assert iso.total_flux_ellipse >= 1.19e6
+        assert iso.total_flux_circle <= 1.38e6
+        assert iso.total_flux_circle >= 1.36e6
 
         # Deviations from perfect ellipticity. The amplitudes are None
         # if the upper harmonic fit failed.
@@ -190,10 +190,10 @@ def test_isophote_small_flux_box():
     sample.update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 0, valid=True, stop_code=0)
     assert sample.actual_points > 0
-    assert isophote.tflux_e == 0.0
-    assert isophote.tflux_c == 0.0
-    assert isophote.npix_e == 0
-    assert isophote.npix_c == 0
+    assert isophote.total_flux_ellipse == 0.0
+    assert isophote.total_flux_circle == 0.0
+    assert isophote.n_pixels_ellipse == 0
+    assert isophote.n_pixels_circle == 0
 
 
 def test_isophote_fluxes_integer_center():
@@ -208,7 +208,7 @@ def test_isophote_fluxes_integer_center():
         sample = EllipseSample(data, 10.0, geometry=geometry)
         sample.update()
         isophote = Isophote(sample, 1, valid=True, stop_code=0)
-        npix.append((isophote.npix_c, isophote.npix_e))
+        npix.append((isophote.n_pixels_circle, isophote.n_pixels_ellipse))
     assert npix[0] == npix[1]
     assert_allclose(npix[1][0], np.pi * 10.0**2, rtol=0.02)
 
@@ -267,10 +267,10 @@ class TestIsophoteList:
         assert isinstance(result.n_flag, np.ndarray)
         assert isinstance(result.valid, np.ndarray)
         assert isinstance(result.stop_code, np.ndarray)
-        assert isinstance(result.tflux_c, np.ndarray)
-        assert isinstance(result.tflux_e, np.ndarray)
-        assert isinstance(result.npix_c, np.ndarray)
-        assert isinstance(result.npix_e, np.ndarray)
+        assert isinstance(result.total_flux_circle, np.ndarray)
+        assert isinstance(result.total_flux_ellipse, np.ndarray)
+        assert isinstance(result.n_pixels_circle, np.ndarray)
+        assert isinstance(result.n_pixels_ellipse, np.ndarray)
         assert isinstance(result.a3, np.ndarray)
         assert isinstance(result.a4, np.ndarray)
         assert isinstance(result.b3, np.ndarray)
@@ -371,6 +371,40 @@ class TestIsophoteList:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             n_iter = isophote.niter
         assert n_iter == isophote.n_iter
+
+    @pytest.mark.parametrize(('old_name', 'new_name'),
+                             [('tflux_e', 'total_flux_ellipse'),
+                              ('tflux_c', 'total_flux_circle'),
+                              ('npix_e', 'n_pixels_ellipse'),
+                              ('npix_c', 'n_pixels_circle')])
+    def test_deprecated_flux_attributes(self, old_name, new_name):
+        isolist = self.isolist_sma10
+        isophote = isolist[2]
+        match = f"'{old_name}' attribute was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            value = getattr(isophote, old_name)
+        assert value == getattr(isophote, new_name)
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            values = getattr(isolist, old_name)
+        assert_allclose(values, getattr(isolist, new_name))
+
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            tbl = isolist.to_table(columns=[old_name])
+        assert tbl.colnames == [new_name]
+
+        tbl = isolist.to_table(columns='all')
+        assert new_name in tbl.colnames
+        assert old_name not in tbl.colnames
+        match = f"'{old_name}' was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            column = tbl[old_name]
+        assert_allclose(column, tbl[new_name])
+
+    def test_deprecated_since_versions(self):
+        tbl = self.isolist_sma10.to_table(columns='all')
+        match = "'niter' was deprecated in version 3.0"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            _ = tbl['niter']
 
     def test_isophote_methods(self):
         isophote = self.isolist_sma10[2]
@@ -482,8 +516,10 @@ class TestIsophoteList:
         tbl = isolist.to_table(columns=['sma'])
         assert len(tbl.colnames) == 1
 
-        tbl = isolist.to_table(columns=['tflux_e', 'tflux_c', 'npix_e',
-                                        'npix_c'])
+        tbl = isolist.to_table(columns=['total_flux_ellipse',
+                                        'total_flux_circle',
+                                        'n_pixels_ellipse',
+                                        'n_pixels_circle'])
         assert len(tbl.colnames) == 4
 
     @pytest.mark.parametrize('columns', ['invalid', 'append',
@@ -616,7 +652,7 @@ def test_to_table_dtypes():
         assert np.all(np.isfinite(tbl['gradient_err'][1:]))
     assert tbl['n_data'].dtype.kind == 'i'
     assert tbl['valid'].dtype == bool
-    assert np.isnan(tbl['tflux_e'][0])
+    assert np.isnan(tbl['total_flux_ellipse'][0])
 
     tbl = isolist[0].to_table()
     assert tbl['gradient_rel_err'].dtype.kind == 'f'

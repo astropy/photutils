@@ -564,6 +564,13 @@ API Changes
     central pixel) are NaN. Previously, such columns had an object
     data type with `None` values. [#2553]
 
+  - The ``tflux_e``, ``tflux_c``, ``npix_e``, and ``npix_c``
+    attributes of ``Isophote`` and ``IsophoteList`` and the
+    corresponding ``IsophoteList.to_table`` columns were renamed to
+    ``total_flux_ellipse``, ``total_flux_circle``, ``n_pixels_ellipse``,
+    and ``n_pixels_circle``. The old names are deprecated and will be
+    removed in version 4.0. [#2568]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

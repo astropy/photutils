@@ -123,6 +123,30 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
         warning_type=PhotutilsDeprecationWarning)
 
 
+def _get_since(since, name):
+    """
+    Return the deprecation version of a name.
+
+    Parameters
+    ----------
+    since : str, int, dict, or `None`
+        The deprecation version, or a dictionary mapping each
+        deprecated name to its deprecation version.
+
+    name : str
+        The deprecated name.
+
+    Returns
+    -------
+    since : str, int, or `None`
+        The deprecation version of ``name``, or `None` if ``since``
+        is a dictionary that does not contain ``name``.
+    """
+    if isinstance(since, dict):
+        return since.get(name)
+    return since
+
+
 def deprecated_getattr(instance, name, deprecated_map, *, since=None,
                        until=None):
     """
@@ -146,9 +170,11 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
         A dictionary mapping old (deprecated) attribute names to their
         new attribute names.
 
-    since : str or int, optional
-        The version in which the attribute was deprecated. If `None`,
-        the deprecation version is not mentioned in the warning message.
+    since : str, int, or dict, optional
+        The version in which the attribute was deprecated, or a
+        dictionary mapping each deprecated attribute name to its
+        version. If `None`, the deprecation version is not mentioned
+        in the warning message.
 
     until : str or int, optional
         The version in which the old attribute name will be removed.
@@ -167,6 +193,7 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
     """
     if name in deprecated_map:
         new_name = deprecated_map[name]
+        since = _get_since(since, name)
         since_str = ''
         if since is not None:
             since_str = f' in version {since}'
@@ -290,9 +317,10 @@ class DeprecatedColumnMixin:
         stacklevel : int, optional
             The stack level for the warning. The default is 4.
         """
+        since = _get_since(self._deprecation_since, name)
         since_str = ''
-        if self._deprecation_since is not None:
-            since_str = f' in version {self._deprecation_since}'
+        if since is not None:
+            since_str = f' in version {since}'
         if self._deprecation_until is not None:
             remove_str = 'version ' + str(self._deprecation_until)
         else:
@@ -599,10 +627,11 @@ def create_empty_deprecated_qtable(deprecation_map, *, since=None,
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
 
-    since : str or int, optional
-        The version in which the column names were deprecated. If
-        `None`, the deprecation version is not mentioned in the
-        warning message.
+    since : str, int, or dict, optional
+        The version in which the column names were deprecated, or a
+        dictionary mapping each deprecated column name to its
+        version. If `None`, the deprecation version is not mentioned
+        in the warning message.
 
     until : str or int, optional
         The version in which the old column names will be removed. If
@@ -676,10 +705,11 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
 
-    since : str or int, optional
-        The version in which the column names were deprecated. If
-        `None`, the deprecation version is not mentioned in the
-        warning message.
+    since : str, int, or dict, optional
+        The version in which the column names were deprecated, or a
+        dictionary mapping each deprecated column name to its
+        version. If `None`, the deprecation version is not mentioned
+        in the warning message.
 
     until : str or int, optional
         The version in which the old column names will be removed. If

@@ -27,6 +27,17 @@ _DEPRECATED_ATTRIBUTES = {
     'niter': 'n_iter',
     'ndata': 'n_data',
     'nflag': 'n_flag',
+    'tflux_e': 'total_flux_ellipse',
+    'tflux_c': 'total_flux_circle',
+    'npix_e': 'n_pixels_ellipse',
+    'npix_c': 'n_pixels_circle',
+}
+
+# The version in which each attribute name was deprecated
+_DEPRECATED_SINCE = {
+    **dict.fromkeys(('grad_error', 'grad_r_error', 'niter', 'ndata',
+                     'nflag'), '3.0'),
+    **dict.fromkeys(('tflux_e', 'tflux_c', 'npix_e', 'npix_c'), '3.2'),
 }
 
 
@@ -132,14 +143,26 @@ class Isophote:
         is `None` if it could not be computed (NaN in
         `~photutils.isophote.IsophoteList`).
     tflux_e : float
+        .. deprecated:: 3.2
+            Use ``total_flux_ellipse`` instead.
+    total_flux_ellipse : float
         The sum of the valid (unmasked and finite) pixel values inside
         the ellipse.
     npix_e : int
+        .. deprecated:: 3.2
+            Use ``n_pixels_ellipse`` instead.
+    n_pixels_ellipse : int
         The total number of valid pixels inside the ellipse.
     tflux_c : float
+        .. deprecated:: 3.2
+            Use ``total_flux_circle`` instead.
+    total_flux_circle : float
         The sum of the valid (unmasked and finite) pixel values inside
         a circle with the same ``sma`` as the ellipse.
     npix_c : int
+        .. deprecated:: 3.2
+            Use ``n_pixels_circle`` instead.
+    n_pixels_circle : int
         The total number of valid pixels inside a circle with the same
         ``sma`` as the ellipse.
     sarea : float
@@ -198,8 +221,8 @@ class Isophote:
                 self.sarea = sample.sector_area
                 self.n_data = sample.actual_points
                 self.n_flag = sample.total_points - sample.actual_points
-                self.tflux_e = self.tflux_c = 0.0
-                self.npix_e = self.npix_c = 0
+                self.total_flux_ellipse = self.total_flux_circle = 0.0
+                self.n_pixels_ellipse = self.n_pixels_circle = 0
                 self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
                 self.a3 = self.b3 = self.a3_err = self.b3_err = None
                 self.a4 = self.b4 = self.a4_err = self.b4_err = None
@@ -217,8 +240,9 @@ class Isophote:
             self.n_flag = sample.total_points - sample.actual_points
 
             # Flux contained inside ellipse and circle
-            (self.tflux_e, self.tflux_c, self.npix_e,
-             self.npix_c) = self._compute_fluxes()
+            (self.total_flux_ellipse, self.total_flux_circle,
+             self.n_pixels_ellipse,
+             self.n_pixels_circle) = self._compute_fluxes()
 
             self._compute_errors()
 
@@ -231,7 +255,7 @@ class Isophote:
     # Remove in 4.0
     def __getattr__(self, name):
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
-                                  since='3.0', until='4.0')
+                                  since=_DEPRECATED_SINCE, until='4.0')
 
     # These methods are useful for sorting lists of instances. The
     # isophotes are compared by their semimajor axis length. Objects
@@ -533,7 +557,8 @@ class CentralPixel(Isophote):
         self.n_data = sample.actual_points
         self.n_flag = sample.total_points - sample.actual_points
 
-        self.tflux_e = self.tflux_c = self.npix_e = self.npix_c = None
+        self.total_flux_ellipse = self.total_flux_circle = None
+        self.n_pixels_ellipse = self.n_pixels_circle = None
 
         self.a3 = self.b3 = 0.0
         self.a4 = self.b4 = 0.0
@@ -585,7 +610,7 @@ class IsophoteList:
     # Remove in 4.0
     def __getattr__(self, name):
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
-                                  since='3.0', until='4.0')
+                                  since=_DEPRECATED_SINCE, until='4.0')
 
     def __len__(self):
         return len(self._list)
@@ -847,35 +872,35 @@ class IsophoteList:
         return self._collect_as_array('stop_code', dtype=int)
 
     @property
-    def tflux_e(self):
+    def total_flux_ellipse(self):
         """
         The sum of the valid (unmasked and finite) pixel values inside
         the ellipse.
         """
-        return self._collect_as_array('tflux_e')
+        return self._collect_as_array('total_flux_ellipse')
 
     @property
-    def tflux_c(self):
+    def total_flux_circle(self):
         """
         The sum of the valid (unmasked and finite) pixel values inside a
         circle with the same ``sma`` as the ellipse.
         """
-        return self._collect_as_array('tflux_c')
+        return self._collect_as_array('total_flux_circle')
 
     @property
-    def npix_e(self):
+    def n_pixels_ellipse(self):
         """
         The total number of valid pixels inside the ellipse.
         """
-        return self._collect_as_array('npix_e')
+        return self._collect_as_array('n_pixels_ellipse')
 
     @property
-    def npix_c(self):
+    def n_pixels_circle(self):
         """
         The total number of valid pixels inside a circle with the same
         ``sma`` as the ellipse.
         """
-        return self._collect_as_array('npix_c')
+        return self._collect_as_array('n_pixels_circle')
 
     @property
     def a3(self):
@@ -1110,7 +1135,7 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         raise ValueError(msg)
 
     # Replace with QTable in 4.0
-    since = '3.0'
+    since = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0'}
     until = '4.0'
     isotable = create_empty_deprecated_qtable(
         _deprecation_map, since=since, until=until)
@@ -1132,7 +1157,7 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
             if name in _deprecation_map:
                 new_name = _deprecation_map[name]
                 msg = (f'The {name!r} attribute was deprecated in version '
-                       f'{since}. Use {new_name!r} instead. It will be '
+                       f'{since[name]}. Use {new_name!r} instead. It will be '
                        f'removed in version {until}.')
                 warnings.warn(msg, PhotutilsDeprecationWarning,
                               stacklevel=4)

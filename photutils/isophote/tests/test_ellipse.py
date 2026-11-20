@@ -306,8 +306,8 @@ class TestEllipse:
         isolist_nan = ellipse.fit_image(maxsma=60.0)
         assert_allclose(isolist_nan.sma, isolist.sma)
         assert_allclose(isolist_nan.intens, isolist.intens, rtol=1e-4)
-        assert np.all(np.isfinite(isolist_nan.tflux_e[1:]))
-        assert np.all(np.isfinite(isolist_nan.tflux_c[1:]))
+        assert np.all(np.isfinite(isolist_nan.total_flux_ellipse[1:]))
+        assert np.all(np.isfinite(isolist_nan.total_flux_circle[1:]))
 
         masked = np.ma.masked_invalid(data)
         isolist_masked = Ellipse(masked).fit_image(maxsma=60.0)
