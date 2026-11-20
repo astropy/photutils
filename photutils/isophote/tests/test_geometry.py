@@ -341,3 +341,14 @@ def test_find_center_flat_image():
     geometry.find_center(np.ones((101, 101)), verbose=False)
     assert geometry.x0 == 52.0
     assert geometry.y0 == 48.0
+
+
+def test_find_center_negative_threshold():
+    """
+    Test that the center is not changed for a negative threshold if no
+    position has a figure of merit.
+    """
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry.find_center(np.ones((101, 101)), threshold=-1.0, verbose=False)
+    assert geometry.x0 == 52.0
+    assert geometry.y0 == 48.0

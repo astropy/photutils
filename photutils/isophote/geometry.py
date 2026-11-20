@@ -214,11 +214,14 @@ class EllipseGeometry:
         y) coordinates in the `~photutils.isophote.EllipseGeometry`
         instance passed to the constructor of the
         `~photutils.isophote.Ellipse` class. If any of the
-        `~photutils.isophote.EllipseGeometry` (x, y) coordinates
-        are `None`, the center of the input image frame is
-        used. If the center acquisition is successful, the
+        `~photutils.isophote.EllipseGeometry` (x, y) coordinates are
+        `None` or outside of the image, the window is centered on the
+        center of the input image frame instead. If the center
+        acquisition is successful, the
         `~photutils.isophote.EllipseGeometry` instance is modified in
         place to reflect the solution of the object centerer algorithm.
+        Otherwise, the (x, y) coordinates are not changed, including
+        coordinates that are `None` or outside of the image.
 
         Only the window positions inside the image are scanned. Near
         the image edges, only the pixels inside the image are used to
@@ -239,7 +242,7 @@ class EllipseGeometry:
         half_size = len(IN_MASK) // 2
 
         # Check if center coordinates point to somewhere inside the frame.
-        # If not, set then to frame center.
+        # If not, set them to frame center.
         shape = image.shape
         _x0 = self.x0
         _y0 = self.y0
@@ -248,7 +251,7 @@ class EllipseGeometry:
             _x0 = shape[1] / 2
             _y0 = shape[0] / 2
 
-        max_fom = 0.0
+        max_fom = -np.inf
         max_i = 0
         max_j = 0
 
