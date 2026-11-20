@@ -139,10 +139,10 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
         b4_array = LSQUnivariateSpline(
             isolist.sma, isolist.b4, nodes)(finely_spaced_sma)
 
-        grad_sma = -grad_array * finely_spaced_sma
-
         # Return deviations from ellipticity to their original amplitude
-        # meaning.
+        # meaning. The isophote harmonics are divided by the absolute
+        # value of the gradient, which can be positive.
+        grad_sma = np.abs(grad_array) * finely_spaced_sma
         kwargs_harm = {
             'a3_array': a3_array * grad_sma,
             'b3_array': b3_array * grad_sma,
