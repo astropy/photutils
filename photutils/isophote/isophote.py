@@ -627,7 +627,7 @@ class IsophoteList:
         index = (np.abs(self.sma - sma)).argmin()
         return self._list[index]
 
-    def _collect_as_array(self, attr_name, dtype=float):
+    def _collect_as_array(self, attr_name, *, dtype=float):
         return np.array(self._collect_as_list(attr_name), dtype=dtype)
 
     def _collect_as_list(self, attr_name):
@@ -974,7 +974,8 @@ _MAIN_PROPERTIES = ('sma', 'intens', 'int_err', 'eps', 'ellip_err',
                     'gradient_rel_err', 'x0', 'x0_err', 'y0', 'y0_err',
                     'n_data', 'n_flag', 'n_iter', 'stop_code')
 
-# Isophote_list property names renamed for their to_table() column names.
+# These IsophoteList property names have different to_table() column
+# names.
 _RENAME_MAP = {
     'int_err': 'intens_err',
     'eps': 'ellipticity',

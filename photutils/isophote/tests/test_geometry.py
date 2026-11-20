@@ -6,9 +6,11 @@ Tests for the geometry module.
 import numpy as np
 import pytest
 from astropy import log
-from numpy.testing import assert_allclose
+from astropy.modeling.models import Gaussian2D
+from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.isophote.geometry import EllipseGeometry
+from photutils.datasets import make_noise_image
+from photutils.isophote.geometry import IN_MASK, OUT_MASK, EllipseGeometry
 from photutils.isophote.tests.make_test_data import make_test_image
 
 
@@ -162,8 +164,8 @@ def test_find_center_near_edge(x0, y0):
                            noise=1.0, seed=0)
     geometry = EllipseGeometry(x0, y0, 10.0, 0.2, 0.1)
     geometry.find_center(data, verbose=False)
-    assert abs(geometry.x0 - x0) <= 3
-    assert abs(geometry.y0 - y0) <= 3
+    assert abs(geometry.x0 - x0) <= 1
+    assert abs(geometry.y0 - y0) <= 1
 
 
 def test_find_center_nonfinite():
@@ -270,3 +272,83 @@ def test_bounding_ellipses_large_step(astep, linear_growth):
     sma1, sma2 = geometry.bounding_ellipses()
     assert sma1 == 0.0
     assert_allclose(sma2, 4.5)
+
+
+@pytest.mark.parametrize(('x0', 'y0'), [(50.0, 50.0), (50.4, 50.4),
+                                        (49.6, 50.3), (50.3, 49.6),
+                                        (49.7, 49.8)])
+def test_find_center_nearest_pixel(x0, y0):
+    """
+    Test that find_center returns the pixel nearest to the center of
+    a symmetric source.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = Gaussian2D(100.0, x0, y0, 6.0, 5.0, theta=0.4)(xx, yy)
+    geometry = EllipseGeometry(53.0, 47.0, 10.0, 0.2, 0.1)
+    geometry.find_center(data, verbose=False)
+    assert geometry.x0 == round(x0)
+    assert geometry.y0 == round(y0)
+
+
+def test_centerer_masks():
+    """
+    Test that the centerer masks select a disk and a ring that are
+    centered on the central pixel of the box.
+    """
+    assert IN_MASK.shape == (17, 17)
+    assert OUT_MASK.shape == (17, 17)
+    yy, xx = np.mgrid[-8:9, -8:9]
+    radius = np.hypot(xx, yy)
+    assert np.count_nonzero(~IN_MASK) == 37
+    assert np.max(radius[~IN_MASK]) <= 3.5
+    assert np.count_nonzero(~OUT_MASK) == 48
+    assert np.min(radius[~OUT_MASK]) >= 7.5
+    assert np.max(radius[~OUT_MASK]) < 8.5
+    for mask in (IN_MASK, OUT_MASK):
+        assert_array_equal(mask, mask[::-1, ::-1])
+        assert_array_equal(mask, mask.T)
+
+
+def test_find_center_flipped():
+    """
+    Test that find_center has no preferred direction.
+
+    The center found in an image that is flipped along both axes must
+    be the flipped center. The noise makes the figure of merit depend
+    on every pixel of the centerer masks.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = Gaussian2D(100.0, 50.0, 50.0, 6.0, 5.0, theta=0.4)(xx, yy)
+    data += make_noise_image(data.shape, distribution='gaussian', mean=0.0,
+                             stddev=20.0, seed=9)
+    geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.2, 0.1)
+    geometry.find_center(data, verbose=False)
+    assert abs(geometry.x0 - 50) <= 2
+    assert abs(geometry.y0 - 50) <= 2
+
+    geometry_flipped = EllipseGeometry(50.0, 50.0, 10.0, 0.2, 0.1)
+    geometry_flipped.find_center(data[::-1, ::-1], verbose=False)
+    assert geometry_flipped.x0 == 100 - geometry.x0
+    assert geometry_flipped.y0 == 100 - geometry.y0
+
+
+def test_find_center_flat_image():
+    """
+    Test that the center is not changed, without any warnings, if the
+    image has no scatter.
+    """
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry.find_center(np.ones((101, 101)), verbose=False)
+    assert geometry.x0 == 52.0
+    assert geometry.y0 == 48.0
+
+
+def test_find_center_negative_threshold():
+    """
+    Test that the center is not changed for a negative threshold if no
+    position has a figure of merit.
+    """
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1)
+    geometry.find_center(np.ones((101, 101)), threshold=-1.0, verbose=False)
+    assert geometry.x0 == 52.0
+    assert geometry.y0 == 48.0

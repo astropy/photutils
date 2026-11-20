@@ -3,6 +3,7 @@
 Tools for fitting ellipses.
 """
 
+import abc
 import math
 import warnings
 
@@ -333,9 +334,13 @@ class EllipseFitter:
                 or not 0.0 <= geometry.y0 <= ny - 1)
 
 
-class _ParameterCorrector:
+class _ParameterCorrector(abc.ABC):
+    @abc.abstractmethod
     def correct(self, sample, harmonic):
-        raise NotImplementedError
+        """
+        Return a new sample with the geometry parameter corrected using
+        the given harmonic amplitude.
+        """
 
 
 class _PositionCorrector(_ParameterCorrector):

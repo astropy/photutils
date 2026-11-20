@@ -192,9 +192,9 @@ class EllipseSample:
         self.gradient_rel_err = None
         self.sector_area = None
 
-        # Total_points reports the total number of pairs angle-radius
-        # that were attempted. actual_points reports the actual number
-        # of sampled pairs angle-radius that resulted in valid values.
+        # The total_points attribute is the number of angle-radius pairs
+        # that were attempted. The actual_points attribute is the number
+        # of sampled pairs that resulted in valid values.
         self.total_points = 0
         self.actual_points = 0
 

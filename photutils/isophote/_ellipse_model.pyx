@@ -25,6 +25,7 @@ def build_ellipse_model_c(
     const double[:] pa_array,
     const double[:] x0_array,
     const double[:] y0_array,
+    *,
     const double[:] a3_array = None,
     const double[:] b3_array = None,
     const double[:] a4_array = None,
@@ -158,7 +159,7 @@ def build_ellipse_model_c(
                 if phi < phi_min:
                     phi = phi_min
                 r = sma * q / sqrt((q * cos(phi))**2 + sin(phi)**2)
-                # max(r, 0.5) could return NaN, so this is safer.
+                # Using max(r, 0.5) could return NaN, so this is safer.
                 if not (r >= 0.5):
                     r = 0.5
 

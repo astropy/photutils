@@ -3,6 +3,7 @@
 Tools for integrating over pixels.
 """
 
+import abc
 
 import numpy as np
 
@@ -16,7 +17,7 @@ MEAN = 'mean'
 MEDIAN = 'median'
 
 
-class _Integrator:
+class _Integrator(abc.ABC):
     """
     Base class that supports different kinds of pixel integration
     methods.
@@ -62,6 +63,7 @@ class _Integrator:
         self._i_range = range(self._image.shape[1] - 1)
         self._j_range = range(self._image.shape[0] - 1)
 
+    @abc.abstractmethod
     def integrate(self, radius, phi):
         """
         The three input lists (angles, radii, intensities) are appended
@@ -78,29 +80,13 @@ class _Integrator:
         phi : float
             The polar angle of radius vector.
         """
-        raise NotImplementedError
 
     def _store_results(self, phi, radius, sample):
         self._angles.append(phi)
         self._radii.append(radius)
         self._intensities.append(sample)
 
-    def get_polar_angle_step(self):
-        """
-        Return the polar angle step used to walk over the elliptical
-        path.
-
-        The polar angle step is defined by the area integrator
-        subclasses. The pixel integrators sample the whole path at
-        once.
-
-        Returns
-        -------
-        result : float
-            The polar angle step.
-        """
-        raise NotImplementedError
-
+    @abc.abstractmethod
     def get_sector_area(self):
         """
         Return the area of elliptical sectors where the integration
@@ -116,8 +102,8 @@ class _Integrator:
         result : float
             The sector area.
         """
-        raise NotImplementedError
 
+    @abc.abstractmethod
     def is_area(self):
         """
         Return the type of the integrator.
@@ -136,7 +122,6 @@ class _Integrator:
         result : boolean
             True if this is an area integrator, False otherwise.
         """
-        raise NotImplementedError
 
 
 class _PixelIntegrator(_Integrator):
@@ -154,6 +139,7 @@ class _PixelIntegrator(_Integrator):
         if len(values) > 0:
             self._store_results(angles[0], radii[0], values[0])
 
+    @abc.abstractmethod
     def integrate_path(self, radii, phis):
         """
         Sample the image at the input polar coordinates.
@@ -175,7 +161,6 @@ class _PixelIntegrator(_Integrator):
             The polar angles, polar radii, and sampled values of the
             valid points.
         """
-        raise NotImplementedError
 
     def is_area(self):
         return False
@@ -337,6 +322,15 @@ class _AreaIntegrator(_Integrator):
                 self._store_results(phi, radius, sample_value)
 
     def get_polar_angle_step(self):
+        """
+        Return the polar angle step used to walk over the elliptical
+        path.
+
+        Returns
+        -------
+        result : float
+            The polar angle step.
+        """
         _, phi2 = self._geometry.polar_angle_sector_limits()
         return self._geometry.sector_angular_width / 2.0 + phi2 - self._phi
 
@@ -346,6 +340,7 @@ class _AreaIntegrator(_Integrator):
     def is_area(self):
         return True
 
+    @abc.abstractmethod
     def compute_sample_value(self, values):
         """
         Compute the sample value from the values of the pixels inside
@@ -361,7 +356,6 @@ class _AreaIntegrator(_Integrator):
         result : float
             The sample value.
         """
-        raise NotImplementedError
 
 
 class _MeanIntegrator(_AreaIntegrator):

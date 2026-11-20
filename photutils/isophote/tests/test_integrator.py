@@ -230,6 +230,29 @@ def test_very_large_path_coordinates(integrmode, x0):
     assert sample.actual_points == 0
 
 
+@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+def test_area_sectors_outside_image(integrmode):
+    """
+    Test that the area integrators skip the sectors that are not
+    entirely inside the image.
+    """
+    data = make_test_image(nx=128, ny=128, seed=0)
+    kwargs = {'x0': 100.0, 'y0': 64.0, 'integrmode': integrmode}
+    sample = EllipseSample(data, 40.0, **kwargs)
+    angles, _, values = sample.extract()
+    assert 0 < sample.actual_points < sample.total_points
+
+    # The sectors that are kept have the same values as in a wider
+    # image that contains the whole ellipse.
+    data_wide = np.pad(data, ((0, 0), (0, 64)))
+    sample_wide = EllipseSample(data_wide, 40.0, **kwargs)
+    angles_wide, _, values_wide = sample_wide.extract()
+    assert sample_wide.total_points == sample.total_points
+    assert sample_wide.actual_points == sample_wide.total_points
+    keep = np.isin(angles_wide, angles)
+    assert_array_equal(values_wide[keep], values)
+
+
 @pytest.mark.parametrize(('values', 'expected'),
                          [([3.0, 1.0, 2.0], 2.0),
                           ([4.0, 1.0, 3.0, 2.0], 2.5),

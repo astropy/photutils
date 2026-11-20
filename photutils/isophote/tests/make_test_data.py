@@ -21,8 +21,9 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
     nx, ny : int, optional
         The image size.
 
-    x0, y0 : int, optional
-        The center position. If `None`, the default is the image center.
+    x0, y0 : float, optional
+        The center position. A coordinate that is `None` (the default)
+        is set to the image center.
 
     background : float, optional
         The constant background level to add to the image values.
@@ -51,12 +52,8 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
     data : 2D `~numpy.ndarray`
         The resulting simulated image.
     """
-    if x0 is None or y0 is None:
-        xcen = nx / 2
-        ycen = ny / 2
-    else:
-        xcen = x0
-        ycen = y0
+    xcen = nx / 2 if x0 is None else x0
+    ycen = ny / 2 if y0 is None else y0
 
     g = EllipseGeometry(xcen, ycen, sma, eps, pa, astep=0.1,
                         linear_growth=False)
@@ -69,10 +66,10 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
     image = i0 * np.exp(-7.669 * (tmp_image**0.25 - 1.0)) + background
 
     # Central pixel is messed up, so replace it with interpolated value.
-    image[int(xcen), int(ycen)] = (image[int(xcen - 1), int(ycen)]
-                                   + image[int(xcen + 1), int(ycen)]
-                                   + image[int(xcen), int(ycen - 1)]
-                                   + image[int(xcen), int(ycen + 1)]) / 4.0
+    image[int(ycen), int(xcen)] = (image[int(ycen), int(xcen - 1)]
+                                   + image[int(ycen), int(xcen + 1)]
+                                   + image[int(ycen - 1), int(xcen)]
+                                   + image[int(ycen + 1), int(xcen)]) / 4.0
 
     image += make_noise_image(image.shape, distribution='gaussian', mean=0.0,
                               stddev=noise, seed=seed)
@@ -135,8 +132,9 @@ def make_fits_test_image(name, *, nx=512, ny=512, x0=None, y0=None,
     if not name.endswith('.fits'):
         name += '.fits'
 
-    array = make_test_image(nx, ny, x0, y0, background, noise, i0, sma, eps,
-                            pa, seed=seed)
+    array = make_test_image(nx=nx, ny=ny, x0=x0, y0=y0,
+                            background=background, noise=noise, i0=i0,
+                            sma=sma, eps=eps, pa=pa, seed=seed)
 
     hdu = fits.PrimaryHDU(array)
     hdulist = fits.HDUList([hdu])

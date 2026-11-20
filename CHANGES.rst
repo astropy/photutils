@@ -306,6 +306,19 @@ Bug Fixes
   - Fixed the reported location of the deprecation warning for a
     deprecated column name in ``IsophoteList.to_table``. [#2553]
 
+  - Fixed ``EllipseGeometry.find_center`` returning a center that was,
+    on average, half a pixel too large in both x and y. The centerer
+    masks are now centered on a pixel, as in the STSDAS ``ellipse``
+    task. [#2556]
+
+  - Fixed NumPy ``RuntimeWarning`` messages emitted by
+    ``EllipseGeometry.find_center`` for an image without any scatter
+    (e.g., a flat image). [#2556]
+
+  - Fixed ``EllipseGeometry.find_center`` setting the center to (0, 0)
+    for a negative ``threshold`` if no position had a positive figure
+    of merit. [#2556]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
