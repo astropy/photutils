@@ -32,12 +32,12 @@ _DEPRECATED_ATTRIBUTES = {
 
 class Isophote:
     """
-    Container class to store the results of single isophote fit.
+    Container class to store the results of a single isophote fit.
 
     The extracted data sample at the given isophote (sampled intensities
     along the elliptical path on the image) is also kept as an attribute
     of this class. The container concept helps in segregating
-    information directly related to the sample, from information that
+    information directly related to the sample from information that
     more closely relates to the fitting process, such as status codes,
     errors for isophote parameters, and the like.
 
@@ -54,23 +54,35 @@ class Isophote:
 
            *  0: Normal.
            *  1: Fewer than the prespecified fraction of the extracted
-              data points are valid.
+              data points are valid. When
+              :meth:`~photutils.isophote.Ellipse.fit_image` grows
+              outward, such an isophote is extracted again with the
+              geometry of the previous isophote. If it is the first
+              isophote, an empty list is returned instead.
            *  2: Exceeded maximum number of iterations.
-           *  3: Singular matrix in harmonic fit, results may not be
-              valid. This also signals an insufficient number of data
-              points to fit.
-           *  4: Small or wrong gradient, or ellipse diverged. Subsequent
-              ellipses at larger or smaller semimajor axis may have
-              the same constant geometric parameters. It's also
-              used when the user turns off the fitting algorithm
-              via the ``maxrit`` fitting parameter (see the
-              `~photutils.isophote.Ellipse` class), when all the
-              ellipse parameters are fixed, and for isophotes measured
-              with :meth:`~photutils.isophote.Ellipse.measure_isophotes`.
-           *  5: Ellipse diverged. Not even the minimum number of
-              iterations could be executed. Subsequent ellipses at
-              larger or smaller semimajor axis may have the same
-              constant geometric parameters.
+           *  3: The harmonic fit failed (e.g., a singular matrix) or
+              there are too few valid data points to fit. Such an
+              isophote is always invalid (``valid=False``) and is not
+              included in the results of
+              :meth:`~photutils.isophote.Ellipse.fit_image`. It is also
+              returned by
+              :meth:`~photutils.isophote.Ellipse.measure_isophotes` for
+              an ellipse with no valid data points.
+           *  4: The isophote was extracted with a fixed geometry,
+              without fitting. This happens when the semimajor axis
+              length is larger than ``maxrit``, with
+              ``noniterate=True`` in
+              :meth:`~photutils.isophote.Ellipse.fit_isophote`, when
+              :meth:`~photutils.isophote.Ellipse.fit_image` switches to
+              noniterative mode, when all the ellipse parameters are
+              fixed, and for isophotes measured with
+              :meth:`~photutils.isophote.Ellipse.measure_isophotes`.
+           *  5: The fit stopped with a code of -1 (see below) inside
+              :meth:`~photutils.isophote.Ellipse.fit_image`. The
+              isophote is extracted with the geometry of a previously
+              fitted isophote. After two consecutive isophotes with
+              this code, the outward growth stops or continues in
+              noniterative mode.
            * -1: No meaningful gradient could be measured, or the
               corrected ellipse diverged (its ellipticity exceeded 0.95
               or its center moved outside of the image). The isophote
@@ -85,9 +97,11 @@ class Isophote:
 
     Attributes
     ----------
+    intens : float
+        The mean intensity along the elliptical path.
     rms : float
-        The root-mean-square of intensity values along the elliptical
-        path.
+        The root-mean-square scatter (standard deviation) of the
+        intensity values about their mean along the elliptical path.
     int_err : float
         The error of the mean (rms / sqrt(# data points)).
     ellip_err : float
@@ -103,22 +117,36 @@ class Isophote:
         sector integration area)).
     grad : float
         The local radial intensity gradient.
-    gradient_err : float
+    grad_error : float or `None`
+        .. deprecated:: 3.0
+            Use ``gradient_err`` instead.
+    gradient_err : float or `None`
         The measurement error of the local radial intensity gradient.
-    gradient_rel_err : float
-        The relative error of local radial intensity gradient.
+        It is `None` if it could not be computed (NaN in
+        `~photutils.isophote.IsophoteList`).
+    grad_r_error : float or `None`
+        .. deprecated:: 3.0
+            Use ``gradient_rel_err`` instead.
+    gradient_rel_err : float or `None`
+        The relative error of the local radial intensity gradient. It
+        is `None` if it could not be computed (NaN in
+        `~photutils.isophote.IsophoteList`).
     tflux_e : float
-        The sum of all pixels inside the ellipse.
+        The sum of the valid (unmasked and finite) pixel values inside
+        the ellipse.
     npix_e : int
         The total number of valid pixels inside the ellipse.
     tflux_c : float
-        The sum of all pixels inside a circle with the same ``sma`` as
-        the ellipse.
+        The sum of the valid (unmasked and finite) pixel values inside
+        a circle with the same ``sma`` as the ellipse.
     npix_c : int
         The total number of valid pixels inside a circle with the same
         ``sma`` as the ellipse.
     sarea : float
         The average sector area on the isophote (pixel**2).
+    niter : int
+        .. deprecated:: 3.0
+            Use ``n_iter`` instead.
     ndata : int
         .. deprecated:: 3.0
             Use ``n_data`` instead.
@@ -130,19 +158,21 @@ class Isophote:
     n_flag : int
         The number of discarded data points. Data points can be
         discarded either because they are physically outside the image
-        frame boundaries, because they were rejected by sigma-clipping,
-        or they are masked or nonfinite.
-    a3, b3, a4, b4 : float
-        The higher order harmonics that measure the deviations from a
+        frame boundaries, because they were rejected by sigma clipping,
+        or because they are masked or nonfinite.
+    a3, b3, a4, b4 : float or `None`
+        The higher-order harmonics that measure the deviations from a
         perfect ellipse. These values are actually the raw harmonic
-        amplitudes divided by the local radial gradient and the
-        semimajor axis length, so they can directly be compared with
-        each other. The ``b4`` parameter is positive for galaxies with
-        disky (kite-like) isophotes and negative for galaxies with boxy
-        isophotes.
-    a3_err, b3_err, a4_err, b4_err : float
+        amplitudes divided by the absolute value of the local radial
+        gradient and the semimajor axis length, so they can directly be
+        compared with each other. The ``b4`` parameter is positive for
+        galaxies with disky (kite-like) isophotes and negative for
+        galaxies with boxy isophotes. They are `None` if they could not
+        be computed (NaN in `~photutils.isophote.IsophoteList`).
+    a3_err, b3_err, a4_err, b4_err : float or `None`
         The errors associated with the ``a3``, ``b3``, ``a4``, and
-        ``b4`` attributes.
+        ``b4`` attributes. They are `None` if they could not be
+        computed (NaN in `~photutils.isophote.IsophoteList`).
     """
 
     def __init__(self, sample, n_iter, valid, stop_code):
@@ -279,11 +309,12 @@ class Isophote:
         Compute integrated flux inside ellipse, as well as inside a
         circle defined with the same semimajor axis.
 
-        Pixels in a square section enclosing circle are scanned. The
+        Pixels in a square section enclosing the circle are scanned. The
         distance of each pixel to the isophote center is compared both
         with the semimajor axis length and with the length of the
         ellipse radius vector, and integrals are updated if the pixel
-        distance is smaller.
+        distance is not larger. Masked and nonfinite pixels are
+        excluded.
         """
         # Compute limits of square array that encloses circle.
         sma = self.sample.geometry.sma
@@ -327,8 +358,8 @@ class Isophote:
         Compute deviations from a perfect ellipse, based on the
         amplitudes and errors for harmonic "n".
 
-        Note that we first subtract the first and second harmonics from
-        the raw data.
+        The upper harmonic is fit to the sampled intensities together
+        with a constant term.
         """
         # The residual variance needs more data points than fitted
         # coefficients.
@@ -376,7 +407,7 @@ class Isophote:
         """
         Compute parameter errors based on the diagonal of the covariance
         matrix of the four harmonic coefficients for harmonics n=1 and
-        n=2.0.
+        n=2.
         """
         # The residual variance needs more data points than fitted
         # coefficients.
@@ -426,6 +457,9 @@ class Isophote:
         when the affected isophote is used as starting guess for the
         next fit.
 
+        The semimajor axis length is not changed, and the sampled data
+        and derived attributes (e.g., ``intens``) are not recomputed.
+
         Parameters
         ----------
         isophote : `~photutils.isophote.Isophote` instance
@@ -460,8 +494,10 @@ class Isophote:
         Returns
         -------
         result : `~astropy.table.QTable`
-            An astropy `~astropy.table.QTable` containing the main
-            isophote parameters.
+            A one-row table with the main isophote parameters (see
+            `~photutils.isophote.IsophoteList.to_table`). The ``pa``
+            and ``pa_err`` columns are `~astropy.units.Quantity` columns
+            in degrees.
         """
         return _isophote_list_to_table([self])
 
@@ -534,9 +570,8 @@ class IsophoteList:
     instances. See the `~photutils.isophote.Isophote` class for a
     description of the attributes.
 
-    The class extends the `list` functionality, thus provides basic list
-    behavior such as slicing, appending, and support for '+' and '+='
-    operators.
+    The class provides basic list behavior, such as indexing, slicing,
+    appending, and the ``+`` and ``+=`` operators.
 
     Parameters
     ----------
@@ -731,8 +766,8 @@ class IsophoteList:
     @property
     def rms(self):
         """
-        The root-mean-square of intensity values along the elliptical
-        path.
+        The root-mean-square scatter (standard deviation) of the
+        intensity values about their mean along the elliptical path.
         """
         return self._collect_as_array('rms')
 
@@ -761,7 +796,7 @@ class IsophoteList:
     @property
     def gradient_rel_err(self):
         """
-        The relative error of local radial intensity gradient.
+        The relative error of the local radial intensity gradient.
         """
         return self._collect_as_array('gradient_rel_err')
 
@@ -786,7 +821,7 @@ class IsophoteList:
 
         Data points can be discarded either because they are physically
         outside the image frame boundaries, because they were rejected
-        by sigma-clipping, or they are masked or nonfinite.
+        by sigma clipping, or because they are masked or nonfinite.
         """
         return self._collect_as_array('n_flag', dtype=int)
 
@@ -814,15 +849,16 @@ class IsophoteList:
     @property
     def tflux_e(self):
         """
-        The sum of all pixels inside the ellipse.
+        The sum of the valid (unmasked and finite) pixel values inside
+        the ellipse.
         """
         return self._collect_as_array('tflux_e')
 
     @property
     def tflux_c(self):
         """
-        The sum of all pixels inside a circle with the same ``sma`` as
-        the ellipse.
+        The sum of the valid (unmasked and finite) pixel values inside a
+        circle with the same ``sma`` as the ellipse.
         """
         return self._collect_as_array('tflux_c')
 
@@ -844,44 +880,39 @@ class IsophoteList:
     @property
     def a3(self):
         """
-        A third-order harmonic coefficient.
-
-        See the
-        :func:`~photutils.isophote.fit_upper_harmonic` function for
-        details.
+        The third-order harmonic amplitude of the sine term, divided
+        by the semimajor axis length and the absolute value of the local
+        radial intensity gradient.
         """
         return self._collect_as_array('a3')
 
     @property
     def b3(self):
         """
-        A third-order harmonic coefficient.
-
-        See the
-        :func:`~photutils.isophote.fit_upper_harmonic` function for
-        details.
+        The third-order harmonic amplitude of the cosine term, divided
+        by the semimajor axis length and the absolute value of the local
+        radial intensity gradient.
         """
         return self._collect_as_array('b3')
 
     @property
     def a4(self):
         """
-        A fourth-order harmonic coefficient.
-
-        See the
-        :func:`~photutils.isophote.fit_upper_harmonic` function for
-        details.
+        The fourth-order harmonic amplitude of the sine term, divided
+        by the semimajor axis length and the absolute value of the local
+        radial intensity gradient.
         """
         return self._collect_as_array('a4')
 
     @property
     def b4(self):
         """
-        A fourth-order harmonic coefficient.
+        The fourth-order harmonic amplitude of the cosine term, divided
+        by the semimajor axis length and the absolute value of the local
+        radial intensity gradient.
 
-        See the
-        :func:`~photutils.isophote.fit_upper_harmonic` function for
-        details.
+        It is positive for disky isophotes and negative for boxy
+        isophotes.
         """
         return self._collect_as_array('b4')
 
@@ -909,7 +940,7 @@ class IsophoteList:
     @property
     def b4_err(self):
         """
-        The error associated with `~photutils.isophote.IsophoteList.b3`.
+        The error associated with `~photutils.isophote.IsophoteList.b4`.
         """
         return self._collect_as_array('b4_err')
 
@@ -917,22 +948,27 @@ class IsophoteList:
     def to_table(self, columns='main'):
         """
         Convert an `~photutils.isophote.IsophoteList` instance to a
-        `~astropy.table.QTable` with the main isophote parameters.
+        `~astropy.table.QTable`.
 
         Parameters
         ----------
         columns : {'main', 'all'} or list of str, optional
-            The columns to include in the table. ``'main'`` (default)
-            selects the main isophote properties and ``'all'`` selects
-            all of them. Otherwise, ``columns`` is a list of property
-            names (see :meth:`get_names`) or table column names (e.g.,
-            ``'ellipticity'`` for the ``eps`` property). ``'main'``
-            and ``'all'`` must be input by themselves.
+            The isophote properties to include. ``'main'`` (default)
+            selects the main properties and ``'all'`` selects all the
+            properties returned by :meth:`get_names`. With these two
+            options, the ``int_err``, ``eps``, and ``ellip_err``
+            properties are in the ``intens_err``, ``ellipticity``, and
+            ``ellipticity_err`` columns. Otherwise, ``columns`` is a
+            list of property names or table column names (e.g.,
+            ``'ellipticity'`` for the ``eps`` property). Each column is
+            named as requested. A deprecated name gives a column with
+            its new name and emits a deprecation warning.
 
         Returns
         -------
         result : `~astropy.table.QTable`
-            An astropy QTable with the main isophote parameters.
+            A table with one row per isophote. The ``pa`` and ``pa_err``
+            columns are `~astropy.units.Quantity` columns in degrees.
 
         Raises
         ------
@@ -946,6 +982,8 @@ class IsophoteList:
         """
         Get the names of the properties of an
         `~photutils.isophote.IsophoteList` instance.
+
+        The ``sample`` property is excluded.
 
         Returns
         -------
@@ -968,7 +1006,7 @@ def _get_properties(isophote_list):
     Returns
     -------
     result : dict
-        An dictionary with the list of the isophote_list properties.
+        A dictionary with the list of the isophote_list properties.
     """
     properties = {}
     for an_item in isophote_list.__class__.__dict__:
@@ -1023,23 +1061,30 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
             `~photutils.isophote.IsophoteList` instance
         A list of isophotes.
 
-    columns : 'main', 'all', or list of str
-        A list of properties to export from the ``isophote_list``. If
-        ``columns`` is 'all' or 'main', it will pick all or few of the
-        main properties. 'all' and 'main' must be passed by themselves
-        and not in a list containing other column names. The default is
-        'main'.
+    columns : {'main', 'all'} or list of str, optional
+        The isophote properties to include. ``'main'`` (default) selects
+        the main properties and ``'all'`` selects all the properties
+        returned by `~photutils.isophote.IsophoteList.get_names`. With
+        these two options, the ``int_err``, ``eps``, and ``ellip_err``
+        properties are in the ``intens_err``, ``ellipticity``, and
+        ``ellipticity_err`` columns. Otherwise, ``columns`` is a list of
+        property names or table column names (e.g., ``'ellipticity'``
+        for the ``eps`` property). Each column is named as requested. A
+        deprecated name gives a column with its new name and emits a
+        deprecation warning.
 
     Returns
     -------
     result : `~astropy.table.QTable`
-        An astropy QTable with the selected or all isophote parameters.
+        A table with one row per isophote. The ``pa`` and ``pa_err``
+        columns are `~astropy.units.Quantity` columns in degrees.
 
     Raises
     ------
     ValueError
         If any name in ``columns`` is not a valid (or deprecated)
-        column name.
+        column name, or if ``'main'`` or ``'all'`` is input together
+        with other names.
     """
     # The IsophoteList properties are arrays with a numerical dtype,
     # where missing values (None) are NaN.
