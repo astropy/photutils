@@ -33,7 +33,7 @@ def _linear_least_squares_fit(design, values):
         The unscaled covariance matrix of the coefficients, i.e., the
         inverse of the normal matrix. It must be multiplied by the
         residual variance to get the covariance matrix. It is `None`
-        if the normal matrix is singular.
+        if the data points do not constrain all of the coefficients.
 
     Raises
     ------
@@ -46,11 +46,22 @@ def _linear_least_squares_fit(design, values):
                f'harmonic fit, got {len(values)}')
         raise ValueError(msg)
 
-    coeffs = np.linalg.lstsq(design, values, rcond=None)[0]
-    try:
-        covariance = np.linalg.inv(design.T @ design)
-    except np.linalg.LinAlgError:
-        covariance = None
+    # The singular value decomposition of the design matrix gives both
+    # the coefficients and their covariance matrix. Inverting the
+    # normal matrix instead would square the condition number, which
+    # is large if the angles cover only a short arc.
+    u, s, vt = np.linalg.svd(design, full_matrices=False)
+
+    # Singular values below this limit are zero to within the rounding
+    # errors. Their directions are excluded from the solution, which
+    # is then the minimum-norm solution.
+    limit = s[0] * max(design.shape) * np.finfo(float).eps
+    is_full_rank = s[-1] > limit
+    s_inv = np.zeros_like(s)
+    np.divide(1.0, s, out=s_inv, where=s > limit)
+
+    coeffs = (vt.T * s_inv) @ (u.T @ values)
+    covariance = (vt.T * s_inv**2) @ vt if is_full_rank else None
 
     return coeffs, covariance
 
@@ -106,14 +117,26 @@ def fit_first_and_second_harmonics(phi, intensities):
         y-axis, starting coincident with the position angle. That is, the
         angles are defined from the semimajor axis that lies in
         the positive x quadrant.
-    intensities : `~numpy.ndarray`
+    intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.
 
     Returns
     -------
-    y0, a1, b1, a2, b2 : float
-        The fitted harmonic coefficient values.
+    coeffs : 1D `~numpy.ndarray`
+        The fitted harmonic coefficient values ``(y0, a1, b1, a2,
+        b2)``.
+
+    covariance : 2D `~numpy.ndarray` or `None`
+        The unscaled covariance matrix of the coefficients. It must be
+        multiplied by the variance of the fit residuals to get the
+        covariance matrix. It is `None` if the angles do not constrain
+        all of the coefficients.
+
+    Raises
+    ------
+    ValueError
+        If there are fewer than 5 data points.
     """
     phi = np.asarray(phi)
     design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
@@ -142,7 +165,7 @@ def fit_upper_harmonic(phi, intensities, order):
         y-axis, starting coincident with the position angle. That is, the
         angles are defined from the semimajor axis that lies in
         the positive x quadrant.
-    intensities : `~numpy.ndarray`
+    intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.
     order : int
@@ -150,8 +173,19 @@ def fit_upper_harmonic(phi, intensities, order):
 
     Returns
     -------
-    y0, An, Bn : float
-        The fitted harmonic values.
+    coeffs : 1D `~numpy.ndarray`
+        The fitted harmonic values ``(y0, An, Bn)``.
+
+    covariance : 2D `~numpy.ndarray` or `None`
+        The unscaled covariance matrix of the coefficients. It must be
+        multiplied by the variance of the fit residuals to get the
+        covariance matrix. It is `None` if the angles do not constrain
+        all of the coefficients.
+
+    Raises
+    ------
+    ValueError
+        If there are fewer than 3 data points.
     """
     phi = np.asarray(phi)
     design = np.column_stack([np.ones_like(phi), np.sin(order * phi),

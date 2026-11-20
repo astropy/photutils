@@ -231,13 +231,19 @@ def test_harmonic_fits_exact():
     fit_coeffs, covariance = fit_first_and_second_harmonics(phi,
                                                             intensities)
     assert_allclose(fit_coeffs, coeffs, rtol=0, atol=1e-12)
-    design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
-                              np.sin(2 * phi), np.cos(2 * phi)])
-    assert_allclose(covariance, np.linalg.inv(design.T @ design))
+
+    # For angles sampled uniformly over the full circle, the harmonic
+    # functions are orthogonal, so the unscaled covariance matrix is
+    # diagonal.
+    n_points = len(phi)
+    expected = np.diag([1.0, 2.0, 2.0, 2.0, 2.0]) / n_points
+    assert_allclose(covariance, expected, rtol=0, atol=1e-15)
 
     intensities = 10.0 + 2e-4 * np.sin(4 * phi) - 3e-4 * np.cos(4 * phi)
-    fit_coeffs, _ = fit_upper_harmonic(phi, intensities, 4)
+    fit_coeffs, covariance = fit_upper_harmonic(phi, intensities, 4)
     assert_allclose(fit_coeffs, [10.0, 2e-4, -3e-4], rtol=0, atol=1e-12)
+    expected = np.diag([1.0, 2.0, 2.0]) / n_points
+    assert_allclose(covariance, expected, rtol=0, atol=1e-15)
 
 
 def test_harmonic_fits_too_few_points():
@@ -248,3 +254,59 @@ def test_harmonic_fits_too_few_points():
     match = 'At least 3 data points are required'
     with pytest.raises(ValueError, match=match):
         fit_upper_harmonic(phi[:2], phi[:2], 3)
+
+
+def test_harmonic_fit_short_arc():
+    """
+    Test the covariance matrix of a harmonic fit to angles that cover
+    only a short arc, where the harmonic functions are nearly
+    degenerate.
+    """
+    phi = 1.0 + 0.05 * np.arange(17) / 16.0
+    rng = np.random.default_rng(0)
+    intensities = 100.0 + rng.standard_normal(len(phi))
+    coeffs, covariance = fit_first_and_second_harmonics(phi, intensities)
+
+    # The reference covariance matrix is computed from the QR
+    # decomposition of the design matrix.
+    design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
+                              np.sin(2 * phi), np.cos(2 * phi)])
+    r_inv = np.linalg.inv(np.linalg.qr(design)[1])
+    expected = r_inv @ r_inv.T
+
+    assert np.all(np.isfinite(coeffs))
+    assert np.all(np.diag(covariance) > 0)
+    assert_allclose(covariance, expected, rtol=1e-5)
+
+
+@pytest.mark.parametrize('phi', [np.full(10, 0.3),
+                                 [0.1, 0.1, 0.5, 1.0, 2.0, 2.0]])
+def test_harmonic_fit_degenerate_angles(phi):
+    """
+    Test that the covariance matrix is `None` if the angles do not
+    constrain all of the harmonic coefficients.
+    """
+    intensities = 10.0 + np.arange(len(phi))
+    coeffs, covariance = fit_first_and_second_harmonics(phi, intensities)
+    assert np.all(np.isfinite(coeffs))
+    assert covariance is None
+
+
+def test_short_arc_isophote_errors():
+    """
+    Test that an isophote with valid data over only a short arc has
+    finite and positive parameter errors.
+    """
+    data = make_test_image(noise=1.0, seed=0)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    theta = np.arctan2(yy - 256.0, xx - 256.0)
+    mask = (theta < 0.5) | (theta > 0.56)
+    geometry = EllipseGeometry(x0=256.0, y0=256.0, sma=220.0, eps=0.2, pa=0.0)
+    ellipse = Ellipse(np.ma.masked_array(data, mask=mask), geometry=geometry)
+    isophote = ellipse.fit_isophote(220.0)
+
+    assert isophote.n_data >= 6
+    for name in ('x0_err', 'y0_err', 'ellip_err', 'pa_err'):
+        value = getattr(isophote, name)
+        assert np.isfinite(value)
+        assert value > 0
