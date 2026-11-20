@@ -31,11 +31,16 @@ image plane:
 
     {\delta}_{\Theta} = \frac {2 A_{2} (1 - {\epsilon})} {I' a_0 [(1 - {\epsilon}) ^ 2 - 1]}
 
-where :math:`\epsilon` is the ellipticity, :math:`\Theta` is the
-position angle, :math:`A_i` and :math:`B_i` are the harmonic
-coefficients, and :math:`I'` is the derivative of the intensity along
+where :math:`{\delta}_{X0}` and :math:`{\delta}_{Y0}` are the center
+corrections along the major and minor axes of the ellipse,
+respectively, :math:`\epsilon` is the ellipticity, :math:`\Theta` is
+the position angle, :math:`A_i` and :math:`B_i` are the coefficients
+of :math:`\sin(iE)` and :math:`\cos(iE)` in the harmonic fit to the
+sampled intensities as a function of the angle :math:`E` from the
+major axis, and :math:`I'` is the derivative of the intensity along
 the major axis direction evaluated at a semimajor axis length of
-:math:`a_0`.
+:math:`a_0`. The center corrections are then rotated by the position
+angle to give the corrections along the image x and y axes.
 
 
 2. Why use "ellipticity" instead of the canonical ellipse eccentricity?
@@ -47,7 +52,7 @@ The main reason is that ellipticity, defined as
 
     \epsilon =  1  -  \frac{b}{a}
 
-better relates with the visual "flattening" of an ellipse. By looking
+relates better to the visual flattening of an ellipse. By looking
 at a flattened circle it is easy to guess its ellipticity as, say, 0.1.
 The same ellipse has an eccentricity of 0.44, which is not obvious
 from visual inspection. The quantities relate as
@@ -79,31 +84,32 @@ intensity samples: #1 at the current ellipse position, and #2 at a
 similar ellipse with a 10% larger semimajor axis.
 
 If the gradient so estimated is not meaningful, the algorithm extracts
-another #2 sample, this time using a 20% larger radius. In this
+another #2 sample, this time using a 20% larger semimajor axis. In this
 context, a meaningful gradient is negative and is either steeper than
 one third of a reference gradient or measured with a relative error
 smaller than 20%. The reference is the gradient of the previous
-iteration of the fit of the same isophote.
+iteration of the fit of the same isophote. If no reference is
+available, which is the case for the first iteration of each
+isophote, the reference is the current gradient plus its error, so
+any negative gradient is meaningful.
 
 If still no meaningful gradient can be measured, the algorithm uses
-the reference gradient, but decreased (in absolute value) by a factor
-of 0.8. The current gradient error then cannot be computed and is set
-to `None`.
+the reference gradient multiplied by a factor of 0.8, which makes it
+shallower. The current gradient error then cannot be computed and is
+set to `None` (NaN in `~photutils.isophote.IsophoteList` arrays and
+tables).
 
-As a last resort, if no reference is available, the algorithm uses the
-current gradient plus its error as the reference. This is the case for
-the first iteration of each isophote.
-
-These rules follow the STSDAS ``ellipse`` task, with two differences.
-The STSDAS task also keeps the reference from one isophote to the
-next, starting from a fixed guess. Its factor of 0.8 is roughly what
-is expected between two isophotes from semimajor-axis
-geometrical-sampling steps of 10 - 20% and a de Vaucouleurs law or an
-exponential disk in its inner region (r <~ 5 req). The STSDAS task
-also never accepts a gradient that is shallower than one third of the
-reference. Here such a gradient is accepted if its relative error is
-smaller than 20%. Otherwise, a single gradient that is much steeper
-than the following ones would replace them for several iterations.
+The factor of 0.8 is roughly what is expected between two isophotes
+from semimajor-axis geometrical-sampling steps of 10% to 20% and a de
+Vaucouleurs law or the inner region of an exponential disk (within
+about 5 effective radii). These rules follow the STSDAS ``ellipse``
+task, with two differences. First, the STSDAS task keeps the reference
+from one isophote to the next, starting from a fixed guess. Second,
+the STSDAS task never accepts a gradient that is shallower than one
+third of the reference. Here such a gradient is accepted if its
+relative error is smaller than 20%. Otherwise, a single gradient that
+is much steeper than the following ones would replace them for
+several iterations.
 
 The use of approximate gradient estimators may seem in contradiction
 with the fact that isophote fitting errors depend on gradient error,
@@ -162,9 +168,10 @@ corresponding to the current ellipse. This design decision is based on
 two arguments: (i) it would be difficult to include partial pixels in
 median computation, and (ii) speed.
 
-Even when the chosen integration mode is not bilinear, the sampling
-algorithm resorts to it in case the number of sampled pixels inside
-any given sector is 6 or fewer. It was found that bilinear mode gives
+In the ``'mean'`` and ``'median'`` modes, a sector with 6 or fewer
+valid pixels is sampled with bilinear interpolation instead, and the
+whole ellipse is sampled with bilinear interpolation if its sectors
+are smaller than one pixel. It was found that bilinear mode gives
 smoother samples in those cases.
 
 Tests performed with artificial images showed that cosmic rays and
@@ -188,14 +195,14 @@ in all tested cases.
 
 The `~photutils.isophote.EllipseGeometry` class has a
 :meth:`~photutils.isophote.EllipseGeometry.find_center` method that
-runs an "object locator" around the input object coordinates.
+runs an "object centerer" around the input object coordinates.
 
 This routine performs a scan over an 11x11 pixel window centered on the
 input object coordinates. At each scan position, it extracts two
 concentric, roughly circular samples, an inner disk with a radius of
 about 3.5 pixels and an outer ring with a radius of about 8 pixels. It
 then computes a signal-to-noise-like criterion using the intensity
-averages and standard deviations at each annulus:
+averages and standard deviations in each region:
 
 .. math::
 
@@ -210,12 +217,13 @@ and window sizes currently used were found by trial and error using a
 number of both artificial and real galaxy images. It was found that
 very flattened galaxy images (ellipticity ~ 0.7) cannot be detected by
 such a simple algorithm. By increasing the threshold value the object
-locator becomes stricter, in the sense that it will not detect faint
-objects. With a threshold value >> 1, the center coordinates are not
+centerer becomes stricter, in the sense that it will not detect faint
+objects. The criterion has no upper limit, so only a threshold value
+of `numpy.inf` guarantees that the center coordinates are not
 modified.
 
 The `~photutils.isophote.Ellipse` class does not run the object
-locator. To use it, call the
+centerer. To use it, call the
 :meth:`~photutils.isophote.EllipseGeometry.find_center` method of the
 `~photutils.isophote.EllipseGeometry` instance before it is input to
 `~photutils.isophote.Ellipse`.
@@ -242,12 +250,12 @@ the ellipticity and position angle continue to be fitted. The next
 isophote starts from that position and may move its center back
 inside the circle.
 
-The ``wander`` parameter of the IRAF ``ellipse`` task is different. It
-limits the x and y sizes of each individual center correction during
-the iterations, not the total distance from the input center. When a
-single correction exceeds ``wander``, IRAF stops iterating and extracts
-the following isophotes in the same direction (outward or inward)
-without fitting them.
+The ``wander`` parameter of the STSDAS ``ellipse`` task is different.
+It limits the x and y sizes of each individual center correction
+during the iterations, not the total distance from the input center.
+When a single correction exceeds ``wander``, STSDAS stops iterating
+and extracts the following isophotes in the same direction (outward or
+inward) without fitting them.
 
 
 9. Why does the fit fail for images with a low signal-to-noise ratio?
