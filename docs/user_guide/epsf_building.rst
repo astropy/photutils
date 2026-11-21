@@ -151,8 +151,11 @@ Extracting Star Cutouts
 Next, we need to extract cutouts of the stars using the
 :func:`~photutils.psf.extract_stars` function. This function requires
 a table of star positions either in pixel or sky coordinates. For this
-example we are using pixel coordinates, which need to be in table
-columns called ``x`` and ``y``.
+example we are using pixel coordinates in table columns called ``x``
+and ``y``. Common alternative names, such as ``x_centroid`` and
+``y_centroid`` or ``x_peak`` and ``y_peak``, are also recognized, so the
+output table of a star finder can be input directly. If the table has
+a ``flux`` column, its values are used as the initial star fluxes.
 
 We'll extract 25x25 pixel cutouts of our selected stars. Let's
 explicitly exclude stars that are too close to the image boundaries
