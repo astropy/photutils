@@ -563,6 +563,13 @@ API Changes
     were silently combined. Such tables now raise a ``ValueError``
     unless they also contain a matching pair of columns. [#2565]
 
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now prefer
+    fitted columns over initial columns in ``init_params``, so a
+    previous results table restarts the fit from its fitted values.
+    A row with a nonfinite or masked fitted value uses its initial
+    values. The position column priority order is now shared with
+    ``extract_stars``. [#2565]
+
 - ``photutils.utils``
 
   - ``NoDetectionsWarning`` is now a subclass of
