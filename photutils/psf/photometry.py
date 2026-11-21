@@ -166,6 +166,10 @@ class _PSFParameterMapper:
         Find the first valid column name in a table for a given
         parameter alias.
 
+        The x and y columns are found as a pair, so a position column
+        is valid only if the table also has its counterpart with the
+        same suffix.
+
         Parameters
         ----------
         table : `~astropy.table.Table`
@@ -180,6 +184,14 @@ class _PSFParameterMapper:
             The first valid column name found in the table for the
             parameter alias, or `None` if no valid column is found.
         """
+        if param_alias in ('x', 'y'):
+            for x_name, y_name in zip(self.VALID_INIT_COLNAMES['x'],
+                                      self.VALID_INIT_COLNAMES['y'],
+                                      strict=True):
+                if x_name in table.colnames and y_name in table.colnames:
+                    return x_name if param_alias == 'x' else y_name
+            return None
+
         try:
             valid_names = self.VALID_INIT_COLNAMES[param_alias]
         except KeyError:
@@ -209,11 +221,18 @@ class _PSFParameterMapper:
             The input table with columns renamed to the ``_init`` format
             based on the parameter aliases.
         """
-        for param_alias in self.alias_to_model_param:
-            found_col = self.find_column(table, param_alias)
+        # Find all columns first because renaming the x column would
+        # break its pair with the y column
+        found_cols = {param_alias: self.find_column(table, param_alias)
+                      for param_alias in self.alias_to_model_param}
+
+        for param_alias, found_col in found_cols.items():
             if found_col:
                 target_col = self.init_colnames[param_alias]
                 if found_col != target_col:
+                    # An existing target column has no matching partner
+                    if target_col in table.colnames:
+                        table.remove_column(target_col)
                     table.rename_column(found_col, target_col)
         return table
 

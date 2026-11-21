@@ -762,7 +762,9 @@ def _create_call_docstring(*, iterative=False):
             flux values refer to the model flux parameters and are
             not corrected for local background values (computed using
             ``local_bkg_estimator`` or input in a ``local_bkg`` column).
-            The allowed column names are:
+            The x and y column names must have the same suffix (e.g.,
+            ``'x_centroid'`` and ``'y_centroid'``). The allowed column
+            names are:
 
             * ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``, ``'x0'``,
               ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``, ``'xcen'``,

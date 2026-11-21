@@ -710,6 +710,20 @@ def test_iterative_finder_column_names(x_col, y_col):
     assert_allclose(phot_tbl['flux_fit'][0], 7.0, rtol=1e-6)
 
 
+def test_iterative_finder_mismatched_position_columns():
+    """
+    Test that finder x and y columns with different suffixes are not
+    combined.
+    """
+    finder = make_mock_finder('x_centroid', 'y_peak')
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = IterativePSFPhotometry(psf_model, (9, 9), finder=finder,
+                                     aperture_radius=10, maxiters=3)
+    match = 'must contain columns for x and y coordinates'
+    with pytest.raises(ValueError, match=match):
+        psfphot(np.ones((31, 31)))
+
+
 def test_repr():
     psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
     fit_shape = (9, 9)

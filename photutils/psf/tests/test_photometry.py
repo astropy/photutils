@@ -1660,6 +1660,52 @@ def test_finder_column_names(x_col, y_col):
     assert_allclose(phot_tbl['flux_fit'][0], 7.0, rtol=1e-6)
 
 
+def test_finder_mismatched_position_columns():
+    """
+    Test that finder x and y columns with different suffixes are not
+    combined.
+    """
+    finder = make_mock_finder('x_centroid', 'y_peak')
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = PSFPhotometry(psf_model, (9, 9), finder=finder,
+                            aperture_radius=10)
+    match = 'must contain columns for x and y coordinates'
+    with pytest.raises(ValueError, match=match):
+        psfphot(np.ones((31, 31)))
+
+
+def test_init_params_mismatched_position_columns():
+    """
+    Test that init_params x and y columns with different suffixes are
+    not combined.
+    """
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = PSFPhotometry(psf_model, (9, 9), aperture_radius=10)
+    tbl = Table({'x_centroid': [15.0], 'y_peak': [15]})
+    match = 'init_params must contain valid column names'
+    with pytest.raises(ValueError, match=match):
+        psfphot(np.ones((31, 31)), init_params=tbl)
+
+
+@pytest.mark.parametrize('unpaired_col', ['x_init', 'y_init'])
+def test_init_params_unpaired_position_column(unpaired_col):
+    """
+    Test that a position column without a matching partner is ignored
+    in favor of a complete x and y pair.
+    """
+    yy, xx = np.mgrid[:31, :31]
+    data = CircularGaussianPRF(flux=7.0, x_0=15.0, y_0=15.0, fwhm=3.1)(xx, yy)
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = PSFPhotometry(psf_model, (9, 9), aperture_radius=10)
+
+    tbl = Table({unpaired_col: [10.0], 'x_centroid': [15.1],
+                 'y_centroid': [14.9]})
+    phot_tbl = psfphot(data, init_params=tbl)
+    assert_allclose(phot_tbl['x_init'][0], 15.1)
+    assert_allclose(phot_tbl['y_init'][0], 14.9)
+    assert tbl.colnames == [unpaired_col, 'x_centroid', 'y_centroid']
+
+
 def test_repr():
     psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
     fit_shape = (9, 9)
