@@ -227,13 +227,13 @@ def test_regression(name):
         tbl.write('test_regression.ecsv', overwrite=True)
 
 
-@pytest.mark.parametrize(('name', 'max_extra', 'noisy'),
-                         [('synth_highsnr', 2, False),
-                          ('synth', 2, False),
-                          ('synth_lowsnr', 10, True),
-                          ('M51', 10, True)])
+@pytest.mark.parametrize(('name', 'min_extra', 'max_extra', 'noisy'),
+                         [('synth_highsnr', -2, 2, False),
+                          ('synth', -2, 2, False),
+                          ('synth_lowsnr', -8, 20, True),
+                          ('M51', -8, 20, True)])
 @pytest.mark.remote_data
-def test_regression_summary(name, max_extra, noisy):
+def test_regression_summary(name, min_extra, max_extra, noisy):
     """
     Compare the fitted isophotes with the results of the SPP code for
     all the test images.
@@ -254,9 +254,10 @@ def test_regression_summary(name, max_extra, noisy):
     # The fit must extend about as far as the SPP results. In the
     # low-S/N and M51 images, the outermost isophotes are dominated by
     # noise. The semimajor axis length where their outward growth
-    # stops changes by several isophotes with rounding differences,
-    # so the number of additional isophotes is only loosely limited.
-    assert -2 <= len(isolist) - len(table) <= max_extra
+    # stops changes by many isophotes, in both directions, with
+    # rounding differences between platforms. For these images, the
+    # number of isophotes is only loosely limited.
+    assert min_extra <= len(isolist) - len(table) <= max_extra
 
     # Match the isophotes by semimajor axis length. The table values
     # have a limited precision. Only the isophotes at sma > 3 pixels
@@ -265,7 +266,7 @@ def test_regression_summary(name, max_extra, noisy):
     index = np.argmin(np.abs(isolist.sma[:, np.newaxis] - table_sma),
                       axis=0)
     matched = np.isclose(isolist.sma[index], table_sma, rtol=1e-3)
-    assert np.count_nonzero(matched) >= len(table) - 2
+    assert np.count_nonzero(matched) >= min(len(isolist), len(table)) - 2
     mask = matched & (table_sma > 3)
     index = index[mask]
     ref = {colname: np.asarray(table[colname][mask], dtype=float)
