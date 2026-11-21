@@ -11,7 +11,8 @@ from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
-from photutils.psf import CircularGaussianPRF, make_psf_model_image
+from photutils.psf import (CircularGaussianPRF, IterativePSFPhotometry,
+                           PSFPhotometry, extract_stars, make_psf_model_image)
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.utils import (_get_psf_model_main_params,
                                  _interpolate_missing_data,
@@ -496,3 +497,22 @@ def test_interpolate_missing_data_degenerate_geometry(bad_geometry):
         mask[2, :] = False
     result = _interpolate_missing_data(data, mask, method='cubic')
     assert np.all(np.isfinite(result))
+
+
+@pytest.mark.parametrize(('obj', 'expected'), [
+    (PSFPhotometry, ("``'x_fit'``", "``'x_peak'``.")),
+    (IterativePSFPhotometry, ("``'x_fit'``", "``'x_peak'``.")),
+    (PSFPhotometry.__call__, ("* ``'x_fit'``", "* ``'y_fit'``",
+                              "* ``'flux_fit'``", "``'kron_flux'``.")),
+    (IterativePSFPhotometry.__call__, ("* ``'x_fit'``", "* ``'y_fit'``",
+                                       "* ``'flux_fit'``",
+                                       "``'kron_flux'``.")),
+    (extract_stars, ('``_fit``', '``_peak``.')),
+])
+def test_column_name_docstrings(obj, expected):
+    """
+    Test that the column name placeholders are filled in the docstrings.
+    """
+    assert '_colname' not in obj.__doc__
+    for text in expected:
+        assert text in obj.__doc__

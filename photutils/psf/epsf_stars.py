@@ -15,7 +15,9 @@ from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
-from photutils.psf.utils import _XY_COLNAME_SUFFIXES, _interpolate_missing_data
+from photutils.psf.utils import (_XY_COLNAME_SUFFIXES,
+                                 _interpolate_missing_data,
+                                 _update_colname_docstring)
 from photutils.utils._misc import deepcopy_instance
 from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import as_pair
@@ -1124,6 +1126,7 @@ def _validate_coordinate_consistency(data, catalogs):
             raise ValueError(msg)
 
 
+@_update_colname_docstring
 def extract_stars(data, catalogs, *, size=(11, 11)):
     """
     Extract cutout images centered on stars defined in the input
@@ -1189,9 +1192,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         the first available pair of ``x<suffix>`` and ``y<suffix>``
         columns, so that the output tables of the star finders can
         be input directly. The suffixes, in priority order, are
-        ``_fit``, ``fit``, ``_init``, ``init``, ``_0``, ``0``,
-        ``_centroid``, ``centroid``, ``_center``, ``center``, ``_cen``,
-        ``cen``, ``_pos``, ``pos``, and ``_peak``.
+        <xy_colname_suffixes>
 
         If a single source catalog is input with multiple
         `~astropy.nddata.NDData` objects, then these sources will be

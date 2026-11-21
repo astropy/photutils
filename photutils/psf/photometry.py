@@ -25,8 +25,10 @@ from photutils.background import LocalBackground
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
                                        PSFResultsAssembler, _ModelImageMixin)
 from photutils.psf.flags import decode_psf_flags
-from photutils.psf.utils import (_XY_COLNAME_SUFFIXES, _create_call_docstring,
+from photutils.psf.utils import (_FLUX_COLNAMES, _X_COLNAMES, _Y_COLNAMES,
+                                 _create_call_docstring,
                                  _get_psf_model_main_params, _make_mask,
+                                 _update_colname_docstring,
                                  _validate_psf_model)
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
@@ -53,12 +55,9 @@ class _PSFParameterMapper:
     # positions. Order matters, as the first matched name in each tuple will
     # be used.
     VALID_INIT_COLNAMES = {  # noqa: RUF012
-        'x': tuple(f'x{suffix}' for suffix in _XY_COLNAME_SUFFIXES),
-        'y': tuple(f'y{suffix}' for suffix in _XY_COLNAME_SUFFIXES),
-        'flux': (
-            'flux_fit', 'fluxfit', 'flux_init', 'fluxinit', 'flux',
-            'flux_0', 'flux0', 'source_sum', 'segment_flux', 'kron_flux',
-        ),
+        'x': _X_COLNAMES,
+        'y': _Y_COLNAMES,
+        'flux': _FLUX_COLNAMES,
     }
     MAIN_ALIASES = ('x', 'y', 'flux')
 
@@ -594,6 +593,7 @@ class _FitEngine:
             reduced_chi2=reduced_chi2)
 
 
+@_update_colname_docstring
 class PSFPhotometry(_ModelImageMixin):
     """
     Class to perform PSF photometry.
@@ -657,18 +657,16 @@ class PSFPhotometry(_ModelImageMixin):
         containing the x and y centroid positions (or `None` if no
         sources are found). These positions are used as the starting
         points for the PSF fitting. The allowed ``x`` column names, in
-        priority order, are (same suffix for ``y``): ``'x_fit'``,
-        ``'xfit'``, ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``,
-        ``'x0'``, ``'x_centroid'``, ``'xcentroid'``, ``'x_center'``,
-        ``'xcenter'``, ``'x_cen'``, ``'xcen'``, ``'x_pos'``, ``'xpos'``,
-        and ``'x_peak'``. If `None`, then the initial (x, y) model
-        positions must be input using the ``init_params`` keyword when
-        calling the class. The (x, y) values in ``init_params`` override
-        this keyword. If this class is run on an image that has units
-        (i.e., a `~astropy.units.Quantity` array), then certain
-        ``finder`` keywords (e.g., ``threshold``) must have the same
-        units. Please see the documentation for the specific ``finder``
-        class for more information.
+        priority order, are (same suffix for ``y``):
+        <x_colnames>
+        If `None`, then the initial (x, y) model positions must be input
+        using the ``init_params`` keyword when calling the class. The
+        (x, y) values in ``init_params`` override this keyword. If this
+        class is run on an image that has units (i.e., a
+        `~astropy.units.Quantity` array), then certain ``finder``
+        keywords (e.g., ``threshold``) must have the same units. Please
+        see the documentation for the specific ``finder`` class for more
+        information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group sources. Typically, grouped sources
