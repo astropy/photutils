@@ -61,6 +61,8 @@ FINDER_COLUMN_NAMES = [
     ('x_peak', 'y_peak'),
     ('xcen', 'ycen'),
     ('x_fit', 'y_fit'),
+    ('xcenter', 'ycenter'),
+    ('x_center', 'y_center'),
     ('x_invalid', 'y_invalid'),
 ]
 

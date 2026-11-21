@@ -92,13 +92,14 @@ class IterativePSFPhotometry(_ModelImageMixin):
         column names are (same suffix for ``y``): ``'x_init'``,
         ``'xinit'``, ``'x'``, ``'x_0'``, ``'x0'``, ``'xcentroid'``,
         ``'x_centroid'``, ``'x_peak'``, ``'xcen'``, ``'x_cen'``,
-        ``'xpos'``, ``'x_pos'``, ``'x_fit'``, and ``'xfit'``. The (x,
-        y) values in ``init_params`` override this keyword *only for
-        the first iteration*. If this class is run on an image that has
-        units (i.e., a `~astropy.units.Quantity` array), then certain
-        ``finder`` keywords (e.g., ``threshold``) must have the same
-        units. Please see the documentation for the specific ``finder``
-        class for more information.
+        ``'xpos'``, ``'x_pos'``, ``'x_fit'``, ``'xfit'``, ``'xcenter'``,
+        and ``'x_center'``. The (x, y) values in ``init_params``
+        override this keyword *only for the first iteration*. If this
+        class is run on an image that has units (i.e., a
+        `~astropy.units.Quantity` array), then certain ``finder``
+        keywords (e.g., ``threshold``) must have the same units. Please
+        see the documentation for the specific ``finder`` class for more
+        information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group sources. Typically, grouped sources

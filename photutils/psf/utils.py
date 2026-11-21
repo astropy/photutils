@@ -766,13 +766,13 @@ def _create_call_docstring(*, iterative=False):
 
             * ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``, ``'x0'``,
               ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``, ``'xcen'``,
-              ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``, and
-              ``'xfit'``.
+              ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``, ``'xfit'``,
+              ``'xcenter'``, and ``'x_center'``.
 
             * ``'y_init'``, ``'yinit'``, ``'y'``, ``'y_0'``, ``'y0'``,
               ``'ycentroid'``, ``'y_centroid'``, ``'y_peak'``, ``'ycen'``,
-              ``'y_cen'``, ``'ypos'``, ``'y_pos'``, ``'y_fit'``, and
-              ``'yfit'``.
+              ``'y_cen'``, ``'ypos'``, ``'y_pos'``, ``'y_fit'``, ``'yfit'``,
+              ``'ycenter'``, and ``'y_center'``.
 
             * ``'flux_init'``, ``'fluxinit'``, ``'flux'``, ``'flux_0'``,
               ``'flux0'``, ``'flux_fit'``, ``'fluxfit'``, ``'source_sum'``,

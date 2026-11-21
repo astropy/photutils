@@ -56,12 +56,12 @@ class _PSFParameterMapper:
         'x': (
             'x_init', 'xinit', 'x', 'x_0', 'x0', 'xcentroid',
             'x_centroid', 'x_peak', 'xcen', 'x_cen', 'xpos', 'x_pos',
-            'x_fit', 'xfit',
+            'x_fit', 'xfit', 'xcenter', 'x_center',
         ),
         'y': (
             'y_init', 'yinit', 'y', 'y_0', 'y0', 'ycentroid',
             'y_centroid', 'y_peak', 'ycen', 'y_cen', 'ypos', 'y_pos',
-            'y_fit', 'yfit',
+            'y_fit', 'yfit', 'ycenter', 'y_center',
         ),
         'flux': (
             'flux_init', 'fluxinit', 'flux', 'flux_0', 'flux0',
@@ -607,14 +607,15 @@ class PSFPhotometry(_ModelImageMixin):
         (same suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``,
         ``'x_0'``, ``'x0'``, ``'xcentroid'``, ``'x_centroid'``,
         ``'x_peak'``, ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``,
-        ``'x_fit'``, and ``'xfit'``. If `None`, then the initial (x, y)
-        model positions must be input using the ``init_params`` keyword
-        when calling the class. The (x, y) values in ``init_params``
-        override this keyword. If this class is run on an image that has
-        units (i.e., a `~astropy.units.Quantity` array), then certain
-        ``finder`` keywords (e.g., ``threshold``) must have the same
-        units. Please see the documentation for the specific ``finder``
-        class for more information.
+        ``'x_fit'``, ``'xfit'``, ``'xcenter'``, and ``'x_center'``. If
+        `None`, then the initial (x, y) model positions must be input
+        using the ``init_params`` keyword when calling the class. The
+        (x, y) values in ``init_params`` override this keyword. If this
+        class is run on an image that has units (i.e., a
+        `~astropy.units.Quantity` array), then certain ``finder``
+        keywords (e.g., ``threshold``) must have the same units. Please
+        see the documentation for the specific ``finder`` class for more
+        information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group sources. Typically, grouped sources
