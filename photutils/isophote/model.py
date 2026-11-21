@@ -20,20 +20,18 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     """
     Build a model elliptical galaxy image from a list of isophotes.
 
-    For each ellipse in the input isophote list the algorithm fills
-    the output image array with the corresponding isophotal intensity.
-    Pixels in the output array are in general only partially covered by
-    the isophote "pixel". The algorithm takes care of this partial pixel
-    coverage by keeping track of how much intensity was added to each
-    pixel by storing the partial area information in an auxiliary array.
-    The information in this array is then used to normalize the pixel
-    intensities.
+    The intensity, ellipticity, position angle, and center of the
+    isophotes are interpolated with least-squares cubic splines onto a
+    grid of semimajor axis lengths spaced by ``sma_interval``. Each
+    interpolated ellipse is traced on the output image and its intensity
+    is distributed over the overlapping pixels with bilinear weights.
+    The pixel values are then normalized by the accumulated weights.
 
     Parameters
     ----------
     shape : 2-tuple
-        The (ny, nx) shape of the array used to generate the input
-        ``isolist``.
+        The (ny, nx) shape of the output model image, usually the shape
+        of the array used to generate ``isolist``.
 
     isolist : `~photutils.isophote.IsophoteList` instance
         The isophote list created by the `~photutils.isophote.Ellipse`
@@ -49,11 +47,15 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     high_harmonics : bool, optional
         Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
         ``a4``, and ``b4``) to the result. See
-        `~photutils.isophote.Isophote` for details.
+        `~photutils.isophote.Isophote` for details. The default is
+        `False`.
 
-    sma_interval : optional, float
-        The interval between node values of the semimajor axis, which is used
-        to spline interpolate values of other shape parameters.
+    sma_interval : float, optional
+        The step in semimajor axis length of the grid on which the
+        isophote parameters are interpolated and the model ellipses are
+        drawn. It must be positive. Larger values are faster but can
+        leave gaps (filled with ``fill``) in the model. The default is
+        0.1.
 
     Returns
     -------

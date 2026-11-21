@@ -24,8 +24,8 @@ class _Integrator(abc.ABC):
 
     Parameters
     ----------
-    image : 2D `~numpy.ndarray`
-         The image array.
+    image : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
+        The image array. Masked pixels are not used.
 
     geometry : `~photutils.isophote.EllipseGeometry` instance
         Object that encapsulates geometry information about current
@@ -66,9 +66,10 @@ class _Integrator(abc.ABC):
     @abc.abstractmethod
     def integrate(self, radius, phi):
         """
-        The three input lists (angles, radii, intensities) are appended
-        with one sample point taken from the image by a chosen
-        integration method.
+        Sample the image at one point and append the polar angle,
+        radius, and sampled value to the three lists.
+
+        Nothing is appended if the point cannot be sampled.
 
         Subclasses should implement the actual integration method.
 
@@ -78,7 +79,7 @@ class _Integrator(abc.ABC):
             The length of the radius vector in pixels.
 
         phi : float
-            The polar angle of radius vector.
+            The polar angle (radians) of the radius vector.
         """
 
     def _store_results(self, phi, radius, sample):
@@ -114,12 +115,12 @@ class _Integrator(abc.ABC):
         by a polar angle and radius values. A pixel integrator, by contrast,
         integrates over a fixed and normally small area related to a single
         pixel on the image. An example is the bilinear integrator, which
-        integrates over a small, fixed, 5-pixel area. This method checks if
-        the integrator is of the first type or not.
+        interpolates over a small, fixed, 2x2-pixel area. This method
+        checks if the integrator is of the first type or not.
 
         Returns
         -------
-        result : boolean
+        result : bool
             True if this is an area integrator, False otherwise.
         """
 
@@ -145,7 +146,10 @@ class _PixelIntegrator(_Integrator):
         Sample the image at the input polar coordinates.
 
         Points outside of the image, or whose sample includes masked or
-        nonfinite pixels, are skipped.
+        nonfinite pixels, are skipped. The bilinear integrator also
+        skips points in the outer half-pixel border of the image, where
+        the 2x2 block of pixels needed for the interpolation is not
+        complete.
 
         Parameters
         ----------

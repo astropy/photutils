@@ -37,17 +37,20 @@ class Ellipse:
 
     Parameters
     ----------
-    image : 2D `~numpy.ndarray`
+    image : 2D array_like
         The image array. Masked pixels (if ``image`` is a
         `~numpy.ma.MaskedArray`) and nonfinite (NaN or infinity)
         values are excluded from the fits.
+
     geometry : `~photutils.isophote.EllipseGeometry` instance or `None`, \
             optional
         The optional geometry that describes the first
         ellipse to be fitted. If `None`, a default
         `~photutils.isophote.EllipseGeometry` instance is created
-        centered on the image frame with ellipticity of 0.2 and a
-        position angle of 90 degrees.
+        with a semimajor axis length of 10 pixels, an ellipticity of
+        0.2, and a position angle of 90 degrees. Its center is at
+        ``x0 = nx / 2`` and ``y0 = ny / 2``, where ``ny`` and ``nx``
+        are the image dimensions.
 
     threshold : float, optional
         This keyword has no effect.
@@ -58,6 +61,20 @@ class Ellipse:
            Use :meth:`~photutils.isophote.EllipseGeometry.find_center`
            to refine the initial center before creating this class.
 
+    Raises
+    ------
+    TypeError
+        If ``image`` is a `~astropy.units.Quantity` array.
+
+    ValueError
+        If ``image`` is not a 2D array.
+
+    Warns
+    -----
+    AstropyUserWarning
+        If ``image`` contains nonfinite values that are not masked.
+        These values are excluded from the fits.
+
     Notes
     -----
     The image is measured using an iterative method
@@ -67,7 +84,7 @@ class Ellipse:
     length. The algorithm starts from a first-guess elliptical isophote
     defined by approximate values for the (x, y) center coordinates,
     ellipticity, and position angle. Using these values, the image
-    is sampled along an elliptical path, producing a 1-dimensional
+    is sampled along an elliptical path, producing a 1D
     function that describes the dependence of intensity (pixel value)
     with angle (E). The function is stored as a set of 1D numpy arrays.
     The harmonic content of this function is analyzed by least-squares
@@ -87,27 +104,30 @@ class Ellipse:
     the local gradient, and computes the corresponding increment in the
     associated ellipse parameter. That parameter is updated, and the
     image is resampled. This process is repeated until any one of the
-    following criteria are met:
+    following criteria is met:
 
     1. the largest harmonic amplitude is less than a given fraction of
-       the rms residual of the intensity data around the harmonic fit.
+       the rms residual of the intensity data around the harmonic fit,
+       scaled by the square root of the mean sector area.
 
     2. a user-specified maximum number of iterations is reached.
 
     3. more than a given fraction of the elliptical sample points have no
        valid data in them, either because they lie outside the image
        boundaries or because they were flagged out from the fit by
-       sigma-clipping.
+       sigma clipping.
 
-    In any case, a minimum number of iterations is always performed. If
-    iterations stop because of reasons 2 or 3 above, then those ellipse
-    parameters that generated the lowest absolute values for harmonic
-    amplitudes will be used. At this point, the image data sample coming
-    from the best-fit ellipse is fitted by the following function:
+    Criterion 1 is applied only after a minimum number of iterations.
+    The other criteria, a diverging ellipse, or a gradient that cannot
+    be measured can stop the iterations earlier. If iterations stop
+    because of reasons 2 or 3 above, then those ellipse parameters
+    that generated the lowest absolute values for harmonic amplitudes
+    will be used. At this point, the image data sample coming from the
+    best-fit ellipse is fitted by the following function:
 
     .. math::
 
-        y  =  y0 + (An * sin(n * E)) + (Bn * cos(n * E))
+        y  =  y0 + (An * \\sin(n * E)) + (Bn * \\cos(n * E))
 
     with :math:`n = 3` and :math:`n = 4`. The corresponding amplitudes
     (A3, B3, A4, and B4), divided by the semimajor axis length and
@@ -127,10 +147,11 @@ class Ellipse:
     from the rms scatter of intensity data along the fitted
     ellipse. Ellipse geometry errors are obtained from the errors
     in the coefficients of the first and second simultaneous
-    harmonic fit. Third and fourth harmonic amplitude errors
-    are obtained in the same way, but only after the first and
-    second harmonics are subtracted from the raw data. For more
-    details, see the error analysis in `Busko (1996, ASPC 101, 139)
+    harmonic fit. Third and fourth harmonic amplitudes and their
+    errors are obtained from a separate fit of each harmonic to the
+    sampled intensities. The amplitude errors are combined in
+    quadrature with the relative error of the local gradient. For
+    more details, see the error analysis in `Busko (1996, ASPC 101, 139)
     <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_.
 
     After fitting the ellipse that corresponds to a given value of the
@@ -234,8 +255,8 @@ class Ellipse:
         isophote at each sma. The entire set of isophotes is returned in
         an `~photutils.isophote.IsophoteList` instance.
 
-        Note that the fix_XXX parameters act in unison. If any of
-        them is set in this call, the others assume their default
+        Note that the fix_XXX parameters act in unison. If any of them
+        is set to `True` in this call, the others assume their default
         (False) values, and together they override the fixed
         parameters of the `~photutils.isophote.EllipseGeometry`
         instance used by this class. If none of them is set, the
@@ -252,7 +273,7 @@ class Ellipse:
 
         Parameters
         ----------
-        sma0 : float, optional
+        sma0 : float or `None`, optional
             The starting value for the semimajor axis length (pixels).
             This value must not be the minimum or maximum semimajor
             axis length, but something in between. The algorithm can't
@@ -268,14 +289,16 @@ class Ellipse:
             if a `~photutils.isophote.EllipseGeometry` instance was
             input to the `~photutils.isophote.Ellipse` constructor, its
             ``sma`` value will be used. Otherwise, a default value of
-            10. will be used. The starting value must be positive.
+            10 will be used. The starting value must be positive.
 
         minsma : float, optional
             The minimum value for the semimajor axis length (pixels).
             The default is 0, which also adds the central pixel to the
             returned list as an isophote with a semimajor axis length
             of 0. Its intensity is NaN if it cannot be measured (e.g.,
-            the central pixel is masked or nonfinite).
+            the central pixel is masked or nonfinite). Isophotes with
+            a semimajor axis length smaller than 0.5 pixels are not
+            fitted.
 
         maxsma : float or `None`, optional
             The maximum value for the semimajor axis length (pixels).
@@ -318,21 +341,19 @@ class Ellipse:
             50.
 
         fflag : float, optional
-            The acceptable fraction of flagged data points in the
-            sample. If the actual fraction of valid data points is
-            smaller than this, the iterations will stop and the current
-            `~photutils.isophote.Isophote` will be returned. Flagged
-            data points are points that either lie outside the image
-            frame, are masked or nonfinite, or were rejected by
-            sigma-clipping. The default is 0.7.
+            The minimum acceptable fraction of valid (nonflagged)
+            data points in the sample. If the fraction of valid data
+            points is smaller than this, the iterations stop and the
+            isophote with the smallest harmonic amplitude found so far
+            is returned with a stop code of 1. Flagged data points are
+            those that lie outside the image, are masked or nonfinite,
+            or were rejected by sigma clipping. The default is 0.7.
 
         maxgerr : float, optional
             The maximum acceptable relative error in the local
             radial intensity gradient. This is the main control
-            for preventing ellipses to grow to regions of too
-            low signal-to-noise ratio. It specifies the maximum
-            acceptable relative error in the local radial
-            intensity gradient. `Busko (1996, ASPC 101, 139)
+            for preventing ellipses from growing to regions of too
+            low signal-to-noise ratio. `Busko (1996, ASPC 101, 139)
             <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstr
             act>`_ showed that the fitting precision relates to that
             relative error. The usual behavior of the gradient relative
@@ -358,7 +379,7 @@ class Ellipse:
 
         n_clip : int, optional
             The number of sigma-clip iterations. The default is 0, which
-            means sigma-clipping is skipped.
+            means sigma clipping is skipped.
 
             .. deprecated:: 3.0
                 The ``nclip`` keyword is deprecated. Use ``n_clip``
@@ -366,11 +387,14 @@ class Ellipse:
 
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
                 optional
-            The area integration mode. The default is 'bilinear'.
+            The integration mode. The 'mean' and 'median' modes
+            integrate over elliptical sectors and fall back to
+            'bilinear' for sectors smaller than 1 pixel. The default is
+            'bilinear'.
 
-        linear : bool, optional
-            The semimajor axis growing/shrinking mode. If `False`
-            (default), the geometric growing mode is chosen, thus the
+        linear : bool or `None`, optional
+            The semimajor axis growing/shrinking mode. If `False`,
+            the geometric growing mode is chosen, thus the
             semimajor axis length is increased by a factor of (1.
             + ``step``), and the process is repeated until either
             the semimajor axis value reaches the value of parameter
@@ -382,7 +406,9 @@ class Ellipse:
             case of linear growing, the increment or decrement value
             is given directly by ``step`` in pixels. If ``maxsma`` is
             set to `None`, the semimajor axis will grow until a low
-            signal-to-noise criterion is met. See ``maxgerr``.
+            signal-to-noise criterion is met. See ``maxgerr``. If
+            `None` (default), the ``linear_growth`` attribute of the
+            input geometry is used (`False` for the default geometry).
 
         maxrit : float or `None`, optional
             The maximum value of semimajor axis to perform an actual
@@ -392,10 +418,12 @@ class Ellipse:
             mode may be useful for sampling regions of very low surface
             brightness, where the algorithm may become unstable
             and unable to recover reliable geometry information.
-            Noniterative mode can also be entered automatically
-            whenever the ellipticity exceeds 1.0 or the ellipse center
-            crosses the image boundaries. If `None` (default), then no
-            maximum value is used.
+            If ``maxsma`` is set, noniterative mode is also entered
+            when two consecutive isophotes fail to fit (e.g., the
+            ellipticity exceeds 0.95 or the center leaves the image),
+            when an isophote has too many flagged data points (see
+            ``fflag``), or when the ``maxgerr`` criterion is met. If
+            `None` (default), then no maximum value is used.
 
         fix_center : bool, optional
             Keep center of ellipse fixed during fit? The default is
@@ -426,6 +454,23 @@ class Ellipse:
         result : `~photutils.isophote.IsophoteList` instance
             A list-like object of `~photutils.isophote.Isophote`
             instances, sorted by increasing semimajor axis length.
+
+        Raises
+        ------
+        ValueError
+            If the starting semimajor axis length or ``step`` is not
+            positive, if ``max_center_shift`` is negative or NaN, or if
+            the ellipticity of the starting geometry is 1 or larger.
+
+        Warns
+        -----
+        AstropyUserWarning
+            If the center, position angle, and ellipticity are all
+            fixed, or if the first isophote cannot be fit. In both
+            cases, an empty `~photutils.isophote.IsophoteList` is
+            returned. A warning is also emitted for an isophote whose
+            sample has too few valid data points or whose harmonic fit
+            fails.
         """
         # Multiple fitted isophotes will be stored here.
         isophote_list = []
@@ -632,10 +677,10 @@ class Ellipse:
             The semimajor axis length (pixels).
 
         step : float, optional
-            The step value used to grow/shrink the semimajor axis
-            length (pixels if ``linear=True``, or a relative value if
-            ``linear=False``). See the ``linear`` parameter. The step
-            must be positive. The default is 0.1.
+            The step value that defines the sampling annulus (pixels
+            if linear growth is used, otherwise a relative value). See
+            the ``linear`` parameter. The step must be positive. The
+            default is 0.1.
 
         conver : float, optional
             The main convergence criterion. Iterations stop when the
@@ -650,23 +695,20 @@ class Ellipse:
             10 (the default) iterations guarantees that, on average, 2
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
-            level). For the first isophote, the minimum number of
-            iterations is 2 * ``minit`` to ensure that, even departing
-            from not-so-good initial values, the algorithm has a better
-            chance to converge to a sensible solution.
+            level).
 
         maxit : int, optional
             The maximum number of iterations to perform. The default is
             50.
 
         fflag : float, optional
-            The acceptable fraction of flagged data points in the
-            sample. If the actual fraction of valid data points is
-            smaller than this, the iterations will stop and the current
-            `~photutils.isophote.Isophote` will be returned. Flagged
-            data points are points that either lie outside the image
-            frame, are masked or nonfinite, or were rejected by
-            sigma-clipping. The default is 0.7.
+            The minimum acceptable fraction of valid (nonflagged)
+            data points in the sample. If the fraction of valid data
+            points is smaller than this, the iterations stop and the
+            isophote with the smallest harmonic amplitude found so far
+            is returned with a stop code of 1. Flagged data points are
+            those that lie outside the image, are masked or nonfinite,
+            or were rejected by sigma clipping. The default is 0.7.
 
         maxgerr : float, optional
             This keyword has no effect.
@@ -683,7 +725,7 @@ class Ellipse:
 
         n_clip : int, optional
             The number of sigma-clip iterations. The default is 0, which
-            means sigma-clipping is skipped.
+            means sigma clipping is skipped.
 
             .. deprecated:: 3.0
                 The ``nclip`` keyword is deprecated. Use ``n_clip``
@@ -691,12 +733,15 @@ class Ellipse:
 
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
                 optional
-            The area integration mode. The default is 'bilinear'.
+            The integration mode. The 'mean' and 'median' modes
+            integrate over elliptical sectors and fall back to
+            'bilinear' for sectors smaller than 1 pixel. The default is
+            'bilinear'.
 
         linear : bool or `None`, optional
             The semimajor axis growing/shrinking mode. When fitting
             just one isophote, this parameter is used only by the code
-            that define the details of how elliptical arc segments
+            that defines the details of how elliptical arc segments
             ("sectors") are extracted from the image when using area
             extraction modes (see the ``integrmode`` parameter). If
             `None` (default), the ``linear_growth`` attribute of the
@@ -710,10 +755,9 @@ class Ellipse:
             mode may be useful for sampling regions of very low surface
             brightness, where the algorithm may become unstable
             and unable to recover reliable geometry information.
-            Noniterative mode can also be entered automatically
-            whenever the ellipticity exceeds 1.0 or the ellipse center
-            crosses the image boundaries. If `None` (default), then no
-            maximum value is used.
+            If the ellipticity exceeds 0.95 or the center leaves the
+            image during the fit, the fit stops with a stop code of -1.
+            If `None` (default), then no maximum value is used.
 
         noniterate : bool, optional
             Whether the fitting algorithm should be bypassed and an
@@ -735,9 +779,12 @@ class Ellipse:
                in version 4.0.
 
         isophote_list : list or `None`, optional
-            If not `None` (the default), the fitted
+            If not `None` (the default), a valid fitted
             `~photutils.isophote.Isophote` instance is appended to this
-            list. It must be created and managed by the caller.
+            list. It must be created and managed by the caller. If the
+            list is not empty, the geometry of its last isophote is the
+            starting geometry of the fit. Otherwise, the geometry input
+            to `~photutils.isophote.Ellipse` is used.
 
         max_center_shift : float or `None`, optional
             The maximum distance (in pixels) that the ellipse center may
@@ -752,8 +799,22 @@ class Ellipse:
         Returns
         -------
         result : `~photutils.isophote.Isophote` instance
-            The fitted isophote. The fitted isophote is also appended to
-            the input list input to the ``isophote_list`` parameter.
+            The fitted isophote. If ``isophote_list`` is not `None` and
+            the isophote is valid, it is also appended to that list.
+
+        Raises
+        ------
+        ValueError
+            If ``step`` is not positive, if ``max_center_shift`` is
+            negative or NaN, or if the ellipticity of the starting
+            geometry is 1 or larger.
+
+        Warns
+        -----
+        AstropyUserWarning
+            If the sample has too few valid data points or the harmonic
+            fit fails. The returned isophote is then invalid with a stop
+            code of 3.
         """
         if not step > 0:  # also rejects NaN
             msg = 'step must be positive'
@@ -841,11 +902,14 @@ class Ellipse:
 
         n_clip : int, optional
             The number of sigma-clip iterations. The default is 0, which
-            means sigma-clipping is skipped.
+            means sigma clipping is skipped.
 
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
                 optional
-            The area integration mode. The default is 'bilinear'.
+            The integration mode. The 'mean' and 'median' modes
+            integrate over elliptical sectors and fall back to
+            'bilinear' for sectors smaller than 1 pixel. The default is
+            'bilinear'.
 
         Returns
         -------
@@ -857,6 +921,17 @@ class Ellipse:
             center, with ``stop_code=0``. An ellipse with no valid
             sampled points (e.g., one that lies entirely outside the
             image) has a NaN intensity and ``stop_code=3``.
+
+        Raises
+        ------
+        TypeError
+            If ``isophotes`` contains an element that is neither an
+            `~photutils.isophote.Isophote` nor an
+            `~photutils.isophote.EllipseGeometry` instance.
+
+        ValueError
+            If an ellipse has an ellipticity of 1 or larger or a
+            nonfinite center.
         """
         geometries = []
         for isophote in isophotes:

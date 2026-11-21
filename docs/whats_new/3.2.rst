@@ -49,9 +49,9 @@ Isophote Fitting Improvements
 =============================
 
 The elliptical isophote fits of `~photutils.isophote.Ellipse` are now
-about 5 times faster, and about 70 times faster for masked images.
-Nonfinite (NaN or infinity) image values are now excluded from the
-fits, like masked pixels.
+about 5 times faster, and about 70 times faster for masked images
+with the ``'bilinear'`` integration mode. Nonfinite (NaN or infinity)
+image values are now excluded from the fits, like masked pixels.
 
 Several differences from the STSDAS ``ellipse`` task that
 `photutils.isophote` is based on were also fixed. They include the
@@ -63,13 +63,19 @@ of noisy images typically need a few more iterations and extend to
 larger semimajor axis lengths. See the :ref:`changelog` for the
 complete list of fixes.
 
+The first isophote of a low surface brightness galaxy now fails much
+less often, because the local gradient of the previous iteration is
+used as a reference, as in the STSDAS task. If a fit still fails, the
+warning now explains why. See the :ref:`isophote-faq` for advice on
+fitting images with a low signal-to-noise ratio.
+
 
 Isophote Measurements on Fixed Ellipses
 =======================================
 
 The new :meth:`~photutils.isophote.Ellipse.measure_isophotes` method
 measures an image along a given set of ellipses without fitting them,
-like the IRAF ``ellipse`` task with an input ellipse table (the
+like the STSDAS ``ellipse`` task with an input ellipse table (the
 ``inellip`` parameter). A common use is to measure an image in a second
 band along the isophotes fit to a reference image, so that both
 intensity profiles are measured along the same elliptical paths (e.g.,
@@ -96,7 +102,8 @@ centers can move from the center of the input
 `~photutils.isophote.EllipseGeometry`. In the outer, low
 surface-brightness regions of a galaxy, a nearby star or companion
 galaxy can pull the fitted centers away from the galaxy nucleus. Unlike
-``fix_center``, the centers are still fitted within that distance::
+``fix_center``, the centers are still fitted within that distance. For
+an image ``data`` of a galaxy centered near (256, 256)::
 
     >>> from photutils.isophote import Ellipse, EllipseGeometry
     >>> geometry = EllipseGeometry(x0=256, y0=256, sma=20, eps=0.2, pa=0.2)
@@ -108,8 +115,8 @@ distance, the center is placed at this distance from the input center
 and held there for the rest of that fit, while the ellipticity and
 position angle continue to be fitted. The keyword limits the total
 shift from the input center, which is different from the ``wander``
-parameter of the IRAF ``ellipse`` task. See the :ref:`isophote-faq` for
-more details.
+parameter of the STSDAS ``ellipse`` task. See the :ref:`isophote-faq`
+for more details.
 
 
 Dependency Version Updates

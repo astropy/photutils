@@ -84,7 +84,7 @@ class EllipseGeometry:
     This class also keeps track of where in the ellipse we are when
     performing an 'extract' operation. This is mostly relevant when
     using an area integration mode (as opposed to a pixel integration
-    mode)
+    mode).
 
     Parameters
     ----------
@@ -104,13 +104,11 @@ class EllipseGeometry:
     pa : float
         The position angle (in radians) of the semimajor axis in
         relation to the positive x-axis of the image array (rotating
-        towards the positive y-axis). Position angles are defined in the
-        range :math:`0 < PA <= \pi`. Avoid using as starting position
-        angle of 0., since the fit algorithm may not work properly.
-        When the ellipses are such that position angles are near either
-        extreme of the range, noise can make the solution jump back and
-        forth between successive isophotes, by amounts close to 180
-        degrees.
+        towards the positive y-axis). The fitted position angles are in
+        the range :math:`0 \leq PA < \pi`. When the ellipses are such
+        that position angles are near either extreme of the range, noise
+        can make the solution jump back and forth between successive
+        isophotes, by amounts close to 180 degrees.
     astep : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
@@ -126,12 +124,14 @@ class EllipseGeometry:
         ``linear`` keyword of its ``fit_image`` and ``fit_isophote``
         methods is set.
     fix_center : bool, optional
-        Keep center of ellipse fixed during fit? The default is False.
+        Keep center of ellipse fixed during fit? The default is
+        `False`.
     fix_pa : bool, optional
         Keep position angle of semimajor axis of ellipse fixed during fit?
-        The default is False.
+        The default is `False`.
     fix_eps : bool, optional
-        Keep ellipticity of ellipse fixed during fit? The default is False.
+        Keep ellipticity of ellipse fixed during fit? The default is
+        `False`.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -183,9 +183,9 @@ class EllipseGeometry:
         """
         Find the center of a galaxy.
 
-        If the algorithm is successful the (x, y) coordinates in this
-        `~photutils.isophote.EllipseGeometry` (i.e., the ``x0`` and
-        ``y0`` attributes) instance will be modified.
+        If the algorithm is successful, the (x, y) coordinates of this
+        `~photutils.isophote.EllipseGeometry` instance (i.e., the ``x0``
+        and ``y0`` attributes) will be modified.
 
         The isophote fit algorithm requires an initial guess for the
         galaxy center (x, y) coordinates and these coordinates must be
@@ -202,26 +202,32 @@ class EllipseGeometry:
 
         threshold : float, optional
             The centerer threshold. To turn off the centerer, set this
-            to a large value (i.e., >> 1). The default is 0.1.
+            to `numpy.inf`. The default is 0.1.
 
         verbose : bool, optional
-            Whether to print object centering information. The default
-            is `True`.
+            Whether to log object centering information at the INFO
+            level. The default is `True`.
 
         Notes
         -----
-        The centerer function scans an 11x11 window centered on the (x,
-        y) coordinates in the `~photutils.isophote.EllipseGeometry`
-        instance passed to the constructor of the
-        `~photutils.isophote.Ellipse` class. If any of the
-        `~photutils.isophote.EllipseGeometry` (x, y) coordinates are
+        The centerer function scans an 11x11 window centered on the
+        ``x0`` and ``y0`` coordinates of this instance (truncated to
+        whole pixels). If any of the ``x0`` and ``y0`` coordinates are
         `None` or outside of the image, the window is centered on the
-        center of the input image frame instead. If the center
-        acquisition is successful, the
+        center of the input image frame instead, at x = ``shape[1] / 2``
+        and y = ``shape[0] / 2``, where ``shape`` is the image shape.
+        If the center acquisition is successful, the
         `~photutils.isophote.EllipseGeometry` instance is modified in
         place to reflect the solution of the object centerer algorithm.
         Otherwise, the (x, y) coordinates are not changed, including
         coordinates that are `None` or outside of the image.
+
+        At each position, the figure of merit is the difference between
+        the mean of the pixels within 3.5 pixels and the mean of the
+        pixels in a ring with radii from 7.5 to 8.5 pixels, divided by
+        the quadrature sum of their standard deviations. The position
+        with the largest figure of merit is accepted if that value
+        exceeds ``threshold``. The new center is a whole-pixel position.
 
         Only the window positions inside the image are scanned. Near
         the image edges, only the pixels inside the image are used to
@@ -229,14 +235,12 @@ class EllipseGeometry:
 
         In some cases the object centerer algorithm may fail even though
         there is enough signal-to-noise to start a fit (e.g., objects
-        with very high ellipticity). In those cases the sensitivity
-        of the algorithm can be decreased by decreasing the value of
-        the object centerer threshold parameter. The centerer works by
-        looking where a quantity akin to a signal-to-noise ratio is
-        maximized within the 11x11 window. The centerer can thus be shut
-        off entirely by setting the threshold to a large value (i.e.,
-        >> 1, meaning no location inside the search window will achieve
-        that signal-to-noise ratio).
+        with very high ellipticity). In those cases, the centerer can
+        be made to accept a weaker detection by decreasing the value
+        of the ``threshold`` parameter. The figure of merit is akin
+        to a signal-to-noise ratio. It has no upper limit, so the
+        centerer is shut off entirely only by setting the threshold to
+        `numpy.inf`.
         """
         self.centerer_threshold = threshold
         half_size = len(IN_MASK) // 2
@@ -321,12 +325,13 @@ class EllipseGeometry:
 
         Parameters
         ----------
-        angle : float
-            The polar angle (radians).
+        angle : float or `~numpy.ndarray`
+            The polar angle(s) (radians), measured from the semimajor
+            axis.
 
         Returns
         -------
-        radius : float
+        radius : float or `~numpy.ndarray`
             The polar radius (pixels).
         """
         return (self.sma * (1.0 - self.eps)
@@ -338,13 +343,16 @@ class EllipseGeometry:
         Initialize geometry attributes associated with an elliptical
         sector at the given polar angle ``phi``.
 
-        This function computes:
+        The sector spans the angular width stored in the
+        ``sector_angular_width`` attribute, centered on ``phi``. This
+        method computes:
 
         * the four vertices that define the elliptical sector on the
-          pixel array.
+          pixel array
         * the sector area (saved in the ``sector_area`` attribute)
-        * the sector angular width (saved in ``sector_angular_width``
-          attribute)
+        * the angular width of the next sector, computed from this
+          sector's radii so that the sectors have roughly constant area
+          (saved in the ``sector_angular_width`` attribute)
 
         Parameters
         ----------
@@ -409,8 +417,12 @@ class EllipseGeometry:
 
     def bounding_ellipses(self):
         """
-        Compute the semimajor axis of the two ellipses that bound the
-        annulus where integrations take place.
+        Compute the semimajor axis lengths of the two ellipses that
+        bound the annulus where integrations take place.
+
+        The two lengths are ``sma`` minus and plus half of the annulus
+        width, which is ``astep`` pixels if ``linear_growth`` is `True`
+        or ``sma * astep`` pixels otherwise.
 
         Returns
         -------
@@ -452,28 +464,32 @@ class EllipseGeometry:
         Return the radius and polar angle in the ellipse coordinate
         system given (x, y) pixel image coordinates.
 
-        This function takes care of the different definitions for
-        position angle (PA) and polar angle (phi):
+        This method takes care of the different definitions for
+        position angle (PA) and polar angle (:math:`\phi`):
 
         .. math::
 
-            -\pi < PA < \pi
+            -2 \pi < PA < 2 \pi
 
-            0 < phi < 2 \pi
+            0 \leq \phi < 2 \pi
 
         Note that radius can be anything. The solution is not tied to
-        the semimajor axis length, but to the center position and tilt
-        angle.
+        the semimajor axis length, but to the center position and
+        position angle.
 
         Parameters
         ----------
-        x, y : float
+        x, y : float or array_like
             The (x, y) image coordinates.
 
         Returns
         -------
-        radius, angle : float
-            The ellipse radius and polar angle.
+        radius, angle : float or 2D `~numpy.ndarray`
+            The distance (pixels) from the ellipse center and the polar
+            angle (radians) measured counterclockwise from the semimajor
+            axis. Python int and float inputs (including
+            `numpy.float64`) return floats. Other inputs return arrays
+            of at least two dimensions.
         """
         # We split in between a scalar version and a
         # vectorized version. This is necessary for
@@ -552,6 +568,10 @@ class EllipseGeometry:
         The step value must be managed by the caller to support both
         modes: grow outwards and shrink inwards.
 
+        The new value is ``sma + step`` if ``linear_growth`` is `True`
+        or ``sma * (1 + step)`` otherwise. The ``sma`` attribute is not
+        modified.
+
         Parameters
         ----------
         step : float
@@ -570,8 +590,12 @@ class EllipseGeometry:
 
     def reset_sma(self, step):
         """
-        Change the direction of semimajor axis growth, from outwards to
-        inwards.
+        Compute the semimajor axis length and the step value that
+        reverse the direction of growth, from outwards to inwards.
+
+        The new values are ``sma - step`` and ``-step`` if
+        ``linear_growth`` is `True`, or ``sma / (1 + step)`` and
+        ``1 / (1 + step) - 1`` otherwise. The geometry is not modified.
 
         Parameters
         ----------
