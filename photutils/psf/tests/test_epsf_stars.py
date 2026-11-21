@@ -18,6 +18,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_equal
 
+from photutils.detection import DAOStarFinder, find_peaks
 from photutils.psf import make_psf_model_image
 from photutils.psf.epsf_stars import (EPSFStar, EPSFStars, LinkedEPSFStar,
                                       _compute_mean_sky_coordinate,
@@ -1752,6 +1753,107 @@ class TestExtractStars:
         catalog = Table({'x': [25.0], 'y': [25.0]})
         stars = extract_stars(NDData(data), catalog, size=11)
         assert_allclose(stars[0].flux, 121.0)
+
+    @pytest.mark.parametrize('suffix', ['_fit', 'fit', '_centroid',
+                                        'centroid', '_center', 'center',
+                                        '_cen', 'cen', '_pos', 'pos', '_0',
+                                        '0', '_init', 'init', '_peak'])
+    def test_position_column_names(self, stars_nddata, stars_table, suffix):
+        """
+        Test that alternative position column names give the same stars
+        as the ``x`` and ``y`` columns.
+        """
+        expected = extract_stars(stars_nddata, stars_table, size=11)
+        catalog = stars_table.copy()
+        catalog.rename_columns(['x', 'y'], [f'x{suffix}', f'y{suffix}'])
+        stars = extract_stars(stars_nddata, catalog, size=11)
+        assert_allclose(stars.center, expected.center)
+
+    def test_position_column_priority(self, simple_nddata):
+        """
+        Test the priority order of the position column names.
+        """
+        catalog = Table({'x_peak': [20], 'y_peak': [20]})
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [20, 20])
+
+        catalog['x_centroid'] = [25.0]
+        catalog['y_centroid'] = [26.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [25, 26])
+
+        catalog['x_fit'] = [30.0]
+        catalog['y_fit'] = [31.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [30, 31])
+
+        catalog['x'] = [15.0]
+        catalog['y'] = [16.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [15, 16])
+
+    def test_position_columns_must_match(self, simple_nddata):
+        """
+        Test that x and y columns from different conventions are not
+        combined.
+        """
+        catalog = Table({'x_centroid': [25.0], 'y_peak': [25]})
+        match = "must have either 'x' and 'y' columns or a 'skycoord' column"
+        with pytest.raises(ValueError, match=match):
+            extract_stars(simple_nddata, catalog)
+
+    def test_skycoord_used_before_alternative_names(self, simple_wcs):
+        """
+        Test that a ``skycoord`` column takes precedence over
+        alternative position column names.
+        """
+        nddata = NDData(np.ones((50, 50)), wcs=simple_wcs)
+        skycoord = simple_wcs.pixel_to_world([20.0], [30.0])
+        catalog = Table({'skycoord': skycoord, 'x_centroid': [25.0],
+                         'y_centroid': [25.0]})
+        stars = extract_stars(nddata, catalog, size=11)
+        assert_allclose(stars.center, [20, 30], atol=1e-6)
+
+    def test_alternative_names_multiple_catalogs(self, simple_nddata):
+        """
+        Test alternative position column names with a separate catalog
+        for each image.
+        """
+        catalog1 = Table({'x_centroid': [25.0], 'y_centroid': [25.0]})
+        catalog2 = Table({'x_peak': [20], 'y_peak': [30]})
+        stars = extract_stars([simple_nddata, simple_nddata],
+                              [catalog1, catalog2], size=11)
+        assert_allclose(stars.center, [[25, 25], [20, 30]])
+
+    def test_alternative_names_single_catalog_multiple_images(
+            self, simple_nddata):
+        """
+        Test that a single catalog with multiple images still requires a
+        ``skycoord`` column.
+        """
+        catalog = Table({'x_centroid': [25.0], 'y_centroid': [25.0]})
+        match = "the catalog must have a 'skycoord' column"
+        with pytest.raises(ValueError, match=match):
+            extract_stars([simple_nddata, simple_nddata], catalog)
+
+    def test_finder_tables(self):
+        """
+        Test that source tables from the star finders can be input
+        directly.
+        """
+        model = CircularGaussianPRF(flux=1000, x_0=25.2, y_0=24.7, fwhm=3.0)
+        yy, xx = np.mgrid[:51, :51]
+        data = model(xx, yy)
+
+        finder_table = DAOStarFinder(threshold=1.0, fwhm=3.0).find_stars(data)
+        stars = extract_stars(data, finder_table, size=11)
+        assert_allclose(stars.center, [finder_table['x_centroid'][0],
+                                       finder_table['y_centroid'][0]])
+        assert_allclose(stars[0].flux, finder_table['flux'][0])
+
+        peaks_table = find_peaks(data, threshold=1.0)
+        stars = extract_stars(data, peaks_table, size=11)
+        assert_allclose(stars.center, [25, 25])
 
     def test_extract_stars_flux_estimation_failure(self):
         """

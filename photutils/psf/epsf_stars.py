@@ -24,6 +24,12 @@ from photutils.utils._wcs_helpers import (_low_level_wcs,
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
 
+# Suffixes of the pixel position column names recognized by
+# extract_stars, in priority order.
+_XY_COLNAME_SUFFIXES = ('', '_fit', 'fit', '_centroid', 'centroid',
+                        '_center', 'center', '_cen', 'cen', '_pos', 'pos',
+                        '_0', '0', '_init', 'init', '_peak')
+
 
 class EPSFStar:
     """
@@ -1028,6 +1034,35 @@ def _validate_catalog_list(catalogs):
             warnings.warn(msg, AstropyUserWarning)
 
 
+def _find_xy_colnames(catalog):
+    """
+    Find the names of the pixel position columns of a catalog.
+
+    The ``x`` and ``y`` columns are used if present. Alternative column
+    names are used only if the catalog has no ``skycoord`` column. The
+    x and y column names must have the same suffix.
+
+    Parameters
+    ----------
+    catalog : `~astropy.table.Table`
+        The input catalog.
+
+    Returns
+    -------
+    xy_colnames : tuple of str or `None`
+        The names of the x and y position columns, or `None` if the
+        pixel positions should not be read from the catalog.
+    """
+    colnames = set(catalog.colnames)
+    suffixes = ('',) if 'skycoord' in colnames else _XY_COLNAME_SUFFIXES
+    for suffix in suffixes:
+        xname = f'x{suffix}'
+        yname = f'y{suffix}'
+        if xname in colnames and yname in colnames:
+            return xname, yname
+    return None
+
+
 def _validate_coordinate_consistency(data, catalogs):
     """
     Validate coordinate system consistency between data and catalogs.
@@ -1064,12 +1099,16 @@ def _validate_coordinate_consistency(data, catalogs):
     else:
         # Multiple catalogs (or single catalog with single image)
         for i, cat in enumerate(catalogs):
-            has_xy = 'x' in cat.colnames and 'y' in cat.colnames
+            has_xy = _find_xy_colnames(cat) is not None
             has_skycoord = 'skycoord' in cat.colnames
 
             if not has_xy and not has_skycoord:
+                alt_names = ', '.join(f"'x{suffix}'" for suffix
+                                      in _XY_COLNAME_SUFFIXES[1:])
                 msg = (f'Catalog at index {i} must have either '
-                       "'x' and 'y' columns or a 'skycoord' column.")
+                       "'x' and 'y' columns or a 'skycoord' column. "
+                       f"Alternative names for the 'x' column are {alt_names}"
+                       ", each with a 'y' column of the same suffix.")
                 raise ValueError(msg)
 
             # If only skycoord is available, ensure the corresponding
@@ -1149,6 +1188,15 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         `~astropy.coordinates.SkyCoord` object). If both are specified,
         then the pixel coordinates will be used.
 
+        If a catalog has neither ``x`` and ``y`` columns nor a
+        ``skycoord`` column, then the pixel coordinates are read from
+        the first available pair of ``x<suffix>`` and ``y<suffix>``
+        columns, so that the output tables of the star finders can
+        be input directly. The suffixes, in priority order, are
+        ``_fit``, ``fit``, ``_centroid``, ``centroid``, ``_center``,
+        ``center``, ``_cen``, ``cen``, ``_pos``, ``pos``, ``_0``,
+        ``0``, ``_init``, ``init``, and ``_peak``.
+
         If a single source catalog is input with multiple
         `~astropy.nddata.NDData` objects, then these sources will be
         extracted from every 2D image in the input ``data``. In this
@@ -1156,7 +1204,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         a `~astropy.coordinates.SkyCoord` object contained in a column
         called ``skycoord``. Each `~astropy.nddata.NDData` object in the
         input ``data`` must also have a valid ``wcs`` attribute. Pixel
-        coordinates (in ``x`` and ``y`` columns) will be ignored.
+        coordinate columns will be ignored.
 
         Optionally, each catalog may also contain an ``id`` column
         representing the ID/name of stars. If this column is not
@@ -1370,11 +1418,12 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         region extended beyond the input image.
     """
     colnames = catalog.colnames
-    if ('x' not in colnames or 'y' not in colnames) or not use_xy:
+    xy_colnames = _find_xy_colnames(catalog) if use_xy else None
+    if xy_colnames is None:
         xcenters, ycenters = data.wcs.world_to_pixel(catalog['skycoord'])
     else:
-        xcenters = np.asarray(catalog['x'])
-        ycenters = np.asarray(catalog['y'])
+        xcenters = np.asarray(catalog[xy_colnames[0]])
+        ycenters = np.asarray(catalog[xy_colnames[1]])
 
     if 'id' in colnames:
         ids = catalog['id']
