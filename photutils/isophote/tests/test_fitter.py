@@ -140,7 +140,7 @@ def test_fit_keeps_sample_settings():
     Test that the sample of the fitted isophote, which is made by the
     parameter correctors, keeps the settings of the input sample.
     """
-    sample = EllipseSample(DATA, 40.0, astep=0.2, eps=0.3, sclip=2.5,
+    sample = EllipseSample(DATA, 60.0, astep=0.2, eps=0.3, sclip=2.5,
                            n_clip=2, integrmode=MEAN)
     isophote = EllipseFitter(sample).fit()
     fitted_sample = isophote.sample
@@ -149,7 +149,7 @@ def test_fit_keeps_sample_settings():
     assert fitted_sample.sclip == 2.5
     assert fitted_sample.n_clip == 2
     assert fitted_sample.integrmode == MEAN
-    assert fitted_sample.geometry.sma == 40.0
+    assert fitted_sample.geometry.sma == 60.0
     assert fitted_sample.geometry.astep == 0.2
     assert not fitted_sample.geometry.linear_growth
 
@@ -485,6 +485,24 @@ def test_fixed_round_ellipse(fix_center):
     else:
         assert isophote.n_iter > 1
         assert_allclose((isophote.x0, isophote.y0), DEFAULT_POS, atol=0.5)
+
+
+@pytest.mark.parametrize(('fix_eps', 'fix_center'),
+                         [(False, False), (True, False), (True, True)])
+def test_fit_does_not_modify_input(fix_eps, fix_center):
+    """
+    Test that fitting a round starting ellipse does not modify the
+    geometry of the input sample.
+    """
+    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5, fix_eps=fix_eps,
+                               fix_center=fix_center)
+    sample = EllipseSample(DATA, 40.0, geometry=geometry)
+    fix = sample.geometry.fix.copy()
+    EllipseFitter(sample).fit()
+    assert sample.geometry.eps == 0.0
+    assert sample.geometry.pa == 0.5
+    assert (sample.geometry.x0, sample.geometry.y0) == (257.0, 255.0)
+    assert np.array_equal(sample.geometry.fix, fix)
 
 
 def test_everything_fixed_no_data():

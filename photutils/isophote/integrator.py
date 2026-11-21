@@ -304,7 +304,10 @@ class _AreaIntegrator(_Integrator):
             eps_ = 1.0 - geometry.eps
             aux = eps_ / np.sqrt((eps_ * np.cos(phip))**2
                                  + np.sin(phip)**2)
-            inside = ((phip < phi2) & (phip >= phi1)
+            # A sector can extend past a polar angle of 2 pi, so the
+            # pixel angles are measured from the start of the sector.
+            dphi = np.mod(phip - phi1, 2.0 * np.pi)
+            inside = ((dphi < phi2 - phi1)
                       & (rp < sma2 * aux) & (rp >= sma1 * aux))
 
             # Skip masked and nonfinite pixels.

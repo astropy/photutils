@@ -199,7 +199,8 @@ class EllipseSample:
         If ``image`` is a `~astropy.units.Quantity` array.
 
     ValueError
-        If ``image`` is not a 2D array.
+        If ``image`` is not a 2D array or ``integrmode`` is not a valid
+        integration mode.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -209,6 +210,9 @@ class EllipseSample:
                  linear_growth=False,
                  integrmode='bilinear', geometry=None):
         image = _validate_image(image)
+        if integrmode not in INTEGRATORS:
+            msg = f'integrmode must be one of {sorted(INTEGRATORS)}'
+            raise ValueError(msg)
         self.image = image
         self.integrmode = integrmode
 
@@ -282,10 +286,6 @@ class EllipseSample:
         ValueError
             If the ellipticity of the ellipse is 1 or larger or if its
             center is not finite.
-
-        KeyError
-            If the ``integrmode`` attribute is not a valid integration
-            mode.
         """
         # The sample values themselves are kept cached to prevent
         # multiple calls to the integrator code.

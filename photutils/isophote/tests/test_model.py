@@ -220,6 +220,45 @@ def test_model_harmonics():
     assert np.std(residual[mask]) < 0.4
 
 
+def test_model_harmonics_gradient_sign():
+    """
+    Test that the model harmonics do not depend on the sign of the
+    local gradient.
+
+    The isophote harmonics are normalized by the absolute value of the
+    gradient, so the model must scale them back with the absolute value
+    too.
+    """
+    data = make_test_image(nx=200, ny=200, seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=40.0)
+    model = build_ellipse_model(data.shape, isolist, high_harmonics=True)
+
+    for isophote in isolist:
+        isophote.grad = -isophote.grad
+    model_flipped = build_ellipse_model(data.shape, isolist,
+                                        high_harmonics=True)
+    assert_allclose(model_flipped, model)
+
+
+def test_model_missing_harmonics():
+    """
+    Test that harmonics that could not be computed are treated as zero
+    instead of making the model nonfinite.
+    """
+    data = make_test_image(nx=200, ny=200, seed=0)
+    isolist = Ellipse(data).fit_image(maxsma=40.0)
+    isolist[10].a3 = None
+    isolist[10].b4 = np.nan
+    model = build_ellipse_model(data.shape, isolist, high_harmonics=True)
+    assert np.all(np.isfinite(model))
+
+    isolist[10].a3 = 0.0
+    isolist[10].b4 = 0.0
+    model_zero = build_ellipse_model(data.shape, isolist,
+                                     high_harmonics=True)
+    assert_allclose(model, model_zero)
+
+
 def test_model_integration():
     """
     Test that model integration does not stop as soon as the angle reaches

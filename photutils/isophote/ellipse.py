@@ -459,8 +459,9 @@ class Ellipse:
         ------
         ValueError
             If the starting semimajor axis length or ``step`` is not
-            positive, if ``max_center_shift`` is negative or NaN, or if
-            the ellipticity of the starting geometry is 1 or larger.
+            positive, if ``max_center_shift`` is negative or NaN, if
+            the ellipticity of the starting geometry is 1 or larger, or
+            if ``integrmode`` is not a valid integration mode.
 
         Warns
         -----
@@ -806,8 +807,9 @@ class Ellipse:
         ------
         ValueError
             If ``step`` is not positive, if ``max_center_shift`` is
-            negative or NaN, or if the ellipticity of the starting
-            geometry is 1 or larger.
+            negative or NaN, if the ellipticity of the starting geometry
+            is 1 or larger, or if ``integrmode`` is not a valid
+            integration mode.
 
         Warns
         -----
@@ -931,7 +933,8 @@ class Ellipse:
 
         ValueError
             If an ellipse has an ellipticity of 1 or larger or a
-            nonfinite center.
+            nonfinite center, or if ``integrmode`` is not a valid
+            integration mode.
         """
         geometries = []
         for isophote in isophotes:
