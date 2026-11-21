@@ -25,6 +25,12 @@ from photutils.utils._parameters import as_pair
 
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
 
+# Suffixes of the pixel position column names (e.g., x_fit and y_fit)
+# recognized by the PSF tools, in priority order.
+_XY_COLNAME_SUFFIXES = ('_fit', 'fit', '_init', 'init', '', '_0', '0',
+                        '_centroid', 'centroid', '_center', 'center',
+                        '_cen', 'cen', '_pos', 'pos', '_peak')
+
 
 def _copy_model_sharing_data(model):
     """
@@ -766,34 +772,38 @@ def _create_call_docstring(*, iterative=False):
             ``'x_centroid'`` and ``'y_centroid'``). The allowed column
             names are:
 
-            * ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``, ``'x0'``,
-              ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``, ``'xcen'``,
-              ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``, ``'xfit'``,
-              ``'xcenter'``, and ``'x_center'``.
+            * ``'x_fit'``, ``'xfit'``, ``'x_init'``, ``'xinit'``, ``'x'``,
+              ``'x_0'``, ``'x0'``, ``'x_centroid'``, ``'xcentroid'``,
+              ``'x_center'``, ``'xcenter'``, ``'x_cen'``, ``'xcen'``,
+              ``'x_pos'``, ``'xpos'``, and ``'x_peak'``.
 
-            * ``'y_init'``, ``'yinit'``, ``'y'``, ``'y_0'``, ``'y0'``,
-              ``'ycentroid'``, ``'y_centroid'``, ``'y_peak'``, ``'ycen'``,
-              ``'y_cen'``, ``'ypos'``, ``'y_pos'``, ``'y_fit'``, ``'yfit'``,
-              ``'ycenter'``, and ``'y_center'``.
+            * ``'y_fit'``, ``'yfit'``, ``'y_init'``, ``'yinit'``, ``'y'``,
+              ``'y_0'``, ``'y0'``, ``'y_centroid'``, ``'ycentroid'``,
+              ``'y_center'``, ``'ycenter'``, ``'y_cen'``, ``'ycen'``,
+              ``'y_pos'``, ``'ypos'``, and ``'y_peak'``.
 
-            * ``'flux_init'``, ``'fluxinit'``, ``'flux'``, ``'flux_0'``,
-              ``'flux0'``, ``'flux_fit'``, ``'fluxfit'``, ``'source_sum'``,
-              ``'segment_flux'``, and ``'kron_flux'``.
+            * ``'flux_fit'``, ``'fluxfit'``, ``'flux_init'``,
+              ``'fluxinit'``, ``'flux'``, ``'flux_0'``, ``'flux0'``,
+              ``'source_sum'``, ``'segment_flux'``, and ``'kron_flux'``.
 
             * If the PSF model has additional free parameters that are
               fit, they can be included in the table. The column names
               must match the parameter names in the PSF model. They can
-              also be suffixed with either the ``'_init'`` or ``'_fit'``
-              suffix. The suffix search order is ``'_init'``, ``''`` (no
-              suffix), and ``'_fit'``. For example, if the PSF model has
+              also be suffixed with either the ``'_fit'`` or ``'_init'``
+              suffix. The suffix search order is ``'_fit'``, ``'_init'``,
+              and ``''`` (no suffix). For example, if the PSF model has
               an additional parameter named "sigma", then the allowed
-              column names are: ``'sigma_init'``, ``'sigma'``, and
-              ``'sigma_fit'``. If the column name is not found in the
+              column names are: ``'sigma_fit'``, ``'sigma_init'``, and
+              ``'sigma'``. If the column name is not found in the
               table, then the default value from the PSF model will be
               used.
 
             The parameter names are searched in the input table in the
-            above order, stopping at the first match.
+            above order, stopping at the first match. A table of
+            previous results therefore restarts the fit from its fitted
+            values. If any fitted value in a row is nonfinite or
+            masked, then the initial values in that row are used
+            instead.
 
             If ``data`` is a `~astropy.units.Quantity` array, then the
             initial flux values in this table must also have

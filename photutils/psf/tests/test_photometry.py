@@ -1706,6 +1706,138 @@ def test_init_params_unpaired_position_column(unpaired_col):
     assert tbl.colnames == [unpaired_col, 'x_centroid', 'y_centroid']
 
 
+def test_init_params_position_column_priority():
+    """
+    Test the priority order of the position column names.
+    """
+    yy, xx = np.mgrid[:31, :31]
+    data = CircularGaussianPRF(flux=7.0, x_0=15.0, y_0=15.0, fwhm=3.1)(xx, yy)
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = PSFPhotometry(psf_model, (9, 9), aperture_radius=10)
+
+    tbl = Table()
+    suffixes = ('_peak', '_pos', '_cen', '_center', '_centroid', '_0', '',
+                '_init', '_fit')
+    for i, suffix in enumerate(suffixes):
+        value = 14.6 + 0.1 * i
+        tbl[f'x{suffix}'] = [value]
+        tbl[f'y{suffix}'] = [value]
+        phot_tbl = psfphot(data, init_params=tbl)
+        assert_allclose(phot_tbl['x_init'][0], value)
+        assert_allclose(phot_tbl['y_init'][0], value)
+
+
+def make_fit_and_init_table():
+    """
+    Make a two-source table with fitted and initial parameter columns.
+    """
+    return Table({'x_init': [10.4, 30.4], 'y_init': [10.3, 30.3],
+                  'flux_init': [5.0, 6.0], 'fwhm_init': [3.0, 3.05],
+                  'x_fit': [10.1, 30.1], 'y_fit': [9.9, 29.9],
+                  'flux_fit': [7.0, 8.0], 'fwhm_fit': [3.1, 3.15]})
+
+
+def make_two_source_image():
+    """
+    Make an image with two sources.
+    """
+    yy, xx = np.mgrid[:41, :41]
+    data = CircularGaussianPRF(flux=7.0, x_0=10.0, y_0=10.0, fwhm=3.1)(xx, yy)
+    data += CircularGaussianPRF(flux=8.0, x_0=30.0, y_0=30.0, fwhm=3.1)(xx, yy)
+    return data
+
+
+def test_init_params_fit_columns_preferred():
+    """
+    Test that all fitted parameters take priority over their initial
+    values.
+    """
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psf_model.fwhm.fixed = False
+    psfphot = PSFPhotometry(psf_model, (9, 9))
+    phot_tbl = psfphot(make_two_source_image(),
+                       init_params=make_fit_and_init_table())
+    assert_allclose(phot_tbl['x_init'], [10.1, 30.1])
+    assert_allclose(phot_tbl['y_init'], [9.9, 29.9])
+    assert_allclose(phot_tbl['flux_init'], [7.0, 8.0])
+    assert_allclose(phot_tbl['fwhm_init'], [3.1, 3.15])
+
+
+@pytest.mark.parametrize('bad_col', ['x_fit', 'y_fit', 'flux_fit', 'fwhm_fit'])
+@pytest.mark.parametrize('use_mask', [False, True])
+def test_init_params_nonfinite_fit_fallback(bad_col, use_mask):
+    """
+    Test that a row with a nonfinite or masked fitted parameter uses all
+    of its initial values.
+    """
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psf_model.fwhm.fixed = False
+    psfphot = PSFPhotometry(psf_model, (9, 9))
+
+    tbl = make_fit_and_init_table()
+    if use_mask:
+        tbl[bad_col] = MaskedColumn(tbl[bad_col], mask=[False, True])
+    else:
+        tbl[bad_col][1] = np.nan
+
+    phot_tbl = psfphot(make_two_source_image(), init_params=tbl)
+    assert_allclose(phot_tbl['x_init'], [10.1, 30.4])
+    assert_allclose(phot_tbl['y_init'], [9.9, 30.3])
+    assert_allclose(phot_tbl['flux_init'], [7.0, 6.0])
+    assert_allclose(phot_tbl['fwhm_init'], [3.1, 3.05])
+
+
+def test_init_params_nonfinite_fit_fallback_units():
+    """
+    Test the fallback to the initial values with flux units.
+    """
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = PSFPhotometry(psf_model, (9, 9))
+
+    tbl = QTable({'x_init': [10.4, 30.4], 'y_init': [10.3, 30.3],
+                  'flux_init': [5.0, 6.0] * u.Jy,
+                  'x_fit': [10.1, np.nan], 'y_fit': [9.9, np.nan],
+                  'flux_fit': [7.0, np.nan] * u.Jy})
+    phot_tbl = psfphot(make_two_source_image() * u.Jy, init_params=tbl)
+    assert_allclose(phot_tbl['x_init'], [10.1, 30.4])
+    assert_allclose(phot_tbl['flux_init'].to_value(u.Jy), [7.0, 6.0])
+
+
+def test_init_params_unpaired_init_no_fallback():
+    """
+    Test that an unpaired initial position column is not used for a
+    nonfinite fitted position.
+    """
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = PSFPhotometry(psf_model, (9, 9))
+    tbl = Table({'x_init': [10.4, 30.4], 'x_fit': [10.1, 30.1],
+                 'y_fit': [9.9, np.nan], 'flux': [7.0, 8.0]})
+    phot_tbl = psfphot(make_two_source_image(), init_params=tbl)
+    assert_allclose(phot_tbl['x_init'], [10.1, 30.1])
+    assert np.isnan(phot_tbl['y_init'][1])
+
+
+def test_results_table_reuse_recovers_failed_fit():
+    """
+    Test that a source with a failed fit is refit from its initial
+    values when a results table is used as ``init_params``.
+    """
+    data = make_two_source_image()
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[22:39, 22:39] = True
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    init_params = Table({'x': [10.2, 30.2], 'y': [9.8, 29.8],
+                         'flux': [6.0, 7.0]})
+    psfphot = PSFPhotometry(psf_model, (9, 9))
+    first = psfphot(data, mask=mask, init_params=init_params)
+    assert np.isnan(first['x_fit'][1])
+
+    second = PSFPhotometry(psf_model, (9, 9))(data, init_params=first)
+    assert_allclose(second['x_init'][1], 30.2)
+    assert_allclose(second['x_fit'], [10.0, 30.0], atol=1e-5)
+    assert_allclose(second['flux_fit'], [7.0, 8.0], rtol=1e-5)
+
+
 def test_repr():
     psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
     fit_shape = (9, 9)

@@ -15,7 +15,7 @@ from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
-from photutils.psf.utils import _interpolate_missing_data
+from photutils.psf.utils import _XY_COLNAME_SUFFIXES, _interpolate_missing_data
 from photutils.utils._misc import deepcopy_instance
 from photutils.utils._overlap import overlap_slices
 from photutils.utils._parameters import as_pair
@@ -23,12 +23,6 @@ from photutils.utils._wcs_helpers import (_low_level_wcs,
                                           _pixel_to_world_radians)
 
 __all__ = ['EPSFStar', 'EPSFStars', 'LinkedEPSFStar', 'extract_stars']
-
-# Suffixes of the pixel position column names recognized by
-# extract_stars, in priority order.
-_XY_COLNAME_SUFFIXES = ('', '_fit', 'fit', '_centroid', 'centroid',
-                        '_center', 'center', '_cen', 'cen', '_pos', 'pos',
-                        '_0', '0', '_init', 'init', '_peak')
 
 
 class EPSFStar:
@@ -1054,7 +1048,9 @@ def _find_xy_colnames(catalog):
         pixel positions should not be read from the catalog.
     """
     colnames = set(catalog.colnames)
-    suffixes = ('',) if 'skycoord' in colnames else _XY_COLNAME_SUFFIXES
+    suffixes = ('',)
+    if 'skycoord' not in colnames:
+        suffixes += _XY_COLNAME_SUFFIXES
     for suffix in suffixes:
         xname = f'x{suffix}'
         yname = f'y{suffix}'
@@ -1104,7 +1100,7 @@ def _validate_coordinate_consistency(data, catalogs):
 
             if not has_xy and not has_skycoord:
                 alt_names = ', '.join(f"'x{suffix}'" for suffix
-                                      in _XY_COLNAME_SUFFIXES[1:])
+                                      in _XY_COLNAME_SUFFIXES if suffix)
                 msg = (f'Catalog at index {i} must have either '
                        "'x' and 'y' columns or a 'skycoord' column. "
                        f"Alternative names for the 'x' column are {alt_names}"
@@ -1193,9 +1189,9 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         the first available pair of ``x<suffix>`` and ``y<suffix>``
         columns, so that the output tables of the star finders can
         be input directly. The suffixes, in priority order, are
-        ``_fit``, ``fit``, ``_centroid``, ``centroid``, ``_center``,
-        ``center``, ``_cen``, ``cen``, ``_pos``, ``pos``, ``_0``,
-        ``0``, ``_init``, ``init``, and ``_peak``.
+        ``_fit``, ``fit``, ``_init``, ``init``, ``_0``, ``0``,
+        ``_centroid``, ``centroid``, ``_center``, ``center``, ``_cen``,
+        ``cen``, ``_pos``, ``pos``, and ``_peak``.
 
         If a single source catalog is input with multiple
         `~astropy.nddata.NDData` objects, then these sources will be

@@ -25,7 +25,7 @@ from photutils.background import LocalBackground
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
                                        PSFResultsAssembler, _ModelImageMixin)
 from photutils.psf.flags import decode_psf_flags
-from photutils.psf.utils import (_create_call_docstring,
+from photutils.psf.utils import (_XY_COLNAME_SUFFIXES, _create_call_docstring,
                                  _get_psf_model_main_params, _make_mask,
                                  _validate_psf_model)
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
@@ -53,20 +53,11 @@ class _PSFParameterMapper:
     # positions. Order matters, as the first matched name in each tuple will
     # be used.
     VALID_INIT_COLNAMES = {  # noqa: RUF012
-        'x': (
-            'x_init', 'xinit', 'x', 'x_0', 'x0', 'xcentroid',
-            'x_centroid', 'x_peak', 'xcen', 'x_cen', 'xpos', 'x_pos',
-            'x_fit', 'xfit', 'xcenter', 'x_center',
-        ),
-        'y': (
-            'y_init', 'yinit', 'y', 'y_0', 'y0', 'ycentroid',
-            'y_centroid', 'y_peak', 'ycen', 'y_cen', 'ypos', 'y_pos',
-            'y_fit', 'yfit', 'ycenter', 'y_center',
-        ),
+        'x': tuple(f'x{suffix}' for suffix in _XY_COLNAME_SUFFIXES),
+        'y': tuple(f'y{suffix}' for suffix in _XY_COLNAME_SUFFIXES),
         'flux': (
-            'flux_init', 'fluxinit', 'flux', 'flux_0', 'flux0',
-            'flux_fit', 'fluxfit', 'source_sum', 'segment_flux',
-            'kron_flux',
+            'flux_fit', 'fluxfit', 'flux_init', 'fluxinit', 'flux',
+            'flux_0', 'flux0', 'source_sum', 'segment_flux', 'kron_flux',
         ),
     }
     MAIN_ALIASES = ('x', 'y', 'flux')
@@ -196,8 +187,8 @@ class _PSFParameterMapper:
             valid_names = self.VALID_INIT_COLNAMES[param_alias]
         except KeyError:
             # Valid names for extra parameters are more limited
-            valid_names = (f'{param_alias}_init', param_alias,
-                           f'{param_alias}_fit')
+            valid_names = (f'{param_alias}_fit', f'{param_alias}_init',
+                           param_alias)
 
         for name in valid_names:
             if name in table.colnames:
@@ -205,10 +196,52 @@ class _PSFParameterMapper:
 
         return None
 
+    def _fill_nonfinite_fits(self, table, found_cols):
+        """
+        Replace fitted values in place with initial values in rows that
+        have any nonfinite or masked fitted value.
+
+        All parameters in such a row are replaced so that the row has a
+        consistent set of values. Initial positions are used only if
+        both the x and y columns are present.
+
+        Parameters
+        ----------
+        table : `~astropy.table.Table`
+            The input table.
+
+        found_cols : dict
+            A dictionary mapping parameter aliases to the column names
+            found in the table.
+        """
+        fit_cols = {alias: col for alias, col in found_cols.items()
+                    if col in (f'{alias}_fit', f'{alias}fit')
+                    and self.init_colnames[alias] in table.colnames}
+        if not {'x', 'y'} <= fit_cols.keys():
+            fit_cols.pop('x', None)
+            fit_cols.pop('y', None)
+        if not fit_cols:
+            return
+
+        is_bad = np.zeros(len(table), dtype=bool)
+        for col in fit_cols.values():
+            values = table[col]
+            is_bad |= np.asarray(getattr(values, 'mask', False))
+            values = getattr(values, 'unmasked', values)
+            is_bad |= ~np.isfinite(np.ma.getdata(values))
+
+        if is_bad.any():
+            for alias, col in fit_cols.items():
+                table[col][is_bad] = table[self.init_colnames[alias]][is_bad]
+
     def rename_table_columns(self, table):
         """
         Rename columns in place in an input table to the ``_init``
         format.
+
+        If the table has both fitted and initial columns, then the
+        fitted values are used, except in rows with a nonfinite or
+        masked fitted value.
 
         Parameters
         ----------
@@ -225,12 +258,13 @@ class _PSFParameterMapper:
         # break its pair with the y column
         found_cols = {param_alias: self.find_column(table, param_alias)
                       for param_alias in self.alias_to_model_param}
+        self._fill_nonfinite_fits(table, found_cols)
 
         for param_alias, found_col in found_cols.items():
             if found_col:
                 target_col = self.init_colnames[param_alias]
                 if found_col != target_col:
-                    # An existing target column has no matching partner
+                    # The column being replaced has lower priority
                     if target_col in table.colnames:
                         table.remove_column(target_col)
                     table.rename_column(found_col, target_col)
@@ -622,19 +656,19 @@ class PSFPhotometry(_ModelImageMixin):
         and a ``mask`` keyword, and return a `~astropy.table.Table`
         containing the x and y centroid positions (or `None` if no
         sources are found). These positions are used as the starting
-        points for the PSF fitting. The allowed ``x`` column names are
-        (same suffix for ``y``): ``'x_init'``, ``'xinit'``, ``'x'``,
-        ``'x_0'``, ``'x0'``, ``'xcentroid'``, ``'x_centroid'``,
-        ``'x_peak'``, ``'xcen'``, ``'x_cen'``, ``'xpos'``, ``'x_pos'``,
-        ``'x_fit'``, ``'xfit'``, ``'xcenter'``, and ``'x_center'``. If
-        `None`, then the initial (x, y) model positions must be input
-        using the ``init_params`` keyword when calling the class. The
-        (x, y) values in ``init_params`` override this keyword. If this
-        class is run on an image that has units (i.e., a
-        `~astropy.units.Quantity` array), then certain ``finder``
-        keywords (e.g., ``threshold``) must have the same units. Please
-        see the documentation for the specific ``finder`` class for more
-        information.
+        points for the PSF fitting. The allowed ``x`` column names, in
+        priority order, are (same suffix for ``y``): ``'x_fit'``,
+        ``'xfit'``, ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``,
+        ``'x0'``, ``'x_centroid'``, ``'xcentroid'``, ``'x_center'``,
+        ``'xcenter'``, ``'x_cen'``, ``'xcen'``, ``'x_pos'``, ``'xpos'``,
+        and ``'x_peak'``. If `None`, then the initial (x, y) model
+        positions must be input using the ``init_params`` keyword when
+        calling the class. The (x, y) values in ``init_params`` override
+        this keyword. If this class is run on an image that has units
+        (i.e., a `~astropy.units.Quantity` array), then certain
+        ``finder`` keywords (e.g., ``threshold``) must have the same
+        units. Please see the documentation for the specific ``finder``
+        class for more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group sources. Typically, grouped sources

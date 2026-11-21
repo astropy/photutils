@@ -1782,6 +1782,11 @@ class TestExtractStars:
         stars = extract_stars(simple_nddata, catalog, size=11)
         assert_allclose(stars.center, [25, 26])
 
+        catalog['x_init'] = [28.0]
+        catalog['y_init'] = [29.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [28, 29])
+
         catalog['x_fit'] = [30.0]
         catalog['y_fit'] = [31.0]
         stars = extract_stars(simple_nddata, catalog, size=11)
@@ -1791,6 +1796,19 @@ class TestExtractStars:
         catalog['y'] = [16.0]
         stars = extract_stars(simple_nddata, catalog, size=11)
         assert_allclose(stars.center, [15, 16])
+
+    def test_nonfinite_fit_position_not_extracted(self, simple_nddata):
+        """
+        Test that a star with a nonfinite fitted position is not
+        extracted at its initial position.
+        """
+        catalog = Table({'x_init': [20.0, 30.0], 'y_init': [20.0, 30.0],
+                         'x_fit': [20.5, np.nan], 'y_fit': [20.5, np.nan]})
+        match = '1 star\\(s\\) were not extracted'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars.center, [20.5, 20.5])
 
     def test_position_columns_must_match(self, simple_nddata):
         """
