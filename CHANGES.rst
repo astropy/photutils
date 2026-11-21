@@ -554,6 +554,15 @@ API Changes
     central pixel) are NaN. Previously, such columns had an object
     data type with `None` values. [#2553]
 
+- ``photutils.psf``
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the
+    x and y source position columns of ``init_params`` and of the
+    ``finder`` table to have the same suffix. Previously, columns
+    from different conventions (e.g., ``x_centroid`` and ``y_peak``)
+    were silently combined. Such tables now raise a ``ValueError``
+    unless they also contain a matching pair of columns. [#2565]
+
 - ``photutils.utils``
 
   - ``NoDetectionsWarning`` is now a subclass of
