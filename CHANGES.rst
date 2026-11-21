@@ -59,6 +59,13 @@ New Features
     the stop code of the first isophote, the reason why it failed,
     and what to check. [#2560]
 
+- ``photutils.psf``
+
+  - The ``extract_stars`` function now recognizes common alternative
+    names for the pixel position columns, such as ``x_centroid``,
+    ``x_center``, and ``x_peak``, so the output tables of the star
+    finders can be input directly. [#2565]
+
 Bug Fixes
 ^^^^^^^^^
 
