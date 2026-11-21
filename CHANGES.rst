@@ -66,6 +66,10 @@ New Features
     ``x_center``, and ``x_peak``, so the output tables of the star
     finders can be input directly. [#2565]
 
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now recognize
+    the ``xcenter``, ``ycenter``, ``x_center``, and ``y_center``
+    source position column names. [#2565]
+
 Bug Fixes
 ^^^^^^^^^
 
