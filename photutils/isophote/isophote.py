@@ -24,10 +24,6 @@ from photutils.utils.exceptions import PhotutilsDeprecationWarning
 __all__ = ['Isophote', 'IsophoteList']
 
 
-def _nan_if_none(value):
-    return np.nan if value is None else value
-
-
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES = {
     'grad_error': 'gradient_err',
@@ -66,6 +62,13 @@ _DEPRECATED_SINCE = {
 # a Quantity in degrees.
 _DEPRECATED_RADIANS = {'pa': '_orientation_rad',
                        'pa_err': '_orientation_err_rad'}
+
+
+def _nan_if_none(value):
+    """
+    Return NaN in place of `None`, otherwise return the value.
+    """
+    return np.nan if value is None else value
 
 
 def _to_degrees(angle):
@@ -219,8 +222,9 @@ class Isophote:
     npix_e : int
         .. deprecated:: 3.2
             Use ``n_pixels_ellipse`` instead.
-    n_pixels_ellipse : int
-        The total number of valid pixels inside the ellipse.
+    n_pixels_ellipse : int or float
+        The total number of valid pixels inside the ellipse. It is NaN
+        for the central pixel.
     tflux_c : float
         .. deprecated:: 3.2
             Use ``total_flux_circle`` instead.
@@ -230,9 +234,9 @@ class Isophote:
     npix_c : int
         .. deprecated:: 3.2
             Use ``n_pixels_circle`` instead.
-    n_pixels_circle : int
+    n_pixels_circle : int or float
         The total number of valid pixels inside a circle with the same
-        ``sma`` as the ellipse.
+        ``sma`` as the ellipse. It is NaN for the central pixel.
     sector_area : float
         The average sector area on the isophote (pixel**2).
     sarea : float
@@ -716,7 +720,7 @@ class Isophote:
         -------
         result : `~astropy.table.QTable`
             A one-row table with the default isophote parameters (see
-            `~photutils.isophote.IsophoteList.default_columns`). The
+            ``IsophoteList.default_columns``). The
             ``orientation`` and ``orientation_err`` columns are
             `~astropy.units.Quantity` columns in degrees.
         """
@@ -887,9 +891,9 @@ class IsophoteList:
         columns : list of str, `None`, optional
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are the
-            names in the `properties` attribute. If ``columns`` is
+            names in the ``properties`` attribute. If ``columns`` is
             `None`, then a default list of properties (as defined by
-            the `default_columns` attribute) will be used. A deprecated
+            the ``default_columns`` attribute) will be used. A deprecated
             name gives a column with its new name and emits a
             deprecation warning. The deprecated ``'main'`` and
             ``'all'`` values are equivalent to `None` and to the
@@ -929,7 +933,7 @@ class IsophoteList:
         table : `~astropy.table.Table` or `~astropy.table.QTable`
             The table. The ``sma``, ``x0``, ``y0``, ``ellipticity``,
             and ``orientation`` columns are required. The other
-            columns are the names in the `properties` attribute. A
+            columns are the names in the ``properties`` attribute. A
             missing float column is NaN, a missing ``n_data``,
             ``n_flagged``, ``n_iter``, or ``stop_code`` column is 0,
             and a missing ``valid`` column is `True`. Columns that are
@@ -1222,7 +1226,7 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
         with other names.
     """
     # The IsophoteList properties are arrays with a numerical dtype,
-    # where missing values (None) are NaN.
+    # where values that are not defined are NaN.
     if not isinstance(isophote_list, IsophoteList):
         isophote_list = IsophoteList(isophote_list)
 

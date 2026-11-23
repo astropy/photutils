@@ -59,9 +59,9 @@ convergence criterion, the ``max_gradient_rel_err`` stopping
 criterion, the radius where the local intensity gradient is measured,
 and the starting geometry of the inward fits. Because of these
 fixes, the fitted isophotes differ slightly from those of previous
-versions. The fits of noisy images typically need a few more iterations and extend to
-larger semimajor axis lengths. See the :ref:`changelog` for the
-complete list of fixes.
+versions. The fits of noisy images typically need a few more
+iterations and extend to larger semimajor axis lengths. See the
+:ref:`changelog` for the complete list of fixes.
 
 The first isophote of a low surface brightness galaxy now fails much
 less often, because the local gradient of the previous iteration is
@@ -114,10 +114,45 @@ an image ``data`` of a galaxy centered near (256, 256)::
 If a fit would move the center of an isophote farther than this
 distance, the center is placed at this distance from the input center
 and held there for the rest of that fit, while the ellipticity and
-position angle continue to be fitted. The keyword limits the total
+orientation continue to be fitted. The keyword limits the total
 shift from the input center, which is different from the ``wander``
 parameter of the STSDAS ``ellipse`` task. See the :ref:`isophote-faq`
 for more details.
+
+
+Isophote Tables and Model Images
+================================
+
+The new :meth:`~photutils.isophote.IsophoteList.from_table` method
+creates an `~photutils.isophote.IsophoteList` from a table. It is the
+inverse of :meth:`~photutils.isophote.IsophoteList.to_table`, so a
+list of isophotes can be saved to a file and loaded again. The
+``sma``, ``x0``, ``y0``, ``ellipticity``, and ``orientation`` columns
+are required, and the angle columns must have an angular unit::
+
+    >>> from astropy.table import QTable
+    >>> from photutils.isophote import Ellipse, IsophoteList
+    >>> tbl = isolist.to_table(columns=isolist.properties)
+    >>> tbl.write('isophotes.ecsv')
+    >>> loaded = IsophoteList.from_table(QTable.read('isophotes.ecsv'))
+
+The loaded isophotes have no sample, but they can be used to make a
+model image or to measure an image with
+:meth:`~photutils.isophote.Ellipse.measure_isophotes`.
+
+The new :meth:`~photutils.isophote.IsophoteList.make_model_image`
+method makes a model image from the isophotes. It replaces the
+``build_ellipse_model`` function::
+
+    >>> model = loaded.make_model_image(data.shape)
+    >>> measured = Ellipse(data2).measure_isophotes(loaded)
+
+`~photutils.isophote.IsophoteList` also has new ``properties`` and
+``default_columns`` attributes, like those of
+`~photutils.segmentation.SourceCatalog`. ``properties`` lists the names
+of all the isophote properties, which are also the columns that
+``to_table`` can return. See :doc:`../user_guide/isophote` for more
+details.
 
 
 Source Tables as Input to ``extract_stars``
@@ -201,15 +236,251 @@ Most users never import these modules directly, because ``asdf`` loads
 the photutils extension automatically. The ASDF tags and schema URIs are
 unchanged, so existing ASDF files remain readable.
 
-Isophote Fitting Keywords
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Isophote API Names
+^^^^^^^^^^^^^^^^^^
+
+The names in the `photutils.isophote` API were made consistent. The
+same quantity now has the same name as an attribute, a table column,
+and a keyword, and the names follow the conventions of the rest
+of Photutils (spelled-out words, ``n_`` for counts, and ``_err`` for
+errors). Every old name still works with a
+`~photutils.utils.exceptions.PhotutilsDeprecationWarning` that names
+the replacement, and will be removed in version 4.0. Names that were
+already deprecated in version 3.0 (e.g., ``grad_error``, ``niter``)
+now point directly to the new names.
+
+For example, code that fits an image and reads the results changes
+from::
+
+    # Old (deprecated)
+    geometry = EllipseGeometry(x0, y0, 20.0, eps=0.2, pa=0.5)
+    isolist = Ellipse(data, geometry=geometry).fit_image(maxsma=100.0,
+                                                         sclip=2.5)
+    print(isolist.intens, isolist.eps, isolist.pa)
+    tbl = isolist.to_table('main')
+    model = build_ellipse_model(data.shape, isolist, fill=0.0)
+
+to::
+
+    # New
+    geometry = EllipseGeometry(x0, y0, 20.0, ellipticity=0.2,
+                               orientation=0.5)
+    isolist = Ellipse(data, geometry=geometry).fit_image(
+        max_sma=100.0, clip_sigma=2.5)
+    print(isolist.intensity, isolist.ellipticity, isolist.orientation)
+    tbl = isolist.to_table()
+    model = isolist.make_model_image(data.shape, fill_value=0.0)
+
+The ``orientation`` and ``orientation_err`` attributes, properties, and
+columns are `~astropy.units.Quantity` values in degrees, measured
+counterclockwise from the positive x axis. The deprecated ``pa`` and
+``pa_err`` attributes still return floats in radians until they are
+removed.
+
+The ``'main'`` and ``'all'`` values of the ``columns`` keyword of
+`~photutils.isophote.IsophoteList.to_table` are deprecated. Use
+``columns=None`` for the default columns and
+``columns=isolist.properties`` for all of them. The
+``IsophoteList.get_names`` method is deprecated in favor of the
+``properties`` attribute.
+
+The following tables list the renamed names, grouped by where they
+are used.
+
+Isophote and IsophoteList attributes and table columns
+""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Old name
+     - New name
+   * - ``intens``
+     - ``intensity``
+   * - ``int_err`` (``intens_err`` column)
+     - ``intensity_err``
+   * - ``eps``
+     - ``ellipticity``
+   * - ``ellip_err``
+     - ``ellipticity_err``
+   * - ``pa``
+     - ``orientation``
+   * - ``pa_err``
+     - ``orientation_err``
+   * - ``grad``
+     - ``gradient``
+   * - ``grad_error``
+     - ``gradient_err``
+   * - ``grad_r_error`` (``grad_rerror`` column)
+     - ``gradient_rel_err``
+   * - ``pix_stddev``
+     - ``pixel_stddev``
+   * - ``sarea``
+     - ``sector_area``
+   * - ``ndata``
+     - ``n_data``
+   * - ``nflag``, ``n_flag``
+     - ``n_flagged``
+   * - ``niter``
+     - ``n_iter``
+   * - ``tflux_e``
+     - ``total_flux_ellipse``
+   * - ``tflux_c``
+     - ``total_flux_circle``
+   * - ``npix_e``
+     - ``n_pixels_ellipse``
+   * - ``npix_c``
+     - ``n_pixels_circle``
+
+EllipseGeometry
+"""""""""""""""
+
+These are the keywords and the attributes of
+`~photutils.isophote.EllipseGeometry`. The ``orientation`` keyword
+accepts an angular `~astropy.units.Quantity` or a float in radians, and
+the attribute is a `~astropy.units.Quantity` in degrees.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Old name
+     - New name
+   * - ``eps``
+     - ``ellipticity``
+   * - ``pa``
+     - ``orientation``
+   * - ``astep``
+     - ``step``
+   * - ``fix_pa``
+     - ``fix_orientation``
+   * - ``fix_eps``
+     - ``fix_ellipticity``
+
+EllipseSample
+"""""""""""""
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Old name
+     - New name
+   * - ``astep`` keyword
+     - ``step``
+   * - ``eps`` keyword
+     - ``ellipticity``
+   * - ``position_angle`` keyword
+     - ``orientation``
+   * - ``sclip`` keyword and attribute
+     - ``clip_sigma``
+   * - ``integrmode`` keyword and attribute
+     - ``integration_mode``
+   * - ``mean`` attribute
+     - ``intensity``
+   * - ``actual_points`` attribute
+     - ``n_valid``
+   * - ``total_points`` attribute
+     - ``n_total``
+   * - ``values`` attribute
+     - ``angles``, ``radii``, and ``intensities``
+
+Fit keywords
+""""""""""""
+
+These are the keywords of `~photutils.isophote.Ellipse.fit_image`,
+`~photutils.isophote.Ellipse.fit_isophote`, and the deprecated
+``EllipseFitter.fit`` method. Each method accepts only the keywords
+it already had.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Old name
+     - New name
+   * - ``sma0``
+     - ``sma_start``
+   * - ``minsma``
+     - ``min_sma``
+   * - ``maxsma``
+     - ``max_sma``
+   * - ``conver``
+     - ``convergence``
+   * - ``minit``
+     - ``miniters``
+   * - ``maxit``
+     - ``maxiters``
+   * - ``fflag``
+     - ``min_valid_fraction``
+   * - ``maxgerr`` (``fit_image`` only)
+     - ``max_gradient_rel_err``
+   * - ``sclip``
+     - ``clip_sigma``
+   * - ``integrmode``
+     - ``integration_mode``
+   * - ``linear``
+     - ``linear_growth``
+   * - ``maxrit``
+     - ``max_iterative_sma``
+   * - ``fix_pa``
+     - ``fix_orientation``
+   * - ``fix_eps``
+     - ``fix_ellipticity``
+
+The ``sclip`` and ``integrmode`` keywords of
+`~photutils.isophote.Ellipse.measure_isophotes` were new in this
+release, so they were renamed with no deprecation period.
+
+Names leaving the public API
+""""""""""""""""""""""""""""
+
+These names were internal to the fitter. They are deprecated and
+have no replacement unless one is listed.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Old name
+     - Replacement
+   * - ``EllipseFitter``
+     - `~photutils.isophote.Ellipse.fit_isophote`
+   * - ``build_ellipse_model``
+     - `~photutils.isophote.IsophoteList.make_model_image`
+   * - ``first_and_second_harmonic_function``,
+       ``fit_first_and_second_harmonics``, ``fit_upper_harmonic``
+     - None
+   * - ``Isophote.fix_geometry``
+     - None
+   * - Comparison operators of ``Isophote``
+     - Compare the ``sma`` values
+   * - ``BILINEAR``, ``NEAREST_NEIGHBOR``, ``MEAN``, ``MEDIAN``, and
+       ``INTEGRATORS`` in ``photutils.isophote.integrator``
+     - Pass the integration mode as a string, such as ``'bilinear'``
+   * - ``initialize_sector_geometry``, ``polar_angle_sector_limits``,
+       ``bounding_ellipses``, ``update_sma``, ``reset_sma``, and the
+       ``sector_angular_width``, ``initial_polar_angle``,
+       ``initial_polar_radius``, and ``fix`` attributes of
+       `~photutils.isophote.EllipseGeometry`
+     - None. Use the ``fix_center``, ``fix_orientation``, and
+       ``fix_ellipticity`` attributes to see which parameters are fixed.
+   * - ``fixed_parameters`` keyword of ``EllipseSample.update``
+     - None
+
+The integrator constants are no longer in ``__all__``, so
+``from photutils.isophote import *`` no longer provides them.
+
+Isophote Keywords With No Effect
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``maxgerr`` and ``going_inwards`` keywords of
-`~photutils.isophote.EllipseFitter.fit` and
 `~photutils.isophote.Ellipse.fit_isophote` are deprecated and will be
 removed in version 4.0. They have no effect. The
-``max_gradient_rel_err`` criterion compares consecutive isophotes, so it is applied only by
-`~photutils.isophote.Ellipse.fit_image`.
+``max_gradient_rel_err`` criterion compares consecutive isophotes,
+so it is applied only by `~photutils.isophote.Ellipse.fit_image`. The
+same holds for the deprecated ``EllipseFitter.fit`` method.
 
 The ``threshold`` keyword and the ``set_threshold`` method of
 `~photutils.isophote.Ellipse` are also deprecated and will be removed
@@ -217,30 +488,6 @@ in version 4.0. They have no effect because
 `~photutils.isophote.Ellipse` does not run the object centerer. Use
 `~photutils.isophote.EllipseGeometry.find_center` to refine the initial
 center before fitting.
-
-The keywords of `~photutils.isophote.Ellipse.fit_image`,
-`~photutils.isophote.Ellipse.fit_isophote`, and
-`~photutils.isophote.EllipseFitter.fit` have descriptive names. For
-example, ``sma0``, ``maxsma``, ``conver``, ``sclip``, and
-``integrmode`` are now ``sma_start``, ``max_sma``, ``convergence``,
-``clip_sigma``, and ``integration_mode``. The old names are
-deprecated and will be removed in version 4.0. See the changelog for
-the full list.
-
-Isophote Model Images
-^^^^^^^^^^^^^^^^^^^^^
-
-The ``build_ellipse_model`` function is deprecated and will be removed
-in version 4.0. Use the new
-:meth:`~photutils.isophote.IsophoteList.make_model_image` method
-instead. Its ``fill`` argument is now the keyword-only ``fill_value``
-argument::
-
-    # Old (deprecated)
-    model = build_ellipse_model(data.shape, isolist, fill=0.0)
-
-    # New
-    model = isolist.make_model_image(data.shape, fill_value=0.0)
 
 
 .. _whatsnew-3.2-breaking-changes:
@@ -269,3 +516,32 @@ were silently combined.
 catalog with both ``x`` and ``y`` columns and a pair of fitted or
 initial position columns now uses the fitted or initial positions,
 unless the catalog has a ``skycoord`` column.
+
+Isophote Missing Values
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The `~photutils.isophote.Isophote` attributes that could not be
+computed are now NaN instead of `None`. This applies to the gradient
+errors, the higher-order harmonic amplitudes (``a3`` to ``b4``) and
+their errors, and the values that are not defined for the central
+pixel. The columns of the tables from
+`~photutils.isophote.IsophoteList.to_table` always have a numerical
+data type. Code that tests these values with ``is None`` must use
+`numpy.isnan` instead::
+
+    # Old
+    if isophote.a3 is None:
+        ...
+
+    # New
+    if np.isnan(isophote.a3):
+        ...
+
+Central Pixel Classes
+^^^^^^^^^^^^^^^^^^^^^
+
+The ``CentralEllipseSample``, ``CentralEllipseFitter``, and
+``CentralPixel`` classes were removed. They were not part of the public
+API, so they have no deprecation period. The central pixel is now a
+regular `~photutils.isophote.Isophote` with an ``sma`` of zero, and
+``isophote.sma == 0`` replaces ``isinstance(isophote, CentralPixel)``.

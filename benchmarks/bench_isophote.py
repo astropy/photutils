@@ -6,7 +6,7 @@ Benchmarks for the photutils.isophote subpackage.
 The benchmarks cover full isophote fitting with Ellipse.fit_image,
 elliptical sample extraction with EllipseSample.extract for each
 integration mode, model-image reconstruction with
-build_ellipse_model, and the scaling of the private
+IsophoteList.make_model_image, and the scaling of the private
 build_ellipse_model_c Cython kernel with image size.
 
 Run ``python benchmarks/bench_isophote.py --help`` to see the
@@ -31,9 +31,9 @@ EXTRACT_MODES = ('bilinear', 'nearest_neighbor', 'mean', 'median')
 
 # Geometry of the reference isophote in the simulated galaxy image
 X0 = Y0 = 256.0
-SMA0 = 20.0
-EPS = 0.2
-PA = 0.0
+SMA_START = 20.0
+ELLIPTICITY = 0.2
+ORIENTATION = 0.0
 
 
 def make_galaxy_image(*, seed=0):
@@ -53,7 +53,7 @@ def make_galaxy_image(*, seed=0):
     return make_test_image(seed=seed)
 
 
-def run_fit_image(data, *, integrmode='bilinear', maxsma=200.0):
+def run_fit_image(data, *, integration_mode='bilinear', max_sma=200.0):
     """
     Run a full isophote fit on the data.
 
@@ -65,10 +65,10 @@ def run_fit_image(data, *, integrmode='bilinear', maxsma=200.0):
     data : 2D `~numpy.ndarray`
         The galaxy image.
 
-    integrmode : str, optional
+    integration_mode : str, optional
         The integration mode.
 
-    maxsma : float, optional
+    max_sma : float, optional
         The maximum semimajor axis length.
 
     Returns
@@ -76,14 +76,16 @@ def run_fit_image(data, *, integrmode='bilinear', maxsma=200.0):
     result : `~photutils.isophote.IsophoteList`
         The fitted isophotes.
     """
-    geometry = EllipseGeometry(X0, Y0, SMA0, EPS, PA)
+    geometry = EllipseGeometry(X0, Y0, SMA_START, ELLIPTICITY,
+                               ORIENTATION)
     ellipse = Ellipse(data, geometry=geometry)
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', RuntimeWarning)
-        return ellipse.fit_image(integrmode=integrmode, maxsma=maxsma)
+        return ellipse.fit_image(integration_mode=integration_mode,
+                                 max_sma=max_sma)
 
 
-def bench_fit_image(*, maxsma=200.0, seed=0):
+def bench_fit_image(*, max_sma=200.0, seed=0):
     """
     Benchmark Ellipse.fit_image for each integration mode.
 
@@ -92,7 +94,7 @@ def bench_fit_image(*, maxsma=200.0, seed=0):
 
     Parameters
     ----------
-    maxsma : float, optional
+    max_sma : float, optional
         The maximum semimajor axis length.
 
     seed : int, optional
@@ -100,11 +102,11 @@ def bench_fit_image(*, maxsma=200.0, seed=0):
     """
     data = make_galaxy_image(seed=seed)
     print(f'\n== Ellipse.fit_image ({data.shape[1]}x{data.shape[0]} '
-          f'image, maxsma={maxsma:g}) ==')
+          f'image, max_sma={max_sma:g}) ==')
     print(f'{"mode":>18}{"time":>12}{"isophotes":>12}')
     for mode in FIT_MODES:
-        bench = partial(run_fit_image, data, integrmode=mode,
-                        maxsma=maxsma)
+        bench = partial(run_fit_image, data, integration_mode=mode,
+                        max_sma=max_sma)
         try:
             t_run = time_best(bench, repeats=1)
             isolist = bench()
@@ -114,7 +116,7 @@ def bench_fit_image(*, maxsma=200.0, seed=0):
         print(f'{mode:>18}{f"{t_run:.3f}s":>12}{len(isolist):>12}')
 
 
-def run_extract(data, sma, n_iter, *, integrmode='bilinear'):
+def run_extract(data, sma, n_iter, *, integration_mode='bilinear'):
     """
     Extract an elliptical sample repeatedly from fresh samples.
 
@@ -132,12 +134,14 @@ def run_extract(data, sma, n_iter, *, integrmode='bilinear'):
     n_iter : int
         The number of extractions.
 
-    integrmode : str, optional
+    integration_mode : str, optional
         The integration mode.
     """
     for _ in range(n_iter):
-        sample = EllipseSample(data, sma, x0=X0, y0=Y0, eps=EPS,
-                               position_angle=PA, integrmode=integrmode)
+        sample = EllipseSample(data, sma, x0=X0, y0=Y0,
+                               ellipticity=ELLIPTICITY,
+                               orientation=ORIENTATION,
+                               integration_mode=integration_mode)
         sample.extract()
 
 
@@ -170,13 +174,13 @@ def bench_sample(*, sma_list=(20.0, 80.0), n_iter=20, repeats=3,
         cells = ''
         for sma in sma_list:
             bench = partial(run_extract, data, sma, n_iter,
-                            integrmode=mode)
+                            integration_mode=mode)
             t_call = time_best(bench, repeats=repeats) / n_iter
             cells += f'{f"{t_call * 1e3:.3f}ms":>12}'
         print(f'{mode:>18}{cells}')
 
 
-def bench_model(*, maxsma=200.0, repeats=3, seed=0):
+def bench_model(*, max_sma=200.0, repeats=3, seed=0):
     """
     Benchmark IsophoteList.make_model_image, with and without high harmonics.
 
@@ -185,7 +189,7 @@ def bench_model(*, maxsma=200.0, repeats=3, seed=0):
 
     Parameters
     ----------
-    maxsma : float, optional
+    max_sma : float, optional
         The maximum semimajor axis length of the isophote fit.
 
     repeats : int, optional
@@ -195,7 +199,7 @@ def bench_model(*, maxsma=200.0, repeats=3, seed=0):
         The random number generator seed.
     """
     data = make_galaxy_image(seed=seed)
-    isolist = run_fit_image(data, maxsma=maxsma)
+    isolist = run_fit_image(data, max_sma=max_sma)
     print('\n== IsophoteList.make_model_image '
           f'({data.shape[1]}x{data.shape[0]} image, {len(isolist)} '
           'isophotes) ==')
@@ -213,8 +217,8 @@ def run_kernel(size, *, harmonics=False):
     Call the build_ellipse_model_c kernel for a size x size image.
 
     The isophote parameter arrays mimic the finely spaced (0.01 pixel)
-    interpolated arrays that build_ellipse_model passes to the kernel,
-    with the outermost isophote at 0.35 * size.
+    interpolated arrays that IsophoteList.make_model_image passes to
+    the kernel, with the outermost isophote at 0.35 * size.
 
     Parameters
     ----------
@@ -227,16 +231,17 @@ def run_kernel(size, *, harmonics=False):
     max_sma = 0.35 * size
     n_sma = int(max_sma / 0.01)
     sma = np.linspace(0.5, max_sma, n_sma)
-    intens = np.full(n_sma, 100.0)
-    eps = np.full(n_sma, EPS)
-    pa = np.full(n_sma, 0.4)
+    intensity = np.full(n_sma, 100.0)
+    ellipticity = np.full(n_sma, ELLIPTICITY)
+    orientation = np.full(n_sma, 0.4)
     x0 = np.full(n_sma, size / 2.0)
     y0 = np.full(n_sma, size / 2.0)
-    harmonic_arrays = []
+    harmonic_arrays = {}
     if harmonics:
-        harmonic_arrays = [np.full(n_sma, 0.01) for _ in range(4)]
-    build_ellipse_model_c(size, size, sma, intens, eps, pa, x0, y0,
-                          *harmonic_arrays)
+        harmonic_arrays = {f'{name}_array': np.full(n_sma, 0.01)
+                           for name in ('a3', 'b3', 'a4', 'b4')}
+    build_ellipse_model_c(size, size, sma, intensity, ellipticity,
+                          orientation, x0, y0, **harmonic_arrays)
 
 
 def bench_kernel(*, sizes=(256, 512), repeats=3):
@@ -310,7 +315,7 @@ def main():
     """
     parser = argparse.ArgumentParser(
         description='Benchmarks for the photutils.isophote subpackage.')
-    parser.add_argument('--maxsma', type=float, default=200.0,
+    parser.add_argument('--max-sma', type=float, default=200.0,
                         help='maximum semimajor axis length for the '
                              'isophote fits (default: %(default)s)')
     parser.add_argument('--sma-list', type=parse_float_list,
@@ -343,12 +348,12 @@ def main():
     print_environment()
 
     if args.which in ('all', 'fit-image'):
-        bench_fit_image(maxsma=args.maxsma, seed=args.seed)
+        bench_fit_image(max_sma=args.max_sma, seed=args.seed)
     if args.which in ('all', 'sample'):
         bench_sample(sma_list=args.sma_list, n_iter=args.n_iter,
                      repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'model'):
-        bench_model(maxsma=args.maxsma, repeats=args.repeats,
+        bench_model(max_sma=args.max_sma, repeats=args.repeats,
                     seed=args.seed)
     if args.which in ('all', 'kernel'):
         bench_kernel(sizes=args.sizes, repeats=args.repeats)

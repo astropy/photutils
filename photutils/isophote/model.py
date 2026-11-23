@@ -62,7 +62,7 @@ def _make_model_image(isolist, shape, *, fill_value, high_harmonics,
         isolist.sma, isolist.intensity, nodes)(finely_spaced_sma)
     eps_array = LSQUnivariateSpline(
         isolist.sma, isolist.ellipticity, nodes)(finely_spaced_sma)
-    # The position angle is defined modulo pi. Fitted values near 0
+    # The orientation is defined modulo pi. Fitted values near 0
     # or pi can jump by almost pi between neighboring isophotes, so
     # unwrap them to prevent the spline from sweeping through all the
     # angles in between.
@@ -80,7 +80,7 @@ def _make_model_image(isolist, shape, *, fill_value, high_harmonics,
         grad_array = LSQUnivariateSpline(
             isolist.sma, isolist.gradient, nodes)(finely_spaced_sma)
 
-        # Shifting the position angle by pi also shifts the angle
+        # Shifting the orientation by pi also shifts the angle
         # origin of the harmonics by pi, which flips the sign of the
         # third-order harmonics and leaves the fourth-order harmonics
         # unchanged.

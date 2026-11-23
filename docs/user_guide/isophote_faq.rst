@@ -96,8 +96,7 @@ any negative gradient is meaningful.
 If still no meaningful gradient can be measured, the algorithm uses
 the reference gradient multiplied by a factor of 0.8, which makes it
 shallower. The current gradient error then cannot be computed and is
-set to `None` (NaN in `~photutils.isophote.IsophoteList` arrays and
-tables).
+NaN.
 
 The factor of 0.8 is roughly what is expected between two isophotes
 from semimajor-axis geometrical-sampling steps of 10% to 20% and a de
@@ -145,7 +144,7 @@ can be found by simply "projecting" the harmonic amplitude errors that
 come from the least-squares covariance matrix by the same formulae in
 :ref:`Question 1 <harmonic_ampl>` above used to "project" the
 associated parameter updates. In other words, errors for the ellipse
-center, ellipticity, and position angle are computed by the same
+center, ellipticity, and orientation are computed by the same
 formulae as in :ref:`Question 1 <harmonic_ampl>`, but replacing the
 least-squares amplitudes by their errors. This is empirical and
 difficult to justify in terms of any theoretical error analysis, but
@@ -246,7 +245,7 @@ move freely within a circle of that radius around the center of the
 input `~photutils.isophote.EllipseGeometry`. If the fit of an isophote
 would move the center outside this circle, the center of that isophote
 is placed on the circle and held fixed for the rest of its fit, while
-the ellipticity and position angle continue to be fitted. The next
+the ellipticity and orientation continue to be fitted. The next
 isophote starts from that position and may move its center back
 inside the circle.
 
@@ -274,8 +273,8 @@ fit, :meth:`~photutils.isophote.Ellipse.fit_image` emits a "No
 meaningful fit was possible" warning and returns an empty list.
 
 No setting of the fit parameters solves this reliably. In particular,
-the ``max_gradient_rel_err`` parameter only controls where the outward growth
-stops, so it does not help the first isophote. Multiplying the image
+the ``max_gradient_rel_err`` parameter only controls where the outward
+growth stops, so it does not help the first isophote. Multiplying the image
 by a constant does not help either, because the algorithm does not
 depend on the intensity scale.
 

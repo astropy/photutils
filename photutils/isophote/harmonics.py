@@ -116,7 +116,7 @@ def first_and_second_harmonic_function(phi, c):
     phi : float or `~numpy.ndarray`
         The angle(s) (radians) along the elliptical path, measured
         counterclockwise from the end of the semimajor axis that points
-        in the direction of the position angle.
+        in the direction of the orientation.
     c : `~numpy.ndarray` of shape (5,)
         Array containing the five harmonic coefficients.
 
@@ -146,7 +146,7 @@ def fit_first_and_second_harmonics(phi, intensities):
     phi : 1D `~numpy.ndarray`
         The angle(s) (radians) along the elliptical path, measured
         counterclockwise from the end of the semimajor axis that points
-        in the direction of the position angle.
+        in the direction of the orientation.
     intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.
@@ -192,7 +192,7 @@ def fit_upper_harmonic(phi, intensities, order):
     phi : 1D `~numpy.ndarray`
         The angle(s) (radians) along the elliptical path, measured
         counterclockwise from the end of the semimajor axis that points
-        in the direction of the position angle.
+        in the direction of the orientation.
     intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.

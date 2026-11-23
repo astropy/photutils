@@ -115,6 +115,10 @@ class EllipseGeometry:
 
         where a and b are the lengths of the semimajor and semiminor
         axes, respectively. The ellipticity must be less than 1.
+
+        .. deprecated:: 3.2
+            The ``eps`` keyword is deprecated. Use ``ellipticity``
+            instead.
     orientation : float or `~astropy.units.Quantity`
         The orientation of the semimajor axis, measured
         counterclockwise from the positive x axis of the image array.
@@ -125,6 +129,10 @@ class EllipseGeometry:
         degrees. When the orientations are near either end of the
         range, noise can make the solution jump back and forth between
         successive isophotes, by amounts close to 180 degrees.
+
+        .. deprecated:: 3.2
+            The ``pa`` keyword is deprecated. Use ``orientation``
+            instead.
     step : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
@@ -133,6 +141,9 @@ class EllipseGeometry:
         `~photutils.isophote.Ellipse`, this value is replaced by the
         ``step`` keyword of its ``fit_image`` and ``fit_isophote``
         methods.
+
+        .. deprecated:: 3.2
+            The ``astep`` keyword is deprecated. Use ``step`` instead.
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
         `False`. When the geometry is input to
@@ -145,9 +156,64 @@ class EllipseGeometry:
     fix_orientation : bool, optional
         Keep the orientation of the semimajor axis of the ellipse fixed
         during the fit? The default is `False`.
+
+        .. deprecated:: 3.2
+            The ``fix_pa`` keyword is deprecated. Use
+            ``fix_orientation`` instead.
     fix_ellipticity : bool, optional
         Keep ellipticity of ellipse fixed during fit? The default is
         `False`.
+
+        .. deprecated:: 3.2
+            The ``fix_eps`` keyword is deprecated. Use
+            ``fix_ellipticity`` instead.
+
+    Attributes
+    ----------
+    x0, y0 : float
+        The center pixel coordinate of the ellipse.
+    sma : float
+        The semimajor axis of the ellipse in pixels.
+    ellipticity : float
+        The ellipticity of the ellipse.
+    eps : float
+        .. deprecated:: 3.2
+            Use ``ellipticity`` instead.
+    orientation : `~astropy.units.Quantity`
+        The orientation of the semimajor axis in degrees, measured
+        counterclockwise from the positive x axis of the image array.
+    pa : float
+        .. deprecated:: 3.2
+            Use ``orientation`` instead. It is a float in radians.
+    step : float
+        The step value for growing/shrinking the semimajor axis.
+    astep : float
+        .. deprecated:: 3.2
+            Use ``step`` instead.
+    linear_growth : bool
+        The semimajor axis growing/shrinking mode.
+    fix_center : bool
+        Whether the center is kept fixed during the fit.
+    fix_orientation : bool
+        Whether the orientation is kept fixed during the fit.
+    fix_ellipticity : bool
+        Whether the ellipticity is kept fixed during the fit.
+    fix : 1D `~numpy.ndarray`
+        .. deprecated:: 3.2
+            Use ``fix_center``, ``fix_orientation``, and
+            ``fix_ellipticity`` instead.
+    sector_angular_width : float
+        .. deprecated:: 3.2
+            This attribute was internal to the fitter and has no
+            replacement.
+    initial_polar_angle : float
+        .. deprecated:: 3.2
+            This attribute was internal to the fitter and has no
+            replacement.
+    initial_polar_radius : float
+        .. deprecated:: 3.2
+            This attribute was internal to the fitter and has no
+            replacement.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')

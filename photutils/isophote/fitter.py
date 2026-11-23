@@ -73,7 +73,7 @@ class _EllipseFitter:
         the sample, there is nothing to fit. The isophote is then
         extracted with that geometry and its stop code is 4, or 3
         (invalid) if it has no valid data points. If the ellipticity
-        is fixed at zero, the position angle is also treated as fixed.
+        is fixed at zero, the orientation is also treated as fixed.
 
         Parameters
         ----------
@@ -387,7 +387,7 @@ class _EllipseFitter:
         # See if eps == 0 (round isophote) was crossed. If so, fix it
         # but still proceed. An ellipse with a negative ellipticity is
         # the same as an ellipse rotated by 90 degrees with a positive
-        # ellipticity. A fixed position angle cannot be rotated, so the
+        # ellipticity. A fixed orientation cannot be rotated, so the
         # ellipse is then made nearly round below.
         if geometry.ellipticity < 0.0:
             if fixed_parameters[_ORIENTATION_INDEX]:
@@ -496,7 +496,7 @@ def _correct_center_b1(sample, harmonic):
 
 def _correct_orientation(sample, harmonic):
     """
-    Return a new sample with the position angle corrected using the
+    Return a new sample with the orientation corrected using the
     ``a2`` harmonic amplitude.
     """
     eps = sample.geometry.ellipticity

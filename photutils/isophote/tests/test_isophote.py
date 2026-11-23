@@ -62,7 +62,7 @@ class TestIsophote:
         assert iso.total_flux_circle <= 2.025e6
         assert iso.total_flux_circle >= 2.022e6
 
-        # Deviations from perfect ellipticity. The amplitudes are None
+        # Deviations from perfect ellipticity. The amplitudes are NaN
         # if the upper harmonic fit failed.
         assert np.isnan(iso.a3) or abs(iso.a3) <= 0.01
         assert np.isnan(iso.b3) or abs(iso.b3) <= 0.01
@@ -102,7 +102,7 @@ class TestIsophote:
         assert iso.total_flux_circle <= 1.38e6
         assert iso.total_flux_circle >= 1.36e6
 
-        # Deviations from perfect ellipticity. The amplitudes are None
+        # Deviations from perfect ellipticity. The amplitudes are NaN
         # if the upper harmonic fit failed.
         assert np.isnan(iso.a3) or abs(iso.a3) <= 0.05
         assert np.isnan(iso.b3) or abs(iso.b3) <= 0.05

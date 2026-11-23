@@ -64,7 +64,7 @@ class Ellipse:
         ellipse to be fitted. If `None`, a default
         `~photutils.isophote.EllipseGeometry` instance is created
         with a semimajor axis length of 10 pixels, an ellipticity of
-        0.2, and a position angle of 90 degrees. Its center is at
+        0.2, and an orientation of 90 degrees. Its center is at
         ``x0 = nx / 2`` and ``y0 = ny / 2``, where ``ny`` and ``nx``
         are the image dimensions.
 
@@ -99,7 +99,7 @@ class Ellipse:
     Each isophote is fitted at a predefined, fixed semimajor axis
     length. The algorithm starts from a first-guess elliptical isophote
     defined by approximate values for the (x, y) center coordinates,
-    ellipticity, and position angle. Using these values, the image
+    ellipticity, and orientation. Using these values, the image
     is sampled along an elliptical path, producing a 1D
     function that describes the dependence of intensity (pixel value)
     with angle (E). The function is stored as a set of 1D numpy arrays.
@@ -311,7 +311,7 @@ class Ellipse:
         of that instance. These overrides apply only to this call. The
         `~photutils.isophote.EllipseGeometry` instance is not modified.
 
-        If the center, position angle, and ellipticity are all fixed,
+        If the center, orientation, and ellipticity are all fixed,
         by the fix_XXX parameters or by the
         `~photutils.isophote.EllipseGeometry` instance, there is
         nothing to fit. A warning is emitted and an empty
@@ -481,7 +481,7 @@ class Ellipse:
             False.
 
         fix_orientation : bool, optional
-            Keep position angle of semimajor axis of ellipse fixed
+            Keep orientation of semimajor axis of ellipse fixed
             during fit? The default is False.
 
         fix_ellipticity : bool, optional
@@ -496,7 +496,7 @@ class Ellipse:
             circle of this radius. If a fit would move the center
             outside the circle, the center of that isophote is placed
             on the circle and held fixed for the rest of its fit, while
-            ellipticity and position angle continue to be fitted. If
+            ellipticity and orientation continue to be fitted. If
             `None` (default), the center is not limited. This parameter
             has no effect if ``fix_center`` is `True`.
 
@@ -517,7 +517,7 @@ class Ellipse:
         Warns
         -----
         AstropyUserWarning
-            If the center, position angle, and ellipticity are all
+            If the center, orientation, and ellipticity are all
             fixed, or if the first isophote cannot be fit. In both
             cases, an empty `~photutils.isophote.IsophoteList` is
             returned. A warning is also emitted for an isophote whose
@@ -735,16 +735,17 @@ class Ellipse:
         """
         Fit a single isophote with a given semimajor axis length.
 
-        The ``step`` and ``linear_growth`` parameters do not directly control
-        the growth or reduction of the current fitting semimajor axis
-        length. Instead, they define the elliptical annulus used by
-        the sampling algorithm, which sets the areas of the elliptical
-        sectors for the area integration modes (see the ``integration_mode``
-        parameter). The ``step`` parameter replaces the ``step``
-        attribute of the starting geometry. The ``linear_growth`` parameter,
-        if set, replaces its ``linear_growth`` attribute.
+        The ``step`` and ``linear_growth`` parameters do not directly
+        control the growth or reduction of the current fitting
+        semimajor axis length. Instead, they define the elliptical
+        annulus used by the sampling algorithm, which sets the areas of
+        the elliptical sectors for the area integration modes (see the
+        ``integration_mode`` parameter). The ``step`` parameter sets
+        the ``step`` attribute of the starting geometry. The
+        ``linear_growth`` parameter, if set, sets its ``linear_growth``
+        attribute.
 
-        If the center, position angle, and ellipticity are all fixed
+        If the center, orientation, and ellipticity are all fixed
         by the `~photutils.isophote.EllipseGeometry` instance, there
         is nothing to fit. The isophote is then extracted with that
         geometry and its stop code is 4.
@@ -976,7 +977,7 @@ class Ellipse:
             iterable of
             `~photutils.isophote.Isophote` and
             `~photutils.isophote.EllipseGeometry` instances. The center,
-            semimajor axis length, ellipticity, and position angle of
+            semimajor axis length, ellipticity, and orientation of
             each ellipse are used. The ``step`` and ``linear_growth``
             values of each geometry define the sampling used to compute
             the local radial gradient and the sector areas. The input
