@@ -994,12 +994,20 @@ class IsophoteList:
             The ``orientation`` and ``orientation_err`` columns must
             have an angular unit. Plain text formats such as CSV do
             not keep units, so set the unit after reading the table
-            (e.g., ``table['orientation'].unit = 'deg'``). The units of
-            the other columns are ignored.
+            (e.g., ``table['orientation'].unit = 'deg'``). A
+            `~astropy.units.Quantity` column of another property must
+            be dimensionless, or in pixels for the ``sma``, ``x0``,
+            ``x0_err``, ``y0``, and ``y0_err`` columns.
+
+            The ``sma`` values must be finite and nonnegative, the
+            ``x0``, ``y0``, and ``orientation`` values must be finite,
+            and the ``ellipticity`` values must be at least 0 and less
+            than 1. The ``orientation_err`` values may be NaN but not
+            infinite.
 
         step : float, optional
-            The step value of the geometry of each isophote, which
-            sets the sampling annulus used by
+            The positive step value of the geometry of each isophote,
+            which sets the sampling annulus used by
             `Ellipse.measure_isophotes
             <photutils.isophote.Ellipse.measure_isophotes>`. See
             `~photutils.isophote.EllipseGeometry`.
@@ -1021,9 +1029,12 @@ class IsophoteList:
             `~astropy.table.QTable`.
 
         ValueError
-            If a required column is missing, if an angle column has no
-            angular unit, or if a value cannot be represented with the
-            type of its property (e.g., NaN in the ``n_data`` column).
+            If a required column is missing, if a column has a unit
+            that is not allowed, if a geometry value is out of range
+            (the error names the column and the first invalid row), if
+            ``step`` is not a positive finite number, or if a value
+            cannot be represented with the type of its property (e.g.,
+            NaN in the ``n_data`` column).
         """
         return _isophote_list_from_table(cls, table, step=step,
                                          linear_growth=linear_growth)
@@ -1362,10 +1373,52 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
 
 _REQUIRED_COLUMNS = ('sma', 'x0', 'y0', 'ellipticity', 'orientation')
 
+# The columns that may be a Quantity in pixels. The other columns of
+# properties without a unit may be a dimensionless Quantity.
+_PIXEL_COLUMNS = ('sma', 'x0', 'x0_err', 'y0', 'y0_err')
+
+# The checks of the column values, as (test, requirement) pairs. The
+# test returns a boolean array that is True for the valid values. The
+# angles are tested in radians.
+_VALUE_CHECKS = {
+    'sma': (lambda value: np.isfinite(value) & (value >= 0),
+            'finite, nonnegative values'),
+    'x0': (np.isfinite, 'finite values'),
+    'y0': (np.isfinite, 'finite values'),
+    'ellipticity': (lambda value: (np.isfinite(value) & (value >= 0)
+                                   & (value < 1)),
+                    'finite values that are at least 0 and less than 1'),
+    'orientation': (np.isfinite, 'finite values'),
+    'orientation_err': (lambda value: ~np.isinf(value),
+                        'finite or NaN values'),
+}
+
 # The values of the properties that are not in a table.
 _MISSING_VALUES = {name: {float: np.nan, int: 0, bool: True}[dtype]
                    for name, dtype, _, _ in _ISOPHOTE_PROPERTIES}
 _MISSING_VALUES['stop_code'] = 0
+
+
+def _quantity_column_value(data, unit, name, column_name):
+    """
+    Return the values of a `~astropy.units.Quantity` column of a
+    property that has no unit.
+
+    The column must be dimensionless, or in pixels for the
+    ``_PIXEL_COLUMNS``.
+    """
+    allowed_units = [u.dimensionless_unscaled]
+    requirement = 'dimensionless'
+    if name in _PIXEL_COLUMNS:
+        allowed_units.append(u.pix)
+        requirement = 'dimensionless or in pixels'
+    for allowed_unit in allowed_units:
+        if unit == allowed_unit:
+            return data
+        if unit.is_equivalent(allowed_unit):
+            return u.Quantity(data, unit).to_value(allowed_unit)
+    msg = f'The {column_name!r} column must be {requirement}, not {unit}.'
+    raise ValueError(msg)
 
 
 def _isophote_list_from_table(cls, table, *, step, linear_growth):
@@ -1377,6 +1430,10 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
         msg = ('An astropy Table or QTable is required, not '
                f'{type(table).__name__}.')
         raise TypeError(msg)
+
+    if not (np.isfinite(step) and step > 0):
+        msg = f'step must be a positive finite number, got {step!r}.'
+        raise ValueError(msg)
 
     # Remove in 4.0
     # Only the names in table.colnames are used to read the table,
@@ -1435,9 +1492,13 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
             try:
                 data = u.Quantity(data, unit).to_value(u.rad)
             except u.UnitConversionError:
+                unit_name = unit.to_string() or 'a dimensionless unit'
                 msg = (f'The {column_name!r} column must have an angular '
-                       f'unit, not {unit}.')
+                       f'unit, not {unit_name}.')
                 raise ValueError(msg) from None
+        elif isinstance(column, u.Quantity):
+            data = _quantity_column_value(data, column.unit, name,
+                                          column_name)
 
         if mask.any():
             if dtypes[name] is not float or name in _REQUIRED_COLUMNS:
@@ -1455,12 +1516,20 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
                 msg = ("The 'valid' column must contain True or False "
                        'values.')
                 raise ValueError(msg) from None
-        elif name == 'valid' and (data.dtype.kind not in 'biu'
+        elif name == 'valid' and (data.dtype.kind not in 'biuf'
                                   or not np.all((data == 0) | (data == 1))):
             msg = "The 'valid' column must contain True or False values."
             raise ValueError(msg)
 
         data = np.asarray(data)
+        if name in _VALUE_CHECKS:
+            test, requirement = _VALUE_CHECKS[name]
+            if not np.all(is_valid := test(data)):
+                index = np.flatnonzero(~is_valid)[0]
+                msg = (f'The {column_name!r} column must contain '
+                       f'{requirement}. The value in row {index} is '
+                       f'{data[index]}.')
+                raise ValueError(msg)
         if dtypes[name] is int:
             integral = data.dtype.kind in 'biu' or (
                 data.dtype.kind == 'f'

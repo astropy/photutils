@@ -166,7 +166,13 @@ property::
 The ``orientation`` and ``orientation_err`` columns must have an
 angular unit. The ECSV and FITS formats keep the units. Plain text
 formats such as CSV do not, so set the unit after reading the table
-(e.g., ``tbl['orientation'].unit = 'deg'``).
+(e.g., ``tbl['orientation'].unit = 'deg'``). A
+`~astropy.units.Quantity` column of another property must be
+dimensionless, or in pixels for the center and ``sma`` columns.
+``from_table`` raises an error, naming the column and the first
+invalid row, if a ``sma`` value is negative, if an ``ellipticity``
+value is not in the range from 0 up to (but not including) 1, or if a
+required geometry value is not finite.
 
 The loaded isophotes have no sample, so ``loaded.sample`` holds `None`
 for each isophote. They can still be used to make a model image with

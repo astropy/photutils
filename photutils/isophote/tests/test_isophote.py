@@ -1188,6 +1188,117 @@ def test_from_table_valid_integer_invalid():
         IsophoteList.from_table(tbl)
 
 
+def _make_geometry_table():
+    """
+    Make a small table with the required from_table columns.
+    """
+    return QTable({'sma': [0.0, 2.0, 4.0, 8.0],
+                   'x0': [50.0, 50.1, 50.2, 50.3],
+                   'y0': [40.0, 40.1, 40.2, 40.3],
+                   'ellipticity': [0.0, 0.1, 0.2, 0.3],
+                   'orientation': [0.0, 10.0, 20.0, 30.0] * u.deg,
+                   'orientation_err': [np.nan, 1.0, 1.0, 1.0] * u.deg})
+
+
+@pytest.mark.parametrize(('name', 'value'), [
+    ('sma', -1.0), ('sma', np.nan), ('sma', np.inf),
+    ('x0', np.nan), ('x0', -np.inf), ('y0', np.nan), ('y0', np.inf),
+    ('ellipticity', -0.1), ('ellipticity', 1.0), ('ellipticity', 1.5),
+    ('ellipticity', np.nan), ('ellipticity', np.inf),
+    ('orientation', np.nan), ('orientation', np.inf),
+    ('orientation_err', np.inf), ('orientation_err', -np.inf),
+])
+def test_from_table_invalid_values(name, value):
+    tbl = _make_geometry_table()
+    tbl[name][2] = value * tbl[name].unit if tbl[name].unit else value
+    with pytest.raises(ValueError, match=rf"'{name}' column.*row 2\b"):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_invalid_value_first_row():
+    tbl = _make_geometry_table()
+    tbl['sma'][1] = -1.0
+    tbl['sma'][3] = -2.0
+    with pytest.raises(ValueError, match=r'row 1\b'):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_invalid_value_deprecated_name():
+    tbl = _make_geometry_table()
+    tbl.rename_column('ellipticity', 'eps')
+    tbl['eps'][3] = 1.0
+    with (pytest.warns(PhotutilsDeprecationWarning, match="'eps'"),
+          pytest.raises(ValueError, match=r"'eps' column.*row 3\b")):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_valid_edge_values():
+    tbl = _make_geometry_table()
+    tbl['ellipticity'][3] = 0.999
+    tbl['orientation'][3] = -400.0 * u.deg
+    result = IsophoteList.from_table(tbl)
+    assert result.sma[0] == 0.0
+    assert result.ellipticity[3] == 0.999
+    assert np.isnan(result.orientation_err[0])
+
+
+@pytest.mark.parametrize('step', [0.0, -0.1, np.nan, np.inf])
+def test_from_table_invalid_step(step):
+    tbl = _make_geometry_table()
+    with pytest.raises(ValueError, match='step'):
+        IsophoteList.from_table(tbl, step=step)
+
+
+@pytest.mark.parametrize('name', ['sma', 'x0', 'y0', 'x0_err', 'y0_err',
+                                  'ellipticity', 'intensity'])
+def test_from_table_quantity_units(name):
+    tbl = _make_geometry_table()
+    if name not in tbl.colnames:
+        tbl[name] = np.ones(len(tbl))
+    values = np.asarray(tbl[name])
+    pixel_names = ('sma', 'x0', 'y0', 'x0_err', 'y0_err')
+
+    tbl[name] = values * u.dimensionless_unscaled
+    result = IsophoteList.from_table(tbl)
+    assert_array_equal(getattr(result, name), values)
+
+    tbl[name] = values * u.pix
+    if name in pixel_names:
+        result = IsophoteList.from_table(tbl)
+        assert_array_equal(getattr(result, name), values)
+    else:
+        with pytest.raises(ValueError, match=rf"'{name}'.*pix"):
+            IsophoteList.from_table(tbl)
+
+    tbl[name] = values * u.arcsec
+    with pytest.raises(ValueError, match=rf"'{name}'.*arcsec"):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_float_valid_column():
+    tbl = _make_geometry_table()
+    tbl['valid'] = [1.0, 0.0, 1.0, 1.0]
+    result = IsophoteList.from_table(tbl)
+    assert_array_equal(result.valid, [True, False, True, True])
+    assert result[1].valid is False
+
+    tbl['valid'] = [1.0, 0.0, 0.5, 1.0]
+    with pytest.raises(ValueError, match="'valid'"):
+        IsophoteList.from_table(tbl)
+    tbl['valid'] = [1.0, 0.0, np.nan, 1.0]
+    with pytest.raises(ValueError, match="'valid'"):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_dimensionless_angle_message():
+    tbl = _make_geometry_table()
+    tbl['orientation'] = tbl['orientation'].value * u.dimensionless_unscaled
+    match = ("The 'orientation' column must have an angular unit, not a "
+             'dimensionless unit.')
+    with pytest.raises(ValueError, match=match):
+        IsophoteList.from_table(tbl)
+
+
 def test_from_table_not_a_table():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image()
