@@ -389,12 +389,12 @@ def batch_centroid_win(const real_t[:, ::1] data, *,
 
         * 0: disables masking
         * 1: excludes neighbor-source pixels
-             (``(seg > 0) & (seg != label)``)
+          (``(seg > 0) & (seg != label)``)
         * 4: replaces neighbor-source pixels with the values mirrored
-             across the (rounded) window center (the symmetric
-             ``'correct'`` method). A neighbor pixel whose mirror falls
-             outside the clipped window, is itself a neighbor, or is
-             masked is excluded instead of replaced.
+          across the (rounded) window center (the symmetric
+          ``'correct'`` method). A neighbor pixel whose mirror falls
+          outside the clipped window, is itself a neighbor, or is
+          masked is excluded instead of replaced.
 
     compute_err : int
         If nonzero, also accumulate the raw (unnormalized) weighted
@@ -654,12 +654,12 @@ def batch_kron_radius(const real_t[:, ::1] data, *,
 
         * 0: disables masking
         * 1: excludes neighbor-source pixels
-             (``(seg > 0) & (seg != label)``)
+          (``(seg > 0) & (seg != label)``)
         * 4: replaces neighbor-source pixels with the values mirrored
-             across the (rounded) aperture center (the symmetric
-             ``'correct'`` method). A neighbor pixel whose mirror falls
-             outside the clipped bounding box, is itself a neighbor,
-             or is masked contributes zero instead.
+          across the (rounded) aperture center (the symmetric
+          ``'correct'`` method). A neighbor pixel whose mirror falls
+          outside the clipped bounding box, is itself a neighbor,
+          or is masked contributes zero instead.
 
     scale : float
         The elliptical radius of the measurement ellipse, in units of
@@ -837,12 +837,12 @@ def batch_flux_radius_prepare(const real_t[:, ::1] data, *,
 
         * 0: disables masking
         * 1: zeroes neighbor-source pixels
-             (``(seg > 0) & (seg != label)``)
+          (``(seg > 0) & (seg != label)``)
         * 4: replaces neighbor-source pixels with the values mirrored
-             across the (rounded) cutout center (the symmetric
-             ``'correct'`` method). A neighbor pixel whose mirror falls
-             outside the clipped cutout, is itself a neighbor, or is
-             masked is zeroed instead.
+          across the (rounded) cutout center (the symmetric
+          ``'correct'`` method). A neighbor pixel whose mirror falls
+          outside the clipped cutout, is itself a neighbor, or is
+          masked is zeroed instead.
 
     use_exact : int
         Whether the root-find computes exact overlap fractions (1) or

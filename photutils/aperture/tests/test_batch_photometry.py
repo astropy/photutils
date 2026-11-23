@@ -356,6 +356,7 @@ class TestFallback:
         returns None, _batch_photometry falls back to None.
 
         This covers:
+
         - PixelAperture._batch_shape_params (the base ``return`` on its own
           line, which is the hook's default no-op implementation), and
         - the ``if spec is None: return None`` branch in _batch_photometry.
