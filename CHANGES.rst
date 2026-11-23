@@ -71,6 +71,10 @@ New Features
     the ``xcenter``, ``ycenter``, ``x_center``, and ``y_center``
     source position column names. [#2566]
 
+  - Added a ``make_cutout_model`` method to ``GriddedPSFModel`` that
+    returns a model for PSF photometry on a cutout of an image or on
+    a detector subarray. [#2567]
+
 Bug Fixes
 ^^^^^^^^^
 

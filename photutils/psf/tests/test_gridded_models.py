@@ -20,7 +20,7 @@ from astropy.table import QTable
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.datasets import make_model_image
-from photutils.psf import GriddedPSFModel, STDPSFGrid
+from photutils.psf import GriddedPSFModel, PSFPhotometry, STDPSFGrid
 from photutils.psf.tests.test_model_io import STDPSF_FILENAMES
 from photutils.segmentation import SourceCatalog, detect_sources
 
@@ -1116,6 +1116,213 @@ class TestGriddedPSFModel:
 
         # The original model must not be affected by the copy
         assert psfmodel.meta['oversampling'] == (4, 4)
+
+
+class TestMakeCutoutModel:
+    """
+    Tests for GriddedPSFModel.make_cutout_model.
+    """
+
+    xyorigin = (30, 55)
+
+    @staticmethod
+    def _source_model(psfmodel):
+        """
+        Return a copy of the model with source parameters that are
+        inside the grid and away from the grid points.
+        """
+        model = psfmodel.copy()
+        model.x_0 = 75.3
+        model.y_0 = 120.6
+        model.flux = 7.0
+        return model
+
+    @staticmethod
+    def _assert_same_source(model, cutout_model, xyorigin):
+        """
+        Assert that the cutout model at cutout coordinates equals the
+        model at the corresponding full-frame coordinates.
+        """
+        yy, xx = np.mgrid[110:131, 65:86]
+        xc = xx - xyorigin[0]
+        yc = yy - xyorigin[1]
+        assert_allclose(cutout_model(xc, yc), model(xx, yy), rtol=1e-12,
+                        atol=1e-15)
+
+        params = model.parameters
+        cutout_params = cutout_model.parameters
+        derivs = model.fit_deriv(xx, yy, *params)
+        cutout_derivs = cutout_model.fit_deriv(xc, yc, *cutout_params)
+        for cutout_deriv, deriv in zip(cutout_derivs, derivs, strict=True):
+            assert_allclose(cutout_deriv, deriv, rtol=1e-12, atol=1e-15)
+
+    def test_evaluate(self, psfmodel):
+        """
+        Test that the cutout model describes the same source, including
+        when the model was evaluated before the cutout model was made.
+        """
+        model = self._source_model(psfmodel)
+        yy, xx = np.mgrid[110:131, 65:86]
+        assert np.max(model(xx, yy)) > 1.0
+
+        cutout_model = model.make_cutout_model(xyorigin=self.xyorigin)
+        assert isinstance(cutout_model, GriddedPSFModel)
+        self._assert_same_source(model, cutout_model, self.xyorigin)
+
+    def test_attributes(self, psfmodel):
+        model = self._source_model(psfmodel)
+        cutout_model = model.make_cutout_model(self.xyorigin)
+
+        assert_equal(cutout_model.grid_xypos,
+                     model.grid_xypos - np.array(self.xyorigin))
+        assert cutout_model.grid_xypos.dtype == float
+        assert_equal(cutout_model.meta['grid_xypos'],
+                     cutout_model.grid_xypos)
+        assert cutout_model.grid_shape == model.grid_shape
+        assert_equal(cutout_model.oversampling, model.oversampling)
+        assert cutout_model.data is model.data
+        assert cutout_model.flux.value == 7.0
+        assert_allclose(cutout_model.x_0.value, 75.3 - 30)
+        assert_allclose(cutout_model.y_0.value, 120.6 - 55)
+
+    def test_original_unchanged(self, psfmodel):
+        model = self._source_model(psfmodel)
+        model.x_0.bounds = (70, 80)
+        grid_xypos = model.grid_xypos.copy()
+        yy, xx = np.mgrid[110:131, 65:86]
+        values = model(xx, yy)
+
+        cutout_model = model.make_cutout_model(self.xyorigin)
+        cutout_model.flux = 3.0
+
+        assert_equal(model.grid_xypos, grid_xypos)
+        assert_equal(model.meta['grid_xypos'], grid_xypos)
+        assert model.x_0.value == 75.3
+        assert model.y_0.value == 120.6
+        assert model.flux.value == 7.0
+        assert model.x_0.bounds == (70, 80)
+        assert_equal(model(xx, yy), values)
+
+    def test_bounds_and_fixed(self, psfmodel):
+        """
+        Test that the position bounds are shifted with the positions,
+        that an open bound stays open, and that the fixed flags are
+        kept.
+        """
+        model = self._source_model(psfmodel)
+        model.x_0.bounds = (70, 80)
+        model.y_0.bounds = (None, 130)
+        model.x_0.fixed = True
+
+        cutout_model = model.make_cutout_model(self.xyorigin)
+        assert cutout_model.x_0.bounds == (40, 50)
+        assert cutout_model.y_0.bounds == (None, 75)
+        assert cutout_model.flux.bounds == (None, None)
+        assert cutout_model.x_0.fixed
+        assert not cutout_model.y_0.fixed
+
+        cutout_model = psfmodel.make_cutout_model(self.xyorigin)
+        assert cutout_model.x_0.bounds == (None, None)
+        assert cutout_model.y_0.bounds == (None, None)
+
+    def test_shares_spline_cache(self, psfmodel, spline_builds):
+        """
+        Test that the cutout model uses the splines that the model
+        already built.
+        """
+        yy, xx = np.mgrid[110:131, 65:86]
+        model = self._source_model(psfmodel)
+        model(xx, yy)
+        n_builds = spline_builds.count
+        assert n_builds == 4
+
+        cutout_model = model.make_cutout_model(self.xyorigin)
+        cutout_model(xx - self.xyorigin[0], yy - self.xyorigin[1])
+        assert spline_builds.count == n_builds
+
+    def test_single_plane(self, psfmodel):
+        meta = {'grid_xypos': [(100, 100)], 'oversampling': 4}
+        model = GriddedPSFModel(NDData(psfmodel.data[:1], meta=meta))
+        model = self._source_model(model)
+        cutout_model = model.make_cutout_model(self.xyorigin)
+        assert_equal(cutout_model.grid_xypos, [[70, 45]])
+        self._assert_same_source(model, cutout_model, self.xyorigin)
+
+    @pytest.mark.parametrize('xyorigin', [[30, 55], np.array([30, 55]),
+                                          (-30.5, 55.25)])
+    def test_xyorigin_forms(self, psfmodel, xyorigin):
+        model = self._source_model(psfmodel)
+        cutout_model = model.make_cutout_model(xyorigin)
+        self._assert_same_source(model, cutout_model, xyorigin)
+
+    def test_float32_grid(self, psfmodel):
+        """
+        Test a model with float32 grid positions and an origin that
+        float32 cannot represent exactly.
+        """
+        meta = {'grid_xypos': psfmodel.grid_xypos.astype(np.float32),
+                'oversampling': 4}
+        model = GriddedPSFModel(NDData(psfmodel.data, meta=meta))
+        model = self._source_model(model)
+        xyorigin = (30.1, 55.7)
+        cutout_model = model.make_cutout_model(xyorigin)
+        self._assert_same_source(model, cutout_model, xyorigin)
+
+    def test_nested(self, psfmodel):
+        """
+        Test that the origins of a cutout of a cutout add.
+        """
+        model = self._source_model(psfmodel)
+        nested = model.make_cutout_model((30, 55)).make_cutout_model((5, 7))
+        direct = model.make_cutout_model((35, 62))
+        assert_equal(nested.grid_xypos, direct.grid_xypos)
+        self._assert_same_source(model, nested, (35, 62))
+
+    @pytest.mark.parametrize('xyorigin', [5, (1,), (1, 2, 3), [[1, 2]],
+                                          (np.nan, 1), (1, np.inf)])
+    def test_invalid_xyorigin(self, psfmodel, xyorigin):
+        match = 'xyorigin must'
+        with pytest.raises(ValueError, match=match):
+            psfmodel.make_cutout_model(xyorigin)
+
+    def test_psf_photometry(self, psfmodel):
+        """
+        Test that PSF photometry on a cutout with the cutout model gives
+        the results of PSF photometry on the full image.
+        """
+        params = QTable()
+        params['x_0'] = [120.3, 150.6, 135.1]
+        params['y_0'] = [100.7, 130.2, 145.4]
+        params['flux'] = [500.0, 800.0, 650.0]
+        data = make_model_image((201, 201), psfmodel, params)
+
+        init_params = QTable()
+        init_params['x'] = params['x_0'] + 0.2
+        init_params['y'] = params['y_0'] - 0.3
+        psfphot = PSFPhotometry(psfmodel, (9, 9), aperture_radius=4)
+        tbl = psfphot(data, init_params=init_params)
+        assert_allclose(tbl['flux_fit'], params['flux'], rtol=1e-6)
+
+        xstart = 100
+        ystart = 80
+        cutout = data[ystart:160, xstart:180]
+        cutout_model = psfmodel.make_cutout_model((xstart, ystart))
+        init_params['x'] -= xstart
+        init_params['y'] -= ystart
+        psfphot = PSFPhotometry(cutout_model, (9, 9), aperture_radius=4)
+        cutout_tbl = psfphot(cutout, init_params=init_params)
+
+        assert_allclose(cutout_tbl['flux_fit'], tbl['flux_fit'], rtol=1e-6)
+        assert_allclose(cutout_tbl['x_fit'] + xstart, tbl['x_fit'],
+                        rtol=1e-6)
+        assert_allclose(cutout_tbl['y_fit'] + ystart, tbl['y_fit'],
+                        rtol=1e-6)
+
+        # The model in the full-frame coordinates fits the wrong ePSFs.
+        psfphot = PSFPhotometry(psfmodel, (9, 9), aperture_radius=4)
+        wrong_tbl = psfphot(cutout, init_params=init_params)
+        flux_ratio = wrong_tbl['flux_fit'] / tbl['flux_fit']
+        assert np.max(np.abs(flux_ratio - 1)) > 0.01
 
 
 @pytest.mark.parametrize('filename', STDPSF_FILENAMES)

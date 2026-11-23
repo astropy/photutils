@@ -521,6 +521,50 @@ region of each source is well inside the image, but the model and
 residual images do not include the flux outside of it.
 
 
+.. _psf-gridded-cutout:
+
+Gridded PSF Models on Image Cutouts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A `~photutils.psf.GriddedPSFModel` interpolates its grid of ePSFs at
+the position of each source. The pixel coordinates of the image must
+therefore be the detector coordinates in which the grid positions
+(``grid_xypos``) are defined. That is not the case for a cutout of an
+image or for a detector subarray, whose pixel coordinates are offset
+from the detector coordinates. The model then interpolates the grid at
+the wrong detector position, and the fitted fluxes and positions can be
+wrong.
+
+To fit the sources in a cutout, make a model for the cutout with the
+:meth:`~photutils.psf.GriddedPSFModel.make_cutout_model` method.
+Its input is the ``(x, y)`` position of the ``(0, 0)`` pixel of the
+cutout in the detector coordinates of the grid. For a full-frame
+image ``data``, a gridded PSF model ``psf_model``, and a star finder
+``finder``:
+
+.. doctest-skip::
+
+    >>> from photutils.psf import PSFPhotometry
+    >>> xstart, ystart = 800, 500
+    >>> cutout = data[ystart:ystart + 200, xstart:xstart + 200]
+    >>> cutout_model = psf_model.make_cutout_model((xstart, ystart))
+    >>> psfphot = PSFPhotometry(cutout_model, (5, 5), finder=finder,
+    ...                         aperture_radius=4)
+    >>> phot = psfphot(cutout)
+
+The cutout model shares the ePSF grid data with the input model, so the
+data are not copied. The fitted positions in the output table are in
+the pixel coordinates of the cutout. Add the origin to them to get the
+positions in the full image.
+
+For a `~photutils.utils.CutoutImage` object, the origin is
+its ``xyorigin`` attribute, for any cutout mode. For an
+`~astropy.nddata.Cutout2D` object, the origin is its ``origin_original``
+attribute minus its ``origin_cutout`` attribute. The ``origin_cutout``
+attribute is nonzero only for a cutout made with ``mode='partial'`` that
+extends beyond the lower or left edge of the image.
+
+
 .. _psf-photometry-examples:
 
 PSF Photometry Examples

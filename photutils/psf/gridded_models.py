@@ -88,7 +88,12 @@ class GriddedPSFModel(Fittable2DModel):
 
     x_0, y_0 : float, optional
         The ``(x, y)`` coordinates of the ePSF peak in the output
-        coordinate grid where the model is evaluated.
+        coordinate grid where the model is evaluated. They are also
+        the detector coordinates at which the ePSF grid is
+        interpolated, so the output coordinate grid must be in the
+        coordinate frame of ``grid_xypos``. For a cutout of an image
+        or a detector subarray, use the model returned by the
+        `make_cutout_model` method.
 
     fill_value : float or `None`, optional
         The value used for points outside the input pixel grid. The
@@ -583,6 +588,111 @@ class GriddedPSFModel(Fittable2DModel):
             A deep copy of this model.
         """
         return copy.deepcopy(self)
+
+    def make_cutout_model(self, xyorigin):
+        """
+        Make a model for a cutout of the image.
+
+        The ``x_0`` and ``y_0`` parameters of this model are both the
+        position of the source in the image and the detector position
+        at which the ePSF grid is interpolated. The pixel coordinates
+        of a cutout of the image, or of a detector subarray, are offset
+        from the detector coordinates of ``grid_xypos``, so this model
+        would interpolate the grid at the wrong detector position. This
+        method returns a model whose grid positions are in the pixel
+        coordinates of the cutout.
+
+        Parameters
+        ----------
+        xyorigin : 2-tuple of float
+            The ``(x, y)`` position of the ``(0, 0)`` pixel of the
+            cutout in the coordinate frame of ``grid_xypos``. For a
+            cutout made with ``data[y0:y1, x0:x1]``, where ``x0`` and
+            ``y0`` are not negative, this is ``(x0, y0)``. For a
+            `~photutils.utils.CutoutImage`, this is its ``xyorigin``
+            attribute.
+
+        Returns
+        -------
+        result : `GriddedPSFModel`
+            A model whose ``grid_xypos`` positions are the positions of
+            this model minus ``xyorigin``. The ``x_0`` and ``y_0``
+            values, and any bounds on them, are shifted by the same
+            amount, so the returned model describes the same source in
+            the pixel coordinates of the cutout. Functions set as
+            ``tied`` constraints are not adjusted. The ePSF grid data
+            and the cached spline coefficients are shared with this
+            model, not copied.
+
+        Raises
+        ------
+        ValueError
+            If ``xyorigin`` does not contain exactly two finite values.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from astropy.nddata import NDData
+        >>> from photutils.psf import GriddedPSFModel
+        >>> yy, xx = np.mgrid[-10:11, -10:11]
+        >>> sigmas = (1.0, 1.5, 2.0, 2.5)
+        >>> psfs = np.array([np.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+        ...                  for sigma in sigmas])
+        >>> grid_xypos = [(0, 0), (100, 0), (0, 100), (100, 100)]
+        >>> meta = {'grid_xypos': grid_xypos, 'oversampling': 1}
+        >>> model = GriddedPSFModel(NDData(psfs, meta=meta), x_0=70.0,
+        ...                         y_0=40.0)
+
+        Make the model for a cutout whose ``(0, 0)`` pixel is at
+        ``(x, y) = (60, 30)`` in the image:
+
+        >>> cutout_model = model.make_cutout_model((60, 30))
+        >>> cutout_model.grid_xypos
+        array([[-60., -30.],
+               [ 40., -30.],
+               [-60.,  70.],
+               [ 40.,  70.]])
+        >>> print(cutout_model.x_0.value, cutout_model.y_0.value)
+        10.0 10.0
+
+        The cutout model evaluated at the pixel coordinates of the
+        cutout is the same as the model evaluated at the corresponding
+        pixel coordinates of the image:
+
+        >>> yy, xx = np.mgrid[35:46, 65:76]
+        >>> values = model(xx, yy)
+        >>> cutout_values = cutout_model(xx - 60, yy - 30)
+        >>> print(np.allclose(cutout_values, values))
+        True
+        """
+        xyorigin = np.asarray(xyorigin, dtype=float)
+        if (xyorigin.shape != (2,)
+                or not np.all(np.isfinite(xyorigin))):
+            msg = 'xyorigin must contain two finite (x, y) values'
+            raise ValueError(msg)
+        x_origin = float(xyorigin[0])
+        y_origin = float(xyorigin[1])
+
+        new_model = self.copy()
+        new_model._grid_xypos = self._grid_xypos - xyorigin
+        # The unique positions are taken from the shifted positions so
+        # that they match them exactly for grid positions of any dtype
+        new_model._xgrid = np.unique(new_model._grid_xypos[:, 0])
+        new_model._ygrid = np.unique(new_model._grid_xypos[:, 1])
+        new_model._meta['grid_xypos'] = new_model._grid_xypos
+        # The copy has the cached lists of this model's grid positions,
+        # if they were already computed. Remove them so that they are
+        # recomputed from the shifted positions.
+        for name in ('_xgrid_list', '_ygrid_list'):
+            new_model.__dict__.pop(name, None)
+
+        for param, shift in ((new_model.x_0, x_origin),
+                             (new_model.y_0, y_origin)):
+            param.value = param.value - shift
+            param.bounds = tuple(None if bound is None else bound - shift
+                                 for bound in param.bounds)
+
+        return new_model
 
     @property
     def oversampling(self):
