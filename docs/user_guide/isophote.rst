@@ -832,14 +832,103 @@ abruptly. The fit can be restarted beyond that length with a new
 initial ellipse.
 
 
+.. _isophote-harmonics:
+
+Deviations from Ellipses
+------------------------
+
+The isophotes of real galaxies are not perfect ellipses. After the
+ellipse of an isophote is fitted, the third and fourth harmonics of
+its sampled intensities are measured. The ``a3`` and ``b3`` attributes
+are the amplitudes of the :math:`\sin(3E)` and :math:`\cos(3E)` terms,
+and ``a4`` and ``b4`` are the amplitudes of the :math:`\sin(4E)` and
+:math:`\cos(4E)` terms, where :math:`E` is the angle from the
+semimajor axis. The amplitudes are divided by the semimajor axis
+length and by the absolute value of the local radial intensity
+gradient, so they can be compared with each other and between
+isophotes. Their errors are in the ``a3_err``, ``b3_err``,
+``a4_err``, and ``b4_err`` attributes.
+
+The ``b4`` amplitude is the most used. It is positive for disky
+(kite-like) isophotes and negative for boxy isophotes. To demonstrate,
+let's add a faint, thin disk along the major axis of the simulated
+galaxy and fit the image::
+
+    >>> disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
+    ...                   x_stddev=30.0, y_stddev=4.0,
+    ...                   theta=np.deg2rad(40.0))
+    >>> disky = data + disk(xx, yy)
+    >>> isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
+    >>> idx = (isolist_disky.sma > 15) & (isolist_disky.sma < 50)
+    >>> print(np.round(np.median(isolist_disky.b4[idx]), 2))
+    0.03
+
+Let's plot the four amplitudes of the disky galaxy, and those of the
+original galaxy for comparison:
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D, Sersic2D
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
+                      x_stddev=30.0, y_stddev=4.0,
+                      theta=np.deg2rad(40.0))
+    disky = data + disk(xx, yy)
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    isolist = Ellipse(data, geometry=geometry).fit_image()
+    isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
+
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8),
+                             sharex=True, sharey=True)
+    fig.subplots_adjust(hspace=0.15, wspace=0.1)
+    for ax, name in zip(axes.ravel(), ('a3', 'b3', 'a4', 'b4')):
+        for iso, label in ((isolist, 'Original'), (isolist_disky, 'Disky')):
+            idx = (iso.sma > 5) & (iso.sma < 80)
+            ax.errorbar(iso.sma[idx], getattr(iso, name)[idx],
+                        yerr=getattr(iso, f'{name}_err')[idx], fmt='o',
+                        markersize=4, label=label)
+        ax.axhline(0.0, color='gray', linewidth=1)
+        ax.set_title(name)
+    axes[0, 0].legend()
+    axes[0, 0].set_ylim(-0.03, 0.06)
+    for ax in axes[1]:
+        ax.set_xlabel('Semimajor Axis Length (pix)')
+    for ax in axes[:, 0]:
+        ax.set_ylabel('Amplitude')
+
+The ``b4`` amplitude of the disky galaxy peaks at about 0.04 near a
+semimajor axis length of 30 pixels, well above its error of about
+0.007. The other amplitudes, and all four amplitudes of the original
+galaxy, scatter around zero.
+
+
 .. _isophote-model-image:
 
 Model Images and Residuals
 --------------------------
 
-We can build an elliptical model image from the
-`~photutils.isophote.IsophoteList` object using the
-:meth:`~photutils.isophote.IsophoteList.make_model_image` method::
+The :meth:`~photutils.isophote.IsophoteList.make_model_image` method
+builds a model image of the galaxy from an
+`~photutils.isophote.IsophoteList`. The intensity and the geometry of
+the isophotes are interpolated onto a fine grid of semimajor axis
+lengths, and the interpolated ellipses are drawn on the output image.
+Subtracting the model from the data shows the features that do not
+follow the elliptical isophotes::
 
     >>> model_image = isolist.make_model_image(data.shape)
     >>> residual = data - model_image
@@ -884,6 +973,19 @@ residual image:
 
     ax3.imshow(residual, origin='lower', vmin=-2, vmax=2)
     ax3.set_title('Residual')
+
+The residuals are consistent with the noise, except at the central
+pixels, where the intensity of this galaxy changes steeply within a
+pixel.
+
+Pixels that are outside of the largest isophote have no model value
+and are set to the ``fill_value`` keyword, which defaults to 0. For an
+image that is not background subtracted, set it to the background
+level of the image. With ``high_harmonics=True``, the third and fourth
+harmonics (see :ref:`isophote-harmonics`) are added to the model, so
+that it follows the deviations of the isophotes from ellipses. The
+``sma_interval`` keyword is the spacing of the grid of semimajor axis
+lengths. Larger values are faster but can leave gaps in the model.
 
 
 .. _isophote_fixed_ellipses:
