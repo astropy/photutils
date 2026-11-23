@@ -507,13 +507,16 @@ def test_geometry_deprecated_sector_attributes_zero_sma(name):
 
     The sector attributes are not defined for the central pixel. A
     lookup emits the same single deprecation warning, at the caller
-    line, as for sma > 0, and then raises an `AttributeError`.
+    line, as for sma > 0, and then raises an `AttributeError` that
+    names the public attribute, not the private one.
     """
     geometry = EllipseGeometry(50.0, 50.0, 0.0, 0.3, 0.5)
     match = f"The '{name}' attribute was deprecated in version 3.2"
     with (pytest.warns(PhotutilsDeprecationWarning, match=match) as record,
-          pytest.raises(AttributeError, match=name)):
+          pytest.raises(AttributeError,
+                        match=f"has no attribute '{name}'") as excinfo):
         getattr(geometry, name)
+    assert f"'_{name}'" not in str(excinfo.value)
     assert len(record) == 1
     assert record[0].filename == __file__
 

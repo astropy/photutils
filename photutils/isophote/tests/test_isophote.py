@@ -1276,11 +1276,77 @@ def test_from_table_valid_edge_values():
     assert np.isnan(result.orientation_err[0])
 
 
-@pytest.mark.parametrize('step', [0.0, -0.1, np.nan, np.inf])
+@pytest.mark.parametrize('step', [0.0, -0.1, np.nan, np.inf, None, 'a'])
 def test_from_table_invalid_step(step):
     tbl = _make_geometry_table()
     with pytest.raises(ValueError, match='step'):
         IsophoteList.from_table(tbl, step=step)
+
+
+def test_from_table_numeric_step_string():
+    tbl = _make_geometry_table()
+    result = IsophoteList.from_table(tbl, step='0.2')
+    assert result[1].geometry.step == 0.2
+
+
+def test_from_table_numeric_text_columns():
+    tbl = _make_geometry_table()
+    for name in ('sma', 'x0', 'ellipticity', 'orientation'):
+        tbl[name] = np.asarray(tbl[name]).astype(str)
+    tbl['orientation'].unit = u.deg
+    result = IsophoteList.from_table(Table(tbl))
+    assert_array_equal(result.sma, [0.0, 2.0, 4.0, 8.0])
+    assert_allclose(result.orientation.to_value(u.deg),
+                    [0.0, 10.0, 20.0, 30.0])
+
+
+@pytest.mark.parametrize('name', ['sma', 'orientation', 'intensity'])
+def test_from_table_non_numeric_column(name):
+    tbl = Table(_make_geometry_table())
+    tbl[name] = ['a', 'b', 'c', 'd']
+    if name == 'orientation':
+        tbl[name].unit = u.deg
+    with pytest.raises(ValueError, match=f"'{name}' column must contain"):
+        IsophoteList.from_table(tbl)
+
+
+@pytest.mark.parametrize('name', ['sma', 'x0', 'y0', 'x0_err', 'y0_err',
+                                  'ellipticity', 'intensity'])
+def test_from_table_plain_column_units(name):
+    tbl = Table(_make_geometry_table())
+    if name not in tbl.colnames:
+        tbl[name] = np.ones(len(tbl))
+    values = np.array(tbl[name])
+    pixel_names = ('sma', 'x0', 'y0', 'x0_err', 'y0_err')
+
+    tbl[name].unit = u.dimensionless_unscaled
+    result = IsophoteList.from_table(tbl)
+    assert_array_equal(getattr(result, name), values)
+
+    tbl[name].unit = u.pix
+    if name in pixel_names:
+        result = IsophoteList.from_table(tbl)
+        assert_array_equal(getattr(result, name), values)
+    else:
+        with pytest.raises(ValueError, match=rf"'{name}'.*pix"):
+            IsophoteList.from_table(tbl)
+
+    tbl[name].unit = u.arcsec
+    with pytest.raises(ValueError, match=rf"'{name}'.*arcsec"):
+        IsophoteList.from_table(tbl)
+
+
+@pytest.mark.parametrize('table_class', [Table, QTable])
+def test_from_table_ecsv_round_trip(tmp_path, table_class):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    path = tmp_path / 'isophotes.ecsv'
+    isolist.to_table(columns=isolist.properties).write(path)
+    result = IsophoteList.from_table(table_class.read(path))
+    assert_array_equal(result.sma, isolist.sma)
+    assert_array_equal(result.intensity, isolist.intensity)
+    assert_allclose(result.orientation.to_value(u.deg),
+                    isolist.orientation.to_value(u.deg), rtol=1e-13)
 
 
 @pytest.mark.parametrize('name', ['sma', 'x0', 'y0', 'x0_err', 'y0_err',

@@ -112,7 +112,13 @@ def _deprecated_internal_attribute(name, description):
 
     def getter(self):
         warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
-        return getattr(self, private_name)
+        # The private attribute is not defined when sma is zero.
+        try:
+            return getattr(self, private_name)
+        except AttributeError:
+            error_msg = (f'{type(self).__name__!r} object has no attribute '
+                         f'{name!r}')
+            raise AttributeError(error_msg) from None
 
     def setter(self, value):
         warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)

@@ -1006,13 +1006,16 @@ def _isophote_lists_equal(isolist1, isolist2):
                                     strict=True))
 
 
-def _isophote_values(isophote):
+def _isophotes_equal(isophote1, isophote2):
     """
-    Return the values that tell whether two isophotes differ.
+    Return whether two isophotes have the same values.
     """
-    return (isophote.sma, isophote.intensity, isophote.ellipticity,
-            isophote.orientation.value, isophote.x0, isophote.y0,
-            isophote.n_iter, isophote.stop_code)
+    values1, values2 = (
+        np.array([isophote.sma, isophote.intensity, isophote.ellipticity,
+                  isophote.orientation.value, isophote.x0, isophote.y0,
+                  isophote.n_iter, isophote.stop_code])
+        for isophote in (isophote1, isophote2))
+    return np.array_equal(values1, values2, equal_nan=True)
 
 
 @pytest.mark.parametrize(('old', 'new', 'value'), FIT_IMAGE_RENAMES)
@@ -1029,7 +1032,7 @@ def test_fit_image_renamed_keywords(old, new, value):
     assert not _isophote_lists_equal(expected, ellipse.fit_image(**extra))
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
         result = ellipse.fit_image(**{old: value}, **extra)
-    assert_array_equal(result.intensity, expected.intensity)
+    assert _isophote_lists_equal(result, expected)
     with (pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"),
           pytest.raises(TypeError)):
         ellipse.fit_image(**{old: value, new: value}, **extra)
@@ -1048,10 +1051,10 @@ def test_fit_isophote_renamed_keywords(old, new, value):
     # The value must change the result, so that a shim that dropped
     # the keyword would fail.
     default = ellipse.fit_isophote(40.0, **extra)
-    assert _isophote_values(expected) != _isophote_values(default)
+    assert not _isophotes_equal(expected, default)
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
         result = ellipse.fit_isophote(40.0, **{old: value}, **extra)
-    assert result.intensity == expected.intensity
+    assert _isophotes_equal(result, expected)
     with (pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"),
           pytest.raises(TypeError)):
         ellipse.fit_isophote(40.0, **{old: value, new: value}, **extra)

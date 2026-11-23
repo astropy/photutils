@@ -1011,8 +1011,9 @@ class IsophoteList:
             The ``orientation`` and ``orientation_err`` columns must
             have an angular unit. Plain text formats such as CSV do
             not keep units, so set the unit after reading the table
-            (e.g., ``table['orientation'].unit = 'deg'``). A
-            `~astropy.units.Quantity` column of another property must
+            (e.g., ``table['orientation'].unit = 'deg'``). Any other
+            column that has a unit, either a `~astropy.units.Quantity`
+            column or a column with its ``unit`` attribute set, must
             be dimensionless, or in pixels for the ``sma``, ``x0``,
             ``x0_err``, ``y0``, and ``y0_err`` columns.
 
@@ -1414,10 +1415,10 @@ _MISSING_VALUES = {name: {float: np.nan, int: 0, bool: True}[dtype]
                    for name, dtype, _, _ in _ISOPHOTE_PROPERTIES}
 
 
-def _quantity_column_value(data, unit, name, column_name):
+def _unitless_column_value(data, unit, name, column_name):
     """
-    Return the values of a `~astropy.units.Quantity` column of a
-    property that has no unit.
+    Return the values of a column that has a unit for a property that
+    has no unit.
 
     The column must be dimensionless, or in pixels for the
     ``_PIXEL_COLUMNS``.
@@ -1446,8 +1447,12 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
                f'{type(table).__name__}.')
         raise TypeError(msg)
 
+    msg = f'step must be a positive finite number, got {step!r}.'
+    try:
+        step = float(step)
+    except (TypeError, ValueError):
+        raise ValueError(msg) from None
     if not (np.isfinite(step) and step > 0):
-        msg = f'step must be a positive finite number, got {step!r}.'
         raise ValueError(msg)
 
     # Remove in 4.0
@@ -1493,6 +1498,14 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
             mask = np.zeros(len(data), dtype=bool)
         mask = np.asarray(mask, dtype=bool)
 
+        # A float column may hold numeric text, e.g., from a text file.
+        if dtypes[name] is float:
+            try:
+                data = np.asarray(data, dtype=float)
+            except (TypeError, ValueError):
+                msg = f'The {column_name!r} column must contain numbers.'
+                raise ValueError(msg) from None
+
         if name in ('orientation', 'orientation_err'):
             unit = getattr(column, 'unit', None)
             if unit is None:
@@ -1507,9 +1520,8 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
                 msg = (f'The {column_name!r} column must have an angular '
                        f'unit, not {unit_name}.')
                 raise ValueError(msg) from None
-        elif isinstance(column, u.Quantity):
-            data = _quantity_column_value(data, column.unit, name,
-                                          column_name)
+        elif (unit := getattr(column, 'unit', None)) is not None:
+            data = _unitless_column_value(data, unit, name, column_name)
 
         if mask.any():
             if dtypes[name] is not float or name in _REQUIRED_COLUMNS:

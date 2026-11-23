@@ -166,9 +166,9 @@ property::
 The ``orientation`` and ``orientation_err`` columns must have an
 angular unit. The ECSV and FITS formats keep the units. Plain text
 formats such as CSV do not, so set the unit after reading the table
-(e.g., ``tbl['orientation'].unit = 'deg'``). A
-`~astropy.units.Quantity` column of another property must be
-dimensionless, or in pixels for the center and ``sma`` columns.
+(e.g., ``tbl['orientation'].unit = 'deg'``). Any other column that
+has a unit must be dimensionless, or in pixels for the ``sma``,
+``x0``, ``x0_err``, ``y0``, and ``y0_err`` columns.
 ``from_table`` raises an error, naming the column and the first
 invalid row, if a ``sma`` value is negative, if an ``ellipticity``
 value is not in the range from 0 up to (but not including) 1, or if a

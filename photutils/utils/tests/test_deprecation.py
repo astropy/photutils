@@ -422,7 +422,7 @@ class TestDeprecatedColumn:
 
 
 # Each operation uses a deprecated column name once, through one public
-# entry point, so the warning must point at the lambda line here
+# entry point, so the warning must point at the lambda line here.
 COLUMN_OPERATIONS = {
     'getitem': lambda tbl: tbl['old'],
     'getitem_list': lambda tbl: tbl[['old', 'stable']],
