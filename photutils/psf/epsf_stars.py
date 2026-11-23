@@ -991,6 +991,7 @@ def _validate_nddata_list(data):
     ------
     TypeError
         If any element is not an NDData object.
+
     ValueError
         If any NDData object does not have 2D data.
     """

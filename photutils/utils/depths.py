@@ -452,6 +452,7 @@ class ImageDepth:
         ----------
         data : 2D bool `~numpy.ndarray`
             The boolean array.
+
         axis : int
             The axis (0 or 1) that is collapsed. The returned slice is
             for the other axis.
