@@ -106,10 +106,13 @@ class Isophote:
     ----------
     sample : `~photutils.isophote.EllipseSample` instance
         The sample information.
+
     n_iter : int
         The number of iterations used to fit the isophote.
+
     valid : bool
         The status of the fitting operation.
+
     stop_code : int
         The fitting stop code:
 
@@ -163,117 +166,157 @@ class Isophote:
         The geometry of the isophote. It is the same object as the
         geometry of the ``sample``. The central pixel has ``sma``,
         ``ellipticity``, and ``orientation`` of zero.
+
     intensity : float
         The mean intensity along the elliptical path.
+
     intens : float
         .. deprecated:: 3.2
             Use ``intensity`` instead.
+
     rms : float
         The root-mean-square scatter (standard deviation) of the
         intensity values about their mean along the elliptical path.
+
     intensity_err : float
         The error of the mean (rms / sqrt(# data points)).
+
     int_err : float
         .. deprecated:: 3.2
             Use ``intensity_err`` instead.
+
     ellipticity : float
         The ellipticity of the ellipse.
+
     eps : float
         .. deprecated:: 3.2
             Use ``ellipticity`` instead.
+
     ellipticity_err : float
         The ellipticity error.
+
     ellip_err : float
         .. deprecated:: 3.2
             Use ``ellipticity_err`` instead.
+
     orientation : `~astropy.units.Quantity`
         The orientation of the semimajor axis in degrees, measured
         counterclockwise from the positive x axis.
+
     pa : float
         .. deprecated:: 3.2
             Use ``orientation`` instead. This attribute is the
             orientation in radians.
+
     orientation_err : `~astropy.units.Quantity`
         The orientation error in degrees.
+
     pa_err : float
         .. deprecated:: 3.2
             Use ``orientation_err`` instead. This attribute is the
             orientation error in radians.
+
     x0_err : float
         The error associated with the center x coordinate.
+
     y0_err : float
         The error associated with the center y coordinate.
+
     pixel_stddev : float
         The estimate of pixel standard deviation (rms * sqrt(average
         sector integration area)).
+
     pix_stddev : float
         .. deprecated:: 3.2
             Use ``pixel_stddev`` instead.
+
     gradient : float
         The local radial intensity gradient.
+
     grad : float
         .. deprecated:: 3.2
             Use ``gradient`` instead.
+
     grad_error : float
         .. deprecated:: 3.0
             Use ``gradient_err`` instead.
+
     gradient_err : float
         The measurement error of the local radial intensity gradient.
         It is NaN if it could not be computed.
+
     grad_r_error : float
         .. deprecated:: 3.0
             Use ``gradient_rel_err`` instead.
+
     gradient_rel_err : float
         The relative error of the local radial intensity gradient. It
         is NaN if it could not be computed.
+
     tflux_e : float
         .. deprecated:: 3.2
             Use ``total_flux_ellipse`` instead.
+
     total_flux_ellipse : float
         The sum of the valid (unmasked and finite) pixel values inside
         the ellipse.
+
     npix_e : int
         .. deprecated:: 3.2
             Use ``n_pixels_ellipse`` instead.
+
     n_pixels_ellipse : int or float
         The total number of valid pixels inside the ellipse. It is NaN
         for the central pixel.
+
     tflux_c : float
         .. deprecated:: 3.2
             Use ``total_flux_circle`` instead.
+
     total_flux_circle : float
         The sum of the valid (unmasked and finite) pixel values inside
         a circle with the same ``sma`` as the ellipse.
+
     npix_c : int
         .. deprecated:: 3.2
             Use ``n_pixels_circle`` instead.
+
     n_pixels_circle : int or float
         The total number of valid pixels inside a circle with the same
         ``sma`` as the ellipse. It is NaN for the central pixel.
+
     sector_area : float
         The average sector area on the isophote (pixel**2).
+
     sarea : float
         .. deprecated:: 3.2
             Use ``sector_area`` instead.
+
     niter : int
         .. deprecated:: 3.0
             Use ``n_iter`` instead.
+
     ndata : int
         .. deprecated:: 3.0
             Use ``n_data`` instead.
+
     n_data : int
         The number of extracted data points.
+
     nflag : int
         .. deprecated:: 3.0
             Use ``n_flagged`` instead.
+
     n_flag : int
         .. deprecated:: 3.2
             Use ``n_flagged`` instead.
+
     n_flagged : int
         The number of discarded data points. Data points can be
         discarded either because they are physically outside the image
         frame boundaries, because they were rejected by sigma clipping,
         or because they are masked or nonfinite.
+
     a3, b3, a4, b4 : float
         The higher-order harmonics that measure the deviations from a
         perfect ellipse. These values are actually the raw harmonic
@@ -283,6 +326,7 @@ class Isophote:
         galaxies with disky (kite-like) isophotes and negative for
         galaxies with boxy isophotes. They are NaN if they could not
         be computed.
+
     a3_err, b3_err, a4_err, b4_err : float
         The errors associated with the ``a3``, ``b3``, ``a4``, and
         ``b4`` attributes. They are NaN if they could not be
@@ -870,6 +914,7 @@ class IsophoteList:
         ----------
         index : int
             The index where to insert the isophote.
+
         value : `~photutils.isophote.Isophote`
             The isophote to be inserted.
         """

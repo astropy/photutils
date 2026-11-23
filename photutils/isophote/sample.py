@@ -92,8 +92,10 @@ class EllipseSample:
         The input image. Masked pixels (if ``image`` is a
         `~numpy.ma.MaskedArray`) and nonfinite (NaN or infinity) values
         are excluded from the sample.
+
     sma : float
         The semimajor axis length in pixels.
+
     x0, y0 : float, optional
         The (x, y) coordinate of the ellipse center. The coordinates
         must be finite. A coordinate that is `None` (the default) is
@@ -101,6 +103,7 @@ class EllipseSample:
         ``image.shape[1] / 2`` for ``x0`` and ``image.shape[0] / 2``
         for ``y0``. This is half a pixel larger than the image center
         in the pixel-center convention, ``(n - 1) / 2``.
+
     step : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
@@ -109,6 +112,7 @@ class EllipseSample:
 
         .. deprecated:: 3.2
             The ``astep`` keyword is deprecated. Use ``step`` instead.
+
     ellipticity : float, optional
         The ellipticity of the ellipse. It must be less than 1. The
         default is 0.2.
@@ -116,6 +120,7 @@ class EllipseSample:
         .. deprecated:: 3.2
             The ``eps`` keyword is deprecated. Use ``ellipticity``
             instead.
+
     orientation : `~astropy.units.Quantity`, optional
         The orientation of the semimajor axis of the ellipse as an
         angular `~astropy.units.Quantity` (e.g., ``30 * u.deg``),
@@ -127,21 +132,25 @@ class EllipseSample:
             ``orientation`` instead. A number without units is
             accepted as radians with the ``position_angle`` keyword or
             as a positional argument.
+
     clip_sigma : float, optional
         The sigma-clip sigma value. The default is 3.0.
 
         .. deprecated:: 3.2
             The ``sclip`` keyword is deprecated. Use ``clip_sigma``
             instead.
+
     n_clip : int, optional
         The number of sigma-clip iterations. Set to zero to skip
         sigma clipping. The default is 0.
 
         .. deprecated:: 3.0
             The ``nclip`` keyword is deprecated. Use ``n_clip`` instead.
+
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
         `False`.
+
     integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
             'median'}, optional
         The integration mode. The 'mean' and 'median' modes integrate
@@ -151,6 +160,7 @@ class EllipseSample:
         .. deprecated:: 3.2
             The ``integrmode`` keyword is deprecated. Use
             ``integration_mode`` instead.
+
     geometry : `~photutils.isophote.EllipseGeometry` or `None`, optional
         The geometry that describes the ellipse. If input, a copy of it
         is used with its semimajor axis length set to ``sma``, and the
@@ -163,83 +173,106 @@ class EllipseSample:
     image : 2D `~numpy.ndarray`
         The input image as an array. A `~numpy.ma.MaskedArray` input is
         kept as is.
+
     integration_mode : str
         The integration mode.
+
     integrmode : str
         .. deprecated:: 3.2
             Use ``integration_mode`` instead.
+
     clip_sigma : float
         The sigma-clip sigma value.
+
     sclip : float
         .. deprecated:: 3.2
             Use ``clip_sigma`` instead.
+
     n_clip : int
         The number of sigma-clip iterations.
+
     nclip : int
         .. deprecated:: 3.0
             Use ``n_clip`` instead.
+
     angles : 1D `~numpy.ndarray` or `None`
         The angles of the valid sampled points. It is `None` until
         :meth:`~photutils.isophote.EllipseSample.extract` is called.
+
     radii : 1D `~numpy.ndarray` or `None`
         The radii of the valid sampled points. It is `None` until
         :meth:`~photutils.isophote.EllipseSample.extract` is called.
+
     intensities : 1D `~numpy.ndarray` or `None`
         The extracted intensity values of the valid sampled points. It
         is `None` until
         :meth:`~photutils.isophote.EllipseSample.extract` is called.
+
     values : 2D `~numpy.ndarray` or `None`
         .. deprecated:: 3.2
             Use ``angles``, ``radii``, and ``intensities`` instead.
+
     intensity : float or `None`
         The mean intensity along the elliptical path. It is `None`
         until :meth:`~photutils.isophote.EllipseSample.update` is
         called and NaN if there are no valid sampled points.
+
     mean : float or `None`
         .. deprecated:: 3.2
             Use ``intensity`` instead.
+
     geometry : `~photutils.isophote.EllipseGeometry`
         The geometry of the elliptical path.
+
     gradient : float or `None`
         The local radial intensity gradient. It is `None` until
         :meth:`~photutils.isophote.EllipseSample.update` is called and
         NaN if there are no valid sampled points.
+
     gradient_err : float or `None`
         The error associated with the local radial intensity gradient.
         It is `None` until
         :meth:`~photutils.isophote.EllipseSample.update` is called or
         if no meaningful gradient could be measured, and NaN if there
         are no valid sampled points.
+
     gradient_error : float or `None`
         .. deprecated:: 3.0
             Use ``gradient_err`` instead.
+
     gradient_rel_err : float or `None`
         The relative error associated with the local radial intensity
         gradient. It is `None` until
         :meth:`~photutils.isophote.EllipseSample.update` is called, if
         no meaningful gradient could be measured, or if there are no
         valid sampled points.
+
     gradient_relative_error : float or `None`
         .. deprecated:: 3.0
             Use ``gradient_rel_err`` instead.
+
     sector_area : float or `None`
         The average area of the sectors along the elliptical path from
         which the sample values were integrated. For the 'bilinear'
         and 'nearest_neighbor' modes it is a nominal value of 2 or 1,
         respectively. It is `None` until
         :meth:`~photutils.isophote.EllipseSample.extract` is called.
+
     n_total : int
         The total number of sample values that would cover the entire
         elliptical path.
+
     total_points : int
         .. deprecated:: 3.2
             Use ``n_total`` instead.
+
     n_valid : int
         The actual number of sample values that were taken from the
         image. It can be smaller than ``n_total`` when the ellipse
         encompasses regions outside the image, when it encompasses
         masked or nonfinite pixels, or when sigma clipping removed some
         of the points.
+
     actual_points : int
         .. deprecated:: 3.2
             Use ``n_valid`` instead.

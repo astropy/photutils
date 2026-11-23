@@ -236,8 +236,10 @@ class EllipseGeometry:
     ----------
     x0, y0 : float
         The center pixel coordinate of the ellipse.
+
     sma : float
         The semimajor axis of the ellipse in pixels.
+
     ellipticity : float
         The ellipticity of the ellipse. The ellipticity is defined as
 
@@ -251,6 +253,7 @@ class EllipseGeometry:
         .. deprecated:: 3.2
             The ``eps`` keyword is deprecated. Use ``ellipticity``
             instead.
+
     orientation : `~astropy.units.Quantity`
         The orientation of the semimajor axis as an angular
         `~astropy.units.Quantity` (e.g., ``30 * u.deg`` or an
@@ -274,6 +277,7 @@ class EllipseGeometry:
             `~astropy.units.Quantity` instead (e.g., ``value * u.rad``).
             A number without units given with the ``orientation``
             keyword raises a `TypeError`.
+
     step : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
@@ -285,15 +289,18 @@ class EllipseGeometry:
 
         .. deprecated:: 3.2
             The ``astep`` keyword is deprecated. Use ``step`` instead.
+
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
         `False`. When the geometry is input to
         `~photutils.isophote.Ellipse`, this value is used unless the
         ``linear_growth`` keyword of its ``fit_image`` and
         ``fit_isophote`` methods is set.
+
     fix_center : bool, optional
         Keep center of ellipse fixed during fit? The default is
         `False`.
+
     fix_orientation : bool, optional
         Keep the orientation of the semimajor axis of the ellipse fixed
         during the fit? The default is `False`.
@@ -301,6 +308,7 @@ class EllipseGeometry:
         .. deprecated:: 3.2
             The ``fix_pa`` keyword is deprecated. Use
             ``fix_orientation`` instead.
+
     fix_ellipticity : bool, optional
         Keep ellipticity of ellipse fixed during fit? The default is
         `False`.
@@ -313,45 +321,60 @@ class EllipseGeometry:
     ----------
     x0, y0 : float
         The center pixel coordinate of the ellipse.
+
     sma : float
         The semimajor axis of the ellipse in pixels.
+
     ellipticity : float
         The ellipticity of the ellipse.
+
     eps : float
         .. deprecated:: 3.2
             Use ``ellipticity`` instead.
+
     orientation : `~astropy.units.Quantity`
         The orientation of the semimajor axis in degrees, measured
         counterclockwise from the positive x axis of the image array.
         It must be set with an angular `~astropy.units.Quantity`.
+
     pa : float
         .. deprecated:: 3.2
             Use ``orientation`` instead. It is a float in radians.
+
     step : float
         The step value for growing/shrinking the semimajor axis.
+
     astep : float
         .. deprecated:: 3.2
             Use ``step`` instead.
+
     linear_growth : bool
         The semimajor axis growing/shrinking mode.
+
     fix_center : bool
         Whether the center is kept fixed during the fit.
+
     fix_orientation : bool
         Whether the orientation is kept fixed during the fit.
+
     fix_ellipticity : bool
         Whether the ellipticity is kept fixed during the fit.
+
     fix : 1D `~numpy.ndarray`
         .. deprecated:: 3.2
             Use ``fix_center``, ``fix_orientation``, and
             ``fix_ellipticity`` instead.
+
     sector_angular_width : float
         .. deprecated:: 3.2
             This attribute was internal to the fitter and has no
             replacement.
+
     initial_polar_angle : float
         .. deprecated:: 3.2
             This attribute was internal to the fitter and has no
             replacement.
+
     initial_polar_radius : float
         .. deprecated:: 3.2
             This attribute was internal to the fitter and has no
