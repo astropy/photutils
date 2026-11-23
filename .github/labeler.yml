@@ -68,7 +68,6 @@ isophote:
       - any-glob-to-any-file:
           - 'photutils/isophote/**'
           - 'docs/user_guide/isophote.rst'
-          - 'docs/user_guide/isophote_faq.rst'
           - 'docs/reference/isophote_api.rst'
 
 morphology:
