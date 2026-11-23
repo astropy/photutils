@@ -29,9 +29,9 @@ __all__ = ['fit_2dgaussian', 'fit_fwhm']
 
 # Suffixes of the pixel position column names (e.g., x_fit and y_fit)
 # recognized by the PSF tools, in priority order. The same order is used
-# by extract_stars, PSFPhotometry, and IterativePSFPhotometry. The plain
-# x and y names are first so that they always override the other names.
-_XY_COLNAME_SUFFIXES = ('', '_fit', 'fit', '_init', 'init', '_0', '0',
+# by extract_stars, PSFPhotometry, and IterativePSFPhotometry. The fit,
+# init, and unsuffixed names are in the same order as the flux names.
+_XY_COLNAME_SUFFIXES = ('_fit', 'fit', '_init', 'init', '', '_0', '0',
                         '_centroid', 'centroid', '_center', 'center',
                         '_cen', 'cen', '_pos', 'pos', '_peak')
 _X_COLNAMES = tuple(f'x{suffix}' for suffix in _XY_COLNAME_SUFFIXES)
@@ -736,8 +736,6 @@ _COLNAME_PLACEHOLDERS = {
         [f"``'{name}'``" for name in _Y_COLNAMES]),
     '<flux_colnames>': _format_name_list(
         [f"``'{name}'``" for name in _FLUX_COLNAMES]),
-    '<xy_colname_suffixes>': _format_name_list(
-        [f'``{suffix}``' for suffix in _XY_COLNAME_SUFFIXES if suffix]),
 }
 
 

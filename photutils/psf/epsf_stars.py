@@ -1216,12 +1216,17 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         `~astropy.coordinates.SkyCoord` object). If both are specified,
         then the pixel coordinates will be used.
 
-        If a catalog has neither ``x`` and ``y`` columns nor a
-        ``skycoord`` column, then the pixel coordinates are read from
-        the first available pair of ``x<suffix>`` and ``y<suffix>``
-        columns, so that the output tables of the star finders can
-        be input directly. The suffixes, in priority order, are
-        <xy_colname_suffixes>
+        Other names for the pixel coordinate columns are also
+        recognized, so that the output tables of the star finders and
+        of the PSF photometry classes can be input directly. If a
+        catalog has no ``skycoord`` column, then the pixel coordinates
+        are read from the first available pair of x and y columns. The
+        allowed ``x`` column names, in priority order, are (same suffix
+        for ``y``):
+        <x_colnames>
+        If a catalog has a ``skycoord`` column, then only the ``x`` and
+        ``y`` columns are read as pixel coordinates, because the other
+        pixel coordinate columns may be from a different image.
 
         If a single source catalog is input with multiple
         `~astropy.nddata.NDData` objects, then these sources will be

@@ -1794,6 +1794,11 @@ class TestExtractStars:
         stars = extract_stars(simple_nddata, catalog, size=11)
         assert_allclose(stars.center, [25, 26])
 
+        catalog['x'] = [15.0]
+        catalog['y'] = [16.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [15, 16])
+
         catalog['x_init'] = [28.0]
         catalog['y_init'] = [29.0]
         stars = extract_stars(simple_nddata, catalog, size=11)
@@ -1803,11 +1808,6 @@ class TestExtractStars:
         catalog['y_fit'] = [31.0]
         stars = extract_stars(simple_nddata, catalog, size=11)
         assert_allclose(stars.center, [30, 31])
-
-        catalog['x'] = [15.0]
-        catalog['y'] = [16.0]
-        stars = extract_stars(simple_nddata, catalog, size=11)
-        assert_allclose(stars.center, [15, 16])
 
     def test_nonfinite_fit_position_not_extracted(self, simple_nddata):
         """
@@ -1883,6 +1883,22 @@ class TestExtractStars:
                          'y_centroid': [25.0]})
         stars = extract_stars(nddata, catalog, size=11)
         assert_allclose(stars.center, [20, 30], atol=1e-6)
+
+    def test_skycoord_limits_pixel_columns(self, simple_wcs):
+        """
+        Test that only the ``x`` and ``y`` columns are read as pixel
+        positions when the catalog has a ``skycoord`` column.
+        """
+        nddata = NDData(np.ones((50, 50)), wcs=simple_wcs)
+        skycoord = simple_wcs.pixel_to_world([20.0], [30.0])
+        catalog = Table({'skycoord': skycoord, 'x_fit': [25.0],
+                         'y_fit': [25.0], 'x': [15.0], 'y': [16.0]})
+        stars = extract_stars(nddata, catalog, size=11)
+        assert_allclose(stars.center, [15, 16])
+
+        catalog.remove_column('skycoord')
+        stars = extract_stars(nddata, catalog, size=11)
+        assert_allclose(stars.center, [25, 25])
 
     def test_skycoord_with_alternative_names_no_wcs(self, simple_wcs):
         """
