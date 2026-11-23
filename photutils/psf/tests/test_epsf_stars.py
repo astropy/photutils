@@ -13,8 +13,9 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import (InverseVariance, NDData, StdDevUncertainty,
                             UnknownUncertainty, VarianceUncertainty)
-from astropy.table import Table
+from astropy.table import MaskedColumn, QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.masked import Masked
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_equal
 
@@ -1810,6 +1811,46 @@ class TestExtractStars:
         assert len(stars) == 1
         assert_allclose(stars.center, [20.5, 20.5])
 
+    @pytest.mark.parametrize('masked_col', ['x_centroid', 'y_centroid'])
+    def test_masked_position_not_extracted(self, simple_nddata, masked_col):
+        """
+        Test that a star with a masked position is not extracted.
+        """
+        catalog = Table({'x_centroid': [20.0, 30.0],
+                         'y_centroid': [20.0, 30.0]})
+        catalog[masked_col] = MaskedColumn(catalog[masked_col],
+                                           mask=[False, True])
+        match = 'positions were masked or not finite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars.center, [20, 20])
+
+    def test_masked_quantity_position_not_extracted(self, simple_nddata):
+        """
+        Test that a star with a masked position is not extracted when
+        the position column is a masked `~astropy.units.Quantity`.
+        """
+        xpos = Masked([20.0, 30.0] * u.pix, mask=[False, True])
+        catalog = QTable({'x': xpos, 'y': [20.0, 30.0] * u.pix})
+        match = 'positions were masked or not finite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars.center, [20, 20])
+
+    def test_masked_flux_not_extracted(self, simple_nddata):
+        """
+        Test that a star with a masked catalog flux is not extracted.
+        """
+        flux = MaskedColumn([100.0, 200.0], mask=[False, True])
+        catalog = Table({'x': [20.0, 30.0], 'y': [20.0, 30.0], 'flux': flux})
+        match = 'flux values were masked or not finite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars[0].flux, 100.0)
+
     def test_position_columns_must_match(self, simple_nddata):
         """
         Test that x and y columns from different conventions are not
@@ -1831,6 +1872,18 @@ class TestExtractStars:
                          'y_centroid': [25.0]})
         stars = extract_stars(nddata, catalog, size=11)
         assert_allclose(stars.center, [20, 30], atol=1e-6)
+
+    def test_skycoord_with_alternative_names_no_wcs(self, simple_wcs):
+        """
+        Test that alternative position column names are not used in
+        place of a ``skycoord`` column when the image has no WCS.
+        """
+        skycoord = simple_wcs.pixel_to_world([20.0], [30.0])
+        catalog = Table({'skycoord': skycoord, 'x_centroid': [25.0],
+                         'y_centroid': [25.0]})
+        match = 'Other pixel position columns are not used'
+        with pytest.raises(ValueError, match=match):
+            extract_stars(np.ones((50, 50)), catalog, size=11)
 
     def test_alternative_names_multiple_catalogs(self, simple_nddata):
         """
@@ -1995,7 +2048,7 @@ class TestExtractStars:
         """
         table = Table({'x': [25.0, np.nan], 'y': [25.0, 30.0]})
 
-        match = 'positions were not finite'
+        match = 'positions were masked or not finite'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(simple_nddata, table, size=11)
 
@@ -2239,7 +2292,7 @@ def test_extract_stars_nonfinite_flux_column():
     data = np.ones((50, 50))
     catalog = Table({'x': [25.0, 10.0], 'y': [25.0, 10.0],
                      'flux': [100.0, np.nan]})
-    match = 'flux values were not finite'
+    match = 'flux values were masked or not finite'
     with pytest.warns(AstropyUserWarning, match=match):
         stars = extract_stars(NDData(data), catalog, size=11)
     assert len(stars) == 1

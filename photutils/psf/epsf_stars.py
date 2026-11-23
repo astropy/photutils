@@ -1064,6 +1064,27 @@ def _find_xy_colnames(catalog):
     return None
 
 
+def _get_pixel_positions(column):
+    """
+    Get the pixel positions in a catalog column as a float array.
+
+    Parameters
+    ----------
+    column : `~astropy.table.Column` or `~astropy.units.Quantity`
+        The catalog column. Any unit is ignored.
+
+    Returns
+    -------
+    positions : 1D `~numpy.ndarray`
+        The pixel positions. Masked positions are NaN.
+    """
+    values = np.ma.getdata(getattr(column, 'unmasked', column))
+    positions = np.array(values, dtype=float)
+    if (mask := getattr(column, 'mask', None)) is not None:
+        positions[np.broadcast_to(mask, positions.shape)] = np.nan
+    return positions
+
+
 def _validate_coordinate_consistency(data, catalogs):
     """
     Validate coordinate system consistency between data and catalogs.
@@ -1112,15 +1133,19 @@ def _validate_coordinate_consistency(data, catalogs):
                        ", each with a 'y' column of the same suffix.")
                 raise ValueError(msg)
 
-            # If only skycoord is available, ensure the corresponding
-            # NDData object has a WCS
+            # The skycoord column is used unless the catalog also has x
+            # and y columns, so the corresponding NDData object must
+            # have a WCS
             if has_skycoord and not has_xy:
                 data_idx = i if len(data) == len(catalogs) else 0
                 if (data_idx < len(data)
                         and data[data_idx].wcs is None):
-                    msg = (f'When catalog at index {i} contains only skycoord '
-                           'positions, the corresponding image must be an '
-                           'NDData object with a wcs attribute.')
+                    msg = (f"Catalog at index {i} has a 'skycoord' column "
+                           "and no 'x' and 'y' columns, so the "
+                           'corresponding image must be an NDData object '
+                           'with a wcs attribute. Other pixel position '
+                           "columns are not used when a 'skycoord' column "
+                           'is present.')
                     raise ValueError(msg)
 
         if len(data) != len(catalogs):
@@ -1137,8 +1162,9 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
     A star is not extracted, and a warning is issued, if its cutout
     bounds lie partially or completely outside the input ``data`` image,
-    if its position or its catalog ``flux`` is not finite, or if its
-    cutout is completely masked and no catalog ``flux`` is given.
+    if its position or its catalog ``flux`` is masked or not finite,
+    or if its cutout is completely masked and no catalog ``flux`` is
+    given.
 
     Parameters
     ----------
@@ -1422,8 +1448,8 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     if xy_colnames is None:
         xcenters, ycenters = data.wcs.world_to_pixel(catalog['skycoord'])
     else:
-        xcenters = np.asarray(catalog[xy_colnames[0]])
-        ycenters = np.asarray(catalog[xy_colnames[1]])
+        xcenters = _get_pixel_positions(catalog[xy_colnames[0]])
+        ycenters = _get_pixel_positions(catalog[xy_colnames[1]])
 
     if 'id' in colnames:
         ids = catalog['id']
@@ -1504,13 +1530,15 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     # Emit consolidated warning for nonfinite positions
     if n_nonfinite_positions > 0:
         msg = (f'{n_nonfinite_positions} star(s) were not extracted '
-               'because their (x, y) positions were not finite.')
+               'because their (x, y) positions were masked or not '
+               'finite.')
         warnings.warn(msg, AstropyUserWarning)
 
     # Emit consolidated warning for nonfinite catalog fluxes
     if n_nonfinite_fluxes > 0:
         msg = (f'{n_nonfinite_fluxes} star(s) were not extracted '
-               'because their catalog flux values were not finite.')
+               'because their catalog flux values were masked or not '
+               'finite.')
         warnings.warn(msg, AstropyUserWarning)
 
     # Emit consolidated warning for nonfinite weights
