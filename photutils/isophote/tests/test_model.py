@@ -150,6 +150,27 @@ def test_make_model_image_nan_gradient():
     model = isolist.make_model_image(data.shape)
     assert_array_equal(model, expected)
 
+    match = "'gradient'"
+    with pytest.raises(ValueError, match=match):
+        isolist.make_model_image(data.shape, high_harmonics=True)
+
+
+def test_make_model_image_table_list_high_harmonics():
+    """
+    Test that the high harmonics require the gradients, which a table
+    without a gradient column does not have.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_sma=40.0)
+    names = ['sma', 'x0', 'y0', 'ellipticity', 'orientation', 'intensity',
+             'a3', 'b3', 'a4', 'b4']
+    loaded = IsophoteList.from_table(isolist.to_table(columns=names))
+    assert_allclose(loaded.make_model_image(data.shape),
+                    isolist.make_model_image(data.shape), rtol=1e-10)
+    match = "'gradient'"
+    with pytest.raises(ValueError, match=match):
+        loaded.make_model_image(data.shape, high_harmonics=True)
+
 
 def test_model_inputs():
     match = 'isolist must not be empty'

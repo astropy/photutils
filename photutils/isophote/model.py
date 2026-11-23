@@ -77,6 +77,10 @@ def _make_model_image(isolist, shape, *, fill_value, high_harmonics,
     y0_array = LSQUnivariateSpline(
         isolist.sma, isolist.y0, nodes)(finely_spaced_sma)
     if high_harmonics:
+        if not np.all(np.isfinite(isolist.gradient)):
+            msg = ("The isophotes must have a finite 'gradient' to add the "
+                   'higher-order harmonics (high_harmonics=True)')
+            raise ValueError(msg)
         grad_array = LSQUnivariateSpline(
             isolist.sma, isolist.gradient, nodes)(finely_spaced_sma)
 

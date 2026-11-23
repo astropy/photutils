@@ -7,6 +7,7 @@ import warnings
 
 import astropy.units as u
 import numpy as np
+from astropy.table import Table
 
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
@@ -480,7 +481,10 @@ class Isophote:
             return NotImplemented
 
     def __eq__(self, other):
-        self._warn_comparison()
+        # Equality with an object that has no semimajor axis length is
+        # always False, so it is not deprecated.
+        if hasattr(other, 'sma'):
+            self._warn_comparison()
         try:
             return self.sma == other.sma
         except AttributeError:
@@ -827,7 +831,7 @@ class IsophoteList:
     def __getitem__(self, index):
         if isinstance(index, slice):
             result = IsophoteList(self._list[index])
-            result.default_columns = self.default_columns.copy()
+            result.default_columns = _as_column_list(self.default_columns)
             return result
         return self._list.__getitem__(index)
 
@@ -884,7 +888,7 @@ class IsophoteList:
         temp = self._list[:]  # shallow copy
         temp.extend(value._list)
         result = IsophoteList(temp)
-        result.default_columns = self.default_columns.copy()
+        result.default_columns = _as_column_list(self.default_columns)
         return result
 
     def get_closest(self, sma):
@@ -1013,9 +1017,14 @@ class IsophoteList:
 
         Raises
         ------
+        TypeError
+            If ``table`` is not an astropy `~astropy.table.Table` or
+            `~astropy.table.QTable`.
+
         ValueError
-            If a required column is missing, or if an angle column has
-            no angular unit.
+            If a required column is missing, if an angle column has no
+            angular unit, or if a value cannot be represented with the
+            type of its property (e.g., NaN in the ``n_data`` column).
         """
         return _isophote_list_from_table(cls, table, step=step,
                                          linear_growth=linear_growth)
@@ -1049,11 +1058,12 @@ class IsophoteList:
             value. The default is 0.
 
         high_harmonics : bool, optional
-            Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
-            ``a4``, and ``b4``) to the result. See
-            `~photutils.isophote.Isophote` for details. Harmonics that could
-            not be computed (NaN) are treated as zero. The default
-            is `False`.
+            Whether to add the higher-order harmonics (i.e., ``a3``,
+            ``b3``, ``a4``, and ``b4``) to the result. See
+            `~photutils.isophote.Isophote` for details. The harmonic
+            amplitudes are scaled by the ``gradient`` of the isophotes,
+            which must be finite. Harmonics that could not be computed
+            (NaN) are treated as zero. The default is `False`.
 
         sma_interval : float, optional
             The step in semimajor axis length of the grid on which the
@@ -1071,8 +1081,10 @@ class IsophoteList:
         ------
         ValueError
             If the list contains fewer than 4 isophotes with a finite
-            intensity or if its isophotes are not sorted by strictly
-            increasing semimajor axis length.
+            intensity, if its isophotes are not sorted by strictly
+            increasing semimajor axis length, or if ``high_harmonics``
+            is `True` and the ``gradient`` of an isophote with a finite
+            intensity is not finite.
         """
         return _make_model_image(self, shape, fill_value=fill_value,
                                  high_harmonics=high_harmonics,
@@ -1232,6 +1244,14 @@ _DEFAULT_COLUMNS = ('sma', 'intensity', 'intensity_err', 'ellipticity',
                     'n_iter', 'stop_code')
 
 
+def _as_column_list(columns):
+    """
+    Return a new list of column names from a name or an iterable of
+    names.
+    """
+    return [columns] if isinstance(columns, str) else list(columns)
+
+
 def _warn_deprecated_shortcut(name, replacement):
     # Remove in 4.0
     # The stacklevel points at the caller of IsophoteList.to_table,
@@ -1286,10 +1306,13 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
                         'intens_err': 'intensity_err'}
     all_names = _PROPERTY_NAMES
 
+    # The deprecated 'main' and 'all' shortcuts are allowed only in
+    # the columns argument, not in default_columns.
+    allowed_columns = {*all_names, 'main', 'all'}
     if columns is None:
         columns = isophote_list.default_columns
+        allowed_columns = set(all_names)
 
-    allowed_columns = {*all_names, 'main', 'all'}
     table_columns = validate_table_columns(
         columns, allowed_columns, deprecated_names=_deprecation_map)
     if len(table_columns) > 1 and {'main', 'all'} & set(table_columns):
@@ -1311,7 +1334,7 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
         names = list(all_names)
     elif table_columns == ['main']:
         _warn_deprecated_shortcut('main', 'columns=None')
-        names = list(isophote_list.default_columns)
+        names = _as_column_list(isophote_list.default_columns)
     else:
         # A deprecated name uses the new name, with a single deprecation
         # warning instead of one per isophote.
@@ -1347,6 +1370,11 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
     Create an `~photutils.isophote.IsophoteList` from a table. See
     `~photutils.isophote.IsophoteList.from_table`.
     """
+    if not isinstance(table, Table):
+        msg = ('An astropy Table or QTable is required, not '
+               f'{type(table).__name__}.')
+        raise TypeError(msg)
+
     # Remove in 4.0
     # Only the names in table.colnames are used to read the table,
     # because a table made by to_table warns on an old column name.
@@ -1424,10 +1452,21 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
                 msg = ("The 'valid' column must contain True or False "
                        'values.')
                 raise ValueError(msg) from None
-        elif name == 'valid' and data.dtype.kind not in 'biu':
+        elif name == 'valid' and (data.dtype.kind not in 'biu'
+                                  or not np.all((data == 0) | (data == 1))):
             msg = "The 'valid' column must contain True or False values."
             raise ValueError(msg)
-        values[name] = np.asarray(data).tolist()
+
+        data = np.asarray(data)
+        if dtypes[name] is int:
+            integral = data.dtype.kind in 'biu' or (
+                data.dtype.kind == 'f'
+                and np.all(np.isfinite(data) & (data == np.round(data))))
+            if not integral:
+                msg = (f'The {column_name!r} column must contain integer '
+                       'values.')
+                raise ValueError(msg)
+        values[name] = data.astype(dtypes[name]).tolist()
 
     n_rows = len(table)
     isophotes = []

@@ -1119,3 +1119,93 @@ def test_fit_isophote_with_table_isophote_list():
     loaded = IsophoteList.from_table(isolist.to_table())
     iso = ellipse.fit_isophote(30.0, isophote_list=loaded)
     assert iso.sample is not None
+
+
+@pytest.mark.parametrize('columns', [('sma', 'intensity'), 'sma'])
+def test_default_columns_tuple_or_string(columns):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    isolist.default_columns = columns
+    expected = [columns] if isinstance(columns, str) else list(columns)
+    assert isolist.to_table().colnames == expected
+    sliced = isolist[2:5]
+    assert sliced.default_columns == expected
+    assert sliced.to_table().colnames == expected
+    added = isolist[:3] + isolist[3:6]
+    assert added.default_columns == expected
+
+
+@pytest.mark.parametrize('name', ['main', 'all'])
+def test_default_columns_shortcut_names_invalid(name):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    isolist.default_columns = [name]
+    with pytest.raises(ValueError, match='Invalid column name'):
+        isolist.to_table()
+
+
+def test_from_table_coerces_dtypes():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    names = ['sma', 'x0', 'y0', 'ellipticity', 'orientation', 'n_data',
+             'n_flagged', 'n_iter', 'stop_code', 'valid',
+             'n_pixels_ellipse']
+    tbl = QTable(isolist.to_table(columns=names))
+    tbl['n_data'] = tbl['n_data'].astype(float)
+    tbl['valid'] = tbl['valid'].astype(int)
+    tbl['n_pixels_ellipse'] = np.arange(len(tbl))
+    result = IsophoteList.from_table(tbl)
+    iso = result[3]
+    assert type(iso.n_data) is int
+    assert iso.n_data == isolist[3].n_data
+    assert iso.valid is True
+    assert type(iso.n_pixels_ellipse) is float
+    assert_array_equal(result.n_data, isolist.n_data)
+    assert_array_equal(result.valid, isolist.valid)
+
+
+@pytest.mark.parametrize('name', ['n_data', 'n_flagged', 'n_iter',
+                                  'stop_code'])
+@pytest.mark.parametrize('value', [np.nan, 2.5])
+def test_from_table_integer_column_invalid(name, value):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    names = ['sma', 'x0', 'y0', 'ellipticity', 'orientation', name]
+    tbl = QTable(isolist.to_table(columns=names))
+    tbl[name] = tbl[name].astype(float)
+    tbl[name][2] = value
+    with pytest.raises(ValueError, match=f"'{name}'"):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_valid_integer_invalid():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    names = ['sma', 'x0', 'y0', 'ellipticity', 'orientation', 'valid']
+    tbl = QTable(isolist.to_table(columns=names))
+    tbl['valid'] = np.full(len(tbl), 2)
+    with pytest.raises(ValueError, match="'valid'"):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_not_a_table():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = isolist.to_table()
+    match = 'astropy Table or QTable is required'
+    for value in ({name: tbl[name] for name in tbl.colnames}, tbl[0]):
+        with pytest.raises(TypeError, match=match):
+            IsophoteList.from_table(value)
+
+
+def test_isophote_equality_with_non_isophote():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_sma=20.0)
+    iso = isolist[3]
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        assert (iso == None) is False  # noqa: E711
+        assert (iso != 'a') is True
+        assert iso != 1.0
+    with pytest.warns(PhotutilsDeprecationWarning, match='omparing'):
+        assert iso == isolist[3]
