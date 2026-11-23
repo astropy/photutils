@@ -1034,9 +1034,10 @@ def _find_xy_colnames(catalog):
     """
     Find the names of the pixel position columns of a catalog.
 
-    The ``x`` and ``y`` columns are used if present. Alternative column
-    names are used only if the catalog has no ``skycoord`` column. The
-    x and y column names must have the same suffix.
+    The column names are searched in the priority order that is shared
+    with the PSF photometry classes. If the catalog has a ``skycoord``
+    column, then only the ``x`` and ``y`` columns are used. The x and y
+    column names must have the same suffix.
 
     Parameters
     ----------
@@ -1050,9 +1051,11 @@ def _find_xy_colnames(catalog):
         pixel positions should not be read from the catalog.
     """
     colnames = set(catalog.colnames)
-    suffixes = ('',)
-    if 'skycoord' not in colnames:
-        suffixes += _XY_COLNAME_SUFFIXES
+    suffixes = _XY_COLNAME_SUFFIXES
+    if 'skycoord' in colnames:
+        # The pixel columns of a catalog with sky coordinates may be
+        # from a different image, so only the x and y columns are used.
+        suffixes = ('',)
     for suffix in suffixes:
         xname = f'x{suffix}'
         yname = f'y{suffix}'

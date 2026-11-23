@@ -1716,8 +1716,8 @@ def test_init_params_position_column_priority():
     psfphot = PSFPhotometry(psf_model, (9, 9), aperture_radius=10)
 
     tbl = Table()
-    suffixes = ('_peak', '_pos', '_cen', '_center', '_centroid', '_0', '',
-                '_init', '_fit')
+    suffixes = ('_peak', '_pos', '_cen', '_center', '_centroid', '_0',
+                '_init', '_fit', '')
     for i, suffix in enumerate(suffixes):
         value = 14.6 + 0.1 * i
         tbl[f'x{suffix}'] = [value]

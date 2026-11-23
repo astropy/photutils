@@ -28,14 +28,18 @@ from photutils.utils._parameters import as_pair
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
 
 # Suffixes of the pixel position column names (e.g., x_fit and y_fit)
-# recognized by the PSF tools, in priority order.
-_XY_COLNAME_SUFFIXES = ('_fit', 'fit', '_init', 'init', '', '_0', '0',
+# recognized by the PSF tools, in priority order. The same order is used
+# by extract_stars, PSFPhotometry, and IterativePSFPhotometry. The plain
+# x and y names are first so that they always override the other names.
+_XY_COLNAME_SUFFIXES = ('', '_fit', 'fit', '_init', 'init', '_0', '0',
                         '_centroid', 'centroid', '_center', 'center',
                         '_cen', 'cen', '_pos', 'pos', '_peak')
 _X_COLNAMES = tuple(f'x{suffix}' for suffix in _XY_COLNAME_SUFFIXES)
 _Y_COLNAMES = tuple(f'y{suffix}' for suffix in _XY_COLNAME_SUFFIXES)
 
-# Flux column names recognized by the PSF tools, in priority order
+# Flux column names recognized by PSFPhotometry and
+# IterativePSFPhotometry, in priority order. The extract_stars function
+# reads only the flux column.
 _FLUX_COLNAMES = ('flux_fit', 'fluxfit', 'flux_init', 'fluxinit', 'flux',
                   'flux_0', 'flux0', 'source_sum', 'segment_flux',
                   'kron_flux')

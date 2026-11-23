@@ -500,11 +500,13 @@ def test_interpolate_missing_data_degenerate_geometry(bad_geometry):
 
 
 @pytest.mark.parametrize(('obj', 'expected'), [
-    (PSFPhotometry, ("``'x_fit'``", "``'x_peak'``.")),
-    (IterativePSFPhotometry, ("``'x_fit'``", "``'x_peak'``.")),
-    (PSFPhotometry.__call__, ("* ``'x_fit'``", "* ``'y_fit'``",
+    (PSFPhotometry, ("``'x'``, ``'x_fit'``", "``'x_peak'``.")),
+    (IterativePSFPhotometry, ("``'x'``, ``'x_fit'``", "``'x_peak'``.")),
+    (PSFPhotometry.__call__, ("* ``'x'``, ``'x_fit'``",
+                              "* ``'y'``, ``'y_fit'``",
                               "* ``'flux_fit'``", "``'kron_flux'``.")),
-    (IterativePSFPhotometry.__call__, ("* ``'x_fit'``", "* ``'y_fit'``",
+    (IterativePSFPhotometry.__call__, ("* ``'x'``, ``'x_fit'``",
+                                       "* ``'y'``, ``'y_fit'``",
                                        "* ``'flux_fit'``",
                                        "``'kron_flux'``.")),
     (extract_stars, ('``_fit``', '``_peak``.')),
