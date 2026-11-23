@@ -710,6 +710,27 @@ def test_iterative_finder_column_names(x_col, y_col):
     assert_allclose(phot_tbl['flux_fit'][0], 7.0, rtol=1e-6)
 
 
+def test_iterative_results_as_init_params(test_data):
+    """
+    Test that a results table input as ``init_params`` starts the fits
+    from its fitted values.
+    """
+    data, error, _ = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    finder = DAOStarFinder(6.0, 3.0)
+    psfphot = IterativePSFPhotometry(psf_model, (5, 5), finder=finder,
+                                     aperture_radius=4)
+    phot1 = psfphot(data, error=error)
+    phot2 = psfphot(data, error=error, init_params=phot1)
+
+    assert len(phot2) >= len(phot1)
+    n_sources = len(phot1)
+    for name in ('x', 'y', 'flux'):
+        assert_allclose(phot2[f'{name}_init'][:n_sources],
+                        phot1[f'{name}_fit'])
+        assert not np.allclose(phot1[f'{name}_init'], phot1[f'{name}_fit'])
+
+
 def test_iterative_finder_mismatched_position_columns():
     """
     Test that finder x and y columns with different suffixes are not
