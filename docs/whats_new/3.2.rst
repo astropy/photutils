@@ -55,11 +55,11 @@ image values are now excluded from the fits, like masked pixels.
 
 Several differences from the STSDAS ``ellipse`` task that
 `photutils.isophote` is based on were also fixed. They include the
-convergence criterion, the ``maxgerr`` stopping criterion, the radius
-where the local intensity gradient is measured, and the starting
-geometry of the inward fits. Because of these fixes, the fitted
-isophotes differ slightly from those of previous versions. The fits
-of noisy images typically need a few more iterations and extend to
+convergence criterion, the ``max_gradient_rel_err`` stopping
+criterion, the radius where the local intensity gradient is measured,
+and the starting geometry of the inward fits. Because of these
+fixes, the fitted isophotes differ slightly from those of previous
+versions. The fits of noisy images typically need a few more iterations and extend to
 larger semimajor axis lengths. See the :ref:`changelog` for the
 complete list of fixes.
 
@@ -207,8 +207,8 @@ Isophote Fitting Keywords
 The ``maxgerr`` and ``going_inwards`` keywords of
 `~photutils.isophote.EllipseFitter.fit` and
 `~photutils.isophote.Ellipse.fit_isophote` are deprecated and will be
-removed in version 4.0. They have no effect. The ``maxgerr`` criterion
-compares consecutive isophotes, so it is applied only by
+removed in version 4.0. They have no effect. The
+``max_gradient_rel_err`` criterion compares consecutive isophotes, so it is applied only by
 `~photutils.isophote.Ellipse.fit_image`.
 
 The ``threshold`` keyword and the ``set_threshold`` method of
@@ -217,6 +217,15 @@ in version 4.0. They have no effect because
 `~photutils.isophote.Ellipse` does not run the object centerer. Use
 `~photutils.isophote.EllipseGeometry.find_center` to refine the initial
 center before fitting.
+
+The keywords of `~photutils.isophote.Ellipse.fit_image`,
+`~photutils.isophote.Ellipse.fit_isophote`, and
+`~photutils.isophote.EllipseFitter.fit` have descriptive names. For
+example, ``sma0``, ``maxsma``, ``conver``, ``sclip``, and
+``integrmode`` are now ``sma_start``, ``max_sma``, ``convergence``,
+``clip_sigma``, and ``integration_mode``. The old names are
+deprecated and will be removed in version 4.0. See the changelog for
+the full list.
 
 
 .. _whatsnew-3.2-breaking-changes:

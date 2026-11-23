@@ -101,8 +101,9 @@ def test_model_minimum_radius():
 
         # Sigma clipping of samples with no valid data points does not
         # emit numpy RuntimeWarnings.
-        isophote_list = ellipse.fit_image(sma0=40, minsma=0, maxsma=350.0,
-                                          step=0.4, n_clip=3)
+        isophote_list = ellipse.fit_image(sma_start=40, min_sma=0,
+                                          max_sma=350.0, step=0.4,
+                                          n_clip=3)
 
         model = build_ellipse_model(data.shape, isophote_list,
                                     fill=np.mean(data[0:50, 0:50]))
@@ -118,7 +119,7 @@ def test_model_inputs():
         build_ellipse_model((10, 10), IsophoteList([]))
 
     data = make_test_image(seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=20.0)
+    isolist = Ellipse(data).fit_image(max_sma=20.0)
     match = 'isolist must contain at least 4 isophotes'
     with pytest.raises(ValueError, match=match):
         build_ellipse_model(data.shape, isolist[-3:])
@@ -138,7 +139,7 @@ def test_model_outer_isophote():
     Test that the model extends to the outermost isophote.
     """
     data = make_test_image(seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=40.0)
+    isolist = Ellipse(data).fit_image(max_sma=40.0)
     model = build_ellipse_model(data.shape, isolist, fill=np.nan,
                                 sma_interval=10.0)
 
@@ -158,7 +159,7 @@ def test_model_pa_wrap():
     must not sweep through the angles in between.
     """
     data = make_test_image(seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=60.0)
+    isolist = Ellipse(data).fit_image(max_sma=60.0)
     pa = isolist.orientation[isolist.sma > 0].to_value(u.rad)
     assert np.any(pa < 0.1)
     assert np.any(pa > np.pi - 0.1)
@@ -177,7 +178,7 @@ def test_model_fill():
     are set to the fill value.
     """
     data = make_test_image(nx=200, ny=200, seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=30.0)
+    isolist = Ellipse(data).fit_image(max_sma=30.0)
 
     # Model pixels with a zero intensity must not be filled.
     for isophote in isolist:
@@ -213,7 +214,7 @@ def test_model_harmonics():
     geometry = EllipseGeometry(x0=x0, y0=y0, sma=30, ellipticity=eps,
                                orientation=theta)
     ellipse = Ellipse(data, geometry=geometry)
-    isolist = ellipse.fit_image(fix_center=True, fix_eps=True)
+    isolist = ellipse.fit_image(fix_center=True, fix_ellipticity=True)
 
     model_image = build_ellipse_model(data.shape, isolist, high_harmonics=True)
     residual = data - model_image
@@ -232,7 +233,7 @@ def test_model_harmonics_gradient_sign():
     too.
     """
     data = make_test_image(nx=200, ny=200, seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=40.0)
+    isolist = Ellipse(data).fit_image(max_sma=40.0)
     model = build_ellipse_model(data.shape, isolist, high_harmonics=True)
 
     for isophote in isolist:
@@ -248,7 +249,7 @@ def test_model_missing_harmonics():
     instead of making the model nonfinite.
     """
     data = make_test_image(nx=200, ny=200, seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=40.0)
+    isolist = Ellipse(data).fit_image(max_sma=40.0)
     isolist[10].a3 = None
     isolist[10].b4 = np.nan
     model = build_ellipse_model(data.shape, isolist, high_harmonics=True)
@@ -446,7 +447,7 @@ def test_model_nonfinite_central_pixel():
     pixel of a galaxy with a masked center, are ignored.
     """
     data = make_test_image(nx=200, ny=200, seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=30.0)
+    isolist = Ellipse(data).fit_image(max_sma=30.0)
     expected = build_ellipse_model(data.shape, isolist)
 
     mask = np.zeros(data.shape, dtype=bool)
@@ -454,7 +455,7 @@ def test_model_nonfinite_central_pixel():
     ellipse = Ellipse(np.ma.masked_array(data, mask=mask))
     match = 'Too small sample to warrant a fit'
     with pytest.warns(AstropyUserWarning, match=match):
-        isolist = ellipse.fit_image(maxsma=30.0)
+        isolist = ellipse.fit_image(max_sma=30.0)
     assert isolist[0].sma == 0
     assert np.isnan(isolist[0].intensity)
 

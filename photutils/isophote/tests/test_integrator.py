@@ -328,8 +328,8 @@ def test_fit_center(integrmode):
     data = Gaussian2D(100.0, 50.0, 50.0, 12.0, 8.0, theta=0.5)(xx, yy)
     geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5)
     ellipse = Ellipse(data, geometry=geometry)
-    isolist = ellipse.fit_image(integrmode=integrmode, sma0=10.0,
-                                maxsma=25.0)
+    isolist = ellipse.fit_image(integration_mode=integrmode, sma_start=10.0,
+                                max_sma=25.0)
     assert_allclose(np.median(isolist.x0), 50.0, atol=0.05)
     assert_allclose(np.median(isolist.y0), 50.0, atol=0.05)
 

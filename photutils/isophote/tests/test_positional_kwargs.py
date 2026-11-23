@@ -42,11 +42,11 @@ class TestEllipsePositionalKwargs:
         ellipse = Ellipse(self.data)
         match = 'fit_image'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
-            ellipse.fit_image(10.0, maxsma=15.0)
+            ellipse.fit_image(10.0, max_sma=15.0)
 
     def test_fit_image_keyword_no_warning(self):
         ellipse = Ellipse(self.data)
-        ellipse.fit_image(sma0=10.0, maxsma=15.0)
+        ellipse.fit_image(sma_start=10.0, max_sma=15.0)
 
     def test_fit_isophote_positional_warns(self):
         ellipse = Ellipse(self.data)
@@ -98,7 +98,7 @@ def fixture_small_isolist():
     """
     data = make_test_image(nx=128, ny=128, sma=10.0, seed=0)
     ellipse = Ellipse(data)
-    isolist = ellipse.fit_image(sma0=10.0, maxsma=15.0)
+    isolist = ellipse.fit_image(sma_start=10.0, max_sma=15.0)
     return data.shape, isolist
 
 

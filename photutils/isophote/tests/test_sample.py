@@ -122,7 +122,7 @@ def test_invalid_ellipticity(integrmode, eps):
     geometry = EllipseGeometry(256.0, 256.0, 10.0, eps, 0.0)
     ellipse = Ellipse(DATA, geometry=geometry)
     with pytest.raises(ValueError, match=match):
-        ellipse.fit_image(integrmode=integrmode)
+        ellipse.fit_image(integration_mode=integrmode)
 
 
 @pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
@@ -144,7 +144,7 @@ def test_nonfinite_center(integrmode, x0, y0):
     geometry = EllipseGeometry(x0, y0, 10.0, 0.2, 0.0)
     ellipse = Ellipse(DATA, geometry=geometry)
     with pytest.raises(ValueError, match=match):
-        ellipse.fit_image(integrmode=integrmode)
+        ellipse.fit_image(integration_mode=integrmode)
 
 
 @pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
@@ -176,9 +176,9 @@ def test_invalid_integrmode():
     with pytest.raises(ValueError, match=match):
         EllipseSample(DATA, 10.0, integration_mode='foo')
     with pytest.raises(ValueError, match=match):
-        Ellipse(DATA).fit_image(integrmode='foo')
+        Ellipse(DATA).fit_image(integration_mode='foo')
     with pytest.raises(ValueError, match=match):
-        Ellipse(DATA).fit_isophote(10.0, integrmode='foo')
+        Ellipse(DATA).fit_isophote(10.0, integration_mode='foo')
 
 
 def test_array_like_image():

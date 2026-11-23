@@ -274,14 +274,14 @@ fit, :meth:`~photutils.isophote.Ellipse.fit_image` emits a "No
 meaningful fit was possible" warning and returns an empty list.
 
 No setting of the fit parameters solves this reliably. In particular,
-the ``maxgerr`` parameter only controls where the outward growth
+the ``max_gradient_rel_err`` parameter only controls where the outward growth
 stops, so it does not help the first isophote. Multiplying the image
 by a constant does not help either, because the algorithm does not
 depend on the intensity scale.
 
 Whether the first isophote can be fit depends on the noise along one
 ellipse. A fit that fails therefore often succeeds from a slightly
-different starting semimajor axis length (the ``sma0`` parameter),
+different starting semimajor axis length (the ``sma_start`` parameter),
 e.g., one that is 10% larger or smaller.
 
 The opposite failure is also possible.
@@ -318,16 +318,16 @@ smoothed image (see :ref:`isophote_fixed_ellipses`):
     >>> isolist_data = Ellipse(data).measure_isophotes(isolist)
 
 If the ellipse geometry of the galaxy is already known, the isophotes
-can also be extracted without fitting them. With ``maxrit=0``, all the
-isophotes have the geometry of the input
-`~photutils.isophote.EllipseGeometry`. The ``maxsma`` parameter must
-then be set, because otherwise the outward growth stops where the
-gradient error exceeds ``maxgerr``:
+can also be extracted without fitting them. With
+``max_iterative_sma=0``, all the isophotes have the geometry of the
+input `~photutils.isophote.EllipseGeometry`. The ``max_sma`` parameter
+must then be set, because otherwise the outward growth stops where the
+gradient error exceeds ``max_gradient_rel_err``:
 
 .. doctest-skip::
 
     >>> ellipse = Ellipse(data, geometry=geometry)
-    >>> isolist = ellipse.fit_image(maxrit=0.0, maxsma=60.0)
+    >>> isolist = ellipse.fit_image(max_iterative_sma=0.0, max_sma=60.0)
 
 The ``'mean'`` and ``'median'`` integration modes with a larger
 ``step`` (e.g., 0.3) average more pixels for each sample point. They

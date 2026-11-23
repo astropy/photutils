@@ -10,9 +10,11 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.isophote.fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG,
-                                       DEFAULT_MAXGERR, DEFAULT_MAXIT,
-                                       DEFAULT_MINIT, EllipseFitter)
+from photutils.isophote.fitter import (DEFAULT_CONVERGENCE,
+                                       DEFAULT_MAX_GRADIENT_REL_ERR,
+                                       DEFAULT_MAXITERS,
+                                       DEFAULT_MIN_VALID_FRACTION,
+                                       DEFAULT_MINITERS, EllipseFitter)
 from photutils.isophote.geometry import EllipseGeometry, _make_fix_array
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
@@ -251,13 +253,43 @@ class Ellipse:
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
-    def fit_image(self, sma0=None, minsma=0.0, maxsma=None, step=0.1,
-                  conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
-                  maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
-                  maxgerr=DEFAULT_MAXGERR, sclip=3.0, n_clip=0,
-                  integrmode=BILINEAR, linear=None, maxrit=None,
-                  fix_center=False, fix_pa=False, fix_eps=False, *,
-                  max_center_shift=None):
+    @deprecated_renamed_argument('sma0', 'sma_start', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('minsma', 'min_sma', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('maxsma', 'max_sma', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('conver', 'convergence', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('minit', 'miniters', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('maxit', 'maxiters', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('fflag', 'min_valid_fraction', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('maxgerr', 'max_gradient_rel_err', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('sclip', 'clip_sigma', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('integrmode', 'integration_mode', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('linear', 'linear_growth', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('maxrit', 'max_iterative_sma', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('fix_pa', 'fix_orientation', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('fix_eps', 'fix_ellipticity', '3.2',
+                                 until='4.0')
+    def fit_image(self, sma_start=None, min_sma=0.0, max_sma=None, step=0.1,
+                  convergence=DEFAULT_CONVERGENCE,
+                  miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
+                  min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
+                  max_gradient_rel_err=DEFAULT_MAX_GRADIENT_REL_ERR,
+                  clip_sigma=3.0, n_clip=0, integration_mode=BILINEAR,
+                  linear_growth=None, max_iterative_sma=None,
+                  fix_center=False, fix_orientation=False,
+                  fix_ellipticity=False, *, max_center_shift=None):
         # This parameter list is quite large and should in principle be
         # simplified by redistributing these controls to somewhere else.
         # We keep this design though because it better mimics the flat
@@ -276,7 +308,7 @@ class Ellipse:
         parameters of the `~photutils.isophote.EllipseGeometry`
         instance used by this class. If none of them is set, the
         fixed parameters of that instance are used. Likewise, the
-        ``linear`` parameter overrides the ``linear_growth`` attribute
+        ``linear_growth`` parameter overrides the ``linear_growth`` attribute
         of that instance. These overrides apply only to this call. The
         `~photutils.isophote.EllipseGeometry` instance is not modified.
 
@@ -288,7 +320,7 @@ class Ellipse:
 
         Parameters
         ----------
-        sma0 : float or `None`, optional
+        sma_start : float or `None`, optional
             The starting value for the semimajor axis length (pixels).
             This value must not be the minimum or maximum semimajor
             axis length, but something in between. The algorithm can't
@@ -297,7 +329,7 @@ class Ellipse:
             poor and it will diverge very easily if not tied to other
             previously fit isophotes. It can't start from the maximum
             value either because the maximum is not known beforehand,
-            depending on signal-to-noise. The ``sma0`` value should be
+            depending on signal-to-noise. The ``sma_start`` value should be
             selected such that the corresponding isophote has a good
             signal-to-noise ratio and a clearly defined geometry. If set
             to `None` (the default), one of two actions will be taken:
@@ -306,7 +338,7 @@ class Ellipse:
             ``sma`` value will be used. Otherwise, a default value of
             10 will be used. The starting value must be positive.
 
-        minsma : float, optional
+        min_sma : float, optional
             The minimum value for the semimajor axis length (pixels).
             The default is 0, which also adds the central pixel to the
             returned list as an isophote with a semimajor axis length
@@ -315,47 +347,48 @@ class Ellipse:
             a semimajor axis length smaller than 0.5 pixels are not
             fitted.
 
-        maxsma : float or `None`, optional
+        max_sma : float or `None`, optional
             The maximum value for the semimajor axis length (pixels).
             When set to `None` (default), the algorithm will increase
             the semimajor axis until one of several conditions will
             cause it to stop and revert to fit ellipses with sma <
-            ``sma0``.
+            ``sma_start``.
 
         step : float, optional
             The step value used to grow/shrink the semimajor axis
-            length (pixels if ``linear=True``, or a relative value if
-            ``linear=False``). See the ``linear`` parameter. It also
-            defines the elliptical annulus used by the sampling
-            algorithm, which sets the areas of the elliptical sectors
-            for the area integration modes (see the ``integrmode``
-            parameter). It replaces the ``step`` attribute of the
-            `~photutils.isophote.EllipseGeometry` instance used by this
-            class. The step must be positive. The default is 0.1.
+            length (pixels if ``linear_growth=True``, or a relative
+            value if ``linear_growth=False``). See the ``linear_growth``
+            parameter. It also defines the elliptical annulus used by
+            the sampling algorithm, which sets the areas of the
+            elliptical sectors for the area integration modes (see the
+            ``integration_mode`` parameter). It replaces the ``step``
+            attribute of the `~photutils.isophote.EllipseGeometry`
+            instance used by this class. The step must be positive. The
+            default is 0.1.
 
-        conver : float, optional
+        convergence : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms times the
-            square root of the mean sector area of the sample points
-            (see the ``sector_area`` attribute of
+            value) than ``convergence`` times the harmonic fit rms
+            times the square root of the mean sector area of the sample
+            points (see the ``sector_area`` attribute of
             `~photutils.isophote.EllipseSample`). The default is 0.05.
 
-        minit : int, optional
+        miniters : int, optional
             The minimum number of iterations to perform. A minimum of
             10 (the default) iterations guarantees that, on average, 2
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
             level). For the first isophote, the minimum number of
-            iterations is 2 * ``minit`` to ensure that, even departing
+            iterations is 2 * ``miniters`` to ensure that, even departing
             from not-so-good initial values, the algorithm has a better
             chance to converge to a sensible solution.
 
-        maxit : int, optional
+        maxiters : int, optional
             The maximum number of iterations to perform. The default is
             50.
 
-        fflag : float, optional
+        min_valid_fraction : float, optional
             The minimum acceptable fraction of valid (nonflagged)
             data points in the sample. If the fraction of valid data
             points is smaller than this, the iterations stop and the
@@ -364,7 +397,7 @@ class Ellipse:
             those that lie outside the image, are masked or nonfinite,
             or were rejected by sigma clipping. The default is 0.7.
 
-        maxgerr : float, optional
+        max_gradient_rel_err : float, optional
             The maximum acceptable relative error in the local
             radial intensity gradient. This is the main control
             for preventing ellipses from growing to regions of too
@@ -374,22 +407,23 @@ class Ellipse:
             relative error. The usual behavior of the gradient relative
             error is to increase with semimajor axis, being larger in
             outer, fainter regions of a galaxy image. In the current
-            implementation, the ``maxgerr`` criterion is triggered only
-            when two consecutive isophotes exceed the value specified by
-            the parameter. This prevents premature stopping caused by
-            contamination such as stars and HII regions.
+            implementation, the ``max_gradient_rel_err`` criterion is
+            triggered only when two consecutive isophotes exceed the
+            value specified by the parameter. This prevents premature
+            stopping caused by contamination such as stars and HII
+            regions.
 
             A number of actions may happen when the gradient error
-            exceeds ``maxgerr`` (or becomes nonsignificant and is
-            set to `None`). If the maximum semimajor axis specified
-            by ``maxsma`` is set to `None`, semimajor axis growth is
+            exceeds ``max_gradient_rel_err`` (or becomes nonsignificant
+            and is set to `None`). If the maximum semimajor axis specified
+            by ``max_sma`` is set to `None`, semimajor axis growth is
             stopped and the algorithm proceeds inwards to the galaxy
-            center. If ``maxsma`` is set to some finite value, and this
+            center. If ``max_sma`` is set to some finite value, and this
             value is larger than the current semimajor axis length, the
             algorithm enters noniterative mode and proceeds outwards
-            until reaching ``maxsma``. The default is 0.5.
+            until reaching ``max_sma``. The default is 0.5.
 
-        sclip : float, optional
+        clip_sigma : float, optional
             The sigma-clip sigma value. The default is 3.0.
 
         n_clip : int, optional
@@ -400,55 +434,58 @@ class Ellipse:
                 The ``nclip`` keyword is deprecated. Use ``n_clip``
                 instead.
 
-        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
-                optional
+        integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
+                'median'}, optional
             The integration mode. The 'mean' and 'median' modes
             integrate over elliptical sectors and fall back to
             'bilinear' for sectors smaller than 1 pixel. The default is
             'bilinear'.
 
-        linear : bool or `None`, optional
+        linear_growth : bool or `None`, optional
             The semimajor axis growing/shrinking mode. If `False`,
             the geometric growing mode is chosen, thus the
             semimajor axis length is increased by a factor of (1.
             + ``step``), and the process is repeated until either
             the semimajor axis value reaches the value of parameter
-            ``maxsma``, or the last fitted ellipse has more than a given
-            fraction of its sampled points flagged out (see ``fflag``).
-            The process then resumes from the first fitted ellipse (at
-            ``sma0``) inwards, in steps of (1./(1. + ``step``)), until
-            the semimajor axis length reaches the value ``minsma``. In
-            case of linear growing, the increment or decrement value
-            is given directly by ``step`` in pixels. If ``maxsma`` is
-            set to `None`, the semimajor axis will grow until a low
-            signal-to-noise criterion is met. See ``maxgerr``. If
-            `None` (default), the ``linear_growth`` attribute of the
-            input geometry is used (`False` for the default geometry).
+            ``max_sma``, or the last fitted ellipse has more than a given
+            fraction of its sampled points flagged out (see
+            ``min_valid_fraction``). The process then resumes from the
+            first fitted ellipse (at ``sma_start``) inwards, in steps
+            of (1./(1. + ``step``)), until the semimajor axis length
+            reaches the value ``min_sma``. In case of linear growing,
+            the increment or decrement value is given directly by
+            ``step`` in pixels. If ``max_sma`` is set to `None`, the
+            semimajor axis will grow until a low signal-to-noise
+            criterion is met. See ``max_gradient_rel_err``. If `None`
+            (default), the ``linear_growth`` attribute of the input
+            geometry is used (`False` for the default geometry).
 
-        maxrit : float or `None`, optional
+        max_iterative_sma : float or `None`, optional
             The maximum value of semimajor axis to perform an actual
             fit. Whenever the current semimajor axis length is larger
-            than ``maxrit``, the isophotes will be extracted using the
-            current geometry, without being fitted. This noniterative
+            than ``max_iterative_sma``, the isophotes will be extracted
+            using the current geometry, without being fitted. This
+            noniterative
             mode may be useful for sampling regions of very low surface
             brightness, where the algorithm may become unstable
             and unable to recover reliable geometry information.
-            If ``maxsma`` is set, noniterative mode is also entered
+            If ``max_sma`` is set, noniterative mode is also entered
             when two consecutive isophotes fail to fit (e.g., the
             ellipticity exceeds 0.95 or the center leaves the image),
             when an isophote has too many flagged data points (see
-            ``fflag``), or when the ``maxgerr`` criterion is met. If
-            `None` (default), then no maximum value is used.
+            ``min_valid_fraction``), or when the
+            ``max_gradient_rel_err`` criterion is met. If `None`
+            (default), then no maximum value is used.
 
         fix_center : bool, optional
             Keep center of ellipse fixed during fit? The default is
             False.
 
-        fix_pa : bool, optional
+        fix_orientation : bool, optional
             Keep position angle of semimajor axis of ellipse fixed
             during fit? The default is False.
 
-        fix_eps : bool, optional
+        fix_ellipticity : bool, optional
             Keep ellipticity of ellipse fixed during fit? The default is
             False.
 
@@ -476,7 +513,7 @@ class Ellipse:
             If the starting semimajor axis length or ``step`` is not
             positive, if ``max_center_shift`` is negative or NaN, if
             the ellipticity of the starting geometry is 1 or larger, or
-            if ``integrmode`` is not a valid integration mode.
+            if ``integration_mode`` is not a valid integration mode.
 
         Warns
         -----
@@ -493,10 +530,10 @@ class Ellipse:
 
         # Get starting sma from appropriate source: keyword parameter or
         # internal EllipseGeometry instance.
-        sma = self._geometry.sma if sma0 is None else sma0
+        sma = self._geometry.sma if sma_start is None else sma_start
         if not sma > 0:  # also rejects NaN
-            msg = ('The starting semimajor axis length (sma0 or the sma of '
-                   'the input geometry) must be positive')
+            msg = ('The starting semimajor axis length (sma_start or the '
+                   'sma of the input geometry) must be positive')
             raise ValueError(msg)
         if not step > 0:  # also rejects NaN
             msg = 'step must be positive'
@@ -506,12 +543,12 @@ class Ellipse:
         # so that they do not persist in the input geometry instance.
         geometry = copy.deepcopy(self._geometry)
         geometry.step = step
-        if linear is not None:
-            geometry.linear_growth = bool(linear)
-        if fix_center or fix_pa or fix_eps:
+        if linear_growth is not None:
+            geometry.linear_growth = bool(linear_growth)
+        if fix_center or fix_orientation or fix_ellipticity:
             geometry._fix = _make_fix_array(fix_center=fix_center,
-                                            fix_orientation=fix_pa,
-                                            fix_ellipticity=fix_eps)
+                                            fix_orientation=fix_orientation,
+                                            fix_ellipticity=fix_ellipticity)
         if np.all(geometry._fix):
             msg = 'Everything is fixed. Fit not possible.'
             warnings.warn(msg, AstropyUserWarning)
@@ -519,11 +556,12 @@ class Ellipse:
 
         # The fit parameters that are the same for all isophotes. The
         # fitted isophotes are appended to isophote_list.
-        fit = functools.partial(self._fit_isophote, conver=conver,
-                                maxit=maxit, fflag=fflag, sclip=sclip,
-                                n_clip=n_clip, integrmode=integrmode,
-                                maxrit=maxrit, isophote_list=isophote_list,
-                                max_center_shift=max_center_shift)
+        fit = functools.partial(
+            self._fit_isophote, convergence=convergence, maxiters=maxiters,
+            min_valid_fraction=min_valid_fraction, clip_sigma=clip_sigma,
+            n_clip=n_clip, integration_mode=integration_mode,
+            max_iterative_sma=max_iterative_sma,
+            isophote_list=isophote_list, max_center_shift=max_center_shift)
 
         # First, go from initial sma outwards until
         # hitting one of several stopping criteria.
@@ -533,18 +571,19 @@ class Ellipse:
             # The first isophote runs longer. The geometry of the last
             # fitted isophote is the initial guess for the next one.
             if isophote_list:
-                minit_a = minit
+                miniters_a = miniters
                 geometry = isophote_list[-1].sample.geometry
             else:
-                minit_a = 2 * minit
-            isophote = fit(geometry, sma, minit=minit_a, noniterate=noiter)
+                miniters_a = 2 * miniters
+            isophote = fit(geometry, sma, miniters=miniters_a,
+                           noniterate=noiter)
 
             # An invalid isophote (e.g., no valid data points) is not
             # stored, so an empty list means that the first isophote
             # could not be fit at all.
             if not isophote_list:
                 msg = self._first_isophote_failure_message(isophote,
-                                                           fflag)
+                                                           min_valid_fraction)
                 warnings.warn(msg, AstropyUserWarning)
                 return IsophoteList([])
 
@@ -564,8 +603,8 @@ class Ellipse:
                 # the fitting algorithm to find any meaningful solution.
 
                 if len(isophote_list) == 1:
-                    msg = self._first_isophote_failure_message(isophote,
-                                                               fflag)
+                    msg = self._first_isophote_failure_message(
+                        isophote, min_valid_fraction)
                     warnings.warn(msg, AstropyUserWarning)
                     return IsophoteList([])
 
@@ -582,10 +621,10 @@ class Ellipse:
                     and ((isophote.stop_code == 5
                           and isophote_list[-2].stop_code == 5)
                          or isophote.stop_code == 1)):
-                    if maxsma is not None and maxsma > isophote.sma:
+                    if max_sma is not None and max_sma > isophote.sma:
                         # If a maximum sma value was provided by
                         # user, and the current sma is smaller than
-                        # maxsma, keep growing sma in noniterative
+                        # max_sma, keep growing sma in noniterative
                         # mode until reaching it.
                         noiter = True
                     else:
@@ -599,17 +638,19 @@ class Ellipse:
 
             # Check the gradient relative error criterion. As in the
             # STSDAS ellipse task with soft stopping, it is triggered
-            # only when two consecutive isophotes exceed ``maxgerr``.
-            # An isophote whose gradient error could not be measured
-            # counts as exceeding it. The first isophote cannot
-            # trigger it, but it counts as the first of the two.
+            # only when two consecutive isophotes exceed
+            # ``max_gradient_rel_err``. An isophote whose gradient error
+            # could not be measured counts as exceeding it. The first
+            # isophote cannot trigger it, but it counts as the first of
+            # the two.
             # The sample value is tested because a gradient error that
             # could not be measured is `None` there, while a measured
             # relative error can also be NaN.
             gradient_rel_err = isophote.sample.gradient_rel_err
-            exceeded = gradient_rel_err is None or gradient_rel_err > maxgerr
+            exceeded = (gradient_rel_err is None
+                        or gradient_rel_err > max_gradient_rel_err)
             if exceeded and previous_exceeded:
-                if maxsma is not None and maxsma > isophote.sma:
+                if max_sma is not None and max_sma > isophote.sma:
                     noiter = True
                 else:
                     break
@@ -618,7 +659,7 @@ class Ellipse:
             # Update sma. If exceeded user-defined
             # maximum, bail out from this loop.
             sma = isophote.sample.geometry._update_sma(step)
-            if maxsma is not None and sma >= maxsma:
+            if max_sma is not None and sma >= max_sma:
                 break
 
         # Reset sma so as to go inwards. As in the STSDAS ellipse task,
@@ -630,8 +671,8 @@ class Ellipse:
 
         # Now, go from initial sma inwards towards center, until the
         # sma reaches the user-defined minimum or is too small.
-        while sma > max(minsma, 0.5):
-            isophote = fit(geometry, sma, minit=minit)
+        while sma > max(min_sma, 0.5):
+            isophote = fit(geometry, sma, miniters=miniters)
 
             # If abnormal condition, fix isophote but keep going.
             if isophote.stop_code < 0:
@@ -651,12 +692,12 @@ class Ellipse:
             # Figure out the next sma.
             sma = isophote.sample.geometry._update_sma(step)
 
-        # If user asked for minsma=0, extract special isophote there.
+        # If user asked for min_sma=0, extract special isophote there.
         # It is centered on the innermost fitted isophote, whose
         # geometry is the last one set above, and it is appended to
         # isophote_list.
-        if minsma == 0.0:
-            fit(geometry, 0.0, minit=minit)
+        if min_sma == 0.0:
+            fit(geometry, 0.0, miniters=miniters)
 
         # Sort list of isophotes according to sma.
         isophote_list.sort()
@@ -667,23 +708,41 @@ class Ellipse:
     @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
     @deprecated_renamed_argument('maxgerr', None, '3.2', until='4.0')
     @deprecated_renamed_argument('going_inwards', None, '3.2', until='4.0')
-    def fit_isophote(self, sma, step=0.1, conver=DEFAULT_CONVERGENCE,
-                     minit=DEFAULT_MINIT, maxit=DEFAULT_MAXIT,
-                     fflag=DEFAULT_FFLAG, maxgerr=None,  # noqa: ARG002
-                     sclip=3.0, n_clip=0, integrmode=BILINEAR,
-                     linear=None, maxrit=None, noniterate=False,
+    @deprecated_renamed_argument('conver', 'convergence', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('minit', 'miniters', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('maxit', 'maxiters', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('fflag', 'min_valid_fraction', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('sclip', 'clip_sigma', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('integrmode', 'integration_mode', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('linear', 'linear_growth', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('maxrit', 'max_iterative_sma', '3.2',
+                                 until='4.0')
+    def fit_isophote(self, sma, step=0.1, convergence=DEFAULT_CONVERGENCE,
+                     miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
+                     min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
+                     maxgerr=None,  # noqa: ARG002
+                     clip_sigma=3.0, n_clip=0, integration_mode=BILINEAR,
+                     linear_growth=None, max_iterative_sma=None,
+                     noniterate=False,
                      going_inwards=None,  # noqa: ARG002
                      isophote_list=None, *, max_center_shift=None):
         """
         Fit a single isophote with a given semimajor axis length.
 
-        The ``step`` and ``linear`` parameters do not directly control
+        The ``step`` and ``linear_growth`` parameters do not directly control
         the growth or reduction of the current fitting semimajor axis
         length. Instead, they define the elliptical annulus used by
         the sampling algorithm, which sets the areas of the elliptical
-        sectors for the area integration modes (see the ``integrmode``
+        sectors for the area integration modes (see the ``integration_mode``
         parameter). The ``step`` parameter replaces the ``step``
-        attribute of the starting geometry. The ``linear`` parameter,
+        attribute of the starting geometry. The ``linear_growth`` parameter,
         if set, replaces its ``linear_growth`` attribute.
 
         If the center, position angle, and ellipticity are all fixed
@@ -699,29 +758,29 @@ class Ellipse:
         step : float, optional
             The step value that defines the sampling annulus (pixels
             if linear growth is used, otherwise a relative value). See
-            the ``linear`` parameter. The step must be positive. The
+            the ``linear_growth`` parameter. The step must be positive. The
             default is 0.1.
 
-        conver : float, optional
+        convergence : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms times the
-            square root of the mean sector area of the sample points
-            (see the ``sector_area`` attribute of
+            value) than ``convergence`` times the harmonic fit rms
+            times the square root of the mean sector area of the sample
+            points (see the ``sector_area`` attribute of
             `~photutils.isophote.EllipseSample`). The default is 0.05.
 
-        minit : int, optional
+        miniters : int, optional
             The minimum number of iterations to perform. A minimum of
             10 (the default) iterations guarantees that, on average, 2
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
             level).
 
-        maxit : int, optional
+        maxiters : int, optional
             The maximum number of iterations to perform. The default is
             50.
 
-        fflag : float, optional
+        min_valid_fraction : float, optional
             The minimum acceptable fraction of valid (nonflagged)
             data points in the sample. If the fraction of valid data
             points is smaller than this, the iterations stop and the
@@ -735,12 +794,12 @@ class Ellipse:
 
             .. deprecated:: 3.2
                This keyword argument is deprecated and will be removed
-               in version 4.0. The ``maxgerr`` criterion compares
+               in version 4.0. The ``max_gradient_rel_err`` criterion compares
                consecutive isophotes. It is applied by
                :meth:`~photutils.isophote.Ellipse.fit_image`, so it has
                no effect when fitting a single isophote.
 
-        sclip : float, optional
+        clip_sigma : float, optional
             The sigma-clip sigma value. The default is 3.0.
 
         n_clip : int, optional
@@ -751,27 +810,28 @@ class Ellipse:
                 The ``nclip`` keyword is deprecated. Use ``n_clip``
                 instead.
 
-        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
-                optional
+        integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
+                'median'}, optional
             The integration mode. The 'mean' and 'median' modes
             integrate over elliptical sectors and fall back to
             'bilinear' for sectors smaller than 1 pixel. The default is
             'bilinear'.
 
-        linear : bool or `None`, optional
+        linear_growth : bool or `None`, optional
             The semimajor axis growing/shrinking mode. When fitting
             just one isophote, this parameter is used only by the code
             that defines the details of how elliptical arc segments
             ("sectors") are extracted from the image when using area
-            extraction modes (see the ``integrmode`` parameter). If
+            extraction modes (see the ``integration_mode`` parameter). If
             `None` (default), the ``linear_growth`` attribute of the
             starting geometry is used.
 
-        maxrit : float or `None`, optional
+        max_iterative_sma : float or `None`, optional
             The maximum value of semimajor axis to perform an actual
             fit. Whenever the current semimajor axis length is larger
-            than ``maxrit``, the isophotes will be extracted using the
-            current geometry, without being fitted. This noniterative
+            than ``max_iterative_sma``, the isophotes will be extracted
+            using the current geometry, without being fitted. This
+            noniterative
             mode may be useful for sampling regions of very low surface
             brightness, where the algorithm may become unstable
             and unable to recover reliable geometry information.
@@ -789,7 +849,7 @@ class Ellipse:
             to change from iterative to noniterative mode somewhere
             along the sequence of isophotes. When set to `True`, this
             parameter overrides the behavior associated with parameter
-            ``maxrit``. The default is `False`.
+            ``max_iterative_sma``. The default is `False`.
 
         going_inwards : bool, optional
             This keyword has no effect.
@@ -827,7 +887,7 @@ class Ellipse:
         ValueError
             If ``step`` is not positive, if ``max_center_shift`` is
             negative or NaN, if the ellipticity of the starting geometry
-            is 1 or larger, or if ``integrmode`` is not a valid
+            is 1 or larger, or if ``integration_mode`` is not a valid
             integration mode.
 
         Warns
@@ -851,19 +911,22 @@ class Ellipse:
         # are set on a copy so that the input geometry is not modified.
         geometry = copy.deepcopy(geometry)
         geometry.step = step
-        if linear is not None:
-            geometry.linear_growth = bool(linear)
+        if linear_growth is not None:
+            geometry.linear_growth = bool(linear_growth)
 
-        return self._fit_isophote(geometry, sma, conver=conver, minit=minit,
-                                  maxit=maxit, fflag=fflag, sclip=sclip,
-                                  n_clip=n_clip, integrmode=integrmode,
-                                  maxrit=maxrit, noniterate=noniterate,
-                                  isophote_list=isophote_list,
-                                  max_center_shift=max_center_shift)
+        return self._fit_isophote(
+            geometry, sma, convergence=convergence, miniters=miniters,
+            maxiters=maxiters, min_valid_fraction=min_valid_fraction,
+            clip_sigma=clip_sigma, n_clip=n_clip,
+            integration_mode=integration_mode,
+            max_iterative_sma=max_iterative_sma, noniterate=noniterate,
+            isophote_list=isophote_list, max_center_shift=max_center_shift)
 
-    def _fit_isophote(self, geometry, sma, *, conver, minit, maxit, fflag,
-                      sclip, n_clip, integrmode, maxrit, noniterate=False,
-                      isophote_list=None, max_center_shift=None):
+    def _fit_isophote(self, geometry, sma, *, convergence, miniters,
+                      maxiters, min_valid_fraction, clip_sigma, n_clip,
+                      integration_mode, max_iterative_sma,
+                      noniterate=False, isophote_list=None,
+                      max_center_shift=None):
         """
         Fit a single isophote, starting from the input geometry.
 
@@ -874,13 +937,15 @@ class Ellipse:
         appended to it.
         """
         # Do the fit.
-        if noniterate or (maxrit is not None and sma > maxrit):
-            isophote = self._non_iterative(sma, geometry, sclip, n_clip,
-                                           integrmode)
+        if noniterate or (max_iterative_sma is not None
+                          and sma > max_iterative_sma):
+            isophote = self._non_iterative(sma, geometry, clip_sigma, n_clip,
+                                           integration_mode)
         else:
-            isophote = self._iterative(sma, geometry, sclip, n_clip,
-                                       integrmode, conver, minit, maxit,
-                                       fflag,
+            isophote = self._iterative(sma, geometry, clip_sigma, n_clip,
+                                       integration_mode, convergence,
+                                       miniters, maxiters,
+                                       min_valid_fraction,
                                        max_center_shift=max_center_shift)
 
         # Store result in list.
@@ -889,8 +954,8 @@ class Ellipse:
 
         return isophote
 
-    def measure_isophotes(self, isophotes, *, sclip=3.0, n_clip=0,
-                          integrmode=BILINEAR):
+    def measure_isophotes(self, isophotes, *, clip_sigma=3.0, n_clip=0,
+                          integration_mode=BILINEAR):
         """
         Measure the image along a set of ellipses without fitting.
 
@@ -918,15 +983,15 @@ class Ellipse:
             the local radial gradient and the sector areas. The input
             isophotes and geometries are not modified.
 
-        sclip : float, optional
+        clip_sigma : float, optional
             The sigma-clip sigma value. The default is 3.0.
 
         n_clip : int, optional
             The number of sigma-clip iterations. The default is 0, which
             means sigma clipping is skipped.
 
-        integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
-                optional
+        integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
+                'median'}, optional
             The integration mode. The 'mean' and 'median' modes
             integrate over elliptical sectors and fall back to
             'bilinear' for sectors smaller than 1 pixel. The default is
@@ -952,7 +1017,7 @@ class Ellipse:
 
         ValueError
             If an ellipse has an ellipticity of 1 or larger or a
-            nonfinite center, or if ``integrmode`` is not a valid
+            nonfinite center, or if ``integration_mode`` is not a valid
             integration mode.
         """
         geometries = []
@@ -973,36 +1038,41 @@ class Ellipse:
             if geometry.sma == 0:
                 isophote = _central_isophote(self.image, geometry)
             else:
-                isophote = self._non_iterative(geometry.sma, geometry, sclip,
-                                               n_clip, integrmode)
+                isophote = self._non_iterative(geometry.sma, geometry,
+                                               clip_sigma, n_clip,
+                                               integration_mode)
             isophote_list.append(isophote)
 
         isophote_list.sort()
 
         return IsophoteList(isophote_list)
 
-    def _iterative(self, sma, geometry, sclip, n_clip, integrmode, conver,
-                   minit, maxit, fflag, *, max_center_shift=None):
+    def _iterative(self, sma, geometry, clip_sigma, n_clip,
+                   integration_mode, convergence, miniters, maxiters,
+                   min_valid_fraction, *, max_center_shift=None):
         if sma <= 0.0:
             # A zero sma requires special handling.
             return _central_isophote(self.image, geometry)
 
-        sample = EllipseSample(self.image, sma, clip_sigma=sclip,
+        sample = EllipseSample(self.image, sma, clip_sigma=clip_sigma,
                                n_clip=n_clip, geometry=geometry,
-                               integration_mode=integrmode)
+                               integration_mode=integration_mode)
         fitter = EllipseFitter(sample)
 
         # The center shift is measured from the input geometry, which
         # fitting does not modify (each sample uses a copy).
         reference_center = (self._geometry.x0, self._geometry.y0)
-        return fitter.fit(conver=conver, minit=minit, maxit=maxit,
-                          fflag=fflag, max_center_shift=max_center_shift,
+        return fitter.fit(convergence=convergence, miniters=miniters,
+                          maxiters=maxiters,
+                          min_valid_fraction=min_valid_fraction,
+                          max_center_shift=max_center_shift,
                           reference_center=reference_center)
 
-    def _non_iterative(self, sma, geometry, sclip, n_clip, integrmode):
-        sample = EllipseSample(self.image, sma, clip_sigma=sclip,
+    def _non_iterative(self, sma, geometry, clip_sigma, n_clip,
+                       integration_mode):
+        sample = EllipseSample(self.image, sma, clip_sigma=clip_sigma,
                                n_clip=n_clip, geometry=geometry,
-                               integration_mode=integrmode)
+                               integration_mode=integration_mode)
         sample._update(fixed_parameters=geometry._fix)
 
         # An isophote without any valid data points (e.g., an ellipse
@@ -1014,7 +1084,7 @@ class Ellipse:
         return Isophote(sample, 0, valid=True, stop_code=4)
 
     @staticmethod
-    def _first_isophote_failure_message(isophote, fflag):
+    def _first_isophote_failure_message(isophote, min_valid_fraction):
         """
         Return the warning message for a first isophote that could not
         be fit, with the reason given by its stop code.
@@ -1027,14 +1097,14 @@ class Ellipse:
             advice = check_data
         elif isophote.stop_code == 1:
             reason = ('the fraction of valid data points is smaller than '
-                      f'fflag ({fflag})')
+                      f'min_valid_fraction ({min_valid_fraction})')
             advice = check_data
         else:
             reason = ('the ellipse diverged or no meaningful intensity '
                       'gradient could be measured')
             advice = ('Check the starting ellipse geometry, or try a '
                       'slightly different starting semimajor axis length '
-                      '(sma0). For an image with a low signal-to-noise '
+                      '(sma_start). For an image with a low signal-to-noise '
                       'ratio, see the isophote FAQ '
                       '(https://photutils.readthedocs.io/en/latest/'
                       'user_guide/isophote_faq.html).')

@@ -632,6 +632,19 @@ API Changes
     The ``fixed_parameters`` keyword of ``EllipseSample.update`` is
     deprecated. [#2568]
 
+  - The keywords of ``Ellipse.fit_image``, ``Ellipse.fit_isophote``,
+    and ``EllipseFitter.fit`` were renamed. The ``sma0``, ``minsma``,
+    ``maxsma``, ``conver``, ``minit``, ``maxit``, ``fflag``,
+    ``maxgerr``, ``sclip``, ``integrmode``, ``linear``, ``maxrit``,
+    ``fix_pa``, and ``fix_eps`` keywords are now ``sma_start``,
+    ``min_sma``, ``max_sma``, ``convergence``, ``miniters``,
+    ``maxiters``, ``min_valid_fraction``, ``max_gradient_rel_err``,
+    ``clip_sigma``, ``integration_mode``, ``linear_growth``,
+    ``max_iterative_sma``, ``fix_orientation``, and
+    ``fix_ellipticity``. Each method accepts only the keywords it
+    already had. The old names are deprecated and will be removed in
+    version 4.0. [#2568]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

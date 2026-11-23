@@ -174,7 +174,7 @@ class TestFitEllipseSamples:
         data = make_test_image(noise=1.0e-10, seed=0)
         sample = EllipseSample(data, 40)
         fitter = EllipseFitter(sample)
-        iso = fitter.fit(maxit=400)
+        iso = fitter.fit(maxiters=400)
 
         assert_allclose(iso.a3, 6.825e-7, atol=1.0e-8)
         assert_allclose(iso.b3, -1.68e-6, atol=1.0e-8)
@@ -246,7 +246,7 @@ def test_upper_harmonics_values(sign):
 
     geometry = EllipseGeometry(x0=100, y0=100, sma=20, ellipticity=eps,
                                orientation=pa)
-    isolist = Ellipse(data, geometry=geometry).fit_image(maxsma=50.0)
+    isolist = Ellipse(data, geometry=geometry).fit_image(max_sma=50.0)
     mask = (isolist.sma > 10) & (isolist.sma < 45)
     assert np.count_nonzero(mask) > 10
     for name, coeff in zip(('a3', 'b3', 'a4', 'b4'), coeffs, strict=True):

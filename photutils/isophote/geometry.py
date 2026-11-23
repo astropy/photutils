@@ -137,8 +137,8 @@ class EllipseGeometry:
         The semimajor axis growing/shrinking mode. The default is
         `False`. When the geometry is input to
         `~photutils.isophote.Ellipse`, this value is used unless the
-        ``linear`` keyword of its ``fit_image`` and ``fit_isophote``
-        methods is set.
+        ``linear_growth`` keyword of its ``fit_image`` and
+        ``fit_isophote`` methods is set.
     fix_center : bool, optional
         Keep center of ellipse fixed during fit? The default is
         `False`.

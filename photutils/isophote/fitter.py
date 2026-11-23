@@ -24,10 +24,10 @@ MAX_EPS = 0.95
 MIN_EPS = 0.05
 
 DEFAULT_CONVERGENCE = 0.05
-DEFAULT_MINIT = 10
-DEFAULT_MAXIT = 50
-DEFAULT_FFLAG = 0.7
-DEFAULT_MAXGERR = 0.5
+DEFAULT_MINITERS = 10
+DEFAULT_MAXITERS = 50
+DEFAULT_MIN_VALID_FRACTION = 0.7
+DEFAULT_MAX_GRADIENT_REL_ERR = 0.5
 
 # The indices of the orientation and ellipticity in the ``fix`` array
 # of EllipseGeometry.
@@ -50,8 +50,17 @@ class EllipseFitter:
 
     @deprecated_renamed_argument('maxgerr', None, '3.2', until='4.0')
     @deprecated_renamed_argument('going_inwards', None, '3.2', until='4.0')
-    def fit(self, *, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
-            maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
+    @deprecated_renamed_argument('conver', 'convergence', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('minit', 'miniters', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('maxit', 'maxiters', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('fflag', 'min_valid_fraction', '3.2',
+                                 until='4.0')
+    def fit(self, *, convergence=DEFAULT_CONVERGENCE,
+            miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
+            min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
             maxgerr=None, going_inwards=None,  # noqa: ARG002
             max_center_shift=None, reference_center=None):
         """
@@ -67,26 +76,26 @@ class EllipseFitter:
 
         Parameters
         ----------
-        conver : float, optional
+        convergence : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms times the
-            square root of the mean sector area of the sample points
-            (see the ``sector_area`` attribute of
+            value) than ``convergence`` times the harmonic fit rms
+            times the square root of the mean sector area of the sample
+            points (see the ``sector_area`` attribute of
             `~photutils.isophote.EllipseSample`). The default is 0.05.
 
-        minit : int, optional
+        miniters : int, optional
             The minimum number of iterations to perform. A minimum of
             10 (the default) iterations guarantees that, on average, 2
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
             level).
 
-        maxit : int, optional
+        maxiters : int, optional
             The maximum number of iterations to perform. The default is
             50.
 
-        fflag : float, optional
+        min_valid_fraction : float, optional
             The minimum acceptable fraction of valid (nonflagged)
             data points in the sample. If the fraction of valid data
             points is smaller than this, the iterations stop and the
@@ -100,7 +109,7 @@ class EllipseFitter:
 
             .. deprecated:: 3.2
                This keyword argument is deprecated and will be removed
-               in version 4.0. The ``maxgerr`` criterion compares
+               in version 4.0. The ``max_gradient_rel_err`` criterion compares
                consecutive isophotes. It is applied by
                :meth:`~photutils.isophote.Ellipse.fit_image`, so it has
                no effect when fitting a single isophote.
@@ -182,8 +191,8 @@ class EllipseFitter:
         # Here we keep track of the sample that caused the minimum harmonic
         # amplitude(in absolute value). This will eventually be used to
         # build the resulting Isophote in cases where iterations run to
-        # the maximum allowed (maxit), or the maximum number of flagged
-        # data points (fflag) is reached.
+        # the maximum allowed (maxiters), or the maximum number of
+        # flagged data points (min_valid_fraction) is reached.
         minimum_amplitude_value = np.inf
         minimum_amplitude_sample = None
 
@@ -223,7 +232,7 @@ class EllipseFitter:
         fit_fixed = np.array(fixed_parameters, dtype=bool)
         center_at_bound = False
 
-        for i in range(maxit):
+        for i in range(maxiters):
             # Force the sample to compute its gradient and associated values.
             sample._update(fixed_parameters=fixed_parameters)
 
@@ -274,8 +283,8 @@ class EllipseFitter:
             model = first_and_second_harmonic_function(values[0], coeffs)
             residual = values[2] - model
 
-            if ((conver * np.sqrt(sample.sector_area) * np.std(residual))
-                    > np.abs(largest_harmonic)) and (i >= minit - 1):
+            if ((convergence * np.sqrt(sample.sector_area) * np.std(residual))
+                    > np.abs(largest_harmonic)) and (i >= miniters - 1):
                 # Got a valid solution and a minimum number of
                 # iterations has run.
                 sample._update(fixed_parameters=fixed_parameters)
@@ -284,7 +293,7 @@ class EllipseFitter:
             # It may not have converged yet, but the sample contains too
             # many invalid data points, so return the best-fit sample
             # instead of the current one.
-            if sample.n_valid < (sample.n_total * fflag):
+            if sample.n_valid < (sample.n_total * min_valid_fraction):
                 # When too many data points were flagged, return the
                 # best-fit sample instead of the current one.
                 minimum_amplitude_sample._update(
@@ -360,7 +369,7 @@ class EllipseFitter:
         # code 2, and handle it as a valid isophote. Use the
         # best-fit sample instead of the current one.
         minimum_amplitude_sample._update(fixed_parameters=fixed_parameters)
-        return Isophote(minimum_amplitude_sample, maxit, valid=True,
+        return Isophote(minimum_amplitude_sample, maxiters, valid=True,
                         stop_code=2)
 
     @staticmethod

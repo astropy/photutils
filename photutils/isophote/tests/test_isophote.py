@@ -40,7 +40,7 @@ class TestIsophote:
         data = make_test_image(noise=1.0e-10, seed=0)
         sample = EllipseSample(data, 40)
         fitter = EllipseFitter(sample)
-        iso = fitter.fit(maxit=400)
+        iso = fitter.fit(maxiters=400)
 
         assert iso.valid
         assert iso.stop_code in (0, 2)
@@ -115,7 +115,7 @@ class TestIsophote:
         # iterations (2 * minit) for the first isophote.
         sample = EllipseSample(self.data, 10)
         fitter = EllipseFitter(sample)
-        iso = fitter.fit(minit=20)
+        iso = fitter.fit(miniters=20)
 
         assert iso.valid
         assert iso.stop_code == 0
@@ -503,7 +503,7 @@ class TestIsophoteList:
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
         ellipse = Ellipse(test_img, geometry=g)
-        isolist = ellipse.fit_image(maxsma=27)
+        isolist = ellipse.fit_image(max_sma=27)
 
         assert len(isolist.get_names()) >= 30  # test for get_names
 
@@ -533,7 +533,7 @@ class TestIsophoteList:
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
         ellipse = Ellipse(test_img, geometry=g)
-        isolist = ellipse.fit_image(maxsma=27)
+        isolist = ellipse.fit_image(max_sma=27)
         match = 'Invalid column name'
         with pytest.raises(ValueError, match=match):
             isolist.to_table(columns=columns)
@@ -549,7 +549,7 @@ class TestIsophoteList:
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
         ellipse = Ellipse(test_img, geometry=g)
-        isolist = ellipse.fit_image(maxsma=27)
+        isolist = ellipse.fit_image(max_sma=27)
         match = "'grad_error' attribute was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = isolist.to_table(columns=['grad_error'])
@@ -565,7 +565,7 @@ class TestIsophoteList:
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
         ellipse = Ellipse(test_img, geometry=g)
-        isolist = ellipse.fit_image(maxsma=27)
+        isolist = ellipse.fit_image(max_sma=27)
         tbl = isolist.to_table(columns='all')
         assert 'grad_rerror' not in tbl.colnames
 
@@ -644,7 +644,7 @@ def test_to_table_dtypes():
     values that are not defined for the central pixel.
     """
     data = make_test_image(nx=200, ny=200, seed=0)
-    isolist = Ellipse(data).fit_image(maxsma=20.0)
+    isolist = Ellipse(data).fit_image(max_sma=20.0)
     assert type(isolist[0]) is Isophote
 
     for columns in ('main', 'all'):

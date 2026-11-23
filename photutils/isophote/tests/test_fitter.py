@@ -522,3 +522,19 @@ def test_everything_fixed_no_data():
     assert not isophote.valid
     assert isophote.stop_code == 3
     assert isophote.n_data == 0
+
+
+@pytest.mark.parametrize(('old', 'new', 'value'),
+                         [('conver', 'convergence', 0.1),
+                          ('minit', 'miniters', 5),
+                          ('maxit', 'maxiters', 30),
+                          ('fflag', 'min_valid_fraction', 0.5)])
+def test_fit_renamed_keywords(old, new, value):
+    sample = EllipseSample(DATA, 40.0)
+    expected = EllipseFitter(sample).fit(**{new: value})
+    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
+        result = EllipseFitter(sample).fit(**{old: value})
+    assert result.intensity == expected.intensity
+    with (pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"),
+          pytest.raises(TypeError)):
+        EllipseFitter(sample).fit(**{old: value, new: value})

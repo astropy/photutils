@@ -114,7 +114,7 @@ class Isophote:
               an ellipse with no valid data points.
            *  4: The isophote was extracted with a fixed geometry,
               without fitting. This happens when the semimajor axis
-              length is larger than ``maxrit``, with
+              length is larger than ``max_iterative_sma``, with
               ``noniterate=True`` in
               :meth:`~photutils.isophote.Ellipse.fit_isophote`, when
               :meth:`~photutils.isophote.Ellipse.fit_image` switches to
