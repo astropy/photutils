@@ -26,7 +26,15 @@ _DEPRECATED_ATTRIBUTES = {
     'grad_r_error': 'gradient_rel_err',
     'niter': 'n_iter',
     'ndata': 'n_data',
-    'nflag': 'n_flag',
+    'nflag': 'n_flagged',
+    'intens': 'intensity',
+    'int_err': 'intensity_err',
+    'eps': 'ellipticity',
+    'ellip_err': 'ellipticity_err',
+    'grad': 'gradient',
+    'pix_stddev': 'pixel_stddev',
+    'sarea': 'sector_area',
+    'n_flag': 'n_flagged',
     'tflux_e': 'total_flux_ellipse',
     'tflux_c': 'total_flux_circle',
     'npix_e': 'n_pixels_ellipse',
@@ -37,7 +45,9 @@ _DEPRECATED_ATTRIBUTES = {
 _DEPRECATED_SINCE = {
     **dict.fromkeys(('grad_error', 'grad_r_error', 'niter', 'ndata',
                      'nflag'), '3.0'),
-    **dict.fromkeys(('tflux_e', 'tflux_c', 'npix_e', 'npix_c'), '3.2'),
+    **dict.fromkeys(('tflux_e', 'tflux_c', 'npix_e', 'npix_c', 'intens',
+                     'int_err', 'eps', 'ellip_err', 'grad', 'pix_stddev',
+                     'sarea', 'n_flag'), '3.2'),
 }
 
 
@@ -112,26 +122,46 @@ class Isophote:
         The geometry of the isophote. It is the same object as the
         geometry of the ``sample``. The central pixel has ``sma``,
         ``eps``, and ``pa`` of zero.
-    intens : float
+    intensity : float
         The mean intensity along the elliptical path.
+    intens : float
+        .. deprecated:: 3.2
+            Use ``intensity`` instead.
     rms : float
         The root-mean-square scatter (standard deviation) of the
         intensity values about their mean along the elliptical path.
-    int_err : float
+    intensity_err : float
         The error of the mean (rms / sqrt(# data points)).
-    ellip_err : float
+    int_err : float
+        .. deprecated:: 3.2
+            Use ``intensity_err`` instead.
+    ellipticity : float
+        The ellipticity of the ellipse.
+    eps : float
+        .. deprecated:: 3.2
+            Use ``ellipticity`` instead.
+    ellipticity_err : float
         The ellipticity error.
+    ellip_err : float
+        .. deprecated:: 3.2
+            Use ``ellipticity_err`` instead.
     pa_err : float
         The position angle error (radians).
     x0_err : float
         The error associated with the center x coordinate.
     y0_err : float
         The error associated with the center y coordinate.
-    pix_stddev : float
+    pixel_stddev : float
         The estimate of pixel standard deviation (rms * sqrt(average
         sector integration area)).
-    grad : float
+    pix_stddev : float
+        .. deprecated:: 3.2
+            Use ``pixel_stddev`` instead.
+    gradient : float
         The local radial intensity gradient.
+    grad : float
+        .. deprecated:: 3.2
+            Use ``gradient`` instead.
     grad_error : float or `None`
         .. deprecated:: 3.0
             Use ``gradient_err`` instead.
@@ -169,8 +199,11 @@ class Isophote:
     n_pixels_circle : int
         The total number of valid pixels inside a circle with the same
         ``sma`` as the ellipse.
-    sarea : float
+    sector_area : float
         The average sector area on the isophote (pixel**2).
+    sarea : float
+        .. deprecated:: 3.2
+            Use ``sector_area`` instead.
     niter : int
         .. deprecated:: 3.0
             Use ``n_iter`` instead.
@@ -181,8 +214,11 @@ class Isophote:
         The number of extracted data points.
     nflag : int
         .. deprecated:: 3.0
-            Use ``n_flag`` instead.
+            Use ``n_flagged`` instead.
     n_flag : int
+        .. deprecated:: 3.2
+            Use ``n_flagged`` instead.
+    n_flagged : int
         The number of discarded data points. Data points can be
         discarded either because they are physically outside the image
         frame boundaries, because they were rejected by sigma clipping,
@@ -214,7 +250,7 @@ class Isophote:
             return
 
         if sample.geometry.sma > 0:
-            self.intens = sample.mean
+            self.intensity = sample.mean
             if sample.actual_points == 0:
                 # No valid sampled points (e.g., a trial geometry that
                 # fell entirely outside the image). Operating on the
@@ -222,31 +258,32 @@ class Isophote:
                 # "Mean of empty slice"), so set nonmeaningful values
                 # directly and skip the harmonic computations.
                 self.rms = np.nan
-                self.int_err = np.nan
-                self.pix_stddev = np.nan
-                self.grad = sample.gradient
+                self.intensity_err = np.nan
+                self.pixel_stddev = np.nan
+                self.gradient = sample.gradient
                 self.gradient_err = sample.gradient_err
                 self.gradient_rel_err = sample.gradient_rel_err
-                self.sarea = sample.sector_area
+                self.sector_area = sample.sector_area
                 self.n_data = sample.actual_points
-                self.n_flag = sample.total_points - sample.actual_points
+                self.n_flagged = sample.total_points - sample.actual_points
                 self.total_flux_ellipse = self.total_flux_circle = 0.0
                 self.n_pixels_ellipse = self.n_pixels_circle = 0
-                self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
+                self.x0_err = self.y0_err = self.pa_err = 0.0
+                self.ellipticity_err = 0.0
                 self.a3 = self.b3 = self.a3_err = self.b3_err = None
                 self.a4 = self.b4 = self.a4_err = self.b4_err = None
                 return
 
             self.rms = np.std(sample.values[2])
-            self.int_err = self.rms / np.sqrt(sample.actual_points)
-            self.pix_stddev = self.rms * np.sqrt(sample.sector_area)
-            self.grad = sample.gradient
+            self.intensity_err = self.rms / np.sqrt(sample.actual_points)
+            self.pixel_stddev = self.rms * np.sqrt(sample.sector_area)
+            self.gradient = sample.gradient
             self.gradient_err = sample.gradient_err
 
             self.gradient_rel_err = sample.gradient_rel_err
-            self.sarea = sample.sector_area
+            self.sector_area = sample.sector_area
             self.n_data = sample.actual_points
-            self.n_flag = sample.total_points - sample.actual_points
+            self.n_flagged = sample.total_points - sample.actual_points
 
             # Flux contained inside ellipse and circle
             (self.total_flux_ellipse, self.total_flux_circle,
@@ -265,16 +302,16 @@ class Isophote:
         # The central pixel holds a single intensity value. Some values
         # are set to zero to ease certain tasks such as model building
         # and plotting magnitude errors.
-        self.intens = sample.mean
+        self.intensity = sample.mean
         self.rms = None
-        self.int_err = 0.0
-        self.pix_stddev = None
-        self.grad = 0.0
+        self.intensity_err = 0.0
+        self.pixel_stddev = None
+        self.gradient = 0.0
         self.gradient_err = None
         self.gradient_rel_err = None
-        self.sarea = None
+        self.sector_area = None
         self.n_data = sample.actual_points
-        self.n_flag = sample.total_points - sample.actual_points
+        self.n_flagged = sample.total_points - sample.actual_points
 
         self.total_flux_ellipse = self.total_flux_circle = None
         self.n_pixels_ellipse = self.n_pixels_circle = None
@@ -284,7 +321,7 @@ class Isophote:
         self.a3_err = self.b3_err = 0.0
         self.a4_err = self.b4_err = 0.0
 
-        self.ellip_err = 0.0
+        self.ellipticity_err = 0.0
         self.pa_err = 0.0
         self.x0_err = 0.0
         self.y0_err = 0.0
@@ -338,7 +375,7 @@ class Isophote:
         return self.geometry.sma
 
     @property
-    def eps(self):
+    def ellipticity(self):
         """
         The ellipticity of the ellipse.
         """
@@ -473,7 +510,8 @@ class Isophote:
         # The residual variance needs more data points than fitted
         # coefficients.
         if self.sample.actual_points <= 5:
-            self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
+            self.x0_err = self.y0_err = self.pa_err = 0.0
+            self.ellipticity_err = 0.0
             return
 
         try:
@@ -492,19 +530,20 @@ class Isophote:
             # coefficient errors. These showed to be the error estimators
             # that best convey the errors measured in Monte Carlo
             # experiments (see Busko 1996, ASPC 101, 139).
-            ea = abs(errors[2] / self.grad)
-            eb = abs(errors[1] * (1.0 - eps) / self.grad)
+            ea = abs(errors[2] / self.gradient)
+            eb = abs(errors[1] * (1.0 - eps) / self.gradient)
             self.x0_err = np.sqrt((ea * np.cos(pa))**2 + (eb * np.sin(pa))**2)
             self.y0_err = np.sqrt((ea * np.sin(pa))**2 + (eb * np.cos(pa))**2)
-            self.ellip_err = (abs(2.0 * errors[4] * (1.0 - eps) / self.sma
-                                  / self.grad))
+            self.ellipticity_err = (abs(2.0 * errors[4] * (1.0 - eps)
+                                        / self.sma / self.gradient))
             if abs(eps) > np.finfo(float).resolution:
                 self.pa_err = (abs(2.0 * errors[3] * (1.0 - eps) / self.sma
-                                   / self.grad / (1.0 - (1.0 - eps)**2)))
+                                   / self.gradient / (1.0 - (1.0 - eps)**2)))
             else:
                 self.pa_err = 0.0
         except Exception:  # we want to catch everything
-            self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
+            self.x0_err = self.y0_err = self.pa_err = 0.0
+            self.ellipticity_err = 0.0
 
     def fix_geometry(self, isophote):
         """
@@ -519,7 +558,7 @@ class Isophote:
         next fit.
 
         The semimajor axis length is not changed, and the sampled data
-        and derived attributes (e.g., ``intens``) are not recomputed.
+        and derived attributes (e.g., ``intensity``) are not recomputed.
 
         Parameters
         ----------
@@ -701,13 +740,10 @@ class IsophoteList:
             The isophote properties to include. ``'main'`` (default)
             selects the main properties and ``'all'`` selects all the
             properties returned by :meth:`get_names`. With these two
-            options, the ``int_err``, ``eps``, and ``ellip_err``
-            properties are in the ``intens_err``, ``ellipticity``, and
-            ``ellipticity_err`` columns. Otherwise, ``columns`` is a
-            list of property names or table column names (e.g.,
-            ``'ellipticity'`` for the ``eps`` property). Each column is
-            named as requested. A deprecated name gives a column with
-            its new name and emits a deprecation warning.
+            options, the columns have the same names as the properties.
+            Otherwise, ``columns`` is a list of property names. A
+            deprecated name gives a column with its new name and emits
+            a deprecation warning.
 
         Returns
         -------
@@ -743,14 +779,14 @@ class IsophoteList:
 _ISOPHOTE_PROPERTIES = (
     ('sma', float, None,
      'The semimajor axis length (pixels).'),
-    ('intens', float, None,
+    ('intensity', float, None,
      'The mean intensity value along the elliptical path.'),
-    ('int_err', float, None,
+    ('intensity_err', float, None,
      ('The error of the mean intensity (rms / sqrt(# data '
       'points)).')),
-    ('eps', float, None,
+    ('ellipticity', float, None,
      'The ellipticity of the ellipse.'),
-    ('ellip_err', float, None,
+    ('ellipticity_err', float, None,
      'The ellipticity error.'),
     ('pa', float, None,
      'The position angle (radians) of the ellipse.'),
@@ -768,21 +804,21 @@ _ISOPHOTE_PROPERTIES = (
      ('The root-mean-square scatter (standard deviation) of the '
       'intensity values about their mean along the elliptical '
       'path.')),
-    ('pix_stddev', float, None,
+    ('pixel_stddev', float, None,
      ('The estimate of pixel standard deviation (rms * '
       'sqrt(average sector integration area)).')),
-    ('grad', float, None,
+    ('gradient', float, None,
      'The local radial intensity gradient.'),
     ('gradient_err', float, None,
      ('The measurement error of the local radial intensity '
       'gradient.')),
     ('gradient_rel_err', float, None,
      'The relative error of the local radial intensity gradient.'),
-    ('sarea', float, None,
+    ('sector_area', float, None,
      'The average sector area on the isophote (pixel**2).'),
     ('n_data', int, None,
      'The number of extracted data points.'),
-    ('n_flag', int, None,
+    ('n_flagged', int, None,
      ('The number of discarded data points.\n\n'
       'Data points can be discarded either because they are '
       'physically outside the image frame boundaries, because '
@@ -851,41 +887,18 @@ def _make_property(name, dtype, description):
 for _name, _dtype, _unit, _description in _ISOPHOTE_PROPERTIES:
     setattr(IsophoteList, _name, _make_property(_name, _dtype, _description))
 
+del _name, _dtype, _unit, _description
+
 # The names of the generated IsophoteList properties.
 _PROPERTY_NAMES = tuple(entry[0] for entry in _ISOPHOTE_PROPERTIES)
 
 
 # The isophote_list properties included in to_table() by default.
-_DEFAULT_COLUMNS = ('sma', 'intens', 'int_err', 'eps', 'ellip_err',
-                    'pa', 'pa_err', 'grad', 'gradient_err',
-                    'gradient_rel_err', 'x0', 'x0_err', 'y0', 'y0_err',
-                    'n_data', 'n_flag', 'n_iter', 'stop_code')
-
-# These IsophoteList property names have different to_table() column
-# names.
-_RENAME_MAP = {
-    'int_err': 'intens_err',
-    'eps': 'ellipticity',
-    'ellip_err': 'ellipticity_err',
-}
-
-
-def _rename_properties(names):
-    """
-    Map isophote_list property names to their to_table() column names.
-
-    Parameters
-    ----------
-    names : iterable of str
-        The isophote_list property names.
-
-    Returns
-    -------
-    properties : dict
-        A dictionary mapping each property name to its (possibly
-        renamed) table column name.
-    """
-    return {name: _RENAME_MAP.get(name, name) for name in names}
+_DEFAULT_COLUMNS = ('sma', 'intensity', 'intensity_err', 'ellipticity',
+                    'ellipticity_err', 'pa', 'pa_err', 'gradient',
+                    'gradient_err', 'gradient_rel_err', 'x0', 'x0_err',
+                    'y0', 'y0_err', 'n_data', 'n_flagged', 'n_iter',
+                    'stop_code')
 
 
 def _isophote_list_to_table(isophote_list, *, columns='main'):
@@ -903,12 +916,9 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         The isophote properties to include. ``'main'`` (default) selects
         the main properties and ``'all'`` selects all the properties
         returned by `~photutils.isophote.IsophoteList.get_names`. With
-        these two options, the ``int_err``, ``eps``, and ``ellip_err``
-        properties are in the ``intens_err``, ``ellipticity``, and
-        ``ellipticity_err`` columns. Otherwise, ``columns`` is a list of
-        property names or table column names (e.g., ``'ellipticity'``
-        for the ``eps`` property). Each column is named as requested. A
-        deprecated name gives a column with its new name and emits a
+        these two options, the columns have the same names as the
+        properties. Otherwise, ``columns`` is a list of property names.
+        A deprecated name gives a column with its new name and emits a
         deprecation warning.
 
     Returns
@@ -930,16 +940,14 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         isophote_list = IsophoteList(isophote_list)
 
     # Remove in 4.0
-    # The 'grad_rerror' name was a table column name, not an attribute.
+    # The 'grad_rerror' and 'intens_err' names were table column names,
+    # not attributes.
     _deprecation_map = {**_DEPRECATED_ATTRIBUTES,
-                        'grad_rerror': 'gradient_rel_err'}
+                        'grad_rerror': 'gradient_rel_err',
+                        'intens_err': 'intensity_err'}
     all_names = _PROPERTY_NAMES
 
-    # The table column names of the renamed properties are also
-    # accepted.
-    column_aliases = {column: name for name, column in _RENAME_MAP.items()}
-
-    allowed_columns = {*all_names, *column_aliases, 'main', 'all'}
+    allowed_columns = {*all_names, 'main', 'all'}
     table_columns = validate_table_columns(
         columns, allowed_columns, deprecated_names=_deprecation_map)
     if len(table_columns) > 1 and {'main', 'all'} & set(table_columns):
@@ -948,24 +956,22 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         raise ValueError(msg)
 
     # Replace with QTable in 4.0
-    since = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0'}
+    since = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0', 'intens_err': '3.2'}
     until = '4.0'
     isotable = create_empty_deprecated_qtable(
         _deprecation_map, since=since, until=until)
 
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 
-    # Pairs of the property that holds the values of a column and the
-    # table column name.
+    # The names of the properties that are the table columns.
     if table_columns == ['all']:
-        properties = list(_rename_properties(all_names).items())
+        names = list(all_names)
     elif table_columns == ['main']:
-        properties = list(_rename_properties(_DEFAULT_COLUMNS).items())
+        names = list(_DEFAULT_COLUMNS)
     else:
-        # A deprecated name uses the new property and column names,
-        # with a single deprecation warning instead of one per isophote.
-        # A property and its table column name can both be requested.
-        properties = []
+        # A deprecated name uses the new name, with a single deprecation
+        # warning instead of one per isophote.
+        names = []
         for name in table_columns:
             if name in _deprecation_map:
                 new_name = _deprecation_map[name]
@@ -974,14 +980,14 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
                        f'removed in version {until}.')
                 warnings.warn(msg, PhotutilsDeprecationWarning,
                               stacklevel=4)
-                properties.append((new_name, new_name))
+                names.append(new_name)
             else:
-                properties.append((column_aliases.get(name, name), name))
+                names.append(name)
 
-    for k, v in properties:
-        isotable[v] = getattr(isophote_list, k)
+    for name in names:
+        isotable[name] = getattr(isophote_list, name)
 
-        if k in ('pa', 'pa_err'):
-            isotable[v] = np.rad2deg(isotable[v]) << u.deg
+        if name in ('pa', 'pa_err'):
+            isotable[name] = np.rad2deg(isotable[name]) << u.deg
 
     return isotable

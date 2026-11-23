@@ -571,6 +571,16 @@ API Changes
     and ``n_pixels_circle``. The old names are deprecated and will be
     removed in version 4.0. [#2568]
 
+  - The ``intens``, ``int_err``, ``eps``, ``ellip_err``, ``grad``,
+    ``pix_stddev``, ``sarea``, and ``n_flag`` attributes of
+    ``Isophote`` and ``IsophoteList`` were renamed to ``intensity``,
+    ``intensity_err``, ``ellipticity``, ``ellipticity_err``,
+    ``gradient``, ``pixel_stddev``, ``sector_area``, and
+    ``n_flagged``. The ``IsophoteList.to_table`` columns now have the
+    same names as the attributes, so the ``intens_err`` column was
+    renamed to ``intensity_err``. The old names are deprecated and
+    will be removed in version 4.0. [#2568]
+
   - The internal ``CentralEllipseSample``, ``CentralEllipseFitter``,
     and ``CentralPixel`` classes were removed. The central pixel is
     now a regular ``Isophote`` with ``sma`` of zero. ``Isophote`` has

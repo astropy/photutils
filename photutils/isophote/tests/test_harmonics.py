@@ -211,7 +211,7 @@ def test_upper_harmonics_sign():
     # small compared to b4 and their signs are not meaningful. The
     # outermost isophotes can have part of the elliptical path outside
     # of the image, which breaks the symmetry.
-    complete = isolist.n_flag[30:] == 0
+    complete = isolist.n_flagged[30:] == 0
     assert np.any(complete)
     for name in ('a3', 'b3', 'a4'):
         harmonic = getattr(isolist, name)[30:]
@@ -337,7 +337,7 @@ def test_short_arc_isophote_errors():
     isophote = ellipse.fit_isophote(220.0)
 
     assert isophote.n_data >= 6
-    for name in ('x0_err', 'y0_err', 'ellip_err', 'pa_err'):
+    for name in ('x0_err', 'y0_err', 'ellipticity_err', 'pa_err'):
         value = getattr(isophote, name)
         assert np.isfinite(value)
         assert value > 0

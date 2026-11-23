@@ -130,7 +130,7 @@ We can also show the isophote values as a table, which is again sorted
 by the semimajor axis length (``sma``)::
 
     >>> print(isolist.to_table())  # doctest: +SKIP
-           sma                 intens         ... n_iter stop_code
+           sma                intensity       ... n_iter stop_code
                                               ...
     ------------------ ---------------------- ... ------ ---------
                    0.0     103.36486267669721 ...      0         0
@@ -173,8 +173,8 @@ position as a function of the semimajor axis length:
                                                  figsize=(8, 8))
     fig.subplots_adjust(hspace=0.35, wspace=0.35)
 
-    ax1.errorbar(isolist.sma, isolist.eps, yerr=isolist.ellip_err,
-                 fmt='o', markersize=4)
+    ax1.errorbar(isolist.sma, isolist.ellipticity,
+                 yerr=isolist.ellipticity_err, fmt='o', markersize=4)
     ax1.set_xlabel('Semimajor Axis Length (pix)')
     ax1.set_ylabel('Ellipticity')
 
@@ -268,8 +268,9 @@ the color is calculated only where both intensities are positive::
     ...                           mean=0.0, stddev=2.0, seed=5678)
     >>> data2 = 0.5 * g(x, y) + noise2
     >>> isolist2 = Ellipse(data2).measure_isophotes(isolist)
-    >>> mask = (isolist.intens > 0) & (isolist2.intens > 0)
-    >>> color = -2.5 * np.log10(isolist2.intens[mask] / isolist.intens[mask])
+    >>> mask = (isolist.intensity > 0) & (isolist2.intensity > 0)
+    >>> ratio = isolist2.intensity[mask] / isolist.intensity[mask]
+    >>> color = -2.5 * np.log10(ratio)
 
 The returned `~photutils.isophote.IsophoteList` has one isophote for
 each input ellipse, with the same geometry. The input can also be a

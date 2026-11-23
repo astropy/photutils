@@ -112,9 +112,9 @@ def test_regression(name):
 
         # Data from Isophote
         sma_i = iso.sample.geometry.sma
-        intens_i = iso.intens
-        int_err_i = iso.int_err or 0.0
-        pix_stddev_i = iso.pix_stddev or 0.0
+        intens_i = iso.intensity
+        int_err_i = iso.intensity_err or 0.0
+        pix_stddev_i = iso.pixel_stddev or 0.0
         rms_i = iso.rms or 0.0
         ellip_i = iso.sample.geometry.eps or 0.0
         pa_i = iso.sample.geometry.pa or 0.0
@@ -122,7 +122,7 @@ def test_regression(name):
         y0_i = iso.sample.geometry.y0
         rerr_i = (iso.sample.gradient_rel_err or 0.0)
         ndata_i = iso.n_data
-        nflag_i = iso.n_flag
+        nflag_i = iso.n_flagged
         niter_i = iso.n_iter
         stop_i = iso.stop_code
 
@@ -272,8 +272,8 @@ def test_regression_summary(name, min_extra, max_extra, noisy):
     ref = {colname: np.asarray(table[colname][mask], dtype=float)
            for colname in ('INTENS', 'ELLIP', 'PA', 'X0', 'Y0')}
 
-    intens_diff = isolist.intens[index] / ref['INTENS'] - 1.0
-    eps_diff = isolist.eps[index] - ref['ELLIP']
+    intens_diff = isolist.intensity[index] / ref['INTENS'] - 1.0
+    eps_diff = isolist.ellipticity[index] - ref['ELLIP']
     # The SPP position angle is measured from the y axis. The
     # difference is wrapped into the range [-90, 90) degrees.
     pa_ref = ref['PA'] + 90.0

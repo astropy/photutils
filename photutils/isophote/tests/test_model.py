@@ -180,7 +180,7 @@ def test_model_fill():
 
     # Model pixels with a zero intensity must not be filled.
     for isophote in isolist:
-        isophote.intens = 0.0
+        isophote.intensity = 0.0
     model = build_ellipse_model(data.shape, isolist, fill=np.nan)
     assert model[100, 100] == 0.0
     assert np.isnan(model[0, 0])
@@ -234,7 +234,7 @@ def test_model_harmonics_gradient_sign():
     model = build_ellipse_model(data.shape, isolist, high_harmonics=True)
 
     for isophote in isolist:
-        isophote.grad = -isophote.grad
+        isophote.gradient = -isophote.gradient
     model_flipped = build_ellipse_model(data.shape, isolist,
                                         high_harmonics=True)
     assert_allclose(model_flipped, model)
@@ -454,7 +454,7 @@ def test_model_nonfinite_central_pixel():
     with pytest.warns(AstropyUserWarning, match=match):
         isolist = ellipse.fit_image(maxsma=30.0)
     assert isolist[0].sma == 0
-    assert np.isnan(isolist[0].intens)
+    assert np.isnan(isolist[0].intensity)
 
     model = build_ellipse_model(data.shape, isolist)
     yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]

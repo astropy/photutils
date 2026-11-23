@@ -76,7 +76,7 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
 
     # A nonfinite intensity would make the interpolated intensities
     # nonfinite over a range of semimajor axis lengths.
-    finite = np.isfinite(isolist.intens)
+    finite = np.isfinite(isolist.intensity)
     if not np.all(finite):
         isolist = IsophoteList([isophote for isophote, keep
                                 in zip(isolist, finite, strict=True)
@@ -107,9 +107,9 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     nodes = isolist.sma[2:-2]
 
     intens_array = LSQUnivariateSpline(
-        isolist.sma, isolist.intens, nodes)(finely_spaced_sma)
+        isolist.sma, isolist.intensity, nodes)(finely_spaced_sma)
     eps_array = LSQUnivariateSpline(
-        isolist.sma, isolist.eps, nodes)(finely_spaced_sma)
+        isolist.sma, isolist.ellipticity, nodes)(finely_spaced_sma)
     # The position angle is defined modulo pi. Fitted values near 0
     # or pi can jump by almost pi between neighboring isophotes, so
     # unwrap them to prevent the spline from sweeping through all the
@@ -123,7 +123,7 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     y0_array = LSQUnivariateSpline(
         isolist.sma, isolist.y0, nodes)(finely_spaced_sma)
     grad_array = LSQUnivariateSpline(
-        isolist.sma, isolist.grad, nodes)(finely_spaced_sma)
+        isolist.sma, isolist.gradient, nodes)(finely_spaced_sma)
     if high_harmonics:
         # Shifting the position angle by pi also shifts the angle
         # origin of the harmonics by pi, which flips the sign of the

@@ -40,8 +40,8 @@ def test_scatter(integrmode, amin, amax):
     sample.update(fixed_parameters=DEFAULT_FIX)
     iso = Isophote(sample, 0, valid=True, stop_code=0)
 
-    assert iso.pix_stddev < amax
-    assert iso.pix_stddev > amin
+    assert iso.pixel_stddev < amax
+    assert iso.pixel_stddev > amin
 
 
 def test_coordinates():

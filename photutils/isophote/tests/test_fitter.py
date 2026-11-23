@@ -55,7 +55,7 @@ def test_zero_gradient_flat_image():
     assert isophote.valid
     assert isophote.stop_code == -1
     assert isophote.sample.gradient == 0.0
-    assert isophote.intens == 1.0
+    assert isophote.intensity == 1.0
 
 
 def test_positive_gradient():
@@ -71,8 +71,8 @@ def test_positive_gradient():
     sample = EllipseSample(data, 20.0, x0=100.0, y0=100.0, eps=0.2)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == -1
-    assert isophote.grad > 0
-    assert isophote.eps == 0.2
+    assert isophote.gradient > 0
+    assert isophote.ellipticity == 0.2
     assert isophote.x0 == 100.0
     assert isophote.y0 == 100.0
 
@@ -100,7 +100,7 @@ def test_nonmeaningful_gradient_uses_previous(ring_radius):
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code != -1
     assert isophote.n_iter > 4
-    assert isophote.grad < 0
+    assert isophote.gradient < 0
 
 
 def test_nonmeaningful_gradient_center_at_bound():
@@ -117,7 +117,7 @@ def test_nonmeaningful_gradient_center_at_bound():
     isophote = EllipseFitter(sample).fit(max_center_shift=0.5)
     assert isophote.stop_code != -1
     assert isophote.n_iter > 5
-    assert isophote.grad < 0
+    assert isophote.gradient < 0
     assert_allclose(isophote.x0, 100.5)
 
 
@@ -132,7 +132,8 @@ def test_everything_fixed():
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == 4
     assert isophote.n_iter == 0
-    assert (isophote.x0, isophote.y0, isophote.eps, isophote.pa) == (
+    assert (isophote.x0, isophote.y0, isophote.ellipticity,
+            isophote.pa) == (
         250.0, 260.0, 0.3, 1.0)
 
 
@@ -249,7 +250,7 @@ def test_fitting_eps_diverged(galaxy_eps):
     sample = EllipseSample(data, 40.0, eps=0.9)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == -1
-    assert isophote.eps == 0.9
+    assert isophote.ellipticity == 0.9
 
 
 @pytest.mark.parametrize('kwargs', [{'maxgerr': 0.5},
@@ -402,7 +403,7 @@ class TestM51:
         isophote = fitter.fit()
 
         assert isophote.n_data == 119
-        assert_allclose(isophote.intens, 685.4, atol=0.1)
+        assert_allclose(isophote.intensity, 685.4, atol=0.1)
 
         # Last sample taken by the original code, before turning
         # inwards. The original code ran this fit for the maximum
@@ -420,8 +421,8 @@ class TestM51:
         assert isophote.stop_code == 2
         assert isophote.n_iter == 50
         assert_allclose(isophote.n_data, 383, atol=3)
-        assert_allclose(isophote.intens, 153.2, atol=0.5)
-        assert_allclose(isophote.eps, 0.016, atol=0.005)
+        assert_allclose(isophote.intensity, 153.2, atol=0.5)
+        assert_allclose(isophote.ellipticity, 0.016, atol=0.005)
 
     def test_m51_outer(self):
         # Sample taken at the outskirts of the image, so many
@@ -446,8 +447,8 @@ class TestM51:
         # The central pixel intensity is about 3% larger than found by
         # the spp code.
         assert isophote.n_data == 1
-        assert isophote.intens <= 7560.0
-        assert isophote.intens >= 7550.0
+        assert isophote.intensity <= 7560.0
+        assert isophote.intensity >= 7550.0
 
 
 def test_fitting_round_start():
@@ -461,7 +462,7 @@ def test_fitting_round_start():
     sample = EllipseSample(data, 40.0, eps=0.0)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == 0
-    assert_allclose(isophote.eps, 0.2, atol=0.01)
+    assert_allclose(isophote.ellipticity, 0.2, atol=0.01)
     assert_allclose(isophote.pa, np.pi / 4, atol=0.05)
 
 
@@ -476,7 +477,7 @@ def test_fixed_round_ellipse(fix_center):
                                fix_center=fix_center)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
     isophote = EllipseFitter(sample).fit()
-    assert isophote.eps == 0.0
+    assert isophote.ellipticity == 0.0
     assert isophote.pa == 0.5
     if fix_center:
         assert isophote.stop_code == 4

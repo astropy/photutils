@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 import pytest
 from astropy.io import fits
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse, _central_isophote
@@ -43,14 +43,14 @@ class TestIsophote:
         assert iso.stop_code in (0, 2)
 
         # Fitted values
-        assert iso.intens <= 201.0
-        assert iso.intens >= 199.0
-        assert iso.int_err <= 0.0010
-        assert iso.int_err >= 0.0009
-        assert iso.pix_stddev <= 0.03
-        assert iso.pix_stddev >= 0.02
-        assert abs(iso.grad) <= 4.25
-        assert abs(iso.grad) >= 4.20
+        assert iso.intensity <= 201.0
+        assert iso.intensity >= 199.0
+        assert iso.intensity_err <= 0.0010
+        assert iso.intensity_err >= 0.0009
+        assert iso.pixel_stddev <= 0.03
+        assert iso.pixel_stddev >= 0.02
+        assert abs(iso.gradient) <= 4.25
+        assert abs(iso.gradient) >= 4.20
 
         # Integrals
         assert iso.total_flux_ellipse <= 1.85e6
@@ -85,11 +85,11 @@ class TestIsophote:
         assert g.pa <= (0.62 + 0.05)
 
         # Fitted values
-        assert_allclose(iso.intens, 682.9, atol=0.1)
+        assert_allclose(iso.intensity, 682.9, atol=0.1)
         assert_allclose(iso.rms, 83.27, atol=0.01)
-        assert_allclose(iso.int_err, 7.63, atol=0.01)
-        assert_allclose(iso.pix_stddev, 117.8, atol=0.1)
-        assert_allclose(iso.grad, -36.08, atol=0.1)
+        assert_allclose(iso.intensity_err, 7.63, atol=0.01)
+        assert_allclose(iso.pixel_stddev, 117.8, atol=0.1)
+        assert_allclose(iso.gradient, -36.08, atol=0.1)
 
         # Integrals
         assert iso.total_flux_ellipse <= 1.20e6
@@ -223,7 +223,7 @@ def test_isophote_round_pa_err():
     sample.update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 0, valid=True, stop_code=0)
     assert isophote.pa_err == 0.0
-    assert np.isfinite(isophote.ellip_err)
+    assert np.isfinite(isophote.ellipticity_err)
 
 
 class TestIsophoteList:
@@ -254,18 +254,18 @@ class TestIsophoteList:
         # class.
         assert isinstance(result.sma, np.ndarray)
         assert isinstance(result.sma[0], float)
-        assert isinstance(result.intens, np.ndarray)
-        assert isinstance(result.intens[0], float)
+        assert isinstance(result.intensity, np.ndarray)
+        assert isinstance(result.intensity[0], float)
         assert isinstance(result.rms, np.ndarray)
-        assert isinstance(result.int_err, np.ndarray)
-        assert isinstance(result.pix_stddev, np.ndarray)
-        assert isinstance(result.grad, np.ndarray)
+        assert isinstance(result.intensity_err, np.ndarray)
+        assert isinstance(result.pixel_stddev, np.ndarray)
+        assert isinstance(result.gradient, np.ndarray)
         assert isinstance(result.gradient_err, np.ndarray)
         assert isinstance(result.gradient_rel_err, np.ndarray)
-        assert isinstance(result.sarea, np.ndarray)
+        assert isinstance(result.sector_area, np.ndarray)
         assert isinstance(result.n_iter, np.ndarray)
         assert isinstance(result.n_data, np.ndarray)
-        assert isinstance(result.n_flag, np.ndarray)
+        assert isinstance(result.n_flagged, np.ndarray)
         assert isinstance(result.valid, np.ndarray)
         assert isinstance(result.stop_code, np.ndarray)
         assert isinstance(result.total_flux_circle, np.ndarray)
@@ -279,7 +279,7 @@ class TestIsophoteList:
 
         # The counts and stop codes are integers and the validity flags
         # are booleans.
-        for name in ('n_iter', 'n_data', 'n_flag', 'stop_code'):
+        for name in ('n_iter', 'n_data', 'n_flagged', 'stop_code'):
             assert getattr(result, name).dtype.kind == 'i'
         assert result.valid.dtype == bool
 
@@ -298,22 +298,18 @@ class TestIsophoteList:
             with pytest.raises(ValueError, match=match):
                 isolist.to_table(columns=columns)
 
-        # The table column names of renamed properties are accepted.
-        columns = ['sma', 'ellipticity', 'intens_err', 'ellipticity_err']
+        columns = ['sma', 'ellipticity', 'intensity_err',
+                   'ellipticity_err']
         tbl = isolist.to_table(columns=columns)
         assert tbl.colnames == columns
-        assert_allclose(tbl['ellipticity'], isolist.eps)
-        assert_allclose(tbl['intens_err'], isolist.int_err)
+        assert_allclose(tbl['ellipticity'], isolist.ellipticity)
+        assert_allclose(tbl['intensity_err'], isolist.intensity_err)
 
-        tbl = isolist.to_table(columns=['eps'])
-        assert tbl.colnames == ['eps']
-
-        # A property and its table column name can both be requested.
-        columns = ['eps', 'ellipticity', 'intens_err', 'int_err']
-        tbl = isolist.to_table(columns=columns)
-        assert tbl.colnames == columns
-        assert_allclose(tbl['eps'], tbl['ellipticity'])
-        assert_allclose(tbl['int_err'], tbl['intens_err'])
+        # A deprecated name gives a column with the new name.
+        match = "'eps' attribute was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            tbl = isolist.to_table(columns=['eps'])
+        assert tbl.colnames == ['ellipticity']
 
     def test_to_table_deprecated_column_warns_once(self):
         match = "'niter' attribute was deprecated"
@@ -348,7 +344,8 @@ class TestIsophoteList:
         # The original list is not modified.
         assert len(self.isolist_sma10) == n_isophotes
 
-    @pytest.mark.parametrize('name', ['int_err', 'ellip_err', 'pa_err',
+    @pytest.mark.parametrize('name', ['intensity_err', 'ellipticity_err',
+                                      'pa_err',
                                       'x0_err', 'y0_err', 'gradient_err',
                                       'gradient_rel_err', 'a3_err',
                                       'b3_err', 'a4_err', 'b4_err'])
@@ -427,7 +424,7 @@ class TestIsophoteList:
         assert type(cenpix) is Isophote
         assert cenpix.x0 == cenpix.sample.geometry.x0
         assert cenpix.y0 == cenpix.sample.geometry.y0
-        assert cenpix.eps == 0.0
+        assert cenpix.ellipticity == 0.0
         assert cenpix.pa == 0.0
 
     def test_extend(self):
@@ -625,7 +622,7 @@ def test_isophote_few_points(width, has_deviations):
     isophote = Isophote(sample, 1, valid=False, stop_code=3)
     assert 0 < isophote.n_data <= 5
     assert isophote.x0_err == 0.0
-    assert isophote.ellip_err == 0.0
+    assert isophote.ellipticity_err == 0.0
     if has_deviations:
         assert isophote.n_data > 3
         assert np.isfinite(isophote.a3)
@@ -667,11 +664,11 @@ def test_central_isophote_is_plain_isophote():
     assert type(iso) is Isophote
     assert iso.sma == 0.0
     assert iso.geometry is iso.sample.geometry
-    assert iso.eps == 0.0
+    assert iso.ellipticity == 0.0
     assert iso.pa == 0.0
     assert iso.geometry.eps == 0.0
     assert iso.geometry.pa == 0.0
-    assert iso.grad == 0.0
+    assert iso.gradient == 0.0
     assert iso.a3 == 0.0
     assert iso.x0_err == 0.0
 
@@ -686,3 +683,32 @@ def test_isophote_list_properties_match_definitions():
         assert description
         assert getattr(IsophoteList, name).__doc__
     assert isolist.get_names() == [p[0] for p in _ISOPHOTE_PROPERTIES]
+
+
+RENAMED = {'intens': 'intensity', 'int_err': 'intensity_err',
+           'eps': 'ellipticity', 'ellip_err': 'ellipticity_err',
+           'grad': 'gradient', 'pix_stddev': 'pixel_stddev',
+           'sarea': 'sector_area', 'n_flag': 'n_flagged',
+           'nflag': 'n_flagged'}
+
+
+@pytest.mark.parametrize(('old', 'new'), RENAMED.items())
+def test_renamed_result_attributes(old, new):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    since = '3.0' if old == 'nflag' else '3.2'
+    match = f"'{old}' attribute was deprecated in version {since}"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        old_values = getattr(isolist, old)
+    assert_array_equal(old_values, getattr(isolist, new))
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        assert getattr(isolist[5], old) == getattr(isolist[5], new)
+
+
+def test_to_table_columns_equal_attributes():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = isolist.to_table(columns='all')
+    assert tbl.colnames == isolist.get_names()
+    with pytest.warns(PhotutilsDeprecationWarning, match='intens_err'):
+        assert_array_equal(tbl['intens_err'], isolist.intensity_err)
