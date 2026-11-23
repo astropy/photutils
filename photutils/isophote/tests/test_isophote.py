@@ -14,7 +14,8 @@ from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse, _central_isophote
 from photutils.isophote.fitter import EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.isophote import Isophote, IsophoteList
+from photutils.isophote.isophote import (_ISOPHOTE_PROPERTIES, Isophote,
+                                         IsophoteList)
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -673,3 +674,15 @@ def test_central_isophote_is_plain_isophote():
     assert iso.grad == 0.0
     assert iso.a3 == 0.0
     assert iso.x0_err == 0.0
+
+
+def test_isophote_list_properties_match_definitions():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    for name, dtype, _, description in _ISOPHOTE_PROPERTIES:
+        values = getattr(isolist, name)
+        assert len(values) == len(isolist)
+        assert np.asarray(values).dtype == np.dtype(dtype)
+        assert description
+        assert getattr(IsophoteList, name).__doc__
+    assert isolist.get_names() == [p[0] for p in _ISOPHOTE_PROPERTIES]

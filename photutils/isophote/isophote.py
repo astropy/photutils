@@ -689,264 +689,6 @@ class IsophoteList:
         """
         return self._collect_as_list('sample')
 
-    @property
-    def sma(self):
-        """
-        The semimajor axis length (pixels).
-        """
-        return self._collect_as_array('sma')
-
-    @property
-    def intens(self):
-        """
-        The mean intensity value along the elliptical path.
-        """
-        return self._collect_as_array('intens')
-
-    @property
-    def int_err(self):
-        """
-        The error of the mean intensity (rms / sqrt(# data points)).
-        """
-        return self._collect_as_array('int_err')
-
-    @property
-    def eps(self):
-        """
-        The ellipticity of the ellipse.
-        """
-        return self._collect_as_array('eps')
-
-    @property
-    def ellip_err(self):
-        """
-        The ellipticity error.
-        """
-        return self._collect_as_array('ellip_err')
-
-    @property
-    def pa(self):
-        """
-        The position angle (radians) of the ellipse.
-        """
-        return self._collect_as_array('pa')
-
-    @property
-    def pa_err(self):
-        """
-        The position angle error (radians).
-        """
-        return self._collect_as_array('pa_err')
-
-    @property
-    def x0(self):
-        """
-        The center x coordinate (pixel).
-        """
-        return self._collect_as_array('x0')
-
-    @property
-    def x0_err(self):
-        """
-        The error associated with the center x coordinate.
-        """
-        return self._collect_as_array('x0_err')
-
-    @property
-    def y0(self):
-        """
-        The center y coordinate (pixel).
-        """
-        return self._collect_as_array('y0')
-
-    @property
-    def y0_err(self):
-        """
-        The error associated with the center y coordinate.
-        """
-        return self._collect_as_array('y0_err')
-
-    @property
-    def rms(self):
-        """
-        The root-mean-square scatter (standard deviation) of the
-        intensity values about their mean along the elliptical path.
-        """
-        return self._collect_as_array('rms')
-
-    @property
-    def pix_stddev(self):
-        """
-        The estimate of pixel standard deviation (rms * sqrt(average
-        sector integration area)).
-        """
-        return self._collect_as_array('pix_stddev')
-
-    @property
-    def grad(self):
-        """
-        The local radial intensity gradient.
-        """
-        return self._collect_as_array('grad')
-
-    @property
-    def gradient_err(self):
-        """
-        The measurement error of the local radial intensity gradient.
-        """
-        return self._collect_as_array('gradient_err')
-
-    @property
-    def gradient_rel_err(self):
-        """
-        The relative error of the local radial intensity gradient.
-        """
-        return self._collect_as_array('gradient_rel_err')
-
-    @property
-    def sarea(self):
-        """
-        The average sector area on the isophote (pixel**2).
-        """
-        return self._collect_as_array('sarea')
-
-    @property
-    def n_data(self):
-        """
-        The number of extracted data points.
-        """
-        return self._collect_as_array('n_data', dtype=int)
-
-    @property
-    def n_flag(self):
-        """
-        The number of discarded data points.
-
-        Data points can be discarded either because they are physically
-        outside the image frame boundaries, because they were rejected
-        by sigma clipping, or because they are masked or nonfinite.
-        """
-        return self._collect_as_array('n_flag', dtype=int)
-
-    @property
-    def n_iter(self):
-        """
-        The number of iterations used to fit the isophote.
-        """
-        return self._collect_as_array('n_iter', dtype=int)
-
-    @property
-    def valid(self):
-        """
-        The status of the fitting operation.
-        """
-        return self._collect_as_array('valid', dtype=bool)
-
-    @property
-    def stop_code(self):
-        """
-        The fitting stop code.
-        """
-        return self._collect_as_array('stop_code', dtype=int)
-
-    @property
-    def total_flux_ellipse(self):
-        """
-        The sum of the valid (unmasked and finite) pixel values inside
-        the ellipse.
-        """
-        return self._collect_as_array('total_flux_ellipse')
-
-    @property
-    def total_flux_circle(self):
-        """
-        The sum of the valid (unmasked and finite) pixel values inside a
-        circle with the same ``sma`` as the ellipse.
-        """
-        return self._collect_as_array('total_flux_circle')
-
-    @property
-    def n_pixels_ellipse(self):
-        """
-        The total number of valid pixels inside the ellipse.
-        """
-        return self._collect_as_array('n_pixels_ellipse')
-
-    @property
-    def n_pixels_circle(self):
-        """
-        The total number of valid pixels inside a circle with the same
-        ``sma`` as the ellipse.
-        """
-        return self._collect_as_array('n_pixels_circle')
-
-    @property
-    def a3(self):
-        """
-        The third-order harmonic amplitude of the sine term, divided
-        by the semimajor axis length and the absolute value of the local
-        radial intensity gradient.
-        """
-        return self._collect_as_array('a3')
-
-    @property
-    def b3(self):
-        """
-        The third-order harmonic amplitude of the cosine term, divided
-        by the semimajor axis length and the absolute value of the local
-        radial intensity gradient.
-        """
-        return self._collect_as_array('b3')
-
-    @property
-    def a4(self):
-        """
-        The fourth-order harmonic amplitude of the sine term, divided
-        by the semimajor axis length and the absolute value of the local
-        radial intensity gradient.
-        """
-        return self._collect_as_array('a4')
-
-    @property
-    def b4(self):
-        """
-        The fourth-order harmonic amplitude of the cosine term, divided
-        by the semimajor axis length and the absolute value of the local
-        radial intensity gradient.
-
-        It is positive for disky isophotes and negative for boxy
-        isophotes.
-        """
-        return self._collect_as_array('b4')
-
-    @property
-    def a3_err(self):
-        """
-        The error associated with `~photutils.isophote.IsophoteList.a3`.
-        """
-        return self._collect_as_array('a3_err')
-
-    @property
-    def b3_err(self):
-        """
-        The error associated with `~photutils.isophote.IsophoteList.b3`.
-        """
-        return self._collect_as_array('b3_err')
-
-    @property
-    def a4_err(self):
-        """
-        The error associated with `~photutils.isophote.IsophoteList.a4`.
-        """
-        return self._collect_as_array('a4_err')
-
-    @property
-    def b4_err(self):
-        """
-        The error associated with `~photutils.isophote.IsophoteList.b4`.
-        """
-        return self._collect_as_array('b4_err')
-
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_table(self, columns='main'):
         """
@@ -993,35 +735,128 @@ class IsophoteList:
         list_names : list
             A list of the names of the properties.
         """
-        return list(_get_properties(self).keys())
+        return list(_PROPERTY_NAMES)
 
 
-def _get_properties(isophote_list):
-    """
-    Return the properties of an `~photutils.isophote.IsophoteList`
-    instance.
+# The properties of IsophoteList, as (name, dtype, unit, description)
+# entries in the order returned by IsophoteList.get_names().
+_ISOPHOTE_PROPERTIES = (
+    ('sma', float, None,
+     'The semimajor axis length (pixels).'),
+    ('intens', float, None,
+     'The mean intensity value along the elliptical path.'),
+    ('int_err', float, None,
+     ('The error of the mean intensity (rms / sqrt(# data '
+      'points)).')),
+    ('eps', float, None,
+     'The ellipticity of the ellipse.'),
+    ('ellip_err', float, None,
+     'The ellipticity error.'),
+    ('pa', float, None,
+     'The position angle (radians) of the ellipse.'),
+    ('pa_err', float, None,
+     'The position angle error (radians).'),
+    ('x0', float, None,
+     'The center x coordinate (pixel).'),
+    ('x0_err', float, None,
+     'The error associated with the center x coordinate.'),
+    ('y0', float, None,
+     'The center y coordinate (pixel).'),
+    ('y0_err', float, None,
+     'The error associated with the center y coordinate.'),
+    ('rms', float, None,
+     ('The root-mean-square scatter (standard deviation) of the '
+      'intensity values about their mean along the elliptical '
+      'path.')),
+    ('pix_stddev', float, None,
+     ('The estimate of pixel standard deviation (rms * '
+      'sqrt(average sector integration area)).')),
+    ('grad', float, None,
+     'The local radial intensity gradient.'),
+    ('gradient_err', float, None,
+     ('The measurement error of the local radial intensity '
+      'gradient.')),
+    ('gradient_rel_err', float, None,
+     'The relative error of the local radial intensity gradient.'),
+    ('sarea', float, None,
+     'The average sector area on the isophote (pixel**2).'),
+    ('n_data', int, None,
+     'The number of extracted data points.'),
+    ('n_flag', int, None,
+     ('The number of discarded data points.\n\n'
+      'Data points can be discarded either because they are '
+      'physically outside the image frame boundaries, because '
+      'they were rejected by sigma clipping, or because they are '
+      'masked or nonfinite.')),
+    ('n_iter', int, None,
+     'The number of iterations used to fit the isophote.'),
+    ('valid', bool, None,
+     'The status of the fitting operation.'),
+    ('stop_code', int, None,
+     'The fitting stop code.'),
+    ('total_flux_ellipse', float, None,
+     ('The sum of the valid (unmasked and finite) pixel values '
+      'inside the ellipse.')),
+    ('total_flux_circle', float, None,
+     ('The sum of the valid (unmasked and finite) pixel values '
+      'inside a circle with the same ``sma`` as the ellipse.')),
+    ('n_pixels_ellipse', float, None,
+     'The total number of valid pixels inside the ellipse.'),
+    ('n_pixels_circle', float, None,
+     ('The total number of valid pixels inside a circle with the '
+      'same ``sma`` as the ellipse.')),
+    ('a3', float, None,
+     ('The third-order harmonic amplitude of the sine term, '
+      'divided by the semimajor axis length and the absolute '
+      'value of the local radial intensity gradient.')),
+    ('b3', float, None,
+     ('The third-order harmonic amplitude of the cosine term, '
+      'divided by the semimajor axis length and the absolute '
+      'value of the local radial intensity gradient.')),
+    ('a4', float, None,
+     ('The fourth-order harmonic amplitude of the sine term, '
+      'divided by the semimajor axis length and the absolute '
+      'value of the local radial intensity gradient.')),
+    ('b4', float, None,
+     ('The fourth-order harmonic amplitude of the cosine term, '
+      'divided by the semimajor axis length and the absolute '
+      'value of the local radial intensity gradient.\n\n'
+      'It is positive for disky isophotes and negative for boxy '
+      'isophotes.')),
+    ('a3_err', float, None,
+     ('The error associated with '
+      '`~photutils.isophote.IsophoteList.a3`.')),
+    ('b3_err', float, None,
+     ('The error associated with '
+      '`~photutils.isophote.IsophoteList.b3`.')),
+    ('a4_err', float, None,
+     ('The error associated with '
+      '`~photutils.isophote.IsophoteList.a4`.')),
+    ('b4_err', float, None,
+     ('The error associated with '
+      '`~photutils.isophote.IsophoteList.b4`.')),
+)
 
-    Parameters
-    ----------
-    isophote_list : `~photutils.isophote.IsophoteList` instance
-        A list of isophotes.
 
-    Returns
-    -------
-    result : dict
-        A dictionary with the list of the isophote_list properties.
-    """
-    properties = {}
-    for an_item in isophote_list.__class__.__dict__:
-        p_type = isophote_list.__class__.__dict__[an_item]
-        # Exclude the sample property.
-        if isinstance(p_type, property) and 'sample' not in an_item:
-            properties[str(an_item)] = str(an_item)
-    return properties
+def _make_property(name, dtype, description):
+    def getter(self):
+        return self._collect_as_array(name, dtype=dtype)
+
+    getter.__name__ = name
+    getter.__qualname__ = f'IsophoteList.{name}'
+    getter.__doc__ = description
+    return property(getter)
 
 
-# The "main" isophote_list properties included in to_table() by default.
-_MAIN_PROPERTIES = ('sma', 'intens', 'int_err', 'eps', 'ellip_err',
+for _name, _dtype, _unit, _description in _ISOPHOTE_PROPERTIES:
+    setattr(IsophoteList, _name, _make_property(_name, _dtype, _description))
+
+# The names of the generated IsophoteList properties.
+_PROPERTY_NAMES = tuple(entry[0] for entry in _ISOPHOTE_PROPERTIES)
+
+
+# The isophote_list properties included in to_table() by default.
+_DEFAULT_COLUMNS = ('sma', 'intens', 'int_err', 'eps', 'ellip_err',
                     'pa', 'pa_err', 'grad', 'gradient_err',
                     'gradient_rel_err', 'x0', 'x0_err', 'y0', 'y0_err',
                     'n_data', 'n_flag', 'n_iter', 'stop_code')
@@ -1098,7 +933,7 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     # The 'grad_rerror' name was a table column name, not an attribute.
     _deprecation_map = {**_DEPRECATED_ATTRIBUTES,
                         'grad_rerror': 'gradient_rel_err'}
-    all_names = _get_properties(isophote_list).keys()
+    all_names = _PROPERTY_NAMES
 
     # The table column names of the renamed properties are also
     # accepted.
@@ -1125,7 +960,7 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     if table_columns == ['all']:
         properties = list(_rename_properties(all_names).items())
     elif table_columns == ['main']:
-        properties = list(_rename_properties(_MAIN_PROPERTIES).items())
+        properties = list(_rename_properties(_DEFAULT_COLUMNS).items())
     else:
         # A deprecated name uses the new property and column names,
         # with a single deprecation warning instead of one per isophote.
