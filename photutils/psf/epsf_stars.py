@@ -1303,8 +1303,9 @@ def _extract_linked_stars(data, catalog, size):
         ``data``. If there is more than one image, the center of
         each source must be defined in sky coordinates (in a
         ``skycoord`` column containing a `~astropy.coordinates.SkyCoord`
-        object). For a single image, pixel coordinates (in ``x`` and
-        ``y`` columns) are used if present.
+        object). For a single image, pixel coordinates (in a pair of
+        the x and y columns recognized by `extract_stars`) are used if
+        present.
 
     size : int or array_like (int)
         The extraction box size along each axis. If ``size`` is a scalar
@@ -1371,9 +1372,10 @@ def _extract_unlinked_stars(data, catalogs, size):
         input ``data``. Each catalog corresponds to the list of
         `~astropy.nddata.NDData` objects input in ``data`` (i.e., a
         separate source catalog for each 2D image). The center of each
-        source can be defined either in pixel coordinates (in ``x`` and
-        ``y`` columns) or sky coordinates (in a ``skycoord`` column
-        containing a `~astropy.coordinates.SkyCoord` object).
+        source can be defined either in pixel coordinates (in a pair
+        of the x and y columns recognized by `extract_stars`) or sky
+        coordinates (in a ``skycoord`` column containing a
+        `~astropy.coordinates.SkyCoord` object).
 
     size : int or array_like (int)
         The extraction box size along each axis. If ``size`` is a scalar
@@ -1420,11 +1422,11 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     catalog : `~astropy.table.Table`
         A single catalog of sources to be extracted from the
         input ``data``. The center of each source can be defined
-        either in pixel coordinates (in ``x`` and ``y`` columns)
-        or sky coordinates (in a ``skycoord`` column containing a
-        `~astropy.coordinates.SkyCoord` object). If both are specified,
-        then the value of the ``use_xy`` keyword determines which
-        coordinates will be used.
+        either in pixel coordinates (in a pair of the x and y columns
+        recognized by `extract_stars`) or sky coordinates (in a
+        ``skycoord`` column containing a `~astropy.coordinates.SkyCoord`
+        object). If both are specified, then the value of the ``use_xy``
+        keyword determines which coordinates will be used.
 
     size : int or array_like (int), optional
         The extraction box size along each axis. If ``size`` is a scalar
@@ -1433,9 +1435,9 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         have odd values and be greater than or equal to 3 for both axes.
 
     use_xy : bool, optional
-        Whether to use the ``x`` and ``y`` pixel positions when both
-        pixel and sky coordinates are present in the input catalog
-        table. If `False` then sky coordinates are used instead of pixel
+        Whether to use the pixel position columns when both pixel
+        and sky coordinates are present in the input catalog table. If
+        `False` then sky coordinates are used instead of pixel
         coordinates (e.g., for linked stars). The default is `True`.
 
     Returns
