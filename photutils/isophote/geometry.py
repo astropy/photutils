@@ -731,7 +731,9 @@ class EllipseGeometry:
 
         * the four vertices that define the elliptical sector on the
           pixel array
+
         * the sector area (saved in the ``sector_area`` attribute)
+
         * the angular width of the next sector, computed from this
           sector's radii so that the sectors have roughly constant area
           (saved in the ``_sector_angular_width`` attribute)
