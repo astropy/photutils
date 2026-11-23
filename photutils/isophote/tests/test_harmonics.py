@@ -198,7 +198,8 @@ def test_upper_harmonics_sign():
     ny = nx = 150
     y, x = np.mgrid[0:ny, 0:nx]
     data = g1(x, y) + g2(x, y)
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.9, pa=angle)
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.9,
+                               orientation=angle)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
@@ -243,7 +244,8 @@ def test_upper_harmonics_values(sign):
     sma = radius / ellipse_radius / (1.0 + deviation)
     data = 1000.0 * np.exp(-sma / 15.0)
 
-    geometry = EllipseGeometry(x0=100, y0=100, sma=20, eps=eps, pa=pa)
+    geometry = EllipseGeometry(x0=100, y0=100, sma=20, ellipticity=eps,
+                               orientation=pa)
     isolist = Ellipse(data, geometry=geometry).fit_image(maxsma=50.0)
     mask = (isolist.sma > 10) & (isolist.sma < 45)
     assert np.count_nonzero(mask) > 10
@@ -332,12 +334,13 @@ def test_short_arc_isophote_errors():
     yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
     theta = np.arctan2(yy - 256.0, xx - 256.0)
     mask = (theta < 0.5) | (theta > 0.56)
-    geometry = EllipseGeometry(x0=256.0, y0=256.0, sma=220.0, eps=0.2, pa=0.0)
+    geometry = EllipseGeometry(x0=256.0, y0=256.0, sma=220.0,
+                               ellipticity=0.2, orientation=0.0)
     ellipse = Ellipse(np.ma.masked_array(data, mask=mask), geometry=geometry)
     isophote = ellipse.fit_isophote(220.0)
 
     assert isophote.n_data >= 6
-    for name in ('x0_err', 'y0_err', 'ellipticity_err', 'pa_err'):
+    for name in ('x0_err', 'y0_err', 'ellipticity_err', 'orientation_err'):
         value = getattr(isophote, name)
         assert np.isfinite(value)
         assert value > 0

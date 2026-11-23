@@ -29,10 +29,10 @@ DEFAULT_MAXIT = 50
 DEFAULT_FFLAG = 0.7
 DEFAULT_MAXGERR = 0.5
 
-# The indices of the position angle and ellipticity in the ``fix`` array
+# The indices of the orientation and ellipticity in the ``fix`` array
 # of EllipseGeometry.
-_PA_INDEX = list(_HARMONIC_PARAMETERS.values()).index('pa')
-_EPS_INDEX = list(_HARMONIC_PARAMETERS.values()).index('eps')
+_ORIENTATION_INDEX = list(_HARMONIC_PARAMETERS.values()).index('orientation')
+_ELLIPTICITY_INDEX = list(_HARMONIC_PARAMETERS.values()).index('ellipticity')
 
 
 class EllipseFitter:
@@ -157,8 +157,9 @@ class EllipseFitter:
         >>> y, x = np.mgrid[0:150, 0:150]
         >>> data = model(x, y) + make_noise_image((150, 150), mean=0.0,
         ...                                       stddev=2.0, seed=0)
-        >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-        ...                            pa=np.deg2rad(30))
+        >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20,
+        ...                            ellipticity=0.5,
+        ...                            orientation=np.deg2rad(30))
         >>> sample = EllipseSample(data, geometry.sma, geometry=geometry)
         >>> fitter = EllipseFitter(sample)
         >>> isophote = fitter.fit()
@@ -189,12 +190,13 @@ class EllipseFitter:
         # These must be passed throughout the execution chain.
         fixed_parameters = sample.geometry.fix
 
-        # The position angle of a circle is undefined and its correction
+        # The orientation of a circle is undefined and its correction
         # diverges, so it is not fit if the ellipticity is fixed at
         # zero.
-        if fixed_parameters[_EPS_INDEX] and sample.geometry.eps == 0.0:
+        if (fixed_parameters[_ELLIPTICITY_INDEX]
+                and sample.geometry.ellipticity == 0.0):
             fixed_parameters = np.array(fixed_parameters)
-            fixed_parameters[_PA_INDEX] = True
+            fixed_parameters[_ORIENTATION_INDEX] = True
 
         # If all the ellipse parameters are fixed, there is nothing to
         # fit. As in the STSDAS ellipse task, the isophote is extracted
@@ -209,7 +211,8 @@ class EllipseFitter:
         # A starting ellipse that is round or has a negative ellipticity
         # must be fixed before it is sampled, like the corrected
         # ellipses below.
-        if sample.geometry.eps <= 0.0 and not fixed_parameters[_EPS_INDEX]:
+        if (sample.geometry.ellipticity <= 0.0
+                and not fixed_parameters[_ELLIPTICITY_INDEX]):
             self._fix_round_ellipse(sample.geometry, fixed_parameters)
             sample.values = None
 
@@ -370,7 +373,7 @@ class EllipseFitter:
         extracted. A fixed ellipticity is not changed. A fixed position
         angle is not changed either.
         """
-        if fixed_parameters[_EPS_INDEX]:
+        if fixed_parameters[_ELLIPTICITY_INDEX]:
             return
 
         # See if eps == 0 (round isophote) was crossed. If so, fix it
@@ -378,20 +381,20 @@ class EllipseFitter:
         # the same as an ellipse rotated by 90 degrees with a positive
         # ellipticity. A fixed position angle cannot be rotated, so the
         # ellipse is then made nearly round below.
-        if geometry.eps < 0.0:
-            if fixed_parameters[_PA_INDEX]:
-                geometry.eps = 0.0
+        if geometry.ellipticity < 0.0:
+            if fixed_parameters[_ORIENTATION_INDEX]:
+                geometry.ellipticity = 0.0
             else:
-                geometry.eps = min(-geometry.eps, MAX_EPS)
-                if geometry.pa < PI2:
-                    geometry.pa += PI2
+                geometry.ellipticity = min(-geometry.ellipticity, MAX_EPS)
+                if geometry._orientation_rad < PI2:
+                    geometry._orientation_rad += PI2
                 else:
-                    geometry.pa -= PI2
+                    geometry._orientation_rad -= PI2
 
         # If ellipse is an exact circle, computations will diverge.
         # Make it slightly flat, but still proceed.
-        if geometry.eps == 0.0:
-            geometry.eps = MIN_EPS
+        if geometry.ellipticity == 0.0:
+            geometry.ellipticity = MIN_EPS
 
         geometry._reset_sma_dependent_attributes()
 
@@ -406,7 +409,7 @@ class EllipseFitter:
         """
         geometry = sample.geometry
         ny, nx = sample.image.shape
-        return (abs(geometry.eps) > MAX_EPS
+        return (abs(geometry.ellipticity) > MAX_EPS
                 or not 0.0 <= geometry.x0 <= nx - 1
                 or not 0.0 <= geometry.y0 <= ny - 1)
 
@@ -462,10 +465,10 @@ def _correct_center_a1(sample, harmonic):
     Return a new sample with the center corrected using the ``a1``
     harmonic amplitude.
     """
-    aux = -harmonic * (1.0 - sample.geometry.eps) / sample.gradient
+    aux = -harmonic * (1.0 - sample.geometry.ellipticity) / sample.gradient
 
-    dx = -aux * math.sin(sample.geometry.pa)
-    dy = aux * math.cos(sample.geometry.pa)
+    dx = -aux * math.sin(sample.geometry._orientation_rad)
+    dy = aux * math.cos(sample.geometry._orientation_rad)
 
     return _shift_center(sample, dx, dy)
 
@@ -477,8 +480,8 @@ def _correct_center_b1(sample, harmonic):
     """
     aux = -harmonic / sample.gradient
 
-    dx = aux * math.cos(sample.geometry.pa)
-    dy = aux * math.sin(sample.geometry.pa)
+    dx = aux * math.cos(sample.geometry._orientation_rad)
+    dy = aux * math.sin(sample.geometry._orientation_rad)
 
     return _shift_center(sample, dx, dy)
 
@@ -488,7 +491,7 @@ def _correct_orientation(sample, harmonic):
     Return a new sample with the position angle corrected using the
     ``a2`` harmonic amplitude.
     """
-    eps = sample.geometry.eps
+    eps = sample.geometry.ellipticity
     sma = sample.geometry.sma
     gradient = sample.gradient
 
@@ -496,9 +499,9 @@ def _correct_orientation(sample, harmonic):
                   / ((1.0 - eps)**2 - 1.0))
 
     # Make the angle lie between 0 and np.pi radians.
-    new_pa = (sample.geometry.pa + correction) % np.pi
+    new_orientation = (sample.geometry._orientation_rad + correction) % np.pi
 
-    return sample._make_sample(pa=new_pa)
+    return sample._make_sample(orientation=new_orientation)
 
 
 def _correct_ellipticity(sample, harmonic):
@@ -506,15 +509,15 @@ def _correct_ellipticity(sample, harmonic):
     Return a new sample with the ellipticity corrected using the ``b2``
     harmonic amplitude.
     """
-    eps = sample.geometry.eps
+    eps = sample.geometry.ellipticity
     sma = sample.geometry.sma
     gradient = sample.gradient
 
     correction = harmonic * 2.0 * (1.0 - eps) / sma / gradient
 
-    new_eps = sample.geometry.eps - correction
+    new_eps = sample.geometry.ellipticity - correction
 
-    return sample._make_sample(eps=new_eps)
+    return sample._make_sample(ellipticity=new_eps)
 
 
 # The parameter corrector for each harmonic coefficient. The correctors

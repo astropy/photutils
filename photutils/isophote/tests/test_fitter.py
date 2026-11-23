@@ -3,6 +3,7 @@
 Tests for the fitter module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -127,14 +128,13 @@ def test_everything_fixed():
     without fitting, if all the ellipse parameters are fixed.
     """
     geometry = EllipseGeometry(250.0, 260.0, 40.0, 0.3, 1.0, fix_center=True,
-                               fix_pa=True, fix_eps=True)
+                               fix_orientation=True, fix_ellipticity=True)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == 4
     assert isophote.n_iter == 0
     assert (isophote.x0, isophote.y0, isophote.ellipticity,
-            isophote.pa) == (
-        250.0, 260.0, 0.3, 1.0)
+            isophote.orientation) == (250.0, 260.0, 0.3, 1.0 * u.rad)
 
 
 def test_fit_keeps_sample_settings():
@@ -152,7 +152,7 @@ def test_fit_keeps_sample_settings():
     assert fitted_sample.n_clip == 2
     assert fitted_sample.integrmode == MEAN
     assert fitted_sample.geometry.sma == 60.0
-    assert fitted_sample.geometry.astep == 0.2
+    assert fitted_sample.geometry.step == 0.2
     assert not fitted_sample.geometry.linear_growth
 
 
@@ -175,9 +175,9 @@ def test_fitting_raw():
     assert abs(b2) > abs(b1)
     assert abs(b2) > abs(a2)
 
-    correction = (b2 * 2.0 * (1.0 - sample.geometry.eps)
+    correction = (b2 * 2.0 * (1.0 - sample.geometry.ellipticity)
                   / sample.geometry.sma / sample.gradient)
-    new_eps = sample.geometry.eps - correction
+    new_eps = sample.geometry.ellipticity - correction
 
     # Got closer to test data (eps=0.2)
     assert_allclose(new_eps, 0.21, atol=0.01)
@@ -235,7 +235,7 @@ def test_fitting_eps():
 
     assert isinstance(isophote, Isophote)
     g = isophote.sample.geometry
-    assert_allclose(g.eps, 0.2, atol=0.01)
+    assert_allclose(g.ellipticity, 0.2, atol=0.01)
 
 
 @pytest.mark.parametrize('galaxy_eps', [0.97, 0.98])
@@ -271,7 +271,7 @@ def test_fitting_pa():
     isophote = fitter.fit()
     g = isophote.sample.geometry
 
-    assert_allclose(g.pa, np.pi / 4, atol=0.05)
+    assert_allclose(g.orientation.to_value(u.rad), np.pi / 4, atol=0.05)
 
 
 def test_fitting_xy():
@@ -307,8 +307,9 @@ def test_fitting_all():
 
     g = isophote.sample.geometry
     assert_allclose((g.x0, g.y0), pos, atol=1.5)  # within 1.5 pixel
-    assert_allclose(g.eps, eps, atol=0.01)
-    assert_allclose(g.pa, angle, atol=0.05)  # within ~3 deg
+    assert_allclose(g.ellipticity, eps, atol=0.01)
+    # Within about 3 degrees
+    assert_allclose(g.orientation.to_value(u.rad), angle, atol=0.05)
 
     sample_m = EllipseSample(data, sma, position_angle=(1.2 * angle),
                              integrmode=MEAN)
@@ -347,8 +348,8 @@ class TestMaxCenterShift:
         g2 = isophote2.sample.geometry
         assert g1.x0 == g2.x0
         assert g1.y0 == g2.y0
-        assert g1.eps == g2.eps
-        assert g1.pa == g2.pa
+        assert g1.ellipticity == g2.ellipticity
+        assert g1.orientation == g2.orientation
 
     def test_reference_center(self):
         reference = (DEFAULT_POS + 4, DEFAULT_POS + 4)
@@ -440,7 +441,7 @@ class TestM51:
         # This code finds central x and y offset by about 0.1 pixel wrt the
         # spp code. In here we use as input the position computed by this
         # code, thus this test is checking just the extraction algorithm.
-        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, astep=0.1,
+        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, step=0.1,
                             linear_growth=False)
         isophote = _central_isophote(self.data, g)
 
@@ -463,7 +464,8 @@ def test_fitting_round_start():
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == 0
     assert_allclose(isophote.ellipticity, 0.2, atol=0.01)
-    assert_allclose(isophote.pa, np.pi / 4, atol=0.05)
+    assert_allclose(isophote.orientation.to_value(u.rad), np.pi / 4,
+                    atol=0.05)
 
 
 @pytest.mark.parametrize('fix_center', [False, True])
@@ -473,12 +475,12 @@ def test_fixed_round_ellipse(fix_center):
 
     The position angle of a circle is undefined, so it is not fit.
     """
-    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5, fix_eps=True,
-                               fix_center=fix_center)
+    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5,
+                               fix_ellipticity=True, fix_center=fix_center)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
     isophote = EllipseFitter(sample).fit()
     assert isophote.ellipticity == 0.0
-    assert isophote.pa == 0.5
+    assert isophote.orientation == 0.5 * u.rad
     if fix_center:
         assert isophote.stop_code == 4
         assert (isophote.x0, isophote.y0) == (257.0, 255.0)
@@ -494,13 +496,14 @@ def test_fit_does_not_modify_input(fix_eps, fix_center):
     Test that fitting a round starting ellipse does not modify the
     geometry of the input sample.
     """
-    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5, fix_eps=fix_eps,
+    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5,
+                               fix_ellipticity=fix_eps,
                                fix_center=fix_center)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
     fix = sample.geometry.fix.copy()
     EllipseFitter(sample).fit()
-    assert sample.geometry.eps == 0.0
-    assert sample.geometry.pa == 0.5
+    assert sample.geometry.ellipticity == 0.0
+    assert sample.geometry.orientation == 0.5 * u.rad
     assert (sample.geometry.x0, sample.geometry.y0) == (257.0, 255.0)
     assert np.array_equal(sample.geometry.fix, fix)
 
@@ -511,7 +514,8 @@ def test_everything_fixed_no_data():
     no valid data points.
     """
     geometry = EllipseGeometry(250.0, 260.0, 2000.0, 0.3, 1.0,
-                               fix_center=True, fix_pa=True, fix_eps=True)
+                               fix_center=True, fix_orientation=True,
+                               fix_ellipticity=True)
     sample = EllipseSample(DATA, 2000.0, geometry=geometry)
     isophote = EllipseFitter(sample).fit()
     assert not isophote.valid

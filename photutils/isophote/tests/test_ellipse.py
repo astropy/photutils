@@ -57,9 +57,9 @@ def _assert_fflag_stop(isolist, *, fflag=0.7):
 def _assert_same_geometry(isophote1, isophote2):
     """
     Assert that two isophotes have the same center, ellipticity, and
-    position angle.
+    orientation.
     """
-    for name in ('x0', 'y0', 'ellipticity', 'pa'):
+    for name in ('x0', 'y0', 'ellipticity', 'orientation'):
         assert getattr(isophote1, name) == getattr(isophote2, name)
 
 
@@ -217,7 +217,7 @@ class TestEllipse:
         assert isophote.x0 == expected.x0
         assert isophote.y0 == expected.y0
         assert isophote.ellipticity == expected.ellipticity
-        assert isophote.pa == expected.pa
+        assert isophote.orientation == expected.orientation
 
     def test_first_isophote_minit(self):
         """
@@ -397,7 +397,8 @@ class TestEllipse:
 
         for idx, result in enumerate(results):
             isolist = expected[idx % len(kwargs_list)]
-            for name in ('sma', 'intensity', 'x0', 'y0', 'ellipticity', 'pa'):
+            for name in ('sma', 'intensity', 'x0', 'y0', 'ellipticity',
+                         'orientation'):
                 assert_array_equal(getattr(result, name),
                                    getattr(isolist, name))
         assert not np.any(geometry.fix)
@@ -405,10 +406,10 @@ class TestEllipse:
 
     @pytest.mark.parametrize(('kwargs', 'fixed_names'),
                              [({'fix_center': True}, ('x0', 'y0')),
-                              ({'fix_pa': True}, ('pa',)),
-                              ({'fix_eps': True}, ('eps',)),
+                              ({'fix_pa': True}, ('orientation',)),
+                              ({'fix_eps': True}, ('ellipticity',)),
                               ({'fix_center': True, 'fix_eps': True},
-                               ('x0', 'y0', 'eps'))])
+                               ('x0', 'y0', 'ellipticity'))])
     def test_fixed_parameters(self, kwargs, fixed_names):
         """
         Test that the fixed parameters keep their initial values and
@@ -418,9 +419,8 @@ class TestEllipse:
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
             maxsma=40.0, **kwargs)
         sma_positive = isolist.sma > 0
-        for name in ('x0', 'y0', 'eps', 'pa'):
-            attr = 'ellipticity' if name == 'eps' else name
-            values = getattr(isolist, attr)[sma_positive]
+        for name in ('x0', 'y0', 'ellipticity', 'orientation'):
+            values = getattr(isolist, name)[sma_positive]
             if name in fixed_names:
                 assert np.all(values == getattr(geometry, name))
             else:
@@ -430,7 +430,9 @@ class TestEllipse:
     def test_everything_fixed(self, use_geometry):
         kwargs = {'fix_center': True, 'fix_pa': True, 'fix_eps': True}
         if use_geometry:
-            geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA, **kwargs)
+            geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA,
+                                       fix_center=True, fix_orientation=True,
+                                       fix_ellipticity=True)
             ellipse = Ellipse(self.data, geometry=geometry)
             kwargs = {}
         else:
@@ -451,17 +453,17 @@ class TestEllipse:
         for step in (0.1, 0.3):
             isolist = ellipse.fit_image(sma0=20.0, maxsma=40.0, minsma=15.0,
                                         step=step, integrmode='mean')
-            assert np.all([iso.sample.geometry.astep == step
+            assert np.all([iso.sample.geometry.step == step
                            for iso in isolist])
             sarea[step] = isolist.get_closest(20.0).sector_area
             isophote = ellipse.fit_isophote(20.0, step=step,
                                             integrmode='mean')
-            assert isophote.sample.geometry.astep == step
+            assert isophote.sample.geometry.step == step
         assert sarea[0.3] > 2 * sarea[0.1]
 
         isolist = ellipse.fit_image(sma0=20.0, maxsma=40.0, minsma=15.0,
                                     step=5.0, linear=True)
-        assert np.all([iso.sample.geometry.astep == 5.0 for iso in isolist])
+        assert np.all([iso.sample.geometry.step == 5.0 for iso in isolist])
 
     def test_sampled_on_ellipse(self):
         """
@@ -594,7 +596,8 @@ class TestEllipse:
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the offset
         # galaxy image.
-        g = EllipseGeometry(POS + 5, POS + 5, 10.0, eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS + 5, POS + 5, 10.0, ellipticity=0.2,
+                            orientation=PA, step=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote_list = ellipse.fit_image()
 
@@ -610,12 +613,12 @@ class TestEllipse:
         companion = Gaussian2D(50.0, 330, 290, 8.0, 8.0)(xx, yy)
         data = self.data + companion
 
-        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        g = EllipseGeometry(256, 256, 20.0, ellipticity=0.2, orientation=PA)
         isolist = Ellipse(data, geometry=g).fit_image()
         shift = np.hypot(isolist.x0 - 256, isolist.y0 - 256)
         assert np.max(shift) > 5.0
 
-        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        g = EllipseGeometry(256, 256, 20.0, ellipticity=0.2, orientation=PA)
         isolist_bound = Ellipse(data, geometry=g).fit_image(
             max_center_shift=1.0)
         shift = np.hypot(isolist_bound.x0 - 256, isolist_bound.y0 - 256)
@@ -631,7 +634,7 @@ class TestEllipse:
 
         # Ellipticity is still fitted with the center on the bound, so
         # it follows a fit with a fixed center.
-        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        g = EllipseGeometry(256, 256, 20.0, ellipticity=0.2, orientation=PA)
         isolist_fixed = Ellipse(data, geometry=g).fit_image(fix_center=True)
         assert_allclose(isolist_bound.ellipticity[at_bound],
                         isolist_fixed.ellipticity[at_bound], atol=0.01)
@@ -639,7 +642,8 @@ class TestEllipse:
     def test_max_center_shift_fit_isophote(self):
         x0 = POS + 5
         y0 = POS + 5
-        g = EllipseGeometry(x0, y0, 40.0, eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(x0, y0, 40.0, ellipticity=0.2, orientation=PA,
+                            step=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote = ellipse.fit_isophote(40.0, max_center_shift=2.0)
 
@@ -649,7 +653,8 @@ class TestEllipse:
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to go beyond the image
         # frame limits.
-        g = EllipseGeometry(POS + 5, POS + 5, 10.0, eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS + 5, POS + 5, 10.0, ellipticity=0.2,
+                            orientation=PA, step=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote_list = ellipse.fit_image(maxsma=400.0)
 
@@ -693,8 +698,8 @@ class TestEllipse:
         assert_allclose(isolist.y0[mask], ny / 2.0, atol=1.0)
         assert_allclose(np.median(isolist.ellipticity[mask]), 1.0 - 12 / 20,
                         atol=0.02)
-        assert_allclose(np.median(isolist.pa[mask]), np.deg2rad(40.0),
-                        atol=np.deg2rad(2.0))
+        assert_allclose(np.median(isolist.orientation[mask]), 40.0 * u.deg,
+                        atol=2.0 * u.deg)
         _assert_sma_grid(isolist)
 
     def test_round_starting_ellipse(self):
@@ -708,20 +713,21 @@ class TestEllipse:
         mask = isolist.sma > 5
         assert np.count_nonzero(mask) > 10
         assert_allclose(isolist.ellipticity[mask], 0.2, atol=0.01)
-        assert_allclose(isolist.pa[mask], PA, atol=0.02)
+        assert_allclose(isolist.orientation[mask].to_value(u.rad), PA,
+                        atol=0.02)
 
     def test_fixed_round_ellipse(self):
         """
         Test that a fixed ellipticity of zero is not changed.
         """
         geometry = EllipseGeometry(256.5, 255.5, 20.0, 0.0, 0.3,
-                                   fix_eps=True)
+                                   fix_ellipticity=True)
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
             maxsma=40.0)
         assert len(isolist) > 10
         assert np.all(isolist.ellipticity == 0.0)
         mask = isolist.sma > 5
-        assert np.all(isolist.pa[mask] == 0.3)
+        assert np.all(isolist.orientation[mask] == 0.3 * u.rad)
         assert_allclose(isolist.x0[mask], 256.0, atol=0.1)
         assert_allclose(isolist.y0[mask], 256.0, atol=0.1)
 
@@ -764,11 +770,11 @@ class TestEllipse:
         data = make_test_image(eps=0.0, noise=1.0, seed=0)
         pa = 0.3
         geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.05, pa,
-                                   fix_pa=True)
+                                   fix_orientation=True)
         isolist = Ellipse(data, geometry=geometry).fit_image(maxsma=60.0)
         mask = isolist.sma > 0
         assert np.count_nonzero(mask) > 40
-        assert np.all(isolist.pa[mask] == pa)
+        assert np.all(isolist.orientation[mask] == pa * u.rad)
         assert np.all(isolist.ellipticity[mask] > 0)
         assert np.median(isolist.ellipticity[isolist.sma > 5]) < 0.06
 
@@ -794,13 +800,13 @@ class TestEllipse:
         ellipse = Ellipse(self.data, geometry=geometry)
         isophote = ellipse.fit_isophote(20.0, step=2.0)
         assert isophote.sample.geometry.linear_growth
-        assert isophote.sample.geometry.astep == 2.0
+        assert isophote.sample.geometry.step == 2.0
 
         isophote = ellipse.fit_isophote(20.0, linear=False)
         assert not isophote.sample.geometry.linear_growth
 
         assert geometry.linear_growth
-        assert geometry.astep == 0.1
+        assert geometry.step == 0.1
 
     def test_linear_numpy_bool(self):
         """
@@ -830,7 +836,7 @@ class TestMeasureIsophotes:
 
         assert isinstance(isolist, IsophoteList)
         assert len(isolist) == len(self.isolist)
-        for name in ('sma', 'x0', 'y0', 'ellipticity', 'pa'):
+        for name in ('sma', 'x0', 'y0', 'ellipticity', 'orientation'):
             assert_allclose(getattr(isolist, name),
                             getattr(self.isolist, name))
         assert_equal(isolist.n_iter, 0)
@@ -854,13 +860,14 @@ class TestMeasureIsophotes:
         isolist2 = Ellipse(2.0 * self.data).measure_isophotes(self.isolist)
         assert_allclose(isolist2.intensity, 2.0 * isolist1.intensity)
         assert_allclose(isolist2.ellipticity, self.isolist.ellipticity)
-        assert_allclose(isolist2.pa, self.isolist.pa)
+        assert_allclose(isolist2.orientation, self.isolist.orientation)
 
     def test_input_unchanged(self):
         """
         Test that the input isophotes and geometries are not modified.
         """
-        names = ('sma', 'x0', 'y0', 'ellipticity', 'pa', 'intensity')
+        names = ('sma', 'x0', 'y0', 'ellipticity', 'orientation',
+                 'intensity')
         values = {name: getattr(self.isolist, name).copy()
                   for name in names}
         fixed = [iso.sample.geometry.fix.copy() for iso in self.isolist]
@@ -885,7 +892,8 @@ class TestMeasureIsophotes:
         isolist2 = ellipse.measure_isophotes(geometries[::-1])
 
         assert len(isolist2) == len(isolist1)
-        for name in ('sma', 'x0', 'y0', 'ellipticity', 'pa', 'intensity'):
+        for name in ('sma', 'x0', 'y0', 'ellipticity', 'orientation',
+                     'intensity'):
             assert_allclose(getattr(isolist2, name),
                             getattr(isolist1, name))
 
@@ -903,7 +911,7 @@ class TestMeasureIsophotes:
         assert len(isolist) == 4
         assert_allclose(isolist.sma[:3], [0.0, 10.0, 20.0])
         assert_allclose(isolist.ellipticity[1:3], 0.2)
-        assert_allclose(isolist.pa[1:3], PA)
+        assert_allclose(isolist.orientation[1:3].to_value(u.rad), PA)
         assert_allclose(isolist.x0[:3], 256.0)
         assert isolist[-1].sma == self.isolist[-1].sma
         assert np.all(np.diff(isolist.intensity) < 0)

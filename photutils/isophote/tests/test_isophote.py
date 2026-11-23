@@ -3,8 +3,11 @@
 Tests for the isophote module.
 """
 
+import copy
+import pickle
 import warnings
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -79,10 +82,11 @@ class TestIsophote:
         assert g.x0 <= (257 + 1.5)
         assert g.y0 >= (259 - 1.5)
         assert g.y0 <= (259 + 2.0)
-        assert g.eps >= (0.19 - 0.05)  # eps within 0.05
-        assert g.eps <= (0.19 + 0.05)
-        assert g.pa >= (0.62 - 0.05)  # pa within 5 deg
-        assert g.pa <= (0.62 + 0.05)
+        assert g.ellipticity >= (0.19 - 0.05)  # ellipticity within 0.05
+        assert g.ellipticity <= (0.19 + 0.05)
+        orientation = g.orientation.to_value(u.rad)
+        assert orientation >= (0.62 - 0.05)  # orientation within 5 deg
+        assert orientation <= (0.62 + 0.05)
 
         # Fitted values
         assert_allclose(iso.intensity, 682.9, atol=0.1)
@@ -214,15 +218,15 @@ def test_isophote_fluxes_integer_center():
     assert_allclose(npix[1][0], np.pi * 10.0**2, rtol=0.02)
 
 
-def test_isophote_round_pa_err():
+def test_isophote_round_orientation_err():
     """
-    Test that the position angle error of a round isophote is zero.
+    Test that the orientation error of a round isophote is zero.
     """
     data = make_test_image(eps=0.0, seed=0)
     sample = EllipseSample(data, 20.0, eps=0.0)
     sample.update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 0, valid=True, stop_code=0)
-    assert isophote.pa_err == 0.0
+    assert isophote.orientation_err == 0.0 * u.deg
     assert np.isfinite(isophote.ellipticity_err)
 
 
@@ -345,7 +349,7 @@ class TestIsophoteList:
         assert len(self.isolist_sma10) == n_isophotes
 
     @pytest.mark.parametrize('name', ['intensity_err', 'ellipticity_err',
-                                      'pa_err',
+                                      'orientation_err',
                                       'x0_err', 'y0_err', 'gradient_err',
                                       'gradient_rel_err', 'a3_err',
                                       'b3_err', 'a4_err', 'b4_err'])
@@ -355,7 +359,8 @@ class TestIsophoteList:
         assert values.shape == (len(isolist),)
         assert np.all(np.isfinite(values))
         assert np.all(values >= 0)
-        assert_allclose(values, [getattr(iso, name) for iso in isolist])
+        assert_allclose(values,
+                        u.Quantity([getattr(iso, name) for iso in isolist]))
 
     def test_deprecated_attribute(self):
         match = "'niter' attribute was deprecated"
@@ -425,7 +430,7 @@ class TestIsophoteList:
         assert cenpix.x0 == cenpix.sample.geometry.x0
         assert cenpix.y0 == cenpix.sample.geometry.y0
         assert cenpix.ellipticity == 0.0
-        assert cenpix.pa == 0.0
+        assert cenpix.orientation == 0.0 * u.deg
 
     def test_extend(self):
         # The extend method shouldn't return anything, and should modify
@@ -665,9 +670,9 @@ def test_central_isophote_is_plain_isophote():
     assert iso.sma == 0.0
     assert iso.geometry is iso.sample.geometry
     assert iso.ellipticity == 0.0
-    assert iso.pa == 0.0
-    assert iso.geometry.eps == 0.0
-    assert iso.geometry.pa == 0.0
+    assert iso.orientation == 0.0 * u.deg
+    assert iso.geometry.ellipticity == 0.0
+    assert iso.geometry.orientation == 0.0 * u.deg
     assert iso.gradient == 0.0
     assert iso.a3 == 0.0
     assert iso.x0_err == 0.0
@@ -725,3 +730,52 @@ def test_missing_values_are_nan():
                  'gradient_err', 'gradient_rel_err',
                  'total_flux_ellipse', 'n_pixels_circle'):
         assert np.isnan(getattr(central, name))
+
+
+def test_isophote_list_copy_and_pickle():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    for clone in (copy.deepcopy(isolist),
+                  pickle.loads(pickle.dumps(isolist))):  # noqa: S301
+        assert_array_equal(clone.sma, isolist.sma)
+        assert_array_equal(clone.orientation, isolist.orientation)
+        assert clone[3].geometry is clone[3].sample.geometry
+
+
+def test_isophote_orientation_units():
+    data = make_test_image(pa=np.pi / 4, eps=0.4, seed=2)
+    isolist = Ellipse(data).fit_image()
+    assert isolist.orientation.unit == u.deg
+    assert isolist.orientation_err.unit == u.deg
+    assert isolist[5].orientation.unit == u.deg
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'"):
+        pa = isolist.pa
+    assert not isinstance(pa, u.Quantity)
+    assert_allclose(pa, isolist.orientation.to_value(u.rad))
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa_err'"):
+        assert_allclose(isolist.pa_err,
+                        isolist.orientation_err.to_value(u.rad))
+    tbl = isolist.to_table()
+    assert_array_equal(tbl['orientation'], isolist.orientation)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'"):
+        assert_array_equal(tbl['pa'], isolist.orientation)
+
+
+def test_isophote_deprecated_orientation_names():
+    data = make_test_image(pa=np.pi / 4, eps=0.4, seed=2)
+    isolist = Ellipse(data).fit_image()
+    iso = isolist[5]
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'"):
+        pa = iso.pa
+    assert pa == iso.geometry._orientation_rad
+    assert not isinstance(pa, u.Quantity)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa_err'"):
+        pa_err = iso.pa_err
+    assert not isinstance(pa_err, u.Quantity)
+    assert_allclose(pa_err, iso.orientation_err.to_value(u.rad))
+
+    match = "'pa_err' attribute was deprecated in version 3.2"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        tbl = isolist.to_table(columns=['sma', 'pa_err'])
+    assert tbl.colnames == ['sma', 'orientation_err']
+    assert tbl['orientation_err'].unit == u.deg

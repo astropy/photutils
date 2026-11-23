@@ -106,7 +106,8 @@ galaxy can pull the fitted centers away from the galaxy nucleus. Unlike
 an image ``data`` of a galaxy centered near (256, 256)::
 
     >>> from photutils.isophote import Ellipse, EllipseGeometry
-    >>> geometry = EllipseGeometry(x0=256, y0=256, sma=20, eps=0.2, pa=0.2)
+    >>> geometry = EllipseGeometry(x0=256, y0=256, sma=20, ellipticity=0.2,
+    ...                            orientation=0.2)
     >>> ellipse = Ellipse(data, geometry=geometry)
     >>> isolist = ellipse.fit_image(max_center_shift=2.0)
 

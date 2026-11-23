@@ -3,9 +3,14 @@
 Tests for the geometry module.
 """
 
+import copy
+import pickle
+
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy import log
+from astropy.coordinates import Angle
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose, assert_array_equal
 from scipy.integrate import quad
@@ -13,13 +18,14 @@ from scipy.integrate import quad
 from photutils.datasets import make_noise_image
 from photutils.isophote.geometry import IN_MASK, OUT_MASK, EllipseGeometry
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.mark.parametrize(('astep', 'linear_growth'),
                          [(0.2, False), (20.0, True)])
 def test_geometry(astep, linear_growth):
     geometry = EllipseGeometry(255.0, 255.0, 100.0, 0.4, np.pi / 2,
-                               astep=astep,
+                               step=astep,
                                linear_growth=linear_growth)
 
     sma1, sma2 = geometry.bounding_ellipses()
@@ -51,7 +57,7 @@ def test_to_polar_integer_input():
 
 def test_to_polar():
     # Trivial case of a circle centered in (0.0, 0.0)
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=0.2,
                                linear_growth=False)
 
     r, p = geometry.to_polar(100.0, 0.0)
@@ -68,7 +74,7 @@ def test_to_polar():
     assert_allclose(p, np.pi / 4.0, atol=0.0001)
 
     # Position angle tilted 45 deg from X-axis
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, np.pi / 4.0, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, np.pi / 4.0, step=0.2,
                                linear_growth=False)
 
     r, p = geometry.to_polar(100.0, 0.0)
@@ -87,7 +93,7 @@ def test_to_polar():
 
 def test_area():
     # Circle with center at origin
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=0.2,
                                linear_growth=False)
 
     # Sector at 45 deg on circle
@@ -103,7 +109,7 @@ def test_area():
 
 def test_area2():
     # Circle with center at 100.0, 100.0
-    geometry = EllipseGeometry(100.0, 100.0, 100.0, 0.0, 0.0, astep=0.2,
+    geometry = EllipseGeometry(100.0, 100.0, 100.0, 0.0, 0.0, step=0.2,
                                linear_growth=False)
 
     # Sector at 45 deg on circle
@@ -125,7 +131,7 @@ def test_sector_area(phi):
     including sectors that straddle a polar angle of 0, pi, or 2 pi.
     """
     eps = 0.4
-    geometry = EllipseGeometry(100.0, 100.0, 20.0, eps, 0.3, astep=0.1)
+    geometry = EllipseGeometry(100.0, 100.0, 20.0, eps, 0.3, step=0.1)
     geometry.initialize_sector_geometry(phi)
     sma1, sma2 = geometry.bounding_ellipses()
     phi1, phi2 = geometry.polar_angle_sector_limits()
@@ -141,13 +147,13 @@ def test_sector_area(phi):
 
 
 def test_reset_sma():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=0.2,
                                linear_growth=False)
     sma, step = geometry.reset_sma(0.2)
     assert_allclose(sma, 83.33, atol=0.01)
     assert_allclose(step, -0.1666, atol=0.001)
 
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=20.0,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=20.0,
                                linear_growth=True)
     sma, step = geometry.reset_sma(20.0)
     assert_allclose(sma, 80.0, atol=0.01)
@@ -155,19 +161,19 @@ def test_reset_sma():
 
 
 def test_update_sma():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=0.2,
                                linear_growth=False)
     sma = geometry.update_sma(0.2)
     assert_allclose(sma, 120.0, atol=0.01)
 
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=20.0,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=20.0,
                                linear_growth=True)
     sma = geometry.update_sma(20.0)
     assert_allclose(sma, 120.0, atol=0.01)
 
 
 def test_polar_angle_sector_limits():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, step=0.2,
                                linear_growth=False)
     geometry.initialize_sector_geometry(np.pi / 3)
     phi1, phi2 = geometry.polar_angle_sector_limits()
@@ -176,14 +182,14 @@ def test_polar_angle_sector_limits():
 
 
 def test_bounding_ellipses():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, step=0.2,
                                linear_growth=False)
     sma1, sma2 = geometry.bounding_ellipses()
     assert_allclose((sma1, sma2), (90.0, 110.0), atol=0.01)
 
 
 def test_radius():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, astep=0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, step=0.2,
                                linear_growth=False)
     r = geometry.radius(0.0)
     assert_allclose(r, 100.0, atol=0.01)
@@ -306,7 +312,7 @@ def test_bounding_ellipses_large_step(astep, linear_growth):
     Test that the inner bounding ellipse is not negative if the step is
     larger than twice the semimajor axis length.
     """
-    geometry = EllipseGeometry(10.0, 10.0, 2.0, 0.2, 0.0, astep=astep,
+    geometry = EllipseGeometry(10.0, 10.0, 2.0, 0.2, 0.0, step=astep,
                                linear_growth=linear_growth)
     sma1, sma2 = geometry.bounding_ellipses()
     assert sma1 == 0.0
@@ -391,3 +397,64 @@ def test_find_center_negative_threshold():
     geometry.find_center(np.ones((101, 101)), threshold=-1.0, verbose=False)
     assert geometry.x0 == 52.0
     assert geometry.y0 == 48.0
+
+
+@pytest.mark.parametrize('value', [np.pi / 6, 30.0 * u.deg,
+                                   (np.pi / 6) * u.rad,
+                                   Angle(30.0, 'deg')])
+def test_geometry_orientation_inputs(value):
+    geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, value)
+    assert isinstance(geometry.orientation, u.Quantity)
+    assert geometry.orientation.unit == u.deg
+    assert_allclose(geometry.orientation.value, 30.0)
+    assert_allclose(geometry._orientation_rad, np.pi / 6)
+
+
+def test_geometry_orientation_bad_unit():
+    with pytest.raises(u.UnitsError):
+        EllipseGeometry(50.0, 50.0, 10.0, 0.3, 30.0 * u.m)
+
+
+def test_geometry_deprecated_names():
+    with pytest.warns(PhotutilsDeprecationWarning, match="'eps'"):
+        geometry = EllipseGeometry(50.0, 50.0, 10.0, eps=0.3,
+                                   orientation=0.5)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'"):
+        geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, pa=30.0 * u.deg)
+    assert_allclose(geometry._orientation_rad, np.pi / 6)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'"):
+        geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, pa=0.5)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'"):
+        assert geometry.pa == 0.5
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'"):
+        geometry.pa = 0.7
+    assert_allclose(geometry.orientation.to_value(u.rad), 0.7)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'eps'"):
+        geometry.eps = 0.1
+    assert geometry.ellipticity == 0.1
+    with pytest.warns(PhotutilsDeprecationWarning, match="'astep'"):
+        geometry.astep = 0.2
+    assert geometry.step == 0.2
+
+
+def test_geometry_copy_and_pickle():
+    geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5,
+                               fix_center=True)
+    for clone in (copy.deepcopy(geometry),
+                  pickle.loads(pickle.dumps(geometry))):  # noqa: S301
+        assert clone.ellipticity == 0.3
+        assert clone._orientation_rad == 0.5
+        assert clone.step == geometry.step
+
+
+@pytest.mark.parametrize(('old', 'new', 'value'),
+                         [('astep', 'step', 0.2),
+                          ('fix_pa', 'fix_orientation', True),
+                          ('fix_eps', 'fix_ellipticity', True)])
+def test_geometry_deprecated_keywords(old, new, value):
+    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
+        geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5,
+                                   **{old: value})
+    expected = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5, **{new: value})
+    assert geometry.step == expected.step
+    assert_array_equal(geometry.fix, expected.fix)

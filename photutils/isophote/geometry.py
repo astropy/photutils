@@ -5,10 +5,14 @@ Tools for storing parameters for the geometry of an ellipse.
 
 import math
 
+import astropy.units as u
 import numpy as np
 from astropy import log
 
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_attribute,
+                                          deprecated_positional_kwargs,
+                                          deprecated_renamed_argument,
+                                          warn_deprecated_attribute)
 
 __all__ = ['EllipseGeometry']
 
@@ -18,16 +22,17 @@ __all__ = ['EllipseGeometry']
 # and the ellipse parameter that each one corrects. The ``fix`` array of
 # EllipseGeometry and the parameter correctors of EllipseFitter follow
 # this order.
-_HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center', 'a2': 'pa',
-                        'b2': 'eps'}
+_HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center',
+                        'a2': 'orientation', 'b2': 'ellipticity'}
 
 
-def _make_fix_array(*, fix_center, fix_pa, fix_eps):
+def _make_fix_array(*, fix_center, fix_orientation, fix_ellipticity):
     """
     Make the array of fixed-parameter flags, in the order of the
     harmonic coefficients that correct the parameters.
     """
-    fixed = {'center': fix_center, 'pa': fix_pa, 'eps': fix_eps}
+    fixed = {'center': fix_center, 'orientation': fix_orientation,
+             'ellipticity': fix_ellipticity}
     return np.array([fixed[name] for name in _HARMONIC_PARAMETERS.values()])
 
 
@@ -95,7 +100,7 @@ class EllipseGeometry:
         The center pixel coordinate of the ellipse.
     sma : float
         The semimajor axis of the ellipse in pixels.
-    eps : float
+    ellipticity : float
         The ellipticity of the ellipse. The ellipticity is defined as
 
         .. math::
@@ -104,15 +109,17 @@ class EllipseGeometry:
 
         where a and b are the lengths of the semimajor and semiminor
         axes, respectively. The ellipticity must be less than 1.
-    pa : float
-        The position angle (in radians) of the semimajor axis in
-        relation to the positive x-axis of the image array (rotating
-        towards the positive y-axis). The fitted position angles are in
-        the range :math:`0 \leq PA < \pi`. When the ellipses are such
-        that position angles are near either extreme of the range, noise
-        can make the solution jump back and forth between successive
-        isophotes, by amounts close to 180 degrees.
-    astep : float, optional
+    orientation : float or `~astropy.units.Quantity`
+        The orientation of the semimajor axis, measured
+        counterclockwise from the positive x axis of the image array.
+        It is an angular `~astropy.units.Quantity` (e.g., an
+        `~astropy.coordinates.Angle`) or a float in radians. The
+        ``orientation`` attribute is a `~astropy.units.Quantity` in
+        degrees. The fitted orientations are in the range of 0 to 180
+        degrees. When the orientations are near either end of the
+        range, noise can make the solution jump back and forth between
+        successive isophotes, by amounts close to 180 degrees.
+    step : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
         as a relative value (when ``linear_growth=False``). The default
@@ -129,36 +136,87 @@ class EllipseGeometry:
     fix_center : bool, optional
         Keep center of ellipse fixed during fit? The default is
         `False`.
-    fix_pa : bool, optional
-        Keep position angle of semimajor axis of ellipse fixed during fit?
-        The default is `False`.
-    fix_eps : bool, optional
+    fix_orientation : bool, optional
+        Keep the orientation of the semimajor axis of the ellipse fixed
+        during the fit? The default is `False`.
+    fix_ellipticity : bool, optional
         Keep ellipticity of ellipse fixed during fit? The default is
         `False`.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def __init__(self, x0, y0, sma, eps, pa, astep=0.1, linear_growth=False,
-                 fix_center=False, fix_pa=False, fix_eps=False):
+    @deprecated_renamed_argument('eps', 'ellipticity', '3.2', until='4.0')
+    @deprecated_renamed_argument('pa', 'orientation', '3.2', until='4.0')
+    @deprecated_renamed_argument('astep', 'step', '3.2', until='4.0')
+    @deprecated_renamed_argument('fix_pa', 'fix_orientation', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('fix_eps', 'fix_ellipticity', '3.2',
+                                 until='4.0')
+    def __init__(self, x0, y0, sma, ellipticity, orientation, step=0.1,
+                 linear_growth=False, fix_center=False,
+                 fix_orientation=False, fix_ellipticity=False):
         self.x0 = x0
         self.y0 = y0
         self.sma = sma
-        self.eps = eps
-        self.pa = pa
+        self.ellipticity = ellipticity
+        self.orientation = orientation
 
-        self.astep = astep
+        self.step = step
         self.linear_growth = linear_growth
 
         # Fixed parameters are flagged in here, in the order of the
         # harmonic coefficients that correct them.
-        self.fix = _make_fix_array(fix_center=fix_center, fix_pa=fix_pa,
-                                   fix_eps=fix_eps)
+        self.fix = _make_fix_array(fix_center=fix_center,
+                                   fix_orientation=fix_orientation,
+                                   fix_ellipticity=fix_ellipticity)
 
         # Limits for sector angular width
         self._phi_min = 0.05
         self._phi_max = 0.2
 
         self._reset_sma_dependent_attributes()
+
+    @property
+    def orientation(self):
+        """
+        The orientation of the semimajor axis as an angular
+        `~astropy.units.Quantity` in degrees.
+
+        The angle is measured counterclockwise from the positive x axis
+        of the image array. It can be set with an angular
+        `~astropy.units.Quantity` or with a float in radians.
+        """
+        return np.rad2deg(self._orientation_rad) << u.deg
+
+    @orientation.setter
+    def orientation(self, value):  # numpydoc ignore=GL08
+        # The internal code uses the orientation as a float in radians.
+        if isinstance(value, u.Quantity):
+            value = value.to_value(u.rad)
+        self._orientation_rad = value
+
+    # Remove in 4.0
+    eps = deprecated_attribute('eps', 'ellipticity', '3.2', until='4.0')
+    astep = deprecated_attribute('astep', 'step', '3.2', until='4.0')
+
+    # Remove in 4.0
+    @property
+    def pa(self):
+        """
+        The orientation of the semimajor axis as a float in radians.
+
+        .. deprecated:: 3.2
+            Use ``orientation`` instead.
+        """
+        warn_deprecated_attribute('pa', 'orientation', since='3.2',
+                                  until='4.0')
+        return self._orientation_rad
+
+    @pa.setter
+    def pa(self, value):  # numpydoc ignore=GL08
+        warn_deprecated_attribute('pa', 'orientation', since='3.2',
+                                  until='4.0')
+        self.orientation = value
 
     def _reset_sma_dependent_attributes(self):
         """
@@ -337,8 +395,8 @@ class EllipseGeometry:
         radius : float or `~numpy.ndarray`
             The polar radius (pixels).
         """
-        return (self.sma * (1.0 - self.eps)
-                / np.sqrt(((1.0 - self.eps) * np.cos(angle))**2
+        return (self.sma * (1.0 - self.ellipticity)
+                / np.sqrt(((1.0 - self.ellipticity) * np.cos(angle))**2
                           + (np.sin(angle))**2))
 
     def initialize_sector_geometry(self, phi):
@@ -370,7 +428,7 @@ class EllipseGeometry:
         # These polar radii bound the region between the inner
         # and outer ellipses that define the sector.
         sma1, sma2 = self.bounding_ellipses()
-        eps_ = 1.0 - self.eps
+        eps_ = 1.0 - self.ellipticity
 
         # Polar vector at one side of the elliptical sector
         self._phi1 = phi - self.sector_angular_width / 2.0
@@ -389,8 +447,9 @@ class EllipseGeometry:
 
         # Sector area. The two bounding ellipses have the same
         # eccentric anomalies at the sector limits.
-        delta_anomaly = (_eccentric_anomaly(self._phi2, self.eps)
-                         - _eccentric_anomaly(self._phi1, self.eps))
+        delta_anomaly = (
+            _eccentric_anomaly(self._phi2, self.ellipticity)
+            - _eccentric_anomaly(self._phi1, self.ellipticity))
         self.sector_area = (eps_ * (sma2**2 - sma1**2) / 2.0
                             * delta_anomaly)
 
@@ -409,10 +468,12 @@ class EllipseGeometry:
         vertex_y = np.zeros(shape=4, dtype=float)
 
         # Vertices are labeled in counterclockwise sequence.
-        vertex_x[0:2] = np.array([r1, r2]) * math.cos(self._phi1 + self.pa)
-        vertex_x[2:4] = np.array([r4, r3]) * math.cos(self._phi2 + self.pa)
-        vertex_y[0:2] = np.array([r1, r2]) * math.sin(self._phi1 + self.pa)
-        vertex_y[2:4] = np.array([r4, r3]) * math.sin(self._phi2 + self.pa)
+        angle1 = self._phi1 + self._orientation_rad
+        angle2 = self._phi2 + self._orientation_rad
+        vertex_x[0:2] = np.array([r1, r2]) * math.cos(angle1)
+        vertex_x[2:4] = np.array([r4, r3]) * math.cos(angle2)
+        vertex_y[0:2] = np.array([r1, r2]) * math.sin(angle1)
+        vertex_y[2:4] = np.array([r4, r3]) * math.sin(angle2)
         vertex_x += self.x0
         vertex_y += self.y0
 
@@ -424,8 +485,8 @@ class EllipseGeometry:
         bound the annulus where integrations take place.
 
         The two lengths are ``sma`` minus and plus half of the annulus
-        width, which is ``astep`` pixels if ``linear_growth`` is `True`
-        or ``sma * astep`` pixels otherwise.
+        width, which is ``step`` pixels if ``linear_growth`` is `True`
+        or ``sma * step`` pixels otherwise.
 
         Returns
         -------
@@ -435,11 +496,11 @@ class EllipseGeometry:
             never negative.
         """
         if self.linear_growth:
-            a1 = self.sma - self.astep / 2.0
-            a2 = self.sma + self.astep / 2.0
+            a1 = self.sma - self.step / 2.0
+            a2 = self.sma + self.step / 2.0
         else:
-            a1 = self.sma * (1.0 - self.astep / 2.0)
-            a2 = self.sma * (1.0 + self.astep / 2.0)
+            a1 = self.sma * (1.0 - self.step / 2.0)
+            a2 = self.sma * (1.0 + self.step / 2.0)
 
         # The annulus extends to the center if the step is larger than
         # twice the semimajor axis length.
@@ -468,17 +529,17 @@ class EllipseGeometry:
         system given (x, y) pixel image coordinates.
 
         This method takes care of the different definitions for
-        position angle (PA) and polar angle (:math:`\phi`):
+        orientation (:math:`\theta`) and polar angle (:math:`\phi`):
 
         .. math::
 
-            -2 \pi < PA < 2 \pi
+            -2 \pi < \theta < 2 \pi
 
             0 \leq \phi < 2 \pi
 
         Note that radius can be anything. The solution is not tied to
         the semimajor axis length, but to the center position and
-        position angle.
+        orientation.
 
         Parameters
         ----------
@@ -526,10 +587,10 @@ class EllipseGeometry:
         elif x1 < 0.0 and y1 < 0.0:
             angle = np.pi + angle
 
-        pa1 = self.pa
-        if self.pa < 0.0:
-            pa1 = self.pa + 2 * np.pi
-        angle = angle - pa1
+        orientation = self._orientation_rad
+        if orientation < 0.0:
+            orientation += 2 * np.pi
+        angle = angle - orientation
         if angle < 0.0:
             angle = angle + 2 * np.pi
 
@@ -556,10 +617,10 @@ class EllipseGeometry:
         idx = (x1 < 0.0) & (y1 < 0.0)
         angle[idx] = np.pi + angle[idx]
 
-        pa1 = self.pa
-        if self.pa < 0.0:
-            pa1 = self.pa + 2 * np.pi
-        angle = angle - pa1
+        orientation = self._orientation_rad
+        if orientation < 0.0:
+            orientation += 2 * np.pi
+        angle = angle - orientation
         angle[angle < 0] += 2 * np.pi
 
         return radius, angle

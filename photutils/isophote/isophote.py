@@ -13,7 +13,8 @@ from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_upper_harmonic)
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_getattr,
-                                          deprecated_positional_kwargs)
+                                          deprecated_positional_kwargs,
+                                          warn_deprecated_attribute)
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -44,6 +45,8 @@ _DEPRECATED_ATTRIBUTES = {
     'tflux_c': 'total_flux_circle',
     'npix_e': 'n_pixels_ellipse',
     'npix_c': 'n_pixels_circle',
+    'pa': 'orientation',
+    'pa_err': 'orientation_err',
 }
 
 # The version in which each attribute name was deprecated
@@ -52,8 +55,23 @@ _DEPRECATED_SINCE = {
                      'nflag'), '3.0'),
     **dict.fromkeys(('tflux_e', 'tflux_c', 'npix_e', 'npix_c', 'intens',
                      'int_err', 'eps', 'ellip_err', 'grad', 'pix_stddev',
-                     'sarea', 'n_flag'), '3.2'),
+                     'sarea', 'n_flag', 'pa', 'pa_err'), '3.2'),
 }
+
+# Remove in 4.0
+# The deprecated angle names are not aliases of the new names. They
+# return floats in radians, from these private attributes, instead of
+# a Quantity in degrees.
+_DEPRECATED_RADIANS = {'pa': '_orientation_rad',
+                       'pa_err': '_orientation_err_rad'}
+
+
+def _to_degrees(angle):
+    """
+    Convert an angle (float or array) in radians to a
+    `~astropy.units.Quantity` in degrees.
+    """
+    return np.rad2deg(angle) << u.deg
 
 
 class Isophote:
@@ -126,7 +144,7 @@ class Isophote:
     geometry : `~photutils.isophote.EllipseGeometry`
         The geometry of the isophote. It is the same object as the
         geometry of the ``sample``. The central pixel has ``sma``,
-        ``eps``, and ``pa`` of zero.
+        ``ellipticity``, and ``orientation`` of zero.
     intensity : float
         The mean intensity along the elliptical path.
     intens : float
@@ -150,8 +168,19 @@ class Isophote:
     ellip_err : float
         .. deprecated:: 3.2
             Use ``ellipticity_err`` instead.
+    orientation : `~astropy.units.Quantity`
+        The orientation of the semimajor axis in degrees, measured
+        counterclockwise from the positive x axis.
+    pa : float
+        .. deprecated:: 3.2
+            Use ``orientation`` instead. This attribute is the
+            orientation in radians.
+    orientation_err : `~astropy.units.Quantity`
+        The orientation error in degrees.
     pa_err : float
-        The position angle error (radians).
+        .. deprecated:: 3.2
+            Use ``orientation_err`` instead. This attribute is the
+            orientation error in radians.
     x0_err : float
         The error associated with the center x coordinate.
     y0_err : float
@@ -272,7 +301,7 @@ class Isophote:
                 self.n_flagged = sample.total_points - sample.actual_points
                 self.total_flux_ellipse = self.total_flux_circle = 0.0
                 self.n_pixels_ellipse = self.n_pixels_circle = 0
-                self.x0_err = self.y0_err = self.pa_err = 0.0
+                self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
                 self.ellipticity_err = 0.0
                 self.a3 = self.b3 = self.a3_err = self.b3_err = np.nan
                 self.a4 = self.b4 = self.a4_err = self.b4_err = np.nan
@@ -326,12 +355,17 @@ class Isophote:
         self.a4_err = self.b4_err = 0.0
 
         self.ellipticity_err = 0.0
-        self.pa_err = 0.0
+        self._orientation_err_rad = 0.0
         self.x0_err = 0.0
         self.y0_err = 0.0
 
     # Remove in 4.0
     def __getattr__(self, name):
+        if name in _DEPRECATED_RADIANS:
+            warn_deprecated_attribute(name, _DEPRECATED_ATTRIBUTES[name],
+                                      since=_DEPRECATED_SINCE[name],
+                                      until='4.0')
+            return getattr(self, _DEPRECATED_RADIANS[name])
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since=_DEPRECATED_SINCE, until='4.0')
 
@@ -383,14 +417,28 @@ class Isophote:
         """
         The ellipticity of the ellipse.
         """
-        return self.geometry.eps
+        return self.geometry.ellipticity
 
     @property
-    def pa(self):
+    def orientation(self):
         """
-        The position angle (radians) of the ellipse.
+        The orientation of the semimajor axis as an angular
+        `~astropy.units.Quantity` in degrees, measured counterclockwise
+        from the positive x axis.
         """
-        return self.geometry.pa
+        return _to_degrees(self.geometry._orientation_rad)
+
+    @property
+    def _orientation_rad(self):
+        return self.geometry._orientation_rad
+
+    @property
+    def orientation_err(self):
+        """
+        The orientation error as an angular `~astropy.units.Quantity`
+        in degrees.
+        """
+        return _to_degrees(self._orientation_err_rad)
 
     @property
     def x0(self):
@@ -518,7 +566,7 @@ class Isophote:
         # The residual variance needs more data points than fitted
         # coefficients.
         if self.sample.actual_points <= 5:
-            self.x0_err = self.y0_err = self.pa_err = 0.0
+            self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
             self.ellipticity_err = 0.0
             return
 
@@ -531,8 +579,8 @@ class Isophote:
                                   ddof=len(coeffs)) ** 2
             errors = np.sqrt(np.diagonal(covariance * var_residual))
 
-            eps = self.sample.geometry.eps
-            pa = self.sample.geometry.pa
+            eps = self.sample.geometry.ellipticity
+            pa = self.sample.geometry._orientation_rad
 
             # Parameter errors result from direct projection of
             # coefficient errors. These showed to be the error estimators
@@ -545,12 +593,13 @@ class Isophote:
             self.ellipticity_err = (abs(2.0 * errors[4] * (1.0 - eps)
                                         / self.sma / self.gradient))
             if abs(eps) > np.finfo(float).resolution:
-                self.pa_err = (abs(2.0 * errors[3] * (1.0 - eps) / self.sma
-                                   / self.gradient / (1.0 - (1.0 - eps)**2)))
+                self._orientation_err_rad = (
+                    abs(2.0 * errors[3] * (1.0 - eps) / self.sma
+                        / self.gradient / (1.0 - (1.0 - eps)**2)))
             else:
-                self.pa_err = 0.0
+                self._orientation_err_rad = 0.0
         except Exception:  # we want to catch everything
-            self.x0_err = self.y0_err = self.pa_err = 0.0
+            self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
             self.ellipticity_err = 0.0
 
     def fix_geometry(self, isophote):
@@ -573,8 +622,9 @@ class Isophote:
         isophote : `~photutils.isophote.Isophote` instance
             The isophote from which to take the geometry information.
         """
-        self.sample.geometry.eps = isophote.sample.geometry.eps
-        self.sample.geometry.pa = isophote.sample.geometry.pa
+        self.sample.geometry.ellipticity = isophote.sample.geometry.ellipticity
+        self.sample.geometry._orientation_rad = (
+            isophote.sample.geometry._orientation_rad)
         self.sample.geometry.x0 = isophote.sample.geometry.x0
         self.sample.geometry.y0 = isophote.sample.geometry.y0
 
@@ -603,9 +653,9 @@ class Isophote:
         -------
         result : `~astropy.table.QTable`
             A one-row table with the main isophote parameters (see
-            `~photutils.isophote.IsophoteList.to_table`). The ``pa``
-            and ``pa_err`` columns are `~astropy.units.Quantity` columns
-            in degrees.
+            `~photutils.isophote.IsophoteList.to_table`). The
+            ``orientation`` and ``orientation_err`` columns are
+            `~astropy.units.Quantity` columns in degrees.
         """
         return _isophote_list_to_table([self])
 
@@ -634,6 +684,11 @@ class IsophoteList:
 
     # Remove in 4.0
     def __getattr__(self, name):
+        if name in _DEPRECATED_RADIANS:
+            warn_deprecated_attribute(name, _DEPRECATED_ATTRIBUTES[name],
+                                      since=_DEPRECATED_SINCE[name],
+                                      until='4.0')
+            return self._collect_as_array(_DEPRECATED_RADIANS[name])
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since=_DEPRECATED_SINCE, until='4.0')
 
@@ -756,8 +811,9 @@ class IsophoteList:
         Returns
         -------
         result : `~astropy.table.QTable`
-            A table with one row per isophote. The ``pa`` and ``pa_err``
-            columns are `~astropy.units.Quantity` columns in degrees.
+            A table with one row per isophote. The ``orientation`` and
+            ``orientation_err`` columns are `~astropy.units.Quantity`
+            columns in degrees.
 
         Raises
         ------
@@ -796,10 +852,11 @@ _ISOPHOTE_PROPERTIES = (
      'The ellipticity of the ellipse.'),
     ('ellipticity_err', float, None,
      'The ellipticity error.'),
-    ('pa', float, None,
-     'The position angle (radians) of the ellipse.'),
-    ('pa_err', float, None,
-     'The position angle error (radians).'),
+    ('orientation', float, u.deg,
+     ('The orientation (degrees) of the semimajor axis, measured '
+      'counterclockwise from the positive x axis.')),
+    ('orientation_err', float, u.deg,
+     'The orientation error (degrees).'),
     ('x0', float, None,
      'The center x coordinate (pixel).'),
     ('x0_err', float, None,
@@ -882,9 +939,17 @@ _ISOPHOTE_PROPERTIES = (
 )
 
 
-def _make_property(name, dtype, description):
-    def getter(self):
-        return self._collect_as_array(name, dtype=dtype)
+def _make_property(name, dtype, unit, description):
+    if unit is None:
+        def getter(self):
+            return self._collect_as_array(name, dtype=dtype)
+    else:
+        # The properties with a unit are the angles. The isophotes
+        # store them as floats in radians in private attributes, and
+        # the unit is attached once to the whole array.
+        def getter(self):
+            return _to_degrees(self._collect_as_array(f'_{name}_rad',
+                                                      dtype=dtype))
 
     getter.__name__ = name
     getter.__qualname__ = f'IsophoteList.{name}'
@@ -893,7 +958,8 @@ def _make_property(name, dtype, description):
 
 
 for _name, _dtype, _unit, _description in _ISOPHOTE_PROPERTIES:
-    setattr(IsophoteList, _name, _make_property(_name, _dtype, _description))
+    setattr(IsophoteList, _name,
+            _make_property(_name, _dtype, _unit, _description))
 
 del _name, _dtype, _unit, _description
 
@@ -903,10 +969,10 @@ _PROPERTY_NAMES = tuple(entry[0] for entry in _ISOPHOTE_PROPERTIES)
 
 # The isophote_list properties included in to_table() by default.
 _DEFAULT_COLUMNS = ('sma', 'intensity', 'intensity_err', 'ellipticity',
-                    'ellipticity_err', 'pa', 'pa_err', 'gradient',
-                    'gradient_err', 'gradient_rel_err', 'x0', 'x0_err',
-                    'y0', 'y0_err', 'n_data', 'n_flagged', 'n_iter',
-                    'stop_code')
+                    'ellipticity_err', 'orientation', 'orientation_err',
+                    'gradient', 'gradient_err', 'gradient_rel_err', 'x0',
+                    'x0_err', 'y0', 'y0_err', 'n_data', 'n_flagged',
+                    'n_iter', 'stop_code')
 
 
 def _isophote_list_to_table(isophote_list, *, columns='main'):
@@ -932,8 +998,9 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     Returns
     -------
     result : `~astropy.table.QTable`
-        A table with one row per isophote. The ``pa`` and ``pa_err``
-        columns are `~astropy.units.Quantity` columns in degrees.
+        A table with one row per isophote. The ``orientation`` and
+        ``orientation_err`` columns are `~astropy.units.Quantity`
+        columns in degrees.
 
     Raises
     ------
@@ -994,8 +1061,5 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
 
     for name in names:
         isotable[name] = getattr(isophote_list, name)
-
-        if name in ('pa', 'pa_err'):
-            isotable[name] = np.rad2deg(isotable[name]) << u.deg
 
     return isotable

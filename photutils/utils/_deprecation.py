@@ -147,6 +147,98 @@ def _get_since(since, name):
     return since
 
 
+def warn_deprecated_attribute(name, new_name, *, since=None, until=None,
+                              stacklevel=2):
+    """
+    Issue a deprecation warning for a renamed attribute.
+
+    Parameters
+    ----------
+    name : str
+        The deprecated attribute name.
+
+    new_name : str
+        The new attribute name.
+
+    since : str or int, optional
+        The version in which the attribute was deprecated. If `None`,
+        the deprecation version is not mentioned in the warning
+        message.
+
+    until : str or int, optional
+        The version in which the old attribute name will be removed.
+        If `None`, the removal version is not mentioned in the warning
+        message.
+
+    stacklevel : int, optional
+        The stack level for the warning. A value of 1 points to the
+        function that calls this function, and the default of 2 points
+        to the caller of that function.
+    """
+    since_str = ''
+    if since is not None:
+        since_str = f' in version {since}'
+    if until is not None:
+        remove_str = 'version ' + str(until)
+    else:
+        remove_str = 'a future version'
+    warn_msg = (f'The {name!r} attribute was deprecated{since_str}. '
+                f'Use {new_name!r} instead. It will be removed in '
+                f'{remove_str}.')
+    warnings.warn(warn_msg, PhotutilsDeprecationWarning,
+                  stacklevel=stacklevel + 1)
+
+
+def deprecated_attribute(name, new_name, since, *, until=None):
+    """
+    Make a property for a renamed attribute.
+
+    Getting or setting the returned property issues a deprecation
+    warning and forwards to the ``new_name`` attribute. Use it, instead
+    of `deprecated_getattr`, for an attribute that users can set,
+    because an assignment to the old name would otherwise create a new
+    attribute that nothing reads.
+
+    Parameters
+    ----------
+    name : str
+        The deprecated attribute name.
+
+    new_name : str
+        The new attribute name.
+
+    since : str or int
+        The version in which the attribute was deprecated.
+
+    until : str or int, optional
+        The version in which the old attribute name will be removed.
+        If `None`, the removal version is not mentioned in the warning
+        message.
+
+    Returns
+    -------
+    result : property
+        The property to assign to the old name in the class body.
+    """
+    def getter(self):  # numpydoc ignore=GL08
+        warn_deprecated_attribute(name, new_name, since=since,
+                                  until=until, stacklevel=2)
+        return getattr(self, new_name)
+
+    def setter(self, value):  # numpydoc ignore=GL08
+        warn_deprecated_attribute(name, new_name, since=since,
+                                  until=until, stacklevel=2)
+        setattr(self, new_name, value)
+
+    doc = f"""
+    Deprecated alias of ``{new_name}``.
+
+    .. deprecated:: {since}
+        Use ``{new_name}`` instead.
+    """
+    return property(getter, setter, doc=doc)
+
+
 def deprecated_getattr(instance, name, deprecated_map, *, since=None,
                        until=None):
     """
@@ -193,19 +285,9 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
     """
     if name in deprecated_map:
         new_name = deprecated_map[name]
-        since = _get_since(since, name)
-        since_str = ''
-        if since is not None:
-            since_str = f' in version {since}'
-        if until is not None:
-            remove_str = 'version ' + str(until)
-        else:
-            remove_str = 'a future version'
-        warn_msg = (f'The {name!r} attribute was deprecated{since_str}. '
-                    f'Use {new_name!r} instead. It will be removed in '
-                    f'{remove_str}.')
-        warnings.warn(warn_msg, PhotutilsDeprecationWarning,
-                      stacklevel=3)
+        warn_deprecated_attribute(name, new_name,
+                                  since=_get_since(since, name),
+                                  until=until, stacklevel=3)
         return getattr(instance, new_name)
 
     msg = f'{type(instance).__name__!r} object has no attribute {name!r}'

@@ -17,7 +17,8 @@ from photutils.utils._deprecation import (DeprecatedColumnQTable,
                                           DeprecatedColumnTable,
                                           create_deprecated_table_from_data,
                                           create_empty_deprecated_qtable,
-                                          deprecated, deprecated_getattr,
+                                          deprecated, deprecated_attribute,
+                                          deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -1111,3 +1112,17 @@ def test_deprecated():
     msg = str(record[0].message)
     assert 'version 1.0' in msg
     assert 'a future version' in msg
+
+
+def test_deprecated_attribute():
+    class Thing:
+        new = 1
+        old = deprecated_attribute('old', 'new', '3.2', until='4.0')
+
+    thing = Thing()
+    match = "'old' attribute was deprecated in version 3.2"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        assert thing.old == 1
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        thing.old = 5
+    assert thing.new == 5

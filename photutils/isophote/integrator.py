@@ -177,7 +177,7 @@ class _NearestNeighborIntegrator(_PixelIntegrator):
         # Get image coordinates of the (radius, phi) points. Pixel
         # centers are at integer coordinates, so the nearest pixel is
         # found by rounding.
-        angle = phis + self._geometry.pa
+        angle = phis + self._geometry._orientation_rad
         x = np.floor(radii * np.cos(angle) + self._geometry.x0 + 0.5)
         y = np.floor(radii * np.sin(angle) + self._geometry.y0 + 0.5)
 
@@ -208,7 +208,7 @@ class _BiLinearIntegrator(_PixelIntegrator):
         ny, nx = self._data.shape
 
         # Get image coordinates of the (radius, phi) points.
-        angle = phis + self._geometry.pa
+        angle = phis + self._geometry._orientation_rad
         x = radii * np.cos(angle) + self._geometry.x0
         y = radii * np.sin(angle) + self._geometry.y0
 
@@ -299,9 +299,10 @@ class _AreaIntegrator(_Integrator):
             dx = np.arange(i1, i2) - geometry.x0
             dy = (np.arange(j1, j2) - geometry.y0)[:, np.newaxis]
             rp = np.hypot(dx, dy)
-            phip = np.mod(np.arctan2(dy, dx) - geometry.pa, 2.0 * np.pi)
+            phip = np.mod(np.arctan2(dy, dx) - geometry._orientation_rad,
+                          2.0 * np.pi)
             sma1, sma2 = geometry.bounding_ellipses()
-            eps_ = 1.0 - geometry.eps
+            eps_ = 1.0 - geometry.ellipticity
             aux = eps_ / np.sqrt((eps_ * np.cos(phip))**2
                                  + np.sin(phip)**2)
             # A sector can extend past a polar angle of 2 pi, so the

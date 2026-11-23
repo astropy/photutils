@@ -27,15 +27,15 @@ class TestEllipsePositionalKwargs:
         self.data = make_test_image(nx=128, ny=128, sma=10.0, seed=0)
 
     def test_init_positional_warns(self):
-        geometry = EllipseGeometry(x0=64, y0=64, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=64, y0=64, sma=10, ellipticity=0.2,
+                                   orientation=np.pi / 2)
         match = '__init__'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             Ellipse(self.data, geometry)
 
     def test_init_keyword_no_warning(self):
-        geometry = EllipseGeometry(x0=64, y0=64, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=64, y0=64, sma=10, ellipticity=0.2,
+                                   orientation=np.pi / 2)
         Ellipse(self.data, geometry=geometry)
 
     def test_fit_image_positional_warns(self):
@@ -70,20 +70,20 @@ class TestEllipseGeometryPositionalKwargs:
             EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2)
 
     def test_init_keyword_no_warning(self):
-        EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2)
+        EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=0.2)
 
     def test_find_center_positional_warns(self):
         data = make_test_image(seed=0)
-        geometry = EllipseGeometry(x0=256, y0=256, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=256, y0=256, sma=10, ellipticity=0.2,
+                                   orientation=np.pi / 2)
         match = 'find_center'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             geometry.find_center(data, 0.5)
 
     def test_find_center_keyword_no_warning(self):
         data = make_test_image(seed=0)
-        geometry = EllipseGeometry(x0=256, y0=256, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=256, y0=256, sma=10, ellipticity=0.2,
+                                   orientation=np.pi / 2)
         geometry.find_center(data, threshold=0.5)
 
 

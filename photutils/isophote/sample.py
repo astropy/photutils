@@ -230,7 +230,7 @@ class EllipseSample:
             _y0 = image.shape[0] / 2 if y0 is None else y0
 
             self.geometry = EllipseGeometry(_x0, _y0, sma, eps,
-                                            position_angle, astep=astep,
+                                            position_angle, step=astep,
                                             linear_growth=linear_growth)
 
         # Sigma-clip parameters
@@ -298,8 +298,9 @@ class EllipseSample:
         # samples with any geometry and discards the invalid ones
         # without extracting them.
         geometry = self.geometry
-        if geometry.eps >= 1.0:
-            msg = f'The ellipticity must be less than 1, got {geometry.eps}'
+        if geometry.ellipticity >= 1.0:
+            msg = ('The ellipticity must be less than 1, got '
+                   f'{geometry.ellipticity}')
             raise ValueError(msg)
         if not (np.isfinite(geometry.x0) and np.isfinite(geometry.y0)):
             msg = ('The center of the ellipse must be finite, got '
@@ -389,7 +390,8 @@ class EllipseSample:
             # radians), so the path can be computed first and then
             # sampled at once.
             phis, path_radii = compute_polar_path(
-                phi, radius, phi_max, self.geometry.sma, self.geometry.eps)
+                phi, radius, phi_max, self.geometry.sma,
+                self.geometry.ellipticity)
             angles, radii, intensities = integrator.integrate_path(
                 path_radii, phis)
             sector_areas.append(integrator.get_sector_area())
@@ -603,8 +605,8 @@ class EllipseSample:
         # are false. It is kept, and the fitter stops on it.
         return True
 
-    def _make_sample(self, *, sma=None, x0=None, y0=None, eps=None,
-                     pa=None):
+    def _make_sample(self, *, sma=None, x0=None, y0=None, ellipticity=None,
+                     orientation=None):
         """
         Make a new sample of the same image, with the same settings and
         with the given ellipse parameters changed.
@@ -617,9 +619,11 @@ class EllipseSample:
             self.image, geometry.sma if sma is None else sma,
             x0=geometry.x0 if x0 is None else x0,
             y0=geometry.y0 if y0 is None else y0,
-            astep=geometry.astep, sclip=self.sclip, n_clip=self.n_clip,
-            eps=geometry.eps if eps is None else eps,
-            position_angle=geometry.pa if pa is None else pa,
+            astep=geometry.step, sclip=self.sclip, n_clip=self.n_clip,
+            eps=(geometry.ellipticity if ellipticity is None
+                 else ellipticity),
+            position_angle=(geometry._orientation_rad if orientation is None
+                            else orientation),
             linear_growth=geometry.linear_growth,
             integrmode=self.integrmode)
 
@@ -669,6 +673,7 @@ class EllipseSample:
         """
         angles = self.values[0]
         radii = self.values[1]
-        x = radii * np.cos(angles + self.geometry.pa) + self.geometry.x0
-        y = radii * np.sin(angles + self.geometry.pa) + self.geometry.y0
+        orientation = self.geometry._orientation_rad
+        x = radii * np.cos(angles + orientation) + self.geometry.x0
+        y = radii * np.sin(angles + orientation) + self.geometry.y0
         return x, y

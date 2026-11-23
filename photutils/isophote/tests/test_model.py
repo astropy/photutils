@@ -6,6 +6,7 @@ Tests for the model module.
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -158,7 +159,7 @@ def test_model_pa_wrap():
     """
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image(maxsma=60.0)
-    pa = isolist.pa[isolist.sma > 0]
+    pa = isolist.orientation[isolist.sma > 0].to_value(u.rad)
     assert np.any(pa < 0.1)
     assert np.any(pa > np.pi - 0.1)
 
@@ -209,7 +210,8 @@ def test_model_harmonics():
     harm -= np.min(harm)
     data += 5 * harm
 
-    geometry = EllipseGeometry(x0=x0, y0=y0, sma=30, eps=eps, pa=theta)
+    geometry = EllipseGeometry(x0=x0, y0=y0, sma=30, ellipticity=eps,
+                               orientation=theta)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image(fix_center=True, fix_eps=True)
 

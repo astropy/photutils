@@ -53,6 +53,7 @@ reference for the regression.
 import math
 import os.path as op
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -116,8 +117,8 @@ def test_regression(name):
         int_err_i = iso.intensity_err or 0.0
         pix_stddev_i = iso.pixel_stddev or 0.0
         rms_i = iso.rms or 0.0
-        ellip_i = iso.sample.geometry.eps or 0.0
-        pa_i = iso.sample.geometry.pa or 0.0
+        ellip_i = iso.sample.geometry.ellipticity or 0.0
+        pa_i = iso.sample.geometry.orientation.to_value(u.rad)
         x0_i = iso.sample.geometry.x0
         y0_i = iso.sample.geometry.y0
         rerr_i = (iso.sample.gradient_rel_err or 0.0)
@@ -277,7 +278,8 @@ def test_regression_summary(name, min_extra, max_extra, noisy):
     # The SPP position angle is measured from the y axis. The
     # difference is wrapped into the range [-90, 90) degrees.
     pa_ref = ref['PA'] + 90.0
-    pa_diff = (np.rad2deg(isolist.pa[index]) - pa_ref + 90.0) % 180.0 - 90.0
+    pa_diff = ((isolist.orientation[index].to_value(u.deg) - pa_ref + 90.0)
+               % 180.0 - 90.0)
     center_diff = np.hypot(isolist.x0[index] + 1 - ref['X0'],
                            isolist.y0[index] + 1 - ref['Y0'])
 

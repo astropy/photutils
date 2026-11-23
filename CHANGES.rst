@@ -593,6 +593,24 @@ API Changes
     tests these values with ``is None`` must use ``numpy.isnan``
     instead. [#2568]
 
+  - The ``eps``, ``pa``, ``astep``, ``fix_pa``, and ``fix_eps``
+    keywords of ``EllipseGeometry`` were renamed to ``ellipticity``,
+    ``orientation``, ``step``, ``fix_orientation``, and
+    ``fix_ellipticity``, and its ``eps``, ``pa``, and ``astep``
+    attributes were renamed to ``ellipticity``, ``orientation``, and
+    ``step``. The old names are deprecated and will be removed in
+    version 4.0. The ``orientation`` keyword accepts an angular
+    ``Quantity`` or a float in radians. [#2568]
+
+  - The ``pa`` and ``pa_err`` attributes of ``Isophote`` and
+    ``IsophoteList`` and the corresponding ``IsophoteList.to_table``
+    columns were renamed to ``orientation`` and ``orientation_err``.
+    These attributes and the ``orientation`` attribute of
+    ``EllipseGeometry`` are ``Quantity`` values in degrees, like the
+    columns. The deprecated ``pa`` and ``pa_err`` attributes, including
+    ``EllipseGeometry.pa``, still return floats in radians. They will
+    be removed in version 4.0. [#2568]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

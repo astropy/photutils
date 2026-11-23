@@ -114,7 +114,9 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     # or pi can jump by almost pi between neighboring isophotes, so
     # unwrap them to prevent the spline from sweeping through all the
     # angles in between.
-    pa = isolist.pa
+    # The orientations are read in radians without a round trip
+    # through degrees.
+    pa = isolist._collect_as_array('_orientation_rad')
     pa_unwrapped = np.unwrap(pa, period=np.pi)
     pa_array = LSQUnivariateSpline(
         isolist.sma, pa_unwrapped, nodes)(finely_spaced_sma)

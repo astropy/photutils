@@ -29,13 +29,13 @@ def _central_isophote(image, geometry):
     Make the isophote of the central pixel.
 
     The input geometry is not modified. The central isophote has
-    ``sma``, ``eps``, and ``pa`` of zero and holds a single bilinear
-    sample at the center.
+    ``sma``, ``ellipticity``, and ``orientation`` of zero and holds a
+    single bilinear sample at the center.
     """
     geometry = copy.deepcopy(geometry)
     geometry.sma = 0.0
-    geometry.eps = 0.0
-    geometry.pa = 0.0
+    geometry.ellipticity = 0.0
+    geometry._orientation_rad = 0.0
     sample = EllipseSample(image, 0.0, geometry=geometry)
     sample.update()
     return Isophote(sample, 0, valid=True, stop_code=0)
@@ -228,8 +228,8 @@ class Ellipse:
         else:
             _x0 = image.shape[1] / 2
             _y0 = image.shape[0] / 2
-            self._geometry = EllipseGeometry(_x0, _y0, 10.0, eps=0.2,
-                                             pa=np.pi / 2)
+            self._geometry = EllipseGeometry(_x0, _y0, 10.0, 0.2,
+                                             np.pi / 2)
 
     @deprecated('3.2', alternative='EllipseGeometry.find_center',
                 until='4.0')
@@ -329,7 +329,7 @@ class Ellipse:
             defines the elliptical annulus used by the sampling
             algorithm, which sets the areas of the elliptical sectors
             for the area integration modes (see the ``integrmode``
-            parameter). It replaces the ``astep`` attribute of the
+            parameter). It replaces the ``step`` attribute of the
             `~photutils.isophote.EllipseGeometry` instance used by this
             class. The step must be positive. The default is 0.1.
 
@@ -505,12 +505,13 @@ class Ellipse:
         # Override the geometry parameters set in this call on a copy
         # so that they do not persist in the input geometry instance.
         geometry = copy.deepcopy(self._geometry)
-        geometry.astep = step
+        geometry.step = step
         if linear is not None:
             geometry.linear_growth = bool(linear)
         if fix_center or fix_pa or fix_eps:
             geometry.fix = _make_fix_array(fix_center=fix_center,
-                                           fix_pa=fix_pa, fix_eps=fix_eps)
+                                           fix_orientation=fix_pa,
+                                           fix_ellipticity=fix_eps)
         if np.all(geometry.fix):
             msg = 'Everything is fixed. Fit not possible.'
             warnings.warn(msg, AstropyUserWarning)
@@ -681,7 +682,7 @@ class Ellipse:
         length. Instead, they define the elliptical annulus used by
         the sampling algorithm, which sets the areas of the elliptical
         sectors for the area integration modes (see the ``integrmode``
-        parameter). The ``step`` parameter replaces the ``astep``
+        parameter). The ``step`` parameter replaces the ``step``
         attribute of the starting geometry. The ``linear`` parameter,
         if set, replaces its ``linear_growth`` attribute.
 
@@ -849,7 +850,7 @@ class Ellipse:
         # The step and linear values define the sampling annulus. They
         # are set on a copy so that the input geometry is not modified.
         geometry = copy.deepcopy(geometry)
-        geometry.astep = step
+        geometry.step = step
         if linear is not None:
             geometry.linear_growth = bool(linear)
 
@@ -867,7 +868,7 @@ class Ellipse:
         Fit a single isophote, starting from the input geometry.
 
         See `fit_isophote` for a description of the parameters. The
-        input ``geometry`` is the initial guess. Its ``astep`` and
+        input ``geometry`` is the initial guess. Its ``step`` and
         ``linear_growth`` attributes define the sampling annulus. If
         ``isophote_list`` is not `None`, a valid fitted isophote is
         appended to it.
@@ -912,7 +913,7 @@ class Ellipse:
             `~photutils.isophote.Isophote` and
             `~photutils.isophote.EllipseGeometry` instances. The center,
             semimajor axis length, ellipticity, and position angle of
-            each ellipse are used. The ``astep`` and ``linear_growth``
+            each ellipse are used. The ``step`` and ``linear_growth``
             values of each geometry define the sampling used to compute
             the local radial gradient and the sector areas. The input
             isophotes and geometries are not modified.

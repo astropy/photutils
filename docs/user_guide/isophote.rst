@@ -48,11 +48,12 @@ For this example, let's create a simple simulated galaxy image::
 We must provide the elliptical isophote fitter with an initial ellipse
 to be fitted. This ellipse geometry is defined with the
 `~photutils.isophote.EllipseGeometry` class. Here we'll define an
-initial ellipse whose position angle is offset from the data::
+initial ellipse whose orientation is offset from the data::
 
+    >>> import astropy.units as u
     >>> from photutils.isophote import EllipseGeometry
-    >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-    ...                            pa=np.deg2rad(20.0))
+    >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+    ...                            orientation=20.0 * u.deg)
 
 Let's show this initial ellipse guess:
 
@@ -61,14 +62,15 @@ Let's show this initial ellipse guess:
     >>> import matplotlib.pyplot as plt
     >>> from photutils.aperture import EllipticalAperture
     >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-    ...                           geometry.sma * (1 - geometry.eps),
-    ...                           theta=geometry.pa)
+    ...                           geometry.sma * (1 - geometry.ellipticity),
+    ...                           theta=geometry.orientation)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data, origin='lower')
     >>> aper.plot(color='white')
 
 .. plot::
 
+    import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
@@ -83,11 +85,11 @@ Let's show this initial ellipse guess:
                              stddev=2.0, seed=1234)
     data = g(x, y) + noise
 
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-                               pa=np.deg2rad(20.0))
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+                               orientation=20.0 * u.deg)
     aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-                              geometry.sma * (1 - geometry.eps),
-                              theta=geometry.pa)
+                              geometry.sma * (1 - geometry.ellipticity),
+                              theta=geometry.orientation)
     fig, ax = plt.subplots()
     ax.imshow(data, origin='lower')
     aper.plot(color='white')
@@ -107,24 +109,24 @@ To perform the elliptical isophote fit, we run the
 The result is a list of isophotes as an
 `~photutils.isophote.IsophoteList` object, whose attributes are the
 fit values for each `~photutils.isophote.Isophote` sorted by the
-semimajor axis length. Let's print the fit position angles
-(radians)::
+semimajor axis length. Let's print the fit orientations, which are
+`~astropy.units.Quantity` values in degrees::
 
-    >>> print(isolist.pa)  # doctest: +SKIP
-    [0.00000000e+00 2.81367008e-02 2.51508622e-02 1.73093341e-03
-     3.10376907e+00 3.03272800e+00 2.91084574e+00 2.86751015e+00
-     3.26302191e-02 3.26302191e-02 3.26302191e-02 2.83168988e-02
-     3.11013380e+00 8.97640073e-02 1.04325194e-01 2.50113062e-01
-     3.14000525e-01 3.80371206e-01 4.56646548e-01 7.06300858e-01
-     1.14535190e+00 1.00610573e+00 9.86403064e-01 6.13496115e-01
-     6.13496115e-01 6.52734459e-01 7.40866519e-01 7.64426009e-01
-     6.98377494e-01 6.77763437e-01 6.81948740e-01 6.28697050e-01
-     6.63983445e-01 6.91218272e-01 6.96058510e-01 6.93662476e-01
-     6.86066367e-01 6.78819039e-01 6.90736903e-01 7.06300858e-01
-     6.87365632e-01 6.78462107e-01 6.91947810e-01 6.88590345e-01
-     6.89747001e-01 7.04595575e-01 6.98160861e-01 7.01980599e-01
-     6.86722137e-01 6.86722137e-01 6.86722137e-01 7.09026632e-01
-     7.09026632e-01 6.56348640e-01 6.56348640e-01]
+    >>> print(isolist.orientation)  # doctest: +SKIP
+    [0.00000000e+00 1.61211421e+00 1.44103825e+00 9.91751790e-02
+     1.77832869e+02 1.73762515e+02 1.66779176e+02 1.64296230e+02
+     1.86957384e+00 1.86957384e+00 1.86957384e+00 1.62243879e+00
+     1.78197541e+02 5.14309877e+00 5.97739334e+00 1.43304228e+01
+     1.79909048e+01 2.17936647e+01 2.61639199e+01 4.04680582e+01
+     6.56238296e+01 5.76456122e+01 5.65167325e+01 3.51507381e+01
+     3.51507381e+01 3.73989296e+01 4.24485247e+01 4.37983841e+01
+     4.00140829e+01 3.88329844e+01 3.90727846e+01 3.60216876e+01
+     3.80434491e+01 3.96038897e+01 3.98812149e+01 3.97439323e+01
+     3.93087073e+01 3.88934660e+01 3.95763093e+01 4.04680582e+01
+     3.93831497e+01 3.88730153e+01 3.96456891e+01 3.94533206e+01
+     3.95195921e+01 4.03703527e+01 4.00016707e+01 4.02205256e+01
+     3.93462802e+01 3.93462802e+01 3.93462802e+01 4.06242336e+01
+     4.06242336e+01 3.76060070e+01 3.76060070e+01] deg
 
 We can also show the isophote values as a table, which is again sorted
 by the semimajor axis length (``sma``)::
@@ -147,11 +149,12 @@ by the semimajor axis length (``sma``)::
       83.5449633883131   -0.04143562472379122 ...      1         5
     Length = 55 rows
 
-Let's plot the ellipticity, position angle, and the center x and y
+Let's plot the ellipticity, orientation, and the center x and y
 position as a function of the semimajor axis length:
 
 .. plot::
 
+    import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
@@ -164,8 +167,8 @@ position as a function of the semimajor axis length:
     noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
                              stddev=2.0, seed=1234)
     data = g(x, y) + noise
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-                               pa=np.deg2rad(20.0))
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+                               orientation=20.0 * u.deg)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
@@ -178,10 +181,10 @@ position as a function of the semimajor axis length:
     ax1.set_xlabel('Semimajor Axis Length (pix)')
     ax1.set_ylabel('Ellipticity')
 
-    ax2.errorbar(isolist.sma, np.rad2deg(isolist.pa),
-                 yerr=np.rad2deg(isolist.pa_err), fmt='o', markersize=4)
+    ax2.errorbar(isolist.sma, isolist.orientation.value,
+                 yerr=isolist.orientation_err.value, fmt='o', markersize=4)
     ax2.set_xlabel('Semimajor Axis Length (pix)')
-    ax2.set_ylabel('PA (deg)')
+    ax2.set_ylabel('Orientation (deg)')
 
     ax3.errorbar(isolist.sma, isolist.x0, yerr=isolist.x0_err, fmt='o',
                  markersize=4)
@@ -206,6 +209,7 @@ the elliptical model image, and the residual image:
 
 .. plot::
 
+    import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D
@@ -219,8 +223,8 @@ the elliptical model image, and the residual image:
     noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
                              stddev=2.0, seed=1234)
     data = g(x, y) + noise
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-                               pa=np.deg2rad(20.0))
+    geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+                               orientation=20.0 * u.deg)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
@@ -277,8 +281,8 @@ each input ellipse, with the same geometry. The input can also be a
 sequence of `~photutils.isophote.EllipseGeometry` objects, which is
 useful for measuring an image along user-defined ellipses::
 
-    >>> geometries = [EllipseGeometry(x0=75, y0=75, sma=sma, eps=0.4,
-    ...                               pa=np.deg2rad(40.0))
+    >>> geometries = [EllipseGeometry(x0=75, y0=75, sma=sma, ellipticity=0.4,
+    ...                               orientation=40.0 * u.deg)
     ...               for sma in (5.0, 10.0, 20.0)]
     >>> isolist3 = Ellipse(data).measure_isophotes(geometries)
     >>> print(isolist3.sma)
