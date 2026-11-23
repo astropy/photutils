@@ -68,6 +68,12 @@ New Features
     image from the isophotes. It replaces the ``build_ellipse_model``
     function. [#2568]
 
+  - Added an ``IsophoteList.from_table`` method to create an
+    ``IsophoteList`` from a table, the inverse of ``to_table``. The
+    isophotes have no sample, but they can be used to make a model
+    image or to measure an image with ``Ellipse.measure_isophotes``.
+    [#2568]
+
 - ``photutils.psf``
 
   - The ``extract_stars`` function now recognizes common alternative

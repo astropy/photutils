@@ -1022,7 +1022,7 @@ class Ellipse:
         geometries = []
         for isophote in isophotes:
             if isinstance(isophote, Isophote):
-                geometries.append(isophote.sample.geometry)
+                geometries.append(isophote.geometry)
             elif isinstance(isophote, EllipseGeometry):
                 geometries.append(isophote)
             else:

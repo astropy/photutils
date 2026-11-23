@@ -8,6 +8,7 @@ import warnings
 import astropy.units as u
 import numpy as np
 
+from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
                                           _fit_first_and_second_harmonics,
                                           _fit_upper_harmonic)
@@ -332,6 +333,35 @@ class Isophote:
             (self.a4, self.b4, self.a4_err,
              self.b4_err) = self._compute_deviations(sample, 4)
 
+    @classmethod
+    def _from_values(cls, geometry, values):
+        """
+        Create an isophote without a sample from its result values.
+
+        Parameters
+        ----------
+        geometry : `~photutils.isophote.EllipseGeometry`
+            The geometry of the isophote. It supplies ``sma``,
+            ``x0``, ``y0``, ``ellipticity``, and ``orientation``.
+
+        values : dict
+            The scalar values of the other isophote attributes, keyed
+            by attribute name. The orientation error is stored as a
+            float in radians under the ``'_orientation_err_rad'`` key.
+
+        Returns
+        -------
+        result : `~photutils.isophote.Isophote`
+            The isophote, whose ``sample`` is `None`.
+        """
+        # __init__ computes the values from a sample, so it is skipped.
+        isophote = cls.__new__(cls)
+        isophote.sample = None
+        isophote.geometry = geometry
+        for name, value in values.items():
+            setattr(isophote, name, value)
+        return isophote
+
     def _set_central_values(self, sample):
         # The central pixel holds a single intensity value. Some values
         # are set to zero to ease certain tasks such as model building
@@ -621,15 +651,14 @@ class Isophote:
         Fix the geometry of this isophote to be identical to the input
         isophote. See the deprecated ``fix_geometry`` method.
         """
-        self.sample.geometry.ellipticity = isophote.sample.geometry.ellipticity
-        self.sample.geometry._orientation_rad = (
-            isophote.sample.geometry._orientation_rad)
-        self.sample.geometry.x0 = isophote.sample.geometry.x0
-        self.sample.geometry.y0 = isophote.sample.geometry.y0
+        self.geometry.ellipticity = isophote.geometry.ellipticity
+        self.geometry._orientation_rad = isophote.geometry._orientation_rad
+        self.geometry.x0 = isophote.geometry.x0
+        self.geometry.y0 = isophote.geometry.y0
 
         # The initial polar radius and sector width depend on the
         # ellipticity, so they must be recomputed for the new geometry.
-        self.sample.geometry._reset_sma_dependent_attributes()
+        self.geometry._reset_sma_dependent_attributes()
 
     @deprecated('3.2', until='4.0')
     def fix_geometry(self, isophote):
@@ -663,7 +692,19 @@ class Isophote:
         -------
         x, y : 1D `~numpy.ndarray`
             The x and y coordinates as 1D arrays.
+
+        Raises
+        ------
+        ValueError
+            If the isophote has no sample, which is the case for
+            isophotes created by
+            `~photutils.isophote.IsophoteList.from_table`.
         """
+        if self.sample is None:
+            msg = ('The isophote has no sample. Use '
+                   'Ellipse.measure_isophotes to sample an image along '
+                   'it.')
+            raise ValueError(msg)
         return self.sample.coordinates()
 
     def to_table(self):
@@ -868,6 +909,64 @@ class IsophoteList:
             ``'main'`` or ``'all'`` is input together with other names.
         """
         return _isophote_list_to_table(self, columns=columns)
+
+    @classmethod
+    def from_table(cls, table, *, step=0.1, linear_growth=False):
+        """
+        Create an `~photutils.isophote.IsophoteList` from a table.
+
+        This is the inverse of `to_table`. The table has one row per
+        isophote and the isophotes keep the order of the rows.
+
+        The isophotes have no sample, so ``sample`` is `None` and
+        ``sampled_coordinates`` raises an error. Use
+        `Ellipse.measure_isophotes
+        <photutils.isophote.Ellipse.measure_isophotes>` to sample an
+        image along them.
+
+        Parameters
+        ----------
+        table : `~astropy.table.Table` or `~astropy.table.QTable`
+            The table. The ``sma``, ``x0``, ``y0``, ``ellipticity``,
+            and ``orientation`` columns are required. The other
+            columns are the names in the `properties` attribute. A
+            missing float column is NaN, a missing ``n_data``,
+            ``n_flagged``, ``n_iter``, or ``stop_code`` column is 0,
+            and a missing ``valid`` column is `True`. Columns that are
+            not isophote properties are ignored. Deprecated column
+            names are accepted and emit a deprecation warning.
+
+            The ``orientation`` and ``orientation_err`` columns must
+            have an angular unit. Plain text formats such as CSV do
+            not keep units, so set the unit after reading the table
+            (e.g., ``table['orientation'].unit = 'deg'``). The units of
+            the other columns are ignored.
+
+        step : float, optional
+            The step value of the geometry of each isophote, which
+            sets the sampling annulus used by
+            `Ellipse.measure_isophotes
+            <photutils.isophote.Ellipse.measure_isophotes>`. See
+            `~photutils.isophote.EllipseGeometry`.
+
+        linear_growth : bool, optional
+            Whether ``step`` is a linear increment of the semimajor
+            axis length instead of a relative one. See
+            `~photutils.isophote.EllipseGeometry`.
+
+        Returns
+        -------
+        result : `~photutils.isophote.IsophoteList`
+            The isophotes.
+
+        Raises
+        ------
+        ValueError
+            If a required column is missing, or if an angle column has
+            no angular unit.
+        """
+        return _isophote_list_from_table(cls, table, step=step,
+                                         linear_growth=linear_growth)
 
     def make_model_image(self, shape, *, fill_value=0.0,
                          high_harmonics=False, sma_interval=0.1):
@@ -1181,3 +1280,81 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
         isotable[name] = getattr(isophote_list, name)
 
     return isotable
+
+
+_REQUIRED_COLUMNS = ('sma', 'x0', 'y0', 'ellipticity', 'orientation')
+
+# The values of the properties that are not in a table.
+_MISSING_VALUES = {name: {float: np.nan, int: 0, bool: True}[dtype]
+                   for name, dtype, _, _ in _ISOPHOTE_PROPERTIES}
+_MISSING_VALUES['stop_code'] = 0
+
+
+def _isophote_list_from_table(cls, table, *, step, linear_growth):
+    """
+    Create an `~photutils.isophote.IsophoteList` from a table. See
+    `~photutils.isophote.IsophoteList.from_table`.
+    """
+    # Remove in 4.0
+    # Only the names in table.colnames are used to read the table,
+    # because a table made by to_table warns on an old column name.
+    deprecation_map = {**_DEPRECATED_ATTRIBUTES,
+                       'grad_rerror': 'gradient_rel_err',
+                       'intens_err': 'intensity_err'}
+    since = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0', 'intens_err': '3.2'}
+    columns = {name: name for name in table.colnames
+               if name in _PROPERTY_NAMES}
+    for name in table.colnames:
+        new_name = deprecation_map.get(name)
+        if new_name is None or new_name in columns:
+            continue
+        msg = (f'The {name!r} column name was deprecated in version '
+               f'{since[name]}. Use {new_name!r} instead. It will be '
+               'removed in version 4.0.')
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+        columns[new_name] = name
+
+    for name in _REQUIRED_COLUMNS:
+        if name not in columns:
+            msg = f'The table must have a {name!r} column.'
+            raise ValueError(msg)
+
+    # Each value is a list of Python scalars, with angles in radians.
+    values = {}
+    for name, column_name in columns.items():
+        column = table[column_name]
+        if name in ('orientation', 'orientation_err'):
+            unit = getattr(column, 'unit', None)
+            if unit is None:
+                msg = (f'The {column_name!r} column must have an angular '
+                       'unit. Set its unit, e.g., '
+                       f"table[{column_name!r}].unit = 'deg'.")
+                raise ValueError(msg)
+            try:
+                angle = u.Quantity(np.asarray(column), unit).to_value(u.rad)
+            except u.UnitConversionError:
+                msg = (f'The {column_name!r} column must have an angular '
+                       f'unit, not {unit}.')
+                raise ValueError(msg) from None
+            values[name] = angle.tolist()
+        else:
+            values[name] = np.asarray(column).tolist()
+
+    n_rows = len(table)
+    isophotes = []
+    for i in range(n_rows):
+        geometry = EllipseGeometry(
+            values['x0'][i], values['y0'][i], values['sma'][i],
+            values['ellipticity'][i], values['orientation'][i],
+            step=step, linear_growth=linear_growth)
+        row = {}
+        for name, missing in _MISSING_VALUES.items():
+            if name in _REQUIRED_COLUMNS:
+                continue
+            attr = name
+            if name == 'orientation_err':
+                attr = '_orientation_err_rad'
+            row[attr] = values[name][i] if name in values else missing
+        isophotes.append(Isophote._from_values(geometry, row))
+
+    return cls(isophotes)

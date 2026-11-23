@@ -11,6 +11,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
+from astropy.table import QTable, Table
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.datasets.load import _get_path
@@ -849,3 +850,108 @@ def test_fix_geometry_deprecated():
     iso = Isophote(sample, 0, valid=True, stop_code=0)
     with pytest.warns(PhotutilsDeprecationWarning, match='version 3.2'):
         iso.fix_geometry(iso)
+
+
+def test_from_table_round_trip():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = isolist.to_table(columns=isolist.properties)
+    result = IsophoteList.from_table(tbl)
+    assert len(result) == len(isolist)
+    for name in isolist.properties:
+        expected = getattr(isolist, name)
+        value = getattr(result, name)
+        if name in ('orientation', 'orientation_err'):
+            assert_allclose(value.to_value(u.deg),
+                            expected.to_value(u.deg), rtol=1e-13)
+        else:
+            assert_array_equal(value, expected)
+    assert result.sample == [None] * len(result)
+
+
+def test_from_table_plain_table_and_copies():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = Table(isolist.to_table(columns=isolist.properties))
+    result = IsophoteList.from_table(tbl)
+    assert_array_equal(result.intensity, isolist.intensity)
+    assert_array_equal(result.sample, [None] * len(result))
+    unpickled = pickle.loads(pickle.dumps(result))  # noqa: S301
+    for clone in (copy.deepcopy(result), unpickled):
+        assert_array_equal(clone.sma, result.sma)
+        assert_array_equal(clone.intensity, result.intensity)
+        assert_allclose(clone.orientation.to_value(u.deg),
+                        result.orientation.to_value(u.deg))
+    iso = copy.deepcopy(result[3])
+    assert iso.sample is None
+    with pytest.warns(PhotutilsDeprecationWarning, match='intens'):
+        assert iso.intens == result[3].intensity
+
+
+def test_from_table_defaults_and_errors():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    names = ['sma', 'x0', 'y0', 'ellipticity', 'orientation']
+    tbl = isolist.to_table(columns=names)
+    tbl['extra'] = 1.0
+    result = IsophoteList.from_table(tbl, step=0.2)
+    assert np.all(np.isnan(result.intensity))
+    assert np.all(result.n_data == 0)
+    assert np.all(result.stop_code == 0)
+    assert np.all(result.valid)
+    assert result[3].geometry.step == 0.2
+    match = 'has no sample'
+    with pytest.raises(ValueError, match=match):
+        result[3].sampled_coordinates()
+
+    bad = tbl.copy()
+    bad.remove_column('ellipticity')
+    with pytest.raises(ValueError, match='ellipticity'):
+        IsophoteList.from_table(bad)
+
+
+def test_from_table_unitless_angle(tmp_path):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    path = tmp_path / 'isophotes.csv'
+    isolist.to_table().write(path)
+    tbl = QTable.read(path)
+    with pytest.raises(ValueError, match=r"'orientation'.*unit"):
+        IsophoteList.from_table(tbl)
+    tbl['orientation'].unit = u.deg
+    with pytest.raises(ValueError, match=r"'orientation_err'.*unit"):
+        IsophoteList.from_table(tbl)
+    tbl['orientation_err'].unit = u.deg
+    result = IsophoteList.from_table(tbl)
+    assert_allclose(result.sma, isolist.sma)
+
+    tbl['orientation'] = tbl['orientation'].value << u.m
+    with pytest.raises(ValueError, match=r"'orientation'.*angular"):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_old_column_names():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = QTable(isolist.to_table())
+    tbl.rename_column('intensity', 'intens')
+    tbl.rename_column('orientation', 'pa')
+    with pytest.warns(PhotutilsDeprecationWarning) as record:
+        result = IsophoteList.from_table(tbl)
+    assert len(record) == 2
+    assert_array_equal(result.intensity, isolist.intensity)
+    assert_allclose(result.orientation.to_value(u.deg),
+                    isolist.orientation.to_value(u.deg))
+
+
+def test_from_table_then_measure_and_model():
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    isolist = ellipse.fit_image()
+    loaded = IsophoteList.from_table(isolist.to_table())
+    model = loaded.make_model_image(data.shape)
+    assert_allclose(model, isolist.make_model_image(data.shape),
+                    rtol=1e-10)
+    measured = ellipse.measure_isophotes(loaded)
+    assert_allclose(measured.intensity, isolist.intensity, rtol=1e-6)
+    assert measured[3].sample is not None

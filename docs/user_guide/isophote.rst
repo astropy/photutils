@@ -149,6 +149,36 @@ by the semimajor axis length (``sma``)::
       83.5449633883131   -0.04143562472379122 ...      1         5
     Length = 55 rows
 
+The table can be saved to a file and loaded back into an
+`~photutils.isophote.IsophoteList` with the
+:meth:`~photutils.isophote.IsophoteList.from_table` method. The
+``sma``, ``x0``, ``y0``, ``ellipticity``, and ``orientation`` columns
+are required. Use ``columns=isolist.properties`` to save every
+property::
+
+    >>> from astropy.table import QTable
+    >>> from photutils.isophote import IsophoteList
+    >>> tbl = isolist.to_table(columns=isolist.properties)
+    >>> tbl.write('isophotes.ecsv')  # doctest: +SKIP
+    >>> tbl = QTable.read('isophotes.ecsv')  # doctest: +SKIP
+    >>> loaded = IsophoteList.from_table(tbl)
+
+The ``orientation`` and ``orientation_err`` columns must have an
+angular unit. The ECSV and FITS formats keep the units. Plain text
+formats such as CSV do not, so set the unit after reading the table
+(e.g., ``tbl['orientation'].unit = 'deg'``).
+
+The loaded isophotes have no sample, so ``loaded.sample`` holds `None`
+for each isophote. They can still be used to make a model image with
+:meth:`~photutils.isophote.IsophoteList.make_model_image`. To measure
+an image along them, pass the list to
+:meth:`~photutils.isophote.Ellipse.measure_isophotes`::
+
+    >>> measured = ellipse.measure_isophotes(loaded)  # doctest: +SKIP
+
+The ``step`` and ``linear_growth`` keywords of ``from_table`` set the
+sampling annulus of each isophote for this measurement.
+
 Let's plot the ellipticity, orientation, and the center x and y
 position as a function of the semimajor axis length:
 
