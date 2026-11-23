@@ -216,14 +216,12 @@ class EllipseGeometry:
             replacement.
     """
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    @deprecated_renamed_argument('eps', 'ellipticity', '3.2', until='4.0')
-    @deprecated_renamed_argument('pa', 'orientation', '3.2', until='4.0')
-    @deprecated_renamed_argument('astep', 'step', '3.2', until='4.0')
-    @deprecated_renamed_argument('fix_pa', 'fix_orientation', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('fix_eps', 'fix_ellipticity', '3.2',
-                                 until='4.0')
+    @deprecated_renamed_argument(
+        ['eps', 'pa', 'astep', 'fix_pa', 'fix_eps'],
+        ['ellipticity', 'orientation', 'step', 'fix_orientation',
+         'fix_ellipticity'],
+        '3.2', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     def __init__(self, x0, y0, sma, ellipticity, orientation, step=0.1,
                  linear_growth=False, fix_center=False,
                  fix_orientation=False, fix_ellipticity=False):

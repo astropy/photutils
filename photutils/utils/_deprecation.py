@@ -85,17 +85,25 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
     name will be removed. If ``until`` is provided, the warning message
     will include both the deprecation version and the removal version.
 
+    Several arguments can be deprecated by a single decorator by
+    passing lists for ``old_name`` and ``new_name``. The warnings are
+    then issued by a single wrapper. When that wrapper is the outermost
+    one, its warnings point at the caller of the decorated function.
+
     Parameters
     ----------
-    old_name : str
-        The old (deprecated) argument name.
+    old_name : str or list of str
+        The old (deprecated) argument name or names.
 
-    new_name : str or None
+    new_name : str, `None`, or list of str or `None`
         The new argument name that should be used instead, or `None` if
-        the argument has been removed entirely.
+        the argument has been removed entirely. If ``old_name`` is a
+        list, this must be a list of the same length.
 
-    since : str or int
-        The version in which the argument was renamed or removed.
+    since : str, int, or list of str or int
+        The version in which the argument was renamed or removed. If
+        ``old_name`` is a list, this can be a single version for all
+        of the names or a list of the same length.
 
     until : str or int, optional
         The version in which the old argument name will be removed. If
@@ -108,19 +116,64 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
         A decorator function that can be applied to any function to warn
         about the use of a renamed argument.
     """
+    if isinstance(old_name, (list, tuple)):
+        old_names = list(old_name)
+        new_names = list(new_name)
+        if isinstance(since, (list, tuple)):
+            since_list = list(since)
+        else:
+            since_list = [since] * len(old_names)
+        if until is None:
+            return astropy_deprecated_renamed_argument(
+                old_names, new_names, since_list,
+                warning_type=PhotutilsDeprecationWarning)
+        messages = [renamed_argument_message(old, new, version, until)
+                    for old, new, version
+                    in zip(old_names, new_names, since_list, strict=True)]
+        return astropy_deprecated_renamed_argument(
+            old_names, new_names, since_list, message=messages,
+            warning_type=PhotutilsDeprecationWarning)
+
     if until is None:
         return astropy_deprecated_renamed_argument(
             old_name, new_name, since,
             warning_type=PhotutilsDeprecationWarning)
 
+    message = renamed_argument_message(old_name, new_name, since, until)
+    return astropy_deprecated_renamed_argument(
+        old_name, new_name, since, message=message,
+        warning_type=PhotutilsDeprecationWarning)
+
+
+def renamed_argument_message(old_name, new_name, since, until):
+    """
+    Return the warning message for a renamed or removed argument.
+
+    Parameters
+    ----------
+    old_name : str
+        The old (deprecated) argument name.
+
+    new_name : str or `None`
+        The new argument name, or `None` if the argument was removed.
+
+    since : str or int
+        The version in which the argument was renamed or removed.
+
+    until : str or int
+        The version in which the old argument name will be removed.
+
+    Returns
+    -------
+    message : str
+        The warning message.
+    """
     remove_version = 'version ' + str(until)
     message = (f"'{old_name}' was deprecated in version {since} and will "
                f'be removed in {remove_version}.')
     if new_name is not None:
         message += f" Use argument '{new_name}' instead."
-    return astropy_deprecated_renamed_argument(
-        old_name, new_name, since, message=message,
-        warning_type=PhotutilsDeprecationWarning)
+    return message
 
 
 def _get_since(since, name):
@@ -294,7 +347,7 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
     raise AttributeError(msg)
 
 
-def deprecated_positional_kwargs(since, *, until=None):
+def deprecated_positional_kwargs(since, *, until=None, stacklevel=2):
     """
     Decorator to warn when optional arguments are passed positionally.
 
@@ -313,6 +366,12 @@ def deprecated_positional_kwargs(since, *, until=None):
         The version in which passing optional arguments positionally
         will be removed. If `None`, the removal version is not mentioned
         in the warning message.
+
+    stacklevel : int, optional
+        The stack level for the warning. The default of 2 points to
+        the caller of the decorated function. Use 3 when the decorated
+        function is wrapped by one other decorator, placed outside this
+        one, so that the warning still points to the caller.
 
     Returns
     -------
@@ -361,7 +420,7 @@ def deprecated_positional_kwargs(since, *, until=None):
                        f'Pass {pronoun} as {kwarg_noun} instead '
                        f'(e.g., {examples_str}).')
                 warnings.warn(msg, PhotutilsDeprecationWarning,
-                              stacklevel=2)
+                              stacklevel=stacklevel)
             return func(*args, **kwargs)
         return wrapper
     return decorator

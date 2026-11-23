@@ -49,16 +49,11 @@ class _EllipseFitter:
     def __init__(self, sample):
         self._sample = sample
 
-    @deprecated_renamed_argument('maxgerr', None, '3.2', until='4.0')
-    @deprecated_renamed_argument('going_inwards', None, '3.2', until='4.0')
-    @deprecated_renamed_argument('conver', 'convergence', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('minit', 'miniters', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('maxit', 'maxiters', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('fflag', 'min_valid_fraction', '3.2',
-                                 until='4.0')
+    @deprecated_renamed_argument(
+        ['maxgerr', 'going_inwards', 'conver', 'minit', 'maxit', 'fflag'],
+        [None, None, 'convergence', 'miniters', 'maxiters',
+         'min_valid_fraction'],
+        '3.2', until='4.0')
     def fit(self, *, convergence=DEFAULT_CONVERGENCE,
             miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
             min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,

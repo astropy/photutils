@@ -147,7 +147,7 @@ def _make_model_image(isolist, shape, *, fill_value, high_harmonics,
 
 @deprecated('3.2', alternative='IsophoteList.make_model_image',
             until='4.0')
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
 def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
                         sma_interval=0.1):
     """

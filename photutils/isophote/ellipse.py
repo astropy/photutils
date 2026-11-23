@@ -211,8 +211,8 @@ class Ellipse:
     converge to any acceptable solution.
     """
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
     @deprecated_renamed_argument('threshold', None, '3.2', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     def __init__(self, image, geometry=None,
                  threshold=None):  # noqa: ARG002
         image = _validate_image(image)
@@ -250,36 +250,17 @@ class Ellipse:
         """
         self._geometry.centerer_threshold = threshold
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
-    @deprecated_renamed_argument('sma0', 'sma_start', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('minsma', 'min_sma', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('maxsma', 'max_sma', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('conver', 'convergence', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('minit', 'miniters', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('maxit', 'maxiters', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('fflag', 'min_valid_fraction', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('maxgerr', 'max_gradient_rel_err', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('sclip', 'clip_sigma', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('integrmode', 'integration_mode', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('linear', 'linear_growth', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('maxrit', 'max_iterative_sma', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('fix_pa', 'fix_orientation', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('fix_eps', 'fix_ellipticity', '3.2',
-                                 until='4.0')
+    @deprecated_renamed_argument(
+        ['nclip', 'sma0', 'minsma', 'maxsma', 'conver', 'minit', 'maxit',
+         'fflag', 'maxgerr', 'sclip', 'integrmode', 'linear', 'maxrit',
+         'fix_pa', 'fix_eps'],
+        ['n_clip', 'sma_start', 'min_sma', 'max_sma', 'convergence',
+         'miniters', 'maxiters', 'min_valid_fraction',
+         'max_gradient_rel_err', 'clip_sigma', 'integration_mode',
+         'linear_growth', 'max_iterative_sma', 'fix_orientation',
+         'fix_ellipticity'],
+        ['3.0'] + ['3.2'] * 14, until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     def fit_image(self, sma_start=None, min_sma=0.0, max_sma=None, step=0.1,
                   convergence=DEFAULT_CONVERGENCE,
                   miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
@@ -703,26 +684,14 @@ class Ellipse:
 
         return IsophoteList(isophote_list)
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
-    @deprecated_renamed_argument('maxgerr', None, '3.2', until='4.0')
-    @deprecated_renamed_argument('going_inwards', None, '3.2', until='4.0')
-    @deprecated_renamed_argument('conver', 'convergence', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('minit', 'miniters', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('maxit', 'maxiters', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('fflag', 'min_valid_fraction', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('sclip', 'clip_sigma', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('integrmode', 'integration_mode', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('linear', 'linear_growth', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('maxrit', 'max_iterative_sma', '3.2',
-                                 until='4.0')
+    @deprecated_renamed_argument(
+        ['nclip', 'maxgerr', 'going_inwards', 'conver', 'minit', 'maxit',
+         'fflag', 'sclip', 'integrmode', 'linear', 'maxrit'],
+        ['n_clip', None, None, 'convergence', 'miniters', 'maxiters',
+         'min_valid_fraction', 'clip_sigma', 'integration_mode',
+         'linear_growth', 'max_iterative_sma'],
+        ['3.0'] + ['3.2'] * 10, until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     def fit_isophote(self, sma, step=0.1, convergence=DEFAULT_CONVERGENCE,
                      miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
                      min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,

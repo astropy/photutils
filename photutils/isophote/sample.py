@@ -251,15 +251,12 @@ class EllipseSample:
         integration mode.
     """
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
-    @deprecated_renamed_argument('astep', 'step', '3.2', until='4.0')
-    @deprecated_renamed_argument('eps', 'ellipticity', '3.2', until='4.0')
-    @deprecated_renamed_argument('position_angle', 'orientation', '3.2',
-                                 until='4.0')
-    @deprecated_renamed_argument('sclip', 'clip_sigma', '3.2', until='4.0')
-    @deprecated_renamed_argument('integrmode', 'integration_mode', '3.2',
-                                 until='4.0')
+    @deprecated_renamed_argument(
+        ['nclip', 'astep', 'eps', 'position_angle', 'sclip', 'integrmode'],
+        ['n_clip', 'step', 'ellipticity', 'orientation', 'clip_sigma',
+         'integration_mode'],
+        ['3.0', '3.2', '3.2', '3.2', '3.2', '3.2'], until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     def __init__(self, image, sma, x0=None, y0=None, step=0.1,
                  ellipticity=0.2, orientation=0.0, clip_sigma=3.0,
                  n_clip=0, linear_growth=False,
@@ -566,9 +563,9 @@ class EllipseSample:
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
     @deprecated_renamed_argument('fixed_parameters', None, '3.2',
                                  until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     def update(self, fixed_parameters=None):
         """
         Update this `~photutils.isophote.EllipseSample` instance.

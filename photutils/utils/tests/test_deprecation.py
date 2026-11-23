@@ -801,6 +801,93 @@ def test_deprecated_renamed_argument_always_warns():
         _example_func2(1, b=5)
 
 
+@deprecated_renamed_argument(['b', 'd', 'e'], ['new', 'new_d', None],
+                             ['1.0', '1.5', '1.5'], until='2.0')
+@deprecated_positional_kwargs('1.0', until='2.0', stacklevel=3)
+def _example_func_list(a, new, new_d=1, e=None, *, c=20):  # noqa: ARG001
+    """
+    Example function for testing a list of renamed arguments combined
+    with the deprecated_positional_kwargs decorator.
+    """
+    return a + new + new_d + c
+
+
+class TestDeprecatedRenamedArgumentList:
+    """
+    Tests for deprecated_renamed_argument with lists of names.
+    """
+
+    def test_new_names_no_warning(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            result = _example_func_list(1, new=5, new_d=2, c=3)
+        assert result == 11
+
+    @pytest.mark.parametrize(('kwargs', 'old', 'since', 'advice'),
+                             [({'b': 5}, 'b', '1.0',
+                               " Use argument 'new' instead."),
+                              ({'new': 5, 'd': 2}, 'd', '1.5',
+                               " Use argument 'new_d' instead."),
+                              ({'new': 5, 'e': 2}, 'e', '1.5', '')])
+    def test_old_name_message(self, kwargs, old, since, advice):
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
+            _example_func_list(1, **kwargs)
+        expected = (f"'{old}' was deprecated in version {since} and will "
+                    f'be removed in version 2.0.{advice}')
+        assert str(record[0].message) == expected
+
+    def test_old_name_value(self):
+        with pytest.warns(PhotutilsDeprecationWarning):
+            result = _example_func_list(1, b=5, d=2)
+        assert result == 28
+
+    def test_both_names_raises(self):
+        match = 'cannot specify both "b" and "new"'
+        with (pytest.warns(PhotutilsDeprecationWarning),
+              pytest.raises(TypeError, match=match)):
+            _example_func_list(1, b=5, new=5)
+
+    def test_single_since(self):
+        @deprecated_renamed_argument(['b', 'd'], ['new', 'new_d'], '1.0')
+        def _func(new, *, new_d=1):
+            return new + new_d
+
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match='version 1.0') as record:
+            result = _func(b=1, d=2)
+        assert result == 3
+        assert len(record) == 2
+        assert 'future version' in str(record[0].message)
+
+    def test_warnings_point_at_caller(self):
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter('always')
+            _example_func_list(1, 2, 3, e=4)
+        assert len(record) == 2
+        assert 'positionally' in str(record[1].message)
+        for item in record:
+            assert item.filename == __file__
+
+
+def test_deprecated_positional_kwargs_stacklevel():
+    def _wrapper(func):
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+
+    @_wrapper
+    @deprecated_positional_kwargs('1.0', stacklevel=3)
+    def _func(a, b=10):
+        return a + b
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter('always')
+        result = _func(1, 2)
+    assert result == 3
+    assert len(record) == 1
+    assert record[0].filename == __file__
+
+
 class TestColumnDeprecationUntil:
     """
     Tests for the ``until`` parameter in column deprecation.
