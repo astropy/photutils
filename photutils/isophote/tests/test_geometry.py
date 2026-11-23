@@ -498,6 +498,26 @@ def test_geometry_deprecated_sector_attributes(name):
     assert "'_" not in getattr(EllipseGeometry, name).__doc__
 
 
+@pytest.mark.parametrize('name', ['sector_angular_width',
+                                  'initial_polar_angle',
+                                  'initial_polar_radius'])
+def test_geometry_deprecated_sector_attributes_zero_sma(name):
+    """
+    Test the deprecated sector attributes of a geometry with sma = 0.
+
+    The sector attributes are not defined for the central pixel. A
+    lookup emits the same single deprecation warning, at the caller
+    line, as for sma > 0, and then raises an `AttributeError`.
+    """
+    geometry = EllipseGeometry(50.0, 50.0, 0.0, 0.3, 0.5)
+    match = f"The '{name}' attribute was deprecated in version 3.2"
+    with (pytest.warns(PhotutilsDeprecationWarning, match=match) as record,
+          pytest.raises(AttributeError, match=name)):
+        getattr(geometry, name)
+    assert len(record) == 1
+    assert record[0].filename == __file__
+
+
 def test_geometry_fix_flags():
     geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5,
                                fix_orientation=True)

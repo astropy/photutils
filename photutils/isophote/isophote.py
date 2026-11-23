@@ -59,6 +59,16 @@ _DEPRECATED_SINCE = {
 }
 
 # Remove in 4.0
+# The deprecated table column names and the version in which each was
+# deprecated. The 'grad_rerror' and 'intens_err' names were table
+# column names, not attributes.
+_DEPRECATED_COLUMNS = {**_DEPRECATED_ATTRIBUTES,
+                       'grad_rerror': 'gradient_rel_err',
+                       'intens_err': 'intensity_err'}
+_DEPRECATED_COLUMNS_SINCE = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0',
+                             'intens_err': '3.2'}
+
+# Remove in 4.0
 # The deprecated angle names are not aliases of the new names. They
 # return floats in radians, from these private attributes, instead of
 # a Quantity in degrees.
@@ -284,59 +294,64 @@ class Isophote:
         self.stop_code = stop_code
         self.geometry = sample.geometry
 
-        if sample.geometry.sma == 0:
+        # An isophote with a negative or NaN semimajor axis length has
+        # no measured values.
+        sma = sample.geometry.sma
+        if sma == 0:
             self._set_central_values(sample)
-            return
+        elif sma > 0 and sample.n_valid == 0:
+            self._set_empty_values(sample)
+        elif sma > 0:
+            self._set_measured_values(sample)
 
-        if sample.geometry.sma > 0:
-            self.intensity = sample.intensity
-            if sample.n_valid == 0:
-                # No valid sampled points (e.g., a trial geometry that
-                # fell entirely outside the image). Operating on the
-                # empty sample arrays would emit numpy warnings (e.g.,
-                # "Mean of empty slice"), so set nonmeaningful values
-                # directly and skip the harmonic computations.
-                self.rms = np.nan
-                self.intensity_err = np.nan
-                self.pixel_stddev = np.nan
-                self.gradient = sample.gradient
-                self.gradient_err = _nan_if_none(sample.gradient_err)
-                self.gradient_rel_err = _nan_if_none(
-                    sample.gradient_rel_err)
-                self.sector_area = sample.sector_area
-                self.n_data = sample.n_valid
-                self.n_flagged = sample.n_total - sample.n_valid
-                self.total_flux_ellipse = self.total_flux_circle = 0.0
-                self.n_pixels_ellipse = self.n_pixels_circle = 0
-                self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
-                self.ellipticity_err = 0.0
-                self.a3 = self.b3 = self.a3_err = self.b3_err = np.nan
-                self.a4 = self.b4 = self.a4_err = self.b4_err = np.nan
-                return
+    def _set_measured_values(self, sample):
+        self.intensity = sample.intensity
+        self.rms = np.std(sample.intensities)
+        self.intensity_err = self.rms / np.sqrt(sample.n_valid)
+        self.pixel_stddev = self.rms * np.sqrt(sample.sector_area)
+        self.gradient = sample.gradient
+        self.gradient_err = _nan_if_none(sample.gradient_err)
 
-            self.rms = np.std(sample.intensities)
-            self.intensity_err = self.rms / np.sqrt(sample.n_valid)
-            self.pixel_stddev = self.rms * np.sqrt(sample.sector_area)
-            self.gradient = sample.gradient
-            self.gradient_err = _nan_if_none(sample.gradient_err)
+        self.gradient_rel_err = _nan_if_none(sample.gradient_rel_err)
+        self.sector_area = sample.sector_area
+        self.n_data = sample.n_valid
+        self.n_flagged = sample.n_total - sample.n_valid
 
-            self.gradient_rel_err = _nan_if_none(sample.gradient_rel_err)
-            self.sector_area = sample.sector_area
-            self.n_data = sample.n_valid
-            self.n_flagged = sample.n_total - sample.n_valid
+        # Flux contained inside ellipse and circle
+        (self.total_flux_ellipse, self.total_flux_circle,
+         self.n_pixels_ellipse,
+         self.n_pixels_circle) = self._compute_fluxes()
 
-            # Flux contained inside ellipse and circle
-            (self.total_flux_ellipse, self.total_flux_circle,
-             self.n_pixels_ellipse,
-             self.n_pixels_circle) = self._compute_fluxes()
+        self._compute_errors()
 
-            self._compute_errors()
+        # Deviations from a perfect ellipse
+        (self.a3, self.b3, self.a3_err,
+         self.b3_err) = self._compute_deviations(sample, 3)
+        (self.a4, self.b4, self.a4_err,
+         self.b4_err) = self._compute_deviations(sample, 4)
 
-            # Deviations from a perfect ellipse
-            (self.a3, self.b3, self.a3_err,
-             self.b3_err) = self._compute_deviations(sample, 3)
-            (self.a4, self.b4, self.a4_err,
-             self.b4_err) = self._compute_deviations(sample, 4)
+    def _set_empty_values(self, sample):
+        # No valid sampled points (e.g., a trial geometry that fell
+        # entirely outside the image). Operating on the empty sample
+        # arrays would emit numpy warnings (e.g., "Mean of empty
+        # slice"), so set nonmeaningful values directly and skip the
+        # harmonic computations.
+        self.intensity = sample.intensity
+        self.rms = np.nan
+        self.intensity_err = np.nan
+        self.pixel_stddev = np.nan
+        self.gradient = sample.gradient
+        self.gradient_err = _nan_if_none(sample.gradient_err)
+        self.gradient_rel_err = _nan_if_none(sample.gradient_rel_err)
+        self.sector_area = sample.sector_area
+        self.n_data = sample.n_valid
+        self.n_flagged = sample.n_total - sample.n_valid
+        self.total_flux_ellipse = self.total_flux_circle = 0.0
+        self.n_pixels_ellipse = self.n_pixels_circle = 0
+        self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
+        self.ellipticity_err = 0.0
+        self.a3 = self.b3 = self.a3_err = self.b3_err = np.nan
+        self.a4 = self.b4 = self.a4_err = self.b4_err = np.nan
 
     @classmethod
     def _from_values(cls, geometry, values):
@@ -667,7 +682,7 @@ class Isophote:
             errors = np.sqrt(np.diagonal(covariance * var_residual))
 
             eps = self.sample.geometry.ellipticity
-            pa = self.sample.geometry._orientation_rad
+            orientation_rad = self.sample.geometry._orientation_rad
 
             # Parameter errors result from direct projection of
             # coefficient errors. These showed to be the error estimators
@@ -675,8 +690,10 @@ class Isophote:
             # experiments (see Busko 1996, ASPC 101, 139).
             ea = abs(errors[2] / self.gradient)
             eb = abs(errors[1] * (1.0 - eps) / self.gradient)
-            self.x0_err = np.sqrt((ea * np.cos(pa))**2 + (eb * np.sin(pa))**2)
-            self.y0_err = np.sqrt((ea * np.sin(pa))**2 + (eb * np.cos(pa))**2)
+            self.x0_err = np.sqrt((ea * np.cos(orientation_rad))**2
+                                  + (eb * np.sin(orientation_rad))**2)
+            self.y0_err = np.sqrt((ea * np.sin(orientation_rad))**2
+                                  + (eb * np.cos(orientation_rad))**2)
             self.ellipticity_err = (abs(2.0 * errors[4] * (1.0 - eps)
                                         / self.sma / self.gradient))
             if abs(eps) > np.finfo(float).resolution:
@@ -1223,13 +1240,18 @@ def _make_property(name, dtype, unit, description):
     if unit is None:
         def getter(self):
             return self._collect_as_array(name, dtype=dtype)
-    else:
-        # The properties with a unit are the angles. The isophotes
-        # store them as floats in radians in private attributes, and
-        # the unit is attached once to the whole array.
+    elif unit == u.deg:
+        # The properties in degrees are the angles. The isophotes store
+        # them as floats in radians in private ``_<name>_rad``
+        # attributes, and the unit is attached once to the whole array.
         def getter(self):
             return _to_degrees(self._collect_as_array(f'_{name}_rad',
                                                       dtype=dtype))
+    else:
+        msg = (f'The {name!r} isophote property has the unit {unit}. '
+               'Only angle properties in degrees, stored in radians in '
+               f"a private '_{name}_rad' attribute, can have a unit.")
+        raise ValueError(msg)
 
     getter.__name__ = name
     getter.__qualname__ = f'IsophoteList.{name}'
@@ -1309,12 +1331,6 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
     if not isinstance(isophote_list, IsophoteList):
         isophote_list = IsophoteList(isophote_list)
 
-    # Remove in 4.0
-    # The 'grad_rerror' and 'intens_err' names were table column names,
-    # not attributes.
-    _deprecation_map = {**_DEPRECATED_ATTRIBUTES,
-                        'grad_rerror': 'gradient_rel_err',
-                        'intens_err': 'intensity_err'}
     all_names = _PROPERTY_NAMES
 
     # The deprecated 'main' and 'all' shortcuts are allowed only in
@@ -1325,17 +1341,17 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
         allowed_columns = set(all_names)
 
     table_columns = validate_table_columns(
-        columns, allowed_columns, deprecated_names=_deprecation_map)
+        columns, allowed_columns, deprecated_names=_DEPRECATED_COLUMNS)
     if len(table_columns) > 1 and {'main', 'all'} & set(table_columns):
         msg = ("'main' and 'all' must be input by themselves, not in a "
                'list with other column names.')
         raise ValueError(msg)
 
     # Replace with QTable in 4.0
-    since = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0', 'intens_err': '3.2'}
+    since = _DEPRECATED_COLUMNS_SINCE
     until = '4.0'
     isotable = create_empty_deprecated_qtable(
-        _deprecation_map, since=since, until=until)
+        _DEPRECATED_COLUMNS, since=since, until=until)
 
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 
@@ -1351,8 +1367,8 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
         # warning instead of one per isophote.
         names = []
         for name in table_columns:
-            if name in _deprecation_map:
-                new_name = _deprecation_map[name]
+            if name in _DEPRECATED_COLUMNS:
+                new_name = _DEPRECATED_COLUMNS[name]
                 # The names that are not attributes were only columns.
                 noun = ('attribute' if name in _DEPRECATED_ATTRIBUTES
                         else 'column')
@@ -1396,7 +1412,6 @@ _VALUE_CHECKS = {
 # The values of the properties that are not in a table.
 _MISSING_VALUES = {name: {float: np.nan, int: 0, bool: True}[dtype]
                    for name, dtype, _, _ in _ISOPHOTE_PROPERTIES}
-_MISSING_VALUES['stop_code'] = 0
 
 
 def _quantity_column_value(data, unit, name, column_name):
@@ -1438,14 +1453,10 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
     # Remove in 4.0
     # Only the names in table.colnames are used to read the table,
     # because a table made by to_table warns on an old column name.
-    deprecation_map = {**_DEPRECATED_ATTRIBUTES,
-                       'grad_rerror': 'gradient_rel_err',
-                       'intens_err': 'intensity_err'}
-    since = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0', 'intens_err': '3.2'}
     matches = {}
     for name in table.colnames:
-        new_name = name if name in _PROPERTY_NAMES else deprecation_map.get(
-            name)
+        new_name = (name if name in _PROPERTY_NAMES
+                    else _DEPRECATED_COLUMNS.get(name))
         if new_name is not None:
             matches.setdefault(new_name, []).append(name)
 
@@ -1458,8 +1469,8 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
         name = names[0]
         if name != new_name:
             msg = (f'The {name!r} column name was deprecated in version '
-                   f'{since[name]}. Use {new_name!r} instead. It will be '
-                   'removed in version 4.0.')
+                   f'{_DEPRECATED_COLUMNS_SINCE[name]}. Use {new_name!r} '
+                   'instead. It will be removed in version 4.0.')
             warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
         columns[new_name] = name
 

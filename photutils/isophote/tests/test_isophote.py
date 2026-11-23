@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.table import MaskedColumn, QTable, Table
+from astropy.utils.masked import Masked
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.datasets.load import _get_path
@@ -19,12 +20,18 @@ from photutils.isophote.ellipse import Ellipse, _central_isophote
 from photutils.isophote.fitter import _EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import (_ISOPHOTE_PROPERTIES, Isophote,
-                                         IsophoteList)
+                                         IsophoteList, _make_property)
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DEFAULT_FIX = np.array([False, False, False, False])
+
+RENAMED = {'intens': 'intensity', 'int_err': 'intensity_err',
+           'eps': 'ellipticity', 'ellip_err': 'ellipticity_err',
+           'grad': 'gradient', 'pix_stddev': 'pixel_stddev',
+           'sarea': 'sector_area', 'n_flag': 'n_flagged',
+           'nflag': 'n_flagged'}
 
 
 @pytest.mark.remote_data
@@ -352,18 +359,19 @@ class TestIsophoteList:
         assert len(self.isolist_sma10) == n_isophotes
 
     @pytest.mark.parametrize('name', ['intensity_err', 'ellipticity_err',
-                                      'orientation_err',
-                                      'x0_err', 'y0_err', 'gradient_err',
-                                      'gradient_rel_err', 'a3_err',
-                                      'b3_err', 'a4_err', 'b4_err'])
+                                      'orientation_err', 'x0_err', 'y0_err',
+                                      'gradient_err', 'gradient_rel_err',
+                                      'a3_err', 'b3_err', 'a4_err', 'b4_err'])
     def test_error_properties(self, name):
         isolist = self.isolist_sma10
         values = getattr(isolist, name)
         assert values.shape == (len(isolist),)
         assert np.all(np.isfinite(values))
         assert np.all(values >= 0)
-        assert_allclose(values,
-                        u.Quantity([getattr(iso, name) for iso in isolist]))
+        expected = [getattr(iso, name) for iso in isolist]
+        if name == 'orientation_err':
+            expected = u.Quantity(expected)
+        assert_allclose(values, expected)
 
     def test_deprecated_attribute(self):
         match = "'niter' attribute was deprecated"
@@ -687,15 +695,14 @@ def test_isophote_list_properties_match_definitions():
         assert len(values) == len(isolist)
         assert np.asarray(values).dtype == np.dtype(dtype)
         assert description
-        assert getattr(IsophoteList, name).__doc__
+        assert getattr(IsophoteList, name).__doc__ == description
     assert isolist.properties == [p[0] for p in _ISOPHOTE_PROPERTIES]
 
 
-RENAMED = {'intens': 'intensity', 'int_err': 'intensity_err',
-           'eps': 'ellipticity', 'ellip_err': 'ellipticity_err',
-           'grad': 'gradient', 'pix_stddev': 'pixel_stddev',
-           'sarea': 'sector_area', 'n_flag': 'n_flagged',
-           'nflag': 'n_flagged'}
+def test_isophote_property_unit_must_be_degrees():
+    match = "'length' isophote property has the unit m.*'_length_rad'"
+    with pytest.raises(ValueError, match=match):
+        _make_property('length', float, u.m, 'A length.')
 
 
 @pytest.mark.parametrize(('old', 'new'), RENAMED.items())
@@ -1109,6 +1116,33 @@ def test_from_table_conflicting_columns():
     tbl['intens_err'] = 2 * tbl['intensity_err']
     tbl.remove_column('intensity_err')
     with pytest.raises(ValueError, match=r"'int_err'.*'intens_err'"):
+        IsophoteList.from_table(tbl)
+
+    tbl = QTable(isolist.to_table())
+    tbl['nflag'] = tbl['n_flagged']
+    tbl['n_flag'] = tbl['n_flagged']
+    tbl.remove_column('n_flagged')
+    with pytest.raises(ValueError, match=r"'nflag'.*'n_flag'"):
+        IsophoteList.from_table(tbl)
+
+    tbl = QTable(isolist.to_table())
+    tbl['grad_r_error'] = tbl['gradient_rel_err']
+    tbl['grad_rerror'] = tbl['gradient_rel_err']
+    tbl.remove_column('gradient_rel_err')
+    with pytest.raises(ValueError, match=r"'grad_r_error'.*'grad_rerror'"):
+        IsophoteList.from_table(tbl)
+
+
+def test_from_table_masked_quantity_angle_column():
+    tbl = _make_geometry_table()
+    mask = [False, True, False, False]
+    tbl['orientation_err'] = Masked(tbl['orientation_err'], mask=mask)
+    result = IsophoteList.from_table(tbl)
+    assert np.isnan(result.orientation_err[1])
+    assert_allclose(result.orientation_err[2:], [1.0, 1.0] * u.deg)
+
+    tbl['orientation'] = Masked(tbl['orientation'], mask=mask)
+    with pytest.raises(ValueError, match="'orientation' column has masked"):
         IsophoteList.from_table(tbl)
 
 

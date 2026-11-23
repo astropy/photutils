@@ -964,12 +964,13 @@ class TestMeasureIsophotes:
             ellipse.measure_isophotes([self.isolist[1], 10.0])
 
 
+# The values differ from the defaults enough to change the fit result.
 FIT_IMAGE_RENAMES = [
     ('sma0', 'sma_start', 20.0), ('minsma', 'min_sma', 5.0),
     ('maxsma', 'max_sma', 60.0), ('conver', 'convergence', 0.1),
-    ('minit', 'miniters', 5), ('maxit', 'maxiters', 30),
+    ('minit', 'miniters', 5), ('maxit', 'maxiters', 5),
     ('fflag', 'min_valid_fraction', 0.5),
-    ('maxgerr', 'max_gradient_rel_err', 1.0),
+    ('maxgerr', 'max_gradient_rel_err', 0.001),
     ('sclip', 'clip_sigma', 2.5),
     ('integrmode', 'integration_mode', 'mean'),
     ('linear', 'linear_growth', True),
@@ -979,13 +980,39 @@ FIT_IMAGE_RENAMES = [
 ]
 
 FIT_ISOPHOTE_RENAMES = [
-    ('conver', 'convergence', 0.1), ('minit', 'miniters', 5),
-    ('maxit', 'maxiters', 30), ('fflag', 'min_valid_fraction', 0.5),
+    ('conver', 'convergence', 0.01), ('minit', 'miniters', 5),
+    ('maxit', 'maxiters', 5), ('fflag', 'min_valid_fraction', 0.5),
     ('sclip', 'clip_sigma', 2.5),
     ('integrmode', 'integration_mode', 'mean'),
     ('linear', 'linear_growth', True),
     ('maxrit', 'max_iterative_sma', 20.0),
 ]
+
+
+def _isophote_list_values(isolist):
+    """
+    Return the values that tell whether two isophote lists differ.
+    """
+    return [isolist.sma, isolist.intensity, isolist.ellipticity,
+            isolist.orientation.value, isolist.x0, isolist.y0,
+            isolist.n_iter, isolist.stop_code]
+
+
+def _isophote_lists_equal(isolist1, isolist2):
+    return len(isolist1) == len(isolist2) and all(
+        np.array_equal(values1, values2, equal_nan=True)
+        for values1, values2 in zip(_isophote_list_values(isolist1),
+                                    _isophote_list_values(isolist2),
+                                    strict=True))
+
+
+def _isophote_values(isophote):
+    """
+    Return the values that tell whether two isophotes differ.
+    """
+    return (isophote.sma, isophote.intensity, isophote.ellipticity,
+            isophote.orientation.value, isophote.x0, isophote.y0,
+            isophote.n_iter, isophote.stop_code)
 
 
 @pytest.mark.parametrize(('old', 'new', 'value'), FIT_IMAGE_RENAMES)
@@ -997,9 +1024,9 @@ def test_fit_image_renamed_keywords(old, new, value):
     extra = {'linear_growth': {'step': 5.0},
              'clip_sigma': {'n_clip': 3}}.get(new, {})
     expected = ellipse.fit_image(**{new: value}, **extra)
-    if new == 'clip_sigma':
-        default = ellipse.fit_image(**extra)
-        assert not np.array_equal(expected.intensity, default.intensity)
+    # The value must change the result, so that a shim that dropped
+    # the keyword would fail.
+    assert not _isophote_lists_equal(expected, ellipse.fit_image(**extra))
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
         result = ellipse.fit_image(**{old: value}, **extra)
     assert_array_equal(result.intensity, expected.intensity)
@@ -1012,12 +1039,16 @@ def test_fit_image_renamed_keywords(old, new, value):
 def test_fit_isophote_renamed_keywords(old, new, value):
     data = make_test_image(seed=0)
     ellipse = Ellipse(data)
-    # The sigma-clip value has an effect only with clipping iterations.
-    extra = {'n_clip': 3} if new == 'clip_sigma' else {}
+    # The sigma-clip value has an effect only with clipping iterations,
+    # and the minimum valid fraction only when data points are flagged.
+    extra = {'clip_sigma': {'n_clip': 3},
+             'min_valid_fraction': {'n_clip': 1,
+                                    'clip_sigma': 1.0}}.get(new, {})
     expected = ellipse.fit_isophote(40.0, **{new: value}, **extra)
-    if new == 'clip_sigma':
-        default = ellipse.fit_isophote(40.0, **extra)
-        assert expected.intensity != default.intensity
+    # The value must change the result, so that a shim that dropped
+    # the keyword would fail.
+    default = ellipse.fit_isophote(40.0, **extra)
+    assert _isophote_values(expected) != _isophote_values(default)
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
         result = ellipse.fit_isophote(40.0, **{old: value}, **extra)
     assert result.intensity == expected.intensity
