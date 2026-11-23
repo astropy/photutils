@@ -338,9 +338,9 @@ computes a signal-to-noise-like criterion from the mean intensities
     c = \frac{f_{1} - f_{2}}{{\sqrt{\sigma_{1}^{2} + \sigma_{2}^{2}}}}
 
 The position where this criterion is a maximum is accepted as the new
-center if the criterion exceeds the ``threshold`` parameter. The new
-center is a whole-pixel position. Otherwise, the center is not
-changed.
+center if the criterion exceeds the ``threshold`` parameter.
+Otherwise, the center is not changed. The new center is a whole-pixel
+position.
 
 The default threshold value is 0.1. This value and the sizes of the
 samples and the window were found by trial and error using a number of
@@ -590,12 +590,15 @@ Now let's compare the two fits using the largest distance between the
 fitted centers and the galaxy center, for the isophotes with semimajor
 axis lengths from 10 to 90 pixels::
 
-    >>> for iso in (isolist1, isolist2):  # doctest: +SKIP
+    >>> max_shifts = []
+    >>> for iso in (isolist1, isolist2):
     ...     idx = (iso.sma > 10) & (iso.sma < 90)
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
-    ...     print(np.round(shift.max(), 1))
-    6.0
-    0.7
+    ...     max_shifts.append(shift.max())
+    >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
+    [6.  0.7]
+    >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.0)
+    True True
 
 Without rejection, the star and the companion pull the fitted centers
 by up to 6 pixels, the ellipticity reaches 0.53, and the fit stops at
@@ -603,7 +606,9 @@ a semimajor axis length of about 92 pixels. Over this range of
 semimajor axis lengths, the mask and sigma clipping keep the centers
 within 1 pixel of the galaxy center and the ellipticity between 0.39
 and 0.42. The mask alone is not enough for this image, because the
-star still disturbs the fit.
+star still disturbs the fit. Sigma clipping alone removes most of the
+distortion and keeps the centers within 2 pixels. The mask removes
+the rest.
 
 Let's plot the image with the masked region, and the residuals of the
 model images of the two fits (see :ref:`isophote-model-image`):
@@ -701,7 +706,8 @@ By default, the semimajor axis length grows and shrinks by a factor of
 (1 + ``step``), where ``step`` defaults to 0.1. With
 ``linear_growth=True``, ``step`` is instead an increment in pixels.
 The ``min_sma`` and ``max_sma`` keywords limit the range of the
-semimajor axis lengths::
+semimajor axis lengths. The outward growth stops before the
+semimajor axis length reaches ``max_sma``::
 
     >>> isolist_linear = ellipse.fit_image(step=5.0, linear_growth=True,
     ...                                    max_sma=60.0)
@@ -1025,9 +1031,10 @@ the color is calculated only where both intensities are positive::
     >>> noise2 = make_noise_image(shape, distribution='gaussian', mean=0.0,
     ...                           stddev=0.5, seed=5678)
     >>> data2 = 0.5 * galaxy(xx, yy) + noise2
-    >>> isolist2 = Ellipse(data2).measure_isophotes(isolist)
-    >>> mask = (isolist.intensity > 0) & (isolist2.intensity > 0)
-    >>> ratio = isolist2.intensity[mask] / isolist.intensity[mask]
+    >>> isolist_band2 = Ellipse(data2).measure_isophotes(isolist)
+    >>> positive = (isolist.intensity > 0) & (isolist_band2.intensity > 0)
+    >>> ratio = (isolist_band2.intensity[positive]
+    ...          / isolist.intensity[positive])
     >>> color = -2.5 * np.log10(ratio)
 
 The returned `~photutils.isophote.IsophoteList` has one isophote for
@@ -1038,8 +1045,8 @@ useful for measuring an image along user-defined ellipses::
     >>> geometries = [EllipseGeometry(x0=160, y0=140, sma=sma, ellipticity=0.4,
     ...                               orientation=40.0 * u.deg)
     ...               for sma in (5.0, 10.0, 20.0)]
-    >>> isolist3 = Ellipse(data).measure_isophotes(geometries)
-    >>> print(isolist3.sma)
+    >>> isolist_user = Ellipse(data).measure_isophotes(geometries)
+    >>> print(isolist_user.sma)
     [ 5. 10. 20.]
 
 
