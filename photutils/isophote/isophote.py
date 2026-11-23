@@ -20,6 +20,11 @@ from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['Isophote', 'IsophoteList']
 
+
+def _nan_if_none(value):
+    return np.nan if value is None else value
+
+
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES = {
     'grad_error': 'gradient_err',
@@ -162,20 +167,18 @@ class Isophote:
     grad : float
         .. deprecated:: 3.2
             Use ``gradient`` instead.
-    grad_error : float or `None`
+    grad_error : float
         .. deprecated:: 3.0
             Use ``gradient_err`` instead.
-    gradient_err : float or `None`
+    gradient_err : float
         The measurement error of the local radial intensity gradient.
-        It is `None` if it could not be computed (NaN in
-        `~photutils.isophote.IsophoteList`).
-    grad_r_error : float or `None`
+        It is NaN if it could not be computed.
+    grad_r_error : float
         .. deprecated:: 3.0
             Use ``gradient_rel_err`` instead.
-    gradient_rel_err : float or `None`
+    gradient_rel_err : float
         The relative error of the local radial intensity gradient. It
-        is `None` if it could not be computed (NaN in
-        `~photutils.isophote.IsophoteList`).
+        is NaN if it could not be computed.
     tflux_e : float
         .. deprecated:: 3.2
             Use ``total_flux_ellipse`` instead.
@@ -223,19 +226,19 @@ class Isophote:
         discarded either because they are physically outside the image
         frame boundaries, because they were rejected by sigma clipping,
         or because they are masked or nonfinite.
-    a3, b3, a4, b4 : float or `None`
+    a3, b3, a4, b4 : float
         The higher-order harmonics that measure the deviations from a
         perfect ellipse. These values are actually the raw harmonic
         amplitudes divided by the absolute value of the local radial
         gradient and the semimajor axis length, so they can directly be
         compared with each other. The ``b4`` parameter is positive for
         galaxies with disky (kite-like) isophotes and negative for
-        galaxies with boxy isophotes. They are `None` if they could not
-        be computed (NaN in `~photutils.isophote.IsophoteList`).
-    a3_err, b3_err, a4_err, b4_err : float or `None`
+        galaxies with boxy isophotes. They are NaN if they could not
+        be computed.
+    a3_err, b3_err, a4_err, b4_err : float
         The errors associated with the ``a3``, ``b3``, ``a4``, and
-        ``b4`` attributes. They are `None` if they could not be
-        computed (NaN in `~photutils.isophote.IsophoteList`).
+        ``b4`` attributes. They are NaN if they could not be
+        computed.
     """
 
     def __init__(self, sample, n_iter, valid, stop_code):
@@ -261,8 +264,9 @@ class Isophote:
                 self.intensity_err = np.nan
                 self.pixel_stddev = np.nan
                 self.gradient = sample.gradient
-                self.gradient_err = sample.gradient_err
-                self.gradient_rel_err = sample.gradient_rel_err
+                self.gradient_err = _nan_if_none(sample.gradient_err)
+                self.gradient_rel_err = _nan_if_none(
+                    sample.gradient_rel_err)
                 self.sector_area = sample.sector_area
                 self.n_data = sample.actual_points
                 self.n_flagged = sample.total_points - sample.actual_points
@@ -270,17 +274,17 @@ class Isophote:
                 self.n_pixels_ellipse = self.n_pixels_circle = 0
                 self.x0_err = self.y0_err = self.pa_err = 0.0
                 self.ellipticity_err = 0.0
-                self.a3 = self.b3 = self.a3_err = self.b3_err = None
-                self.a4 = self.b4 = self.a4_err = self.b4_err = None
+                self.a3 = self.b3 = self.a3_err = self.b3_err = np.nan
+                self.a4 = self.b4 = self.a4_err = self.b4_err = np.nan
                 return
 
             self.rms = np.std(sample.values[2])
             self.intensity_err = self.rms / np.sqrt(sample.actual_points)
             self.pixel_stddev = self.rms * np.sqrt(sample.sector_area)
             self.gradient = sample.gradient
-            self.gradient_err = sample.gradient_err
+            self.gradient_err = _nan_if_none(sample.gradient_err)
 
-            self.gradient_rel_err = sample.gradient_rel_err
+            self.gradient_rel_err = _nan_if_none(sample.gradient_rel_err)
             self.sector_area = sample.sector_area
             self.n_data = sample.actual_points
             self.n_flagged = sample.total_points - sample.actual_points
@@ -303,18 +307,18 @@ class Isophote:
         # are set to zero to ease certain tasks such as model building
         # and plotting magnitude errors.
         self.intensity = sample.mean
-        self.rms = None
+        self.rms = np.nan
         self.intensity_err = 0.0
-        self.pixel_stddev = None
+        self.pixel_stddev = np.nan
         self.gradient = 0.0
-        self.gradient_err = None
-        self.gradient_rel_err = None
-        self.sector_area = None
+        self.gradient_err = np.nan
+        self.gradient_rel_err = np.nan
+        self.sector_area = np.nan
         self.n_data = sample.actual_points
         self.n_flagged = sample.total_points - sample.actual_points
 
-        self.total_flux_ellipse = self.total_flux_circle = None
-        self.n_pixels_ellipse = self.n_pixels_circle = None
+        self.total_flux_ellipse = self.total_flux_circle = np.nan
+        self.n_pixels_ellipse = self.n_pixels_circle = np.nan
 
         self.a3 = self.b3 = 0.0
         self.a4 = self.b4 = 0.0
@@ -462,7 +466,7 @@ class Isophote:
         # The residual variance needs more data points than fitted
         # coefficients.
         if sample.actual_points <= 3:
-            return None, None, None, None
+            return np.nan, np.nan, np.nan, np.nan
 
         try:
             # Upper (third and fourth) harmonics
@@ -486,8 +490,12 @@ class Isophote:
             # This comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
             # it here without too much thought.
-            gre = (self.gradient_rel_err
-                   if self.gradient_rel_err is not None else 0.8)
+            # The sample value is tested because a gradient error that
+            # could not be measured is `None` there, while a measured
+            # relative error can also be NaN. Both are NaN on the
+            # isophote.
+            gre = (sample.gradient_rel_err
+                   if sample.gradient_rel_err is not None else 0.8)
 
             # The relative amplitude error is combined in quadrature with
             # the relative gradient error. The errors are written in a
@@ -497,7 +505,7 @@ class Isophote:
             b_err = np.sqrt((ce[2] / scale)**2 + (b * gre)**2)
 
         except Exception:  # we want to catch everything
-            a = b = a_err = b_err = None
+            a = b = a_err = b_err = np.nan
 
         return a, b, a_err, b_err
 

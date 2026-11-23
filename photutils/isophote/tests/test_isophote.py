@@ -60,10 +60,10 @@ class TestIsophote:
 
         # Deviations from perfect ellipticity. The amplitudes are None
         # if the upper harmonic fit failed.
-        assert iso.a3 is None or abs(iso.a3) <= 0.01
-        assert iso.b3 is None or abs(iso.b3) <= 0.01
-        assert iso.a4 is None or abs(iso.a4) <= 0.01
-        assert iso.b4 is None or abs(iso.b4) <= 0.01
+        assert np.isnan(iso.a3) or abs(iso.a3) <= 0.01
+        assert np.isnan(iso.b3) or abs(iso.b3) <= 0.01
+        assert np.isnan(iso.a4) or abs(iso.a4) <= 0.01
+        assert np.isnan(iso.b4) or abs(iso.b4) <= 0.01
 
     def test_m51(self):
         sample = EllipseSample(self.data, 21.44)
@@ -99,10 +99,10 @@ class TestIsophote:
 
         # Deviations from perfect ellipticity. The amplitudes are None
         # if the upper harmonic fit failed.
-        assert iso.a3 is None or abs(iso.a3) <= 0.05
-        assert iso.b3 is None or abs(iso.b3) <= 0.05
-        assert iso.a4 is None or abs(iso.a4) <= 0.05
-        assert iso.b4 is None or abs(iso.b4) <= 0.05
+        assert np.isnan(iso.a3) or abs(iso.a3) <= 0.05
+        assert np.isnan(iso.b3) or abs(iso.b3) <= 0.05
+        assert np.isnan(iso.a4) or abs(iso.a4) <= 0.05
+        assert np.isnan(iso.b4) or abs(iso.b4) <= 0.05
 
     def test_m51_niter(self):
         # Compare with old STSDAS task. In this task, the
@@ -602,7 +602,7 @@ def test_isophote_few_points_warnings(width, n_data):
 
     # The third and fourth harmonic fits have 3 coefficients and the
     # first and second harmonic fit has 5.
-    assert (isophote.a3 is None) == (n_data <= 3)
+    assert np.isnan(isophote.a3) == (n_data <= 3)
     assert (isophote.x0_err == 0.0) == (n_data <= 5)
 
 
@@ -629,8 +629,8 @@ def test_isophote_few_points(width, has_deviations):
         assert np.isfinite(isophote.a3_err)
     else:
         assert isophote.n_data <= 3
-        assert isophote.a3 is None
-        assert isophote.a4_err is None
+        assert np.isnan(isophote.a3)
+        assert np.isnan(isophote.a4_err)
 
 
 def test_to_table_dtypes():
@@ -712,3 +712,16 @@ def test_to_table_columns_equal_attributes():
     assert tbl.colnames == isolist.get_names()
     with pytest.warns(PhotutilsDeprecationWarning, match='intens_err'):
         assert_array_equal(tbl['intens_err'], isolist.intensity_err)
+
+
+def test_missing_values_are_nan():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    for iso in isolist:
+        for name, *_ in _ISOPHOTE_PROPERTIES:
+            assert getattr(iso, name) is not None
+    central = isolist[0]
+    for name in ('rms', 'pixel_stddev', 'sector_area',
+                 'gradient_err', 'gradient_rel_err',
+                 'total_flux_ellipse', 'n_pixels_circle'):
+        assert np.isnan(getattr(central, name))

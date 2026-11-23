@@ -48,7 +48,7 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
         Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
         ``a4``, and ``b4``) to the result. See
         `~photutils.isophote.Isophote` for details. Harmonics that could
-        not be computed (`None` or NaN) are treated as zero. The default
+        not be computed (NaN) are treated as zero. The default
         is `False`.
 
     sma_interval : float, optional

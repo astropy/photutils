@@ -586,6 +586,13 @@ API Changes
     now a regular ``Isophote`` with ``sma`` of zero. ``Isophote`` has
     a new ``geometry`` attribute. [#2568]
 
+  - The numeric attributes of ``Isophote`` that could not be computed
+    are now NaN instead of `None`. This applies to the gradient
+    errors, the higher-order harmonics and their errors, and the
+    values that are not defined for the central pixel. Code that
+    tests these values with ``is None`` must use ``numpy.isnan``
+    instead. [#2568]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

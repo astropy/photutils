@@ -602,7 +602,10 @@ class Ellipse:
             # An isophote whose gradient error could not be measured
             # counts as exceeding it. The first isophote cannot
             # trigger it, but it counts as the first of the two.
-            gradient_rel_err = isophote.gradient_rel_err
+            # The sample value is tested because a gradient error that
+            # could not be measured is `None` there, while a measured
+            # relative error can also be NaN.
+            gradient_rel_err = isophote.sample.gradient_rel_err
             exceeded = gradient_rel_err is None or gradient_rel_err > maxgerr
             if exceeded and previous_exceeded:
                 if maxsma is not None and maxsma > isophote.sma:
