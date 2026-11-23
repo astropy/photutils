@@ -28,10 +28,13 @@ _HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center',
                         'a2': 'orientation', 'b2': 'ellipticity'}
 
 
-# The indices of the orientation and ellipticity in the ``fix`` array.
-_FIX_INDEX = {name: index for index, name
-              in enumerate(_HARMONIC_PARAMETERS.values())
-              if name != 'center'}
+# The indices of the center, orientation, and ellipticity flags in the
+# ``fix`` array.
+_CENTER_INDICES = tuple(index for index, name
+                        in enumerate(_HARMONIC_PARAMETERS.values())
+                        if name == 'center')
+_ORIENTATION_INDEX = list(_HARMONIC_PARAMETERS.values()).index('orientation')
+_ELLIPTICITY_INDEX = list(_HARMONIC_PARAMETERS.values()).index('ellipticity')
 
 
 def _make_fix_array(*, fix_center, fix_orientation, fix_ellipticity):
@@ -312,21 +315,21 @@ class EllipseGeometry:
         """
         Whether the center is kept fixed during the fit.
         """
-        return bool(self._fix[0] and self._fix[1])
+        return all(self._fix[index] for index in _CENTER_INDICES)
 
     @property
     def fix_orientation(self):
         """
         Whether the orientation is kept fixed during the fit.
         """
-        return bool(self._fix[_FIX_INDEX['orientation']])
+        return bool(self._fix[_ORIENTATION_INDEX])
 
     @property
     def fix_ellipticity(self):
         """
         Whether the ellipticity is kept fixed during the fit.
         """
-        return bool(self._fix[_FIX_INDEX['ellipticity']])
+        return bool(self._fix[_ELLIPTICITY_INDEX])
 
     # Remove in 4.0
     @property

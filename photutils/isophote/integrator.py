@@ -4,6 +4,7 @@ Tools for integrating over pixels.
 """
 
 import abc
+import sys
 import warnings
 
 import numpy as np
@@ -396,7 +397,7 @@ _DEPRECATED_CONSTANTS = {
 }
 
 
-def _get_deprecated_constant(name, module_name):
+def _get_deprecated_constant(name, module_name, *, warn=True):
     """
     Return a deprecated module-level constant and warn.
 
@@ -411,6 +412,9 @@ def _get_deprecated_constant(name, module_name):
     module_name : str
         The name of the module that was searched, used in the error
         message.
+
+    warn : bool, optional
+        Whether to issue the deprecation warning.
 
     Returns
     -------
@@ -427,6 +431,9 @@ def _get_deprecated_constant(name, module_name):
         raise AttributeError(msg)
 
     value = _DEPRECATED_CONSTANTS[name]
+    if not warn:
+        return value
+
     if name == 'INTEGRATORS':
         advice = ('Pass the integration mode as a string, such as '
                   "'bilinear', 'nearest_neighbor', 'mean', or 'median'.")
@@ -436,6 +443,36 @@ def _get_deprecated_constant(name, module_name):
            f'version 4.0. {advice}')
     warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
     return value
+
+
+def _is_fromlist_probe():
+    """
+    Return whether the module ``__getattr__`` that calls this function
+    was called by the probe of the import system for a ``from package
+    import name`` statement.
+
+    For a package, the import system checks the name with `hasattr`
+    in ``importlib._bootstrap._handle_fromlist`` before it reads the
+    attribute. This check relies on that CPython implementation
+    detail. If it does not detect the probe, a deprecated name warns
+    twice instead of once.
+
+    Returns
+    -------
+    result : bool
+        Whether the caller of the module ``__getattr__`` is the import
+        system probe.
+    """
+    # Frame 1 is the module __getattr__ and frame 2 is its caller.
+    get_frame = getattr(sys, '_getframe', None)
+    if get_frame is None:
+        return False
+    try:
+        code = get_frame(2).f_code
+    except ValueError:  # the call stack is not deep enough
+        return False
+    return (code.co_name == '_handle_fromlist'
+            and 'importlib' in code.co_filename)
 
 
 def __getattr__(name):

@@ -563,9 +563,11 @@ class EllipseSample:
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
 
+    # The fixed_parameters argument is deprecated, so passing it
+    # positionally emits only the warning of this decorator, which
+    # handles both the positional and the keyword forms.
     @deprecated_renamed_argument('fixed_parameters', None, '3.2',
                                  until='4.0')
-    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     def update(self, fixed_parameters=None):
         """
         Update this `~photutils.isophote.EllipseSample` instance.

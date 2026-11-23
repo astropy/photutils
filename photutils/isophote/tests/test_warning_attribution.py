@@ -163,7 +163,7 @@ class TestEllipseSample:
     def test_update_positional(self, data):
         sample = EllipseSample(data, 10.0)
         fixed = np.zeros(4, dtype=bool)
-        _assert_attributed(lambda: sample.update(fixed), n_warnings=2)
+        _assert_attributed(lambda: sample.update(fixed), n_warnings=1)
 
 
 class TestEllipse:

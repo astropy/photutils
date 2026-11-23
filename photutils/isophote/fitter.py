@@ -10,7 +10,9 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.isophote.geometry import _HARMONIC_PARAMETERS
+from photutils.isophote.geometry import (_CENTER_INDICES, _ELLIPTICITY_INDEX,
+                                         _HARMONIC_PARAMETERS,
+                                         _ORIENTATION_INDEX)
 from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
                                           _fit_first_and_second_harmonics)
 from photutils.isophote.isophote import Isophote
@@ -29,11 +31,6 @@ DEFAULT_MINITERS = 10
 DEFAULT_MAXITERS = 50
 DEFAULT_MIN_VALID_FRACTION = 0.7
 DEFAULT_MAX_GRADIENT_REL_ERR = 0.5
-
-# The indices of the orientation and ellipticity in the ``fix`` array
-# of EllipseGeometry.
-_ORIENTATION_INDEX = list(_HARMONIC_PARAMETERS.values()).index('orientation')
-_ELLIPTICITY_INDEX = list(_HARMONIC_PARAMETERS.values()).index('ellipticity')
 
 
 class _EllipseFitter:
@@ -327,13 +324,13 @@ class _EllipseFitter:
                 previous_gradient = sample.gradient
                 sample = corrector(sample, largest_harmonic)
 
-                # Only the position correctors (indices 0 and 1) move
-                # the center.
-                if max_center_shift is not None and largest_harmonic_index < 2:
+                # Only the position correctors move the center.
+                if (max_center_shift is not None
+                        and largest_harmonic_index in _CENTER_INDICES):
                     sample, center_at_bound = _limit_center_shift(
                         sample, reference_center, max_center_shift)
                     if center_at_bound:
-                        fit_fixed[:2] = True
+                        fit_fixed[list(_CENTER_INDICES)] = True
 
                 # As in the STSDAS ellipse task, the gradient of this
                 # iteration is the reference that tells whether the

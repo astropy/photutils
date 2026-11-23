@@ -142,10 +142,13 @@ class TestEllipseSamplePositionalKwargs:
     def test_update_positional_warns(self):
         sample = EllipseSample(self.data, 40.0)
         fix = np.array([False, False, False, False])
-        with (pytest.warns(PhotutilsDeprecationWarning,
-                           match='fixed_parameters'),
-              pytest.warns(PhotutilsDeprecationWarning, match='update')):
+        # The argument itself is deprecated, so passing it positionally
+        # emits only the warning for the argument.
+        match = "'fixed_parameters' was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match=match) as record:
             sample.update(fix)
+        assert len(record) == 1
 
     def test_update_keyword_warns_only_for_fixed_parameters(self):
         sample = EllipseSample(self.data, 40.0)
@@ -164,10 +167,13 @@ class TestCentralSamplePositionalKwargs:
         data = make_test_image(seed=0)
         sample = EllipseSample(data, 0.0)
         fix = np.array([False, False, False, False])
-        with (pytest.warns(PhotutilsDeprecationWarning,
-                           match='fixed_parameters'),
-              pytest.warns(PhotutilsDeprecationWarning, match='update')):
+        # The argument itself is deprecated, so passing it positionally
+        # emits only the warning for the argument.
+        match = "'fixed_parameters' was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match=match) as record:
             sample.update(fix)
+        assert len(record) == 1
 
     def test_update_keyword_warns_only_for_fixed_parameters(self):
         data = make_test_image(seed=0)

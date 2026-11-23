@@ -3,6 +3,8 @@
 Tests for the integrator module.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -367,6 +369,58 @@ def test_integrator_constants_deprecated(name):
         value = getattr(photutils.isophote, name)
     with pytest.warns(PhotutilsDeprecationWarning, match=name):
         assert getattr(integrator, name) == value
+
+
+def _record_deprecation_warnings(func):
+    """
+    Call ``func`` with all warnings shown and return the recorded
+    deprecation warnings.
+    """
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter('always')
+        func()
+    return [record for record in records
+            if issubclass(record.category, PhotutilsDeprecationWarning)]
+
+
+def _from_package_import():
+    from photutils.isophote import MEAN
+    return MEAN
+
+
+def _from_module_import():
+    from photutils.isophote.integrator import MEAN
+    return MEAN
+
+
+def _attribute_access():
+    return photutils.isophote.MEAN
+
+
+@pytest.mark.parametrize('func', [_from_package_import, _from_module_import,
+                                  _attribute_access])
+def test_integrator_constant_warns_once(func):
+    """
+    Test that each way of using a deprecated constant emits exactly one
+    warning at the line of the caller, even when repeated warnings are
+    shown.
+    """
+    records = _record_deprecation_warnings(func)
+    assert len(records) == 1
+    assert 'MEAN was deprecated' in str(records[0].message)
+    assert records[0].filename == __file__
+
+
+def test_integrator_constant_silent_uses():
+    def uses():
+        namespace = {}
+        exec('from photutils.isophote import *', namespace)  # noqa: S102
+        dir(photutils.isophote)
+        dir(integrator)
+        assert not hasattr(photutils.isophote, 'nonexistent')
+        assert not hasattr(integrator, 'nonexistent')
+
+    assert _record_deprecation_warnings(uses) == []
 
 
 def test_integrator_getattr_unknown_name():
