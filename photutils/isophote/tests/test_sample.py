@@ -10,6 +10,7 @@ import warnings
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.coordinates import Angle
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.isophote.ellipse import Ellipse
@@ -508,6 +509,12 @@ class TestOrientationUnits:
         assert records == []
         assert_allclose(sample.geometry._orientation_rad, np.pi / 6)
 
+    def test_keyword_angle(self):
+        records, sample = self._records(
+            lambda: EllipseSample(DATA, 40.0, orientation=Angle(30.0, 'deg')))
+        assert records == []
+        assert_allclose(sample.geometry._orientation_rad, np.pi / 6)
+
     @pytest.mark.parametrize('value', [0.5, 0, np.float64(0.5)],
                              ids=['float', 'int', 'float64'])
     def test_keyword_number(self, value):
@@ -528,6 +535,14 @@ class TestOrientationUnits:
         assert "'position_angle' was deprecated" in str(records[0].message)
         assert records[0].filename == __file__
         assert sample.geometry._orientation_rad == 0.5
+
+    def test_position_angle_quantity(self):
+        records, sample = self._records(
+            lambda: EllipseSample(DATA, 40.0, position_angle=30.0 * u.deg))
+        assert len(records) == 1
+        assert "'position_angle' was deprecated" in str(records[0].message)
+        assert records[0].filename == __file__
+        assert_allclose(sample.geometry._orientation_rad, np.pi / 6)
 
     def test_positional_number(self):
         records, sample = self._records(

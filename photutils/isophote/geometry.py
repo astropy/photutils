@@ -361,7 +361,8 @@ class EllipseGeometry:
     ------
     TypeError
         If ``orientation`` is given with the ``orientation`` keyword as
-        a number without units.
+        a number without units, or if a number without units is
+        assigned to the ``orientation`` attribute.
     """
 
     @deprecated_renamed_argument(

@@ -108,7 +108,7 @@ an image ``data`` of a galaxy centered near (256, 256)::
     >>> import astropy.units as u
     >>> from photutils.isophote import Ellipse, EllipseGeometry
     >>> geometry = EllipseGeometry(x0=256, y0=256, sma=20, ellipticity=0.2,
-    ...                            orientation=10.0 * u.deg)
+    ...                            orientation=0.2 * u.rad)
     >>> ellipse = Ellipse(data, geometry=geometry)
     >>> isolist = ellipse.fit_image(max_center_shift=2.0)
 
