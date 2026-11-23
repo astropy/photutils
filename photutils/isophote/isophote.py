@@ -12,7 +12,7 @@ from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,
                                           fit_upper_harmonic)
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
-                                          deprecated_getattr,
+                                          deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           warn_deprecated_attribute)
 from photutils.utils._misc import _get_meta
@@ -646,14 +646,14 @@ class Isophote:
 
     def to_table(self):
         """
-        Return the main isophote parameters as an astropy
+        Return the default isophote parameters as an astropy
         `~astropy.table.QTable`.
 
         Returns
         -------
         result : `~astropy.table.QTable`
-            A one-row table with the main isophote parameters (see
-            `~photutils.isophote.IsophoteList.to_table`). The
+            A one-row table with the default isophote parameters (see
+            `~photutils.isophote.IsophoteList.default_columns`). The
             ``orientation`` and ``orientation_err`` columns are
             `~astropy.units.Quantity` columns in degrees.
         """
@@ -677,10 +677,18 @@ class IsophoteList:
     ----------
     iso_list : list of `~photutils.isophote.Isophote`
         A list of `~photutils.isophote.Isophote` instances.
+
+    Attributes
+    ----------
+    default_columns : list of str
+        The names of the properties included in the output of
+        `to_table` when ``columns`` is `None`. The list can be changed.
+        It is copied to the lists created by slicing or adding.
     """
 
     def __init__(self, iso_list):
         self._list = iso_list
+        self.default_columns = list(_DEFAULT_COLUMNS)
 
     # Remove in 4.0
     def __getattr__(self, name):
@@ -703,7 +711,9 @@ class IsophoteList:
 
     def __getitem__(self, index):
         if isinstance(index, slice):
-            return IsophoteList(self._list[index])
+            result = IsophoteList(self._list[index])
+            result.default_columns = self.default_columns.copy()
+            return result
         return self._list.__getitem__(index)
 
     def __iter__(self):
@@ -758,7 +768,9 @@ class IsophoteList:
     def __add__(self, value):
         temp = self._list[:]  # shallow copy
         temp.extend(value._list)
-        return IsophoteList(temp)
+        result = IsophoteList(temp)
+        result.default_columns = self.default_columns.copy()
+        return result
 
     def get_closest(self, sma):
         """
@@ -791,22 +803,34 @@ class IsophoteList:
         """
         return self._collect_as_list('sample')
 
+    @property
+    def properties(self):
+        """
+        A list of the names of the properties of an
+        `~photutils.isophote.IsophoteList` instance.
+
+        The ``sample`` property is excluded.
+        """
+        return list(_PROPERTY_NAMES)
+
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def to_table(self, columns='main'):
+    def to_table(self, columns=None):
         """
         Convert an `~photutils.isophote.IsophoteList` instance to a
         `~astropy.table.QTable`.
 
         Parameters
         ----------
-        columns : {'main', 'all'} or list of str, optional
-            The isophote properties to include. ``'main'`` (default)
-            selects the main properties and ``'all'`` selects all the
-            properties returned by :meth:`get_names`. With these two
-            options, the columns have the same names as the properties.
-            Otherwise, ``columns`` is a list of property names. A
-            deprecated name gives a column with its new name and emits
-            a deprecation warning.
+        columns : list of str, `None`, optional
+            Names of columns, in order, to include in the output
+            `~astropy.table.QTable`. The allowed column names are the
+            names in the `properties` attribute. If ``columns`` is
+            `None`, then a default list of properties (as defined by
+            the `default_columns` attribute) will be used. A deprecated
+            name gives a column with its new name and emits a
+            deprecation warning. The deprecated ``'main'`` and
+            ``'all'`` values are equivalent to `None` and to the
+            `properties` attribute, respectively.
 
         Returns
         -------
@@ -823,6 +847,8 @@ class IsophoteList:
         """
         return _isophote_list_to_table(self, columns=columns)
 
+    @deprecated('3.2', alternative='the ``properties`` attribute',
+                until='4.0')
     def get_names(self):
         """
         Get the names of the properties of an
@@ -835,11 +861,11 @@ class IsophoteList:
         list_names : list
             A list of the names of the properties.
         """
-        return list(_PROPERTY_NAMES)
+        return self.properties
 
 
 # The properties of IsophoteList, as (name, dtype, unit, description)
-# entries in the order returned by IsophoteList.get_names().
+# entries in the order of IsophoteList.properties.
 _ISOPHOTE_PROPERTIES = (
     ('sma', float, None,
      'The semimajor axis length (pixels).'),
@@ -975,7 +1001,17 @@ _DEFAULT_COLUMNS = ('sma', 'intensity', 'intensity_err', 'ellipticity',
                     'n_iter', 'stop_code')
 
 
-def _isophote_list_to_table(isophote_list, *, columns='main'):
+def _warn_deprecated_shortcut(name, replacement):
+    # Remove in 4.0
+    # The stacklevel points at the caller of IsophoteList.to_table,
+    # through the deprecated_positional_kwargs wrapper.
+    msg = (f'The columns={name!r} value was deprecated in version 3.2. '
+           f'Use {replacement} instead. It will be removed in version '
+           '4.0.')
+    warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=5)
+
+
+def _isophote_list_to_table(isophote_list, *, columns=None):
     """
     Convert an `~photutils.isophote.IsophoteList` instance to a
     `~astropy.table.QTable`.
@@ -986,13 +1022,10 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
             `~photutils.isophote.IsophoteList` instance
         A list of isophotes.
 
-    columns : {'main', 'all'} or list of str, optional
-        The isophote properties to include. ``'main'`` (default) selects
-        the main properties and ``'all'`` selects all the properties
-        returned by `~photutils.isophote.IsophoteList.get_names`. With
-        these two options, the columns have the same names as the
-        properties. Otherwise, ``columns`` is a list of property names.
-        A deprecated name gives a column with its new name and emits a
+    columns : list of str, `None`, optional
+        The names of the isophote properties to include. If `None`,
+        the ``default_columns`` of ``isophote_list`` are used. A
+        deprecated name gives a column with its new name and emits a
         deprecation warning.
 
     Returns
@@ -1022,6 +1055,9 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
                         'intens_err': 'intensity_err'}
     all_names = _PROPERTY_NAMES
 
+    if columns is None:
+        columns = isophote_list.default_columns
+
     allowed_columns = {*all_names, 'main', 'all'}
     table_columns = validate_table_columns(
         columns, allowed_columns, deprecated_names=_deprecation_map)
@@ -1040,9 +1076,11 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
 
     # The names of the properties that are the table columns.
     if table_columns == ['all']:
+        _warn_deprecated_shortcut('all', "the 'properties' attribute")
         names = list(all_names)
     elif table_columns == ['main']:
-        names = list(_DEFAULT_COLUMNS)
+        _warn_deprecated_shortcut('main', 'columns=None')
+        names = list(isophote_list.default_columns)
     else:
         # A deprecated name uses the new name, with a single deprecation
         # warning instead of one per isophote.

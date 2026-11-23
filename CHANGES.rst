@@ -59,6 +59,11 @@ New Features
     the stop code of the first isophote, the reason why it failed,
     and what to check. [#2560]
 
+  - Added ``properties`` and ``default_columns`` attributes to
+    ``IsophoteList``, like those of ``SourceCatalog``.
+    ``IsophoteList.to_table`` now uses ``default_columns`` when
+    ``columns`` is `None` (the new default). [#2568]
+
 - ``photutils.psf``
 
   - The ``extract_stars`` function now recognizes common alternative
@@ -644,6 +649,12 @@ API Changes
     ``fix_ellipticity``. Each method accepts only the keywords it
     already had. The old names are deprecated and will be removed in
     version 4.0. [#2568]
+
+  - ``IsophoteList.get_names`` is deprecated in favor of the new
+    ``properties`` attribute. The ``'main'`` and ``'all'`` values of
+    the ``columns`` keyword of ``IsophoteList.to_table`` are deprecated
+    in favor of ``columns=None`` and ``columns=isolist.properties``.
+    They will be removed in version 4.0. [#2568]
 
 - ``photutils.psf``
 

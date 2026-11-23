@@ -395,7 +395,7 @@ class TestIsophoteList:
             tbl = isolist.to_table(columns=[old_name])
         assert tbl.colnames == [new_name]
 
-        tbl = isolist.to_table(columns='all')
+        tbl = isolist.to_table(columns=isolist.properties)
         assert new_name in tbl.colnames
         assert old_name not in tbl.colnames
         match = f"'{old_name}' was deprecated in version 3.2"
@@ -404,7 +404,8 @@ class TestIsophoteList:
         assert_allclose(column, tbl[new_name])
 
     def test_deprecated_since_versions(self):
-        tbl = self.isolist_sma10.to_table(columns='all')
+        tbl = self.isolist_sma10.to_table(
+            columns=self.isolist_sma10.properties)
         match = "'niter' was deprecated in version 3.0"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             _ = tbl['niter']
@@ -505,16 +506,13 @@ class TestIsophoteList:
         ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(max_sma=27)
 
-        assert len(isolist.get_names()) >= 30  # test for get_names
+        assert len(isolist.properties) >= 30
 
         tbl = isolist.to_table()
         assert len(tbl.colnames) == 18
 
-        tbl = isolist.to_table(columns='all')
+        tbl = isolist.to_table(columns=isolist.properties)
         assert len(tbl.colnames) >= 30
-
-        tbl = isolist.to_table(columns='main')
-        assert len(tbl.colnames) == 18
 
         tbl = isolist.to_table(columns=['sma'])
         assert len(tbl.colnames) == 1
@@ -566,7 +564,7 @@ class TestIsophoteList:
         g = EllipseGeometry(27, 27, 5, 0.2, 0)
         ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(max_sma=27)
-        tbl = isolist.to_table(columns='all')
+        tbl = isolist.to_table(columns=isolist.properties)
         assert 'grad_rerror' not in tbl.colnames
 
         match = "'grad_rerror' was deprecated"
@@ -647,7 +645,7 @@ def test_to_table_dtypes():
     isolist = Ellipse(data).fit_image(max_sma=20.0)
     assert type(isolist[0]) is Isophote
 
-    for columns in ('main', 'all'):
+    for columns in (None, isolist.properties):
         tbl = isolist.to_table(columns=columns)
         for name in tbl.colnames:
             assert tbl[name].dtype.kind in 'fib'
@@ -687,7 +685,7 @@ def test_isophote_list_properties_match_definitions():
         assert np.asarray(values).dtype == np.dtype(dtype)
         assert description
         assert getattr(IsophoteList, name).__doc__
-    assert isolist.get_names() == [p[0] for p in _ISOPHOTE_PROPERTIES]
+    assert isolist.properties == [p[0] for p in _ISOPHOTE_PROPERTIES]
 
 
 RENAMED = {'intens': 'intensity', 'int_err': 'intensity_err',
@@ -713,8 +711,8 @@ def test_renamed_result_attributes(old, new):
 def test_to_table_columns_equal_attributes():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image()
-    tbl = isolist.to_table(columns='all')
-    assert tbl.colnames == isolist.get_names()
+    tbl = isolist.to_table(columns=isolist.properties)
+    assert tbl.colnames == isolist.properties
     with pytest.warns(PhotutilsDeprecationWarning, match='intens_err'):
         assert_array_equal(tbl['intens_err'], isolist.intensity_err)
 
@@ -779,3 +777,53 @@ def test_isophote_deprecated_orientation_names():
         tbl = isolist.to_table(columns=['sma', 'pa_err'])
     assert tbl.colnames == ['sma', 'orientation_err']
     assert tbl['orientation_err'].unit == u.deg
+
+
+def test_to_table_default_columns():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    assert isolist.to_table().colnames == isolist.default_columns
+    isolist.default_columns = ['sma', 'intensity']
+    assert isolist.to_table().colnames == ['sma', 'intensity']
+    assert isolist[2:5].default_columns == ['sma', 'intensity']
+    tbl = isolist.to_table(columns=isolist.properties)
+    assert tbl.colnames == isolist.properties
+
+
+def test_default_columns_carried_as_copy():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    isolist.default_columns = ['sma', 'intensity']
+
+    sliced = isolist[2:5]
+    sliced.default_columns.append('x0')
+    assert isolist.default_columns == ['sma', 'intensity']
+
+    added = isolist[:3] + isolist[3:6]
+    assert added.default_columns == ['sma', 'intensity']
+    added.default_columns.append('y0')
+    assert isolist.default_columns == ['sma', 'intensity']
+
+    assert isolist[0].to_table().colnames == list(
+        IsophoteList([]).default_columns)
+
+
+@pytest.mark.parametrize('name', ['main', 'all'])
+def test_to_table_deprecated_shortcuts(name):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    with pytest.warns(PhotutilsDeprecationWarning, match=name) as record:
+        tbl = isolist.to_table(columns=name)
+    assert len(record) == 1
+    assert record[0].filename == __file__
+    expected = (isolist.default_columns if name == 'main'
+                else isolist.properties)
+    assert tbl.colnames == expected
+
+
+def test_get_names_deprecated():
+    isolist = IsophoteList([])
+    with pytest.warns(PhotutilsDeprecationWarning,
+                      match='properties') as record:
+        assert isolist.get_names() == isolist.properties
+    assert record[0].filename == __file__
