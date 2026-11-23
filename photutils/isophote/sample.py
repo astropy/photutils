@@ -750,9 +750,8 @@ class EllipseSample:
         # If still no meaningful gradient can be measured, use the
         # reference, slightly shallower. The factor of 0.8 comes from
         # the STSDAS ellipse task, where the reference can also be the
-        # gradient of the previous isophote (see the isophote FAQ in
-        # the documentation). The gradient error is meaningless in
-        # this case.
+        # gradient of the previous isophote (see the isophote user
+        # guide). The gradient error is meaningless in this case.
         if not self._is_meaningful_gradient(gradient, gradient_err,
                                             previous_gradient):
             gradient = previous_gradient * 0.8
