@@ -4,6 +4,7 @@ Tools for sampling data along an elliptical path.
 """
 
 import copy
+import warnings
 
 import astropy.units as u
 import numpy as np
@@ -11,9 +12,11 @@ import numpy as np
 from photutils.isophote._polar_path import compute_polar_path
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import INTEGRATORS
-from photutils.utils._deprecation import (deprecated_getattr,
+from photutils.utils._deprecation import (deprecated_attribute,
+                                          deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 # Remove in 4.0
 _DEPRECATED_SAMPLE_ATTRIBUTES = {
@@ -96,20 +99,37 @@ class EllipseSample:
         ``image.shape[1] / 2`` for ``x0`` and ``image.shape[0] / 2``
         for ``y0``. This is half a pixel larger than the image center
         in the pixel-center convention, ``(n - 1) / 2``.
-    astep : float, optional
+    step : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
         as a relative value (when ``linear_growth=False``). The default
         is 0.1.
-    eps : float, optional
+
+        .. deprecated:: 3.2
+            The ``astep`` keyword is deprecated. Use ``step`` instead.
+    ellipticity : float, optional
         The ellipticity of the ellipse. It must be less than 1. The
         default is 0.2.
-    position_angle : float, optional
-        The position angle (in radians) of the semimajor axis of the
-        ellipse in relation to the positive x-axis of the image array
-        (rotating towards the positive y-axis). The default is 0.
-    sclip : float, optional
+
+        .. deprecated:: 3.2
+            The ``eps`` keyword is deprecated. Use ``ellipticity``
+            instead.
+    orientation : float or `~astropy.units.Quantity`, optional
+        The orientation of the semimajor axis of the ellipse, measured
+        from the positive x-axis of the image array towards the
+        positive y-axis. A float is in radians and a
+        `~astropy.units.Quantity` must have angular units. The default
+        is 0.
+
+        .. deprecated:: 3.2
+            The ``position_angle`` keyword is deprecated. Use
+            ``orientation`` instead.
+    clip_sigma : float, optional
         The sigma-clip sigma value. The default is 3.0.
+
+        .. deprecated:: 3.2
+            The ``sclip`` keyword is deprecated. Use ``clip_sigma``
+            instead.
     n_clip : int, optional
         The number of sigma-clip iterations. Set to zero to skip
         sigma clipping. The default is 0.
@@ -119,14 +139,19 @@ class EllipseSample:
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
         `False`.
-    integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, optional
+    integration_mode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
+            optional
         The integration mode. The 'mean' and 'median' modes integrate
         over elliptical sectors and fall back to 'bilinear' for sectors
         smaller than 1 pixel. The default is 'bilinear'.
+
+        .. deprecated:: 3.2
+            The ``integrmode`` keyword is deprecated. Use
+            ``integration_mode`` instead.
     geometry : `~photutils.isophote.EllipseGeometry` or `None`, optional
         The geometry that describes the ellipse. If input, a copy of it
         is used with its semimajor axis length set to ``sma``, and the
-        ``x0``, ``y0``, ``astep``, ``eps``, ``position_angle``, and
+        ``x0``, ``y0``, ``step``, ``ellipticity``, ``orientation``, and
         ``linear_growth`` keywords are ignored. The input geometry is
         not modified. The default is `None`.
 
@@ -135,24 +160,41 @@ class EllipseSample:
     image : 2D `~numpy.ndarray`
         The input image as an array. A `~numpy.ma.MaskedArray` input is
         kept as is.
-    integrmode : str
+    integration_mode : str
         The integration mode.
-    sclip : float
+    integrmode : str
+        .. deprecated:: 3.2
+            Use ``integration_mode`` instead.
+    clip_sigma : float
         The sigma-clip sigma value.
+    sclip : float
+        .. deprecated:: 3.2
+            Use ``clip_sigma`` instead.
     n_clip : int
         The number of sigma-clip iterations.
     nclip : int
         .. deprecated:: 3.0
             Use ``n_clip`` instead.
-    values : 2D `~numpy.ndarray` or `None`
-        The sampled values as an array of shape (3, N), where the rows
-        contain the angles, radii, and extracted intensity values,
-        respectively, of the N valid sampled points. It is `None` until
+    angles : 1D `~numpy.ndarray` or `None`
+        The angles of the valid sampled points. It is `None` until
         :meth:`~photutils.isophote.EllipseSample.extract` is called.
-    mean : float or `None`
+    radii : 1D `~numpy.ndarray` or `None`
+        The radii of the valid sampled points. It is `None` until
+        :meth:`~photutils.isophote.EllipseSample.extract` is called.
+    intensities : 1D `~numpy.ndarray` or `None`
+        The extracted intensity values of the valid sampled points. It
+        is `None` until
+        :meth:`~photutils.isophote.EllipseSample.extract` is called.
+    values : 2D `~numpy.ndarray` or `None`
+        .. deprecated:: 3.2
+            Use ``angles``, ``radii``, and ``intensities`` instead.
+    intensity : float or `None`
         The mean intensity along the elliptical path. It is `None`
         until :meth:`~photutils.isophote.EllipseSample.update` is
         called and NaN if there are no valid sampled points.
+    mean : float or `None`
+        .. deprecated:: 3.2
+            Use ``intensity`` instead.
     geometry : `~photutils.isophote.EllipseGeometry`
         The geometry of the elliptical path.
     gradient : float or `None`
@@ -183,15 +225,21 @@ class EllipseSample:
         and 'nearest_neighbor' modes it is a nominal value of 2 or 1,
         respectively. It is `None` until
         :meth:`~photutils.isophote.EllipseSample.extract` is called.
-    total_points : int
+    n_total : int
         The total number of sample values that would cover the entire
         elliptical path.
-    actual_points : int
+    total_points : int
+        .. deprecated:: 3.2
+            Use ``n_total`` instead.
+    n_valid : int
         The actual number of sample values that were taken from the
-        image. It can be smaller than ``total_points`` when the ellipse
+        image. It can be smaller than ``n_total`` when the ellipse
         encompasses regions outside the image, when it encompasses
         masked or nonfinite pixels, or when sigma clipping removed some
         of the points.
+    actual_points : int
+        .. deprecated:: 3.2
+            Use ``n_valid`` instead.
 
     Raises
     ------
@@ -199,22 +247,30 @@ class EllipseSample:
         If ``image`` is a `~astropy.units.Quantity` array.
 
     ValueError
-        If ``image`` is not a 2D array or ``integrmode`` is not a valid
+        If ``image`` is not a 2D array or ``integration_mode`` is not a valid
         integration mode.
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
-    def __init__(self, image, sma, x0=None, y0=None, astep=0.1, eps=0.2,
-                 position_angle=0.0, sclip=3.0, n_clip=0,
-                 linear_growth=False,
-                 integrmode='bilinear', geometry=None):
+    @deprecated_renamed_argument('astep', 'step', '3.2', until='4.0')
+    @deprecated_renamed_argument('eps', 'ellipticity', '3.2', until='4.0')
+    @deprecated_renamed_argument('position_angle', 'orientation', '3.2',
+                                 until='4.0')
+    @deprecated_renamed_argument('sclip', 'clip_sigma', '3.2', until='4.0')
+    @deprecated_renamed_argument('integrmode', 'integration_mode', '3.2',
+                                 until='4.0')
+    def __init__(self, image, sma, x0=None, y0=None, step=0.1,
+                 ellipticity=0.2, orientation=0.0, clip_sigma=3.0,
+                 n_clip=0, linear_growth=False,
+                 integration_mode='bilinear', geometry=None):
         image = _validate_image(image)
-        if integrmode not in INTEGRATORS:
-            msg = f'integrmode must be one of {sorted(INTEGRATORS)}'
+        if integration_mode not in INTEGRATORS:
+            msg = ('integration_mode must be one of '
+                   f'{sorted(INTEGRATORS)}')
             raise ValueError(msg)
         self.image = image
-        self.integrmode = integrmode
+        self.integration_mode = integration_mode
 
         if geometry:
             # When the geometry is inherited from somewhere else, its
@@ -229,18 +285,18 @@ class EllipseSample:
             _x0 = image.shape[1] / 2 if x0 is None else x0
             _y0 = image.shape[0] / 2 if y0 is None else y0
 
-            self.geometry = EllipseGeometry(_x0, _y0, sma, eps,
-                                            position_angle, step=astep,
+            self.geometry = EllipseGeometry(_x0, _y0, sma, ellipticity,
+                                            orientation, step=step,
                                             linear_growth=linear_growth)
 
         # Sigma-clip parameters
-        self.sclip = sclip
+        self.clip_sigma = clip_sigma
         self.n_clip = n_clip
 
         # Extracted values associated with this sample.
-        self.values = None
+        self._values = None
         self._updated_values = None
-        self.mean = None
+        self.intensity = None
         self.gradient = None
         self.gradient_err = None
         self.gradient_rel_err = None
@@ -252,11 +308,69 @@ class EllipseSample:
         # fitter.
         self._reference_gradient = None
 
-        # The total_points attribute is the number of angle-radius pairs
-        # that were attempted. The actual_points attribute is the number
+        # The n_total attribute is the number of angle-radius pairs
+        # that were attempted. The n_valid attribute is the number
         # of sampled pairs that resulted in valid values.
-        self.total_points = 0
-        self.actual_points = 0
+        self.n_total = 0
+        self.n_valid = 0
+
+    # Remove in 4.0
+    mean = deprecated_attribute('mean', 'intensity', '3.2', until='4.0')
+    actual_points = deprecated_attribute('actual_points', 'n_valid', '3.2',
+                                         until='4.0')
+    total_points = deprecated_attribute('total_points', 'n_total', '3.2',
+                                        until='4.0')
+    sclip = deprecated_attribute('sclip', 'clip_sigma', '3.2', until='4.0')
+    integrmode = deprecated_attribute('integrmode', 'integration_mode',
+                                      '3.2', until='4.0')
+
+    # Remove in 4.0
+    @property
+    def values(self):
+        """
+        The sampled values as an array of shape (3, N).
+
+        .. deprecated:: 3.2
+            Use ``angles``, ``radii``, and ``intensities`` instead.
+        """
+        self._warn_values()
+        return self._values
+
+    @values.setter
+    def values(self, value):  # numpydoc ignore=GL08
+        self._warn_values()
+        self._values = value
+
+    @staticmethod
+    def _warn_values():
+        msg = ("The 'values' attribute was deprecated in version 3.2 and "
+               'will be removed in version 4.0. Use the angles, radii, '
+               'and intensities attributes instead.')
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+
+    @property
+    def angles(self):
+        """
+        The angles of the valid sampled points, or `None` before
+        extraction.
+        """
+        return None if self._values is None else self._values[0]
+
+    @property
+    def radii(self):
+        """
+        The radii of the valid sampled points, or `None` before
+        extraction.
+        """
+        return None if self._values is None else self._values[1]
+
+    @property
+    def intensities(self):
+        """
+        The intensities of the valid sampled points, or `None` before
+        extraction.
+        """
+        return None if self._values is None else self._values[2]
 
     # Remove in 4.0
     def __getattr__(self, name):
@@ -269,10 +383,10 @@ class EllipseSample:
         Extract sample data by scanning an elliptical path over the
         image array.
 
-        The extracted values are cached in the ``values`` attribute, and
-        later calls return them without scanning the image again, even
-        if the ``geometry`` attribute has changed. Set ``values`` to
-        `None` to extract the sample again.
+        The extracted values are cached in the ``angles``, ``radii``,
+        and ``intensities`` attributes, and later calls return them
+        without scanning the image again, even if the ``geometry``
+        attribute has changed. Make a new sample to extract again.
 
         Returns
         -------
@@ -289,8 +403,8 @@ class EllipseSample:
         """
         # The sample values themselves are kept cached to prevent
         # multiple calls to the integrator code.
-        if self.values is not None:
-            return self.values
+        if self._values is not None:
+            return self._values
 
         # An ellipse with an ellipticity of 1 or larger or a nonfinite
         # center has no elliptical path. The geometry is checked here
@@ -308,7 +422,7 @@ class EllipseSample:
             raise ValueError(msg)
 
         s = self._extract()
-        self.values = s
+        self._values = s
         return s
 
     def _extract(self, *, phi_min=0.05):
@@ -318,7 +432,7 @@ class EllipseSample:
         # Here the actual sampling takes place. This is called only once
         # during the life of an EllipseSample instance, because it's
         # an expensive calculation. This method should not be called
-        # from external code. To force it to rerun, set "sample.values =
+        # from external code. To force it to rerun, set "sample._values =
         # None" before calling sample.extract().
 
         # Individual extracted sample points will be stored in here.
@@ -328,12 +442,12 @@ class EllipseSample:
         sector_areas = []
 
         # Reset counters.
-        self.total_points = 0
-        self.actual_points = 0
+        self.n_total = 0
+        self.n_valid = 0
 
         # Build integrator.
-        integrator = INTEGRATORS[self.integrmode](self.image, self.geometry,
-                                                  angles, radii, intensities)
+        integrator = INTEGRATORS[self.integration_mode](
+            self.image, self.geometry, angles, radii, intensities)
 
         # Initialize walk along elliptical path.
         radius = self.geometry._initial_polar_radius
@@ -358,10 +472,8 @@ class EllipseSample:
                 integrator = INTEGRATORS['bilinear'](
                     self.image, self.geometry, angles, radii, intensities)
             else:
-                integrator = INTEGRATORS[self.integrmode](self.image,
-                                                          self.geometry,
-                                                          angles, radii,
-                                                          intensities)
+                integrator = INTEGRATORS[self.integration_mode](
+                    self.image, self.geometry, angles, radii, intensities)
 
         # Walk along elliptical path, integrating at specified places
         # defined by polar vector. Need to go a bit beyond full circle
@@ -377,7 +489,7 @@ class EllipseSample:
                 sector_areas.append(integrator.get_sector_area())
 
                 # Update total number of points.
-                self.total_points += 1
+                self.n_total += 1
 
                 # Update angle and radius to be used to define next
                 # polar vector along the elliptical path.
@@ -395,7 +507,7 @@ class EllipseSample:
             angles, radii, intensities = integrator.integrate_path(
                 path_radii, phis)
             sector_areas.append(integrator.get_sector_area())
-            self.total_points = len(phis)
+            self.n_total = len(phis)
 
         # Average sector area is calculated after the integrator had
         # the opportunity to step over the entire elliptical path.
@@ -407,7 +519,7 @@ class EllipseSample:
 
         # Actual number of sampled points, after sigma clipping
         # removed outliers
-        self.actual_points = len(angles)
+        self.n_valid = len(angles)
 
         # Pack results in 2D array.
         return np.array([np.array(angles), np.array(radii),
@@ -429,8 +541,8 @@ class EllipseSample:
                 break
             mean = np.mean(intensities)
             sig = np.std(intensities)
-            lower = mean - self.sclip * sig
-            upper = mean + self.sclip * sig
+            lower = mean - self.clip_sigma * sig
+            upper = mean + self.clip_sigma * sig
             keep = (intensities >= lower) & (intensities <= upper)
             angles = angles[keep]
             radii = radii[keep]
@@ -448,13 +560,15 @@ class EllipseSample:
                                              angles, radii, intensities)
         integrator.integrate(0.0, 0.0)
 
-        self.total_points = 1
-        self.actual_points = len(intensities)
+        self.n_total = 1
+        self.n_valid = len(intensities)
 
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('fixed_parameters', None, '3.2',
+                                 until='4.0')
     def update(self, fixed_parameters=None):
         """
         Update this `~photutils.isophote.EllipseSample` instance.
@@ -463,13 +577,13 @@ class EllipseSample:
         :meth:`~photutils.isophote.EllipseSample.extract` method to get
         the sample values, and then computes the mean intensity, local
         gradient, and other associated quantities. The sample values
-        are those cached in the ``values`` attribute, if any, which may
+        are those cached from the last extraction, if any, which may
         not match the current ``geometry`` attribute.
 
         The local radial gradient is measured from a second sample on
         an ellipse with a 10% larger semimajor axis length (or 20%
         larger if the first estimate is not meaningful), as in the
-        STSDAS ``ellipse`` task, regardless of the ``astep`` value.
+        STSDAS ``ellipse`` task, regardless of the ``step`` value.
 
         A meaningful gradient is negative and is either steeper than
         one third of a reference gradient or measured with a relative
@@ -481,10 +595,10 @@ class EllipseSample:
         neither estimate is meaningful, the gradient is set to 0.8
         times the reference and its error is set to `None`.
 
-        The mean intensity and the gradient are computed only if the
+        The intensity and the gradient are computed only if the
         sample values changed since the last call.
 
-        If there are no valid sampled points, ``mean``, ``gradient``,
+        If there are no valid sampled points, ``intensity``, ``gradient``,
         and ``gradient_err`` are set to NaN and ``gradient_rel_err`` is
         set to `None`.
 
@@ -497,14 +611,22 @@ class EllipseSample:
             attribute of `~photutils.isophote.EllipseGeometry`. If
             `None`, the fixed parameters of the ``geometry`` attribute
             are not changed.
+
+            .. deprecated:: 3.2
+                The ``fixed_parameters`` keyword is deprecated.
         """
+        self._update(fixed_parameters=fixed_parameters)
+
+    def _update(self, *, fixed_parameters=None):
+        # See the update method. The fitter uses this method to set the
+        # fixed parameters of the geometry without a warning.
         if self.geometry.sma == 0:
             # The central pixel has a single sample and no gradient.
             # The fixed parameters are ignored.
             s = self.extract()
 
             # The central pixel may be masked or nonfinite.
-            self.mean = s[2][0] if self.actual_points > 0 else np.nan
+            self.intensity = s[2][0] if self.n_valid > 0 else np.nan
             self.gradient = None
             self.gradient_err = None
             self.gradient_rel_err = None
@@ -531,13 +653,13 @@ class EllipseSample:
         # The fitter detects this condition separately via its own
         # zero-length check and marks the isophote as invalid.
         if len(s[2]) == 0:
-            self.mean = np.nan
+            self.intensity = np.nan
             self.gradient = np.nan
             self.gradient_err = np.nan
             self.gradient_rel_err = None
             return
 
-        self.mean = np.mean(s[2])
+        self.intensity = np.mean(s[2])
 
         # Get sample with same geometry but at a different distance from
         # center. Estimate gradient from there.
@@ -619,13 +741,14 @@ class EllipseSample:
             self.image, geometry.sma if sma is None else sma,
             x0=geometry.x0 if x0 is None else x0,
             y0=geometry.y0 if y0 is None else y0,
-            astep=geometry.step, sclip=self.sclip, n_clip=self.n_clip,
-            eps=(geometry.ellipticity if ellipticity is None
-                 else ellipticity),
-            position_angle=(geometry._orientation_rad if orientation is None
-                            else orientation),
+            step=geometry.step, clip_sigma=self.clip_sigma,
+            n_clip=self.n_clip,
+            ellipticity=(geometry.ellipticity if ellipticity is None
+                         else ellipticity),
+            orientation=(geometry._orientation_rad if orientation is None
+                         else orientation),
             linear_growth=geometry.linear_growth,
-            integrmode=self.integrmode)
+            integration_mode=self.integration_mode)
 
     def _get_gradient(self, radius):
         # The gradient sample is at a relative distance ``radius`` from
@@ -646,7 +769,7 @@ class EllipseSample:
             return np.nan, np.nan
 
         mean_g = np.mean(sg[2])
-        gradient = (mean_g - self.mean) / self.geometry.sma / radius
+        gradient = (mean_g - self.intensity) / self.geometry.sma / radius
 
         s = self.extract()
         sigma = np.std(s[2])
@@ -671,8 +794,8 @@ class EllipseSample:
         x, y : 1D `~numpy.ndarray`
             The x and y coordinate arrays.
         """
-        angles = self.values[0]
-        radii = self.values[1]
+        angles = self.angles
+        radii = self.radii
         orientation = self.geometry._orientation_rad
         x = radii * np.cos(angles + orientation) + self.geometry.x0
         y = radii * np.sin(angles + orientation) + self.geometry.y0

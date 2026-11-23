@@ -203,8 +203,8 @@ class EllipseFitter:
         # with the input geometry, as in the noniterative mode. An
         # isophote without any valid data points is invalid.
         if np.all(fixed_parameters):
-            sample.update(fixed_parameters=fixed_parameters)
-            valid = sample.actual_points > 0
+            sample._update(fixed_parameters=fixed_parameters)
+            valid = sample.n_valid > 0
             return Isophote(sample, 0, valid=valid,
                             stop_code=4 if valid else 3)
 
@@ -214,7 +214,7 @@ class EllipseFitter:
         if (sample.geometry.ellipticity <= 0.0
                 and not fixed_parameters[_ELLIPTICITY_INDEX]):
             self._fix_round_ellipse(sample.geometry, fixed_parameters)
-            sample.values = None
+            sample._values = None
 
         # The parameters held fixed during this fit. These include the
         # center once it reaches the ``max_center_shift`` boundary. The
@@ -225,7 +225,7 @@ class EllipseFitter:
 
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
-            sample.update(fixed_parameters=fixed_parameters)
+            sample._update(fixed_parameters=fixed_parameters)
 
             # The extract() method returns sampled values as a 2D numpy
             # array with the following structure:
@@ -278,16 +278,16 @@ class EllipseFitter:
                     > np.abs(largest_harmonic)) and (i >= minit - 1):
                 # Got a valid solution and a minimum number of
                 # iterations has run.
-                sample.update(fixed_parameters=fixed_parameters)
+                sample._update(fixed_parameters=fixed_parameters)
                 return Isophote(sample, i + 1, valid=True, stop_code=0)
 
             # It may not have converged yet, but the sample contains too
             # many invalid data points, so return the best-fit sample
             # instead of the current one.
-            if sample.actual_points < (sample.total_points * fflag):
+            if sample.n_valid < (sample.n_total * fflag):
                 # When too many data points were flagged, return the
                 # best-fit sample instead of the current one.
-                minimum_amplitude_sample.update(
+                minimum_amplitude_sample._update(
                     fixed_parameters=fixed_parameters)
                 return Isophote(minimum_amplitude_sample, i + 1, valid=True,
                                 stop_code=1)
@@ -343,7 +343,7 @@ class EllipseFitter:
                 else:
                     self._fix_round_ellipse(sample.geometry,
                                             fixed_parameters)
-                    sample.update(fixed_parameters=fixed_parameters)
+                    sample._update(fixed_parameters=fixed_parameters)
 
             # If iterations cannot proceed, return the best-fit sample
             # instead of the current one. Holding the center at the
@@ -352,14 +352,14 @@ class EllipseFitter:
             complete = proceed and center_at_bound and fit_fixed.all()
             if complete or not proceed:
                 final_sample = sample if complete else minimum_amplitude_sample
-                final_sample.update(fixed_parameters=fixed_parameters)
+                final_sample._update(fixed_parameters=fixed_parameters)
                 return Isophote(final_sample, i + 1, valid=True,
                                 stop_code=0 if complete else -1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
         # best-fit sample instead of the current one.
-        minimum_amplitude_sample.update(fixed_parameters=fixed_parameters)
+        minimum_amplitude_sample._update(fixed_parameters=fixed_parameters)
         return Isophote(minimum_amplitude_sample, maxit, valid=True,
                         stop_code=2)
 

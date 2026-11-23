@@ -620,6 +620,18 @@ API Changes
     ``fix_orientation``, and ``fix_ellipticity`` properties report
     which parameters are fixed. [#2568]
 
+  - The ``astep``, ``eps``, ``position_angle``, ``sclip``, and
+    ``integrmode`` keywords of ``EllipseSample`` are deprecated and
+    will be removed in version 4.0. Use ``step``, ``ellipticity``,
+    ``orientation``, ``clip_sigma``, and ``integration_mode``
+    instead. The ``sclip`` and ``integrmode`` attributes are renamed
+    the same way. The ``mean``, ``actual_points``, and ``total_points``
+    attributes are deprecated in favor of ``intensity``, ``n_valid``,
+    and ``n_total``. The ``values`` attribute is deprecated in favor
+    of the new ``angles``, ``radii``, and ``intensities`` attributes.
+    The ``fixed_parameters`` keyword of ``EllipseSample.update`` is
+    deprecated. [#2568]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

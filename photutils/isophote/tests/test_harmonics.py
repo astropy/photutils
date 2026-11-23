@@ -131,7 +131,7 @@ class TestFitEllipseSamples:
 
     def test_fit_ellipsesample_2(self):
         # Initial guess is rounder than actual image.
-        sample = EllipseSample(self.data1, 40.0, eps=0.1)
+        sample = EllipseSample(self.data1, 40.0, ellipticity=0.1)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -158,7 +158,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), -14.306, atol=0.001)
 
     def test_fit_ellipsesample_4(self):
-        sample = EllipseSample(self.data2, 40.0, eps=0.4)
+        sample = EllipseSample(self.data2, 40.0, ellipticity=0.4)
         s = sample.extract()
 
         harmonics = fit_first_and_second_harmonics(s[0], s[2])

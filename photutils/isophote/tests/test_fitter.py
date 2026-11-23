@@ -29,9 +29,9 @@ DEFAULT_FIX = np.array([False, False, False, False])
 
 def test_gradient():
     sample = EllipseSample(DATA, 40.0)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample._update(fixed_parameters=DEFAULT_FIX)
 
-    assert_allclose(sample.mean, 200.02, atol=0.01)
+    assert_allclose(sample.intensity, 200.02, atol=0.01)
     assert_allclose(sample.gradient, -4.222, atol=0.001)
     assert_allclose(sample.gradient_err, 0.0003, atol=0.0001)
     assert_allclose(sample.gradient_rel_err, 7.45e-05, atol=1.0e-5)
@@ -49,7 +49,7 @@ def test_zero_gradient_flat_image():
     zero and crashing on the resulting nonfinite geometry.
     """
     data = np.ones((101, 101))
-    sample = EllipseSample(data, 10.0, integrmode='nearest_neighbor')
+    sample = EllipseSample(data, 10.0, integration_mode='nearest_neighbor')
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
 
@@ -69,7 +69,7 @@ def test_positive_gradient():
     """
     yy, xx = np.mgrid[0:201, 0:201]
     data = 10.0 + 0.5 * np.hypot(xx - 100, yy - 100)
-    sample = EllipseSample(data, 20.0, x0=100.0, y0=100.0, eps=0.2)
+    sample = EllipseSample(data, 20.0, x0=100.0, y0=100.0, ellipticity=0.2)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == -1
     assert isophote.gradient > 0
@@ -97,7 +97,7 @@ def test_nonmeaningful_gradient_uses_previous(ring_radius):
     radius = np.hypot(xx - 100, yy - 100)
     data = (1000.0 * np.exp(-radius / 10.0)
             + 100.0 * np.exp(-0.5 * (radius - ring_radius)**2))
-    sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, eps=0.1)
+    sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, ellipticity=0.1)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code != -1
     assert isophote.n_iter > 4
@@ -114,7 +114,7 @@ def test_nonmeaningful_gradient_center_at_bound():
     radius = np.hypot(xx - 100, yy - 100)
     data = (1000.0 * np.exp(-radius / 10.0)
             + 100.0 * np.exp(-0.5 * (radius - 23.0)**2))
-    sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, eps=0.1)
+    sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, ellipticity=0.1)
     isophote = EllipseFitter(sample).fit(max_center_shift=0.5)
     assert isophote.stop_code != -1
     assert isophote.n_iter > 5
@@ -142,15 +142,16 @@ def test_fit_keeps_sample_settings():
     Test that the sample of the fitted isophote, which is made by the
     parameter correctors, keeps the settings of the input sample.
     """
-    sample = EllipseSample(DATA, 60.0, astep=0.2, eps=0.3, sclip=2.5,
-                           n_clip=2, integrmode=MEAN)
+    sample = EllipseSample(DATA, 60.0, step=0.2, ellipticity=0.3,
+                           clip_sigma=2.5, n_clip=2,
+                           integration_mode=MEAN)
     isophote = EllipseFitter(sample).fit()
     fitted_sample = isophote.sample
     assert isophote.stop_code == 0
     assert fitted_sample is not sample
-    assert fitted_sample.sclip == 2.5
+    assert fitted_sample.clip_sigma == 2.5
     assert fitted_sample.n_clip == 2
-    assert fitted_sample.integrmode == MEAN
+    assert fitted_sample.integration_mode == MEAN
     assert fitted_sample.geometry.sma == 60.0
     assert fitted_sample.geometry.step == 0.2
     assert not fitted_sample.geometry.linear_growth
@@ -163,8 +164,8 @@ def test_fitting_raw():
     """
     # Pick first guess ellipse that is off in just one of the parameters
     # (eps).
-    sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample = EllipseSample(DATA, 40.0, ellipticity=2 * 0.2)
+    sample._update(fixed_parameters=DEFAULT_FIX)
     s = sample.extract()
 
     harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -229,7 +230,7 @@ def test_fitting_failed_harmonic_fit(monkeypatch):
 
 def test_fitting_eps():
     # Initial guess is off in the eps parameter.
-    sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)
+    sample = EllipseSample(DATA, 40.0, ellipticity=2 * 0.2)
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
 
@@ -247,7 +248,7 @@ def test_fitting_eps_diverged(galaxy_eps):
     The best-fit sample is returned instead of the diverged one.
     """
     data = make_test_image(eps=galaxy_eps, seed=0)
-    sample = EllipseSample(data, 40.0, eps=0.9)
+    sample = EllipseSample(data, 40.0, ellipticity=0.9)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == -1
     assert isophote.ellipticity == 0.9
@@ -299,7 +300,7 @@ def test_fitting_all():
     # Initial guess is off in all parameters. We find that the initial
     # guesses, especially for position angle, must be kinda close to the
     # actual value. 20% off max seems to work in this case of high SNR.
-    sample = EllipseSample(data, sma, position_angle=(1.2 * angle))
+    sample = EllipseSample(data, sma, orientation=(1.2 * angle))
     fitter = EllipseFitter(sample)
     isophote = fitter.fit()
 
@@ -311,8 +312,8 @@ def test_fitting_all():
     # Within about 3 degrees
     assert_allclose(g.orientation.to_value(u.rad), angle, atol=0.05)
 
-    sample_m = EllipseSample(data, sma, position_angle=(1.2 * angle),
-                             integrmode=MEAN)
+    sample_m = EllipseSample(data, sma, orientation=(1.2 * angle),
+                             integration_mode=MEAN)
     fitter_m = EllipseFitter(sample_m)
     isophote_m = fitter_m.fit()
 
@@ -398,8 +399,8 @@ class TestM51:
         # from previous isophote, as determined by the old code.
 
         # Sample taken in high SNR region
-        sample = EllipseSample(self.data, 21.44, eps=0.18,
-                               position_angle=np.deg2rad(36.0))
+        sample = EllipseSample(self.data, 21.44, ellipticity=0.18,
+                               orientation=np.deg2rad(36.0))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -414,8 +415,8 @@ class TestM51:
         # apart, so the best one does not depend on rounding. The
         # tolerances below include the values of the original code.
         sample = EllipseSample(self.data, 61.16, x0=253.15, y0=260.15,
-                               eps=0.219,
-                               position_angle=np.deg2rad(77.5 + 90))
+                               ellipticity=0.219,
+                               orientation=np.deg2rad(77.5 + 90))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -429,13 +430,13 @@ class TestM51:
         # Sample taken at the outskirts of the image, so many
         # data points lay outside the image frame. This checks
         # for the presence of gaps in the sample arrays.
-        sample = EllipseSample(self.data, 330.0, eps=0.2,
-                               position_angle=np.deg2rad(90),
-                               integrmode='median')
+        sample = EllipseSample(self.data, 330.0, ellipticity=0.2,
+                               orientation=np.deg2rad(90),
+                               integration_mode='median')
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
-        assert not np.any(isophote.sample.values[2] == 0)
+        assert not np.any(isophote.sample.intensities == 0)
 
     def test_m51_central(self):
         # This code finds central x and y offset by about 0.1 pixel wrt the
@@ -460,7 +461,7 @@ def test_fitting_round_start():
     ellipse is made slightly flat before it is sampled.
     """
     data = make_test_image(pa=np.pi / 4, seed=0)
-    sample = EllipseSample(data, 40.0, eps=0.0)
+    sample = EllipseSample(data, 40.0, ellipticity=0.0)
     isophote = EllipseFitter(sample).fit()
     assert isophote.stop_code == 0
     assert_allclose(isophote.ellipticity, 0.2, atol=0.01)

@@ -32,7 +32,7 @@ class TestData:
             data = np.ma.masked_values(self.data, 200.0, atol=10.0, rtol=0.0)
         else:
             data = self.data
-        sample = EllipseSample(data, sma, integrmode=integrmode)
+        sample = EllipseSample(data, sma, integration_mode=integrmode)
         s = sample.extract()
 
         assert len(s) == 3
@@ -55,8 +55,8 @@ class TestUnmasked(TestData):
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.total_points == 225
-        assert sample.actual_points == 225
+        assert sample.n_total == 225
+        assert sample.n_valid == 225
 
     def test_bilinear_small(self):
         # Small radius forces subpixel sampling.
@@ -69,8 +69,8 @@ class TestUnmasked(TestData):
         assert_allclose(np.max(s[1]), 10.0, atol=0.1)
         assert_allclose(np.min(s[1]), 8.0, atol=0.1)
 
-        assert sample.total_points == 57
-        assert sample.actual_points == 57
+        assert sample.n_total == 57
+        assert sample.n_valid == 57
 
     def test_nearest_neighbor(self):
         s, sample = self.make_sample(integrmode=NEAREST_NEIGHBOR)
@@ -83,8 +83,8 @@ class TestUnmasked(TestData):
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.total_points == 225
-        assert sample.actual_points == 225
+        assert sample.n_total == 225
+        assert sample.n_valid == 225
 
     def test_mean(self):
         s, sample = self.make_sample(integrmode=MEAN)
@@ -98,8 +98,8 @@ class TestUnmasked(TestData):
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
         assert_allclose(sample.sector_area, 12.63, atol=0.01)
-        assert sample.total_points == 64
-        assert sample.actual_points == 64
+        assert sample.n_total == 64
+        assert sample.n_valid == 64
 
     def test_mean_small(self):
         s, sample = self.make_sample(sma=5.0, integrmode=MEAN)
@@ -113,8 +113,8 @@ class TestUnmasked(TestData):
         assert_allclose(np.min(s[1]), 4.0, atol=0.01)
 
         assert_allclose(sample.sector_area, 2.0, atol=0.1)
-        assert sample.total_points == 29
-        assert sample.actual_points == 29
+        assert sample.n_total == 29
+        assert sample.n_valid == 29
 
     def test_median(self):
         s, sample = self.make_sample(integrmode=MEDIAN)
@@ -128,8 +128,8 @@ class TestUnmasked(TestData):
         assert_allclose(np.min(s[1]), 32.01, atol=0.01)
 
         assert_allclose(sample.sector_area, 12.63, atol=0.01)
-        assert sample.total_points == 64
-        assert sample.actual_points == 64
+        assert sample.n_total == 64
+        assert sample.n_valid == 64
 
 
 @pytest.mark.remote_data
@@ -145,8 +145,8 @@ class TestMasked(TestData):
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.total_points == 225
-        assert sample.actual_points == 157
+        assert sample.n_total == 225
+        assert sample.n_valid == 157
 
     def test_mean(self):
         s, sample = self.make_sample(masked=True, integrmode=MEAN)
@@ -160,8 +160,8 @@ class TestMasked(TestData):
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
         assert_allclose(sample.sector_area, 12.63, atol=0.01)
-        assert sample.total_points == 64
-        assert sample.actual_points == 51
+        assert sample.n_total == 64
+        assert sample.n_valid == 51
 
 
 @pytest.mark.parametrize('integrmode',
@@ -175,19 +175,19 @@ def test_masked_and_nonfinite(integrmode):
     mask = np.zeros(data.shape, dtype=bool)
     mask[230:260, 280:300] = True
 
-    sample = EllipseSample(data, 40.0, integrmode=integrmode)
+    sample = EllipseSample(data, 40.0, integration_mode=integrmode)
     sample.update()
     sample_masked = EllipseSample(np.ma.masked_array(data, mask=mask), 40.0,
-                                  integrmode=integrmode)
+                                  integration_mode=integrmode)
     sample_masked.update()
     data_nan = data.copy()
     data_nan[mask] = np.nan
-    sample_nan = EllipseSample(data_nan, 40.0, integrmode=integrmode)
+    sample_nan = EllipseSample(data_nan, 40.0, integration_mode=integrmode)
     sample_nan.update()
 
-    assert sample_masked.actual_points < sample.actual_points
-    assert sample_masked.total_points == sample.total_points
-    assert_array_equal(sample_masked.values, sample_nan.values)
+    assert sample_masked.n_valid < sample.n_valid
+    assert sample_masked.n_total == sample.n_total
+    assert_array_equal(sample_masked.extract(), sample_nan.extract())
 
 
 @pytest.mark.parametrize('integrmode',
@@ -204,7 +204,7 @@ def test_masked_infinite_values(integrmode):
     data_inf[mask] = np.inf
     data_inf[62:66, 82:86] = -np.inf
 
-    kwargs = {'x0': 64.0, 'y0': 64.0, 'integrmode': integrmode}
+    kwargs = {'x0': 64.0, 'y0': 64.0, 'integration_mode': integrmode}
     sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0,
                            **kwargs)
     sample_inf = EllipseSample(np.ma.masked_array(data_inf, mask=mask), 20.0,
@@ -223,11 +223,11 @@ def test_very_large_path_coordinates(integrmode, x0):
     """
     data = make_test_image(nx=128, ny=128, seed=0)
     sample = EllipseSample(data, 10.0, x0=x0, y0=64.0,
-                           integrmode=integrmode)
+                           integration_mode=integrmode)
     values = sample.extract()
     assert values.shape == (3, 0)
-    assert sample.total_points > 0
-    assert sample.actual_points == 0
+    assert sample.n_total > 0
+    assert sample.n_valid == 0
 
 
 @pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
@@ -237,18 +237,18 @@ def test_area_sectors_outside_image(integrmode):
     entirely inside the image.
     """
     data = make_test_image(nx=128, ny=128, seed=0)
-    kwargs = {'x0': 100.0, 'y0': 64.0, 'integrmode': integrmode}
+    kwargs = {'x0': 100.0, 'y0': 64.0, 'integration_mode': integrmode}
     sample = EllipseSample(data, 40.0, **kwargs)
     angles, _, values = sample.extract()
-    assert 0 < sample.actual_points < sample.total_points
+    assert 0 < sample.n_valid < sample.n_total
 
     # The sectors that are kept have the same values as in a wider
     # image that contains the whole ellipse.
     data_wide = np.pad(data, ((0, 0), (0, 64)))
     sample_wide = EllipseSample(data_wide, 40.0, **kwargs)
     angles_wide, _, values_wide = sample_wide.extract()
-    assert sample_wide.total_points == sample.total_points
-    assert sample_wide.actual_points == sample_wide.total_points
+    assert sample_wide.n_total == sample.n_total
+    assert sample_wide.n_valid == sample_wide.n_total
     keep = np.isin(angles_wide, angles)
     assert_array_equal(values_wide[keep], values)
 
@@ -345,8 +345,8 @@ def test_area_integrator_full_sectors(integrmode):
     """
     yy, xx = np.mgrid[0:121, 0:121]
     data = np.arctan2(yy - 60.0, xx - 60.0)
-    sample = EllipseSample(data, 40.0, x0=60.0, y0=60.0, eps=0.2,
-                           integrmode=integrmode)
+    sample = EllipseSample(data, 40.0, x0=60.0, y0=60.0, ellipticity=0.2,
+                           integration_mode=integrmode)
     angles, _, values = sample.extract()
     angles = np.angle(np.exp(1j * angles))  # wrap to (-pi, pi]
 

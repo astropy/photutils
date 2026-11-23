@@ -987,9 +987,9 @@ class Ellipse:
             # A zero sma requires special handling.
             return _central_isophote(self.image, geometry)
 
-        sample = EllipseSample(self.image, sma, sclip=sclip,
+        sample = EllipseSample(self.image, sma, clip_sigma=sclip,
                                n_clip=n_clip, geometry=geometry,
-                               integrmode=integrmode)
+                               integration_mode=integrmode)
         fitter = EllipseFitter(sample)
 
         # The center shift is measured from the input geometry, which
@@ -1000,13 +1000,14 @@ class Ellipse:
                           reference_center=reference_center)
 
     def _non_iterative(self, sma, geometry, sclip, n_clip, integrmode):
-        sample = EllipseSample(self.image, sma, sclip=sclip, n_clip=n_clip,
-                               geometry=geometry, integrmode=integrmode)
-        sample.update(fixed_parameters=geometry._fix)
+        sample = EllipseSample(self.image, sma, clip_sigma=sclip,
+                               n_clip=n_clip, geometry=geometry,
+                               integration_mode=integrmode)
+        sample._update(fixed_parameters=geometry._fix)
 
         # An isophote without any valid data points (e.g., an ellipse
         # outside of the image) is invalid.
-        if sample.actual_points == 0:
+        if sample.n_valid == 0:
             return Isophote(sample, 0, valid=False, stop_code=3)
 
         # Build isophote without iterating with an EllipseFitter.
@@ -1054,8 +1055,8 @@ class Ellipse:
 
         # Force new extraction of raw data, since
         # geometry changed.
-        isophote.sample.values = None
-        isophote.sample.update(
+        isophote.sample._values = None
+        isophote.sample._update(
             fixed_parameters=isophote.sample.geometry._fix)
 
         # We take the opportunity to change an eventual

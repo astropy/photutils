@@ -282,8 +282,8 @@ class Isophote:
             return
 
         if sample.geometry.sma > 0:
-            self.intensity = sample.mean
-            if sample.actual_points == 0:
+            self.intensity = sample.intensity
+            if sample.n_valid == 0:
                 # No valid sampled points (e.g., a trial geometry that
                 # fell entirely outside the image). Operating on the
                 # empty sample arrays would emit numpy warnings (e.g.,
@@ -297,8 +297,8 @@ class Isophote:
                 self.gradient_rel_err = _nan_if_none(
                     sample.gradient_rel_err)
                 self.sector_area = sample.sector_area
-                self.n_data = sample.actual_points
-                self.n_flagged = sample.total_points - sample.actual_points
+                self.n_data = sample.n_valid
+                self.n_flagged = sample.n_total - sample.n_valid
                 self.total_flux_ellipse = self.total_flux_circle = 0.0
                 self.n_pixels_ellipse = self.n_pixels_circle = 0
                 self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
@@ -307,16 +307,16 @@ class Isophote:
                 self.a4 = self.b4 = self.a4_err = self.b4_err = np.nan
                 return
 
-            self.rms = np.std(sample.values[2])
-            self.intensity_err = self.rms / np.sqrt(sample.actual_points)
+            self.rms = np.std(sample.intensities)
+            self.intensity_err = self.rms / np.sqrt(sample.n_valid)
             self.pixel_stddev = self.rms * np.sqrt(sample.sector_area)
             self.gradient = sample.gradient
             self.gradient_err = _nan_if_none(sample.gradient_err)
 
             self.gradient_rel_err = _nan_if_none(sample.gradient_rel_err)
             self.sector_area = sample.sector_area
-            self.n_data = sample.actual_points
-            self.n_flagged = sample.total_points - sample.actual_points
+            self.n_data = sample.n_valid
+            self.n_flagged = sample.n_total - sample.n_valid
 
             # Flux contained inside ellipse and circle
             (self.total_flux_ellipse, self.total_flux_circle,
@@ -335,7 +335,7 @@ class Isophote:
         # The central pixel holds a single intensity value. Some values
         # are set to zero to ease certain tasks such as model building
         # and plotting magnitude errors.
-        self.intensity = sample.mean
+        self.intensity = sample.intensity
         self.rms = np.nan
         self.intensity_err = 0.0
         self.pixel_stddev = np.nan
@@ -343,8 +343,8 @@ class Isophote:
         self.gradient_err = np.nan
         self.gradient_rel_err = np.nan
         self.sector_area = np.nan
-        self.n_data = sample.actual_points
-        self.n_flagged = sample.total_points - sample.actual_points
+        self.n_data = sample.n_valid
+        self.n_flagged = sample.n_total - sample.n_valid
 
         self.total_flux_ellipse = self.total_flux_circle = np.nan
         self.n_pixels_ellipse = self.n_pixels_circle = np.nan
@@ -513,23 +513,23 @@ class Isophote:
         """
         # The residual variance needs more data points than fitted
         # coefficients.
-        if sample.actual_points <= 3:
+        if sample.n_valid <= 3:
             return np.nan, np.nan, np.nan, np.nan
 
         try:
             # Upper (third and fourth) harmonics
-            up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.values[0],
-                                                           sample.values[2],
+            up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.angles,
+                                                           sample.intensities,
                                                            n)
 
             scale = self.sma * abs(sample.gradient)
             a = up_coeffs[1] / scale
             b = up_coeffs[2] / scale
 
-            phi = sample.values[0]
+            phi = sample.angles
             up_model = (up_coeffs[0] + up_coeffs[1] * np.sin(n * phi)
                         + up_coeffs[2] * np.cos(n * phi))
-            up_var_residual = np.std(up_model - sample.values[2],
+            up_var_residual = np.std(up_model - sample.intensities,
                                      ddof=len(up_coeffs))**2
             up_covariance = up_inv_hessian * up_var_residual
 
@@ -565,17 +565,17 @@ class Isophote:
         """
         # The residual variance needs more data points than fitted
         # coefficients.
-        if self.sample.actual_points <= 5:
+        if self.sample.n_valid <= 5:
             self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
             self.ellipticity_err = 0.0
             return
 
         try:
             coeffs, covariance = fit_first_and_second_harmonics(
-                self.sample.values[0], self.sample.values[2])
-            model = first_and_second_harmonic_function(self.sample.values[0],
+                self.sample.angles, self.sample.intensities)
+            model = first_and_second_harmonic_function(self.sample.angles,
                                                        coeffs)
-            var_residual = np.std(self.sample.values[2] - model,
+            var_residual = np.std(self.sample.intensities - model,
                                   ddof=len(coeffs)) ** 2
             errors = np.sqrt(np.diagonal(covariance * var_residual))
 

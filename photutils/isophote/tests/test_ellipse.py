@@ -195,7 +195,7 @@ class TestEllipse:
         for isophote in isolist:
             if isophote.sma == 0:
                 continue
-            angles, radii, _ = isophote.sample.values
+            angles, radii = isophote.sample.angles, isophote.sample.radii
             assert_allclose(radii, isophote.sample.geometry.radius(angles),
                             rtol=1e-10)
 
@@ -474,7 +474,7 @@ class TestEllipse:
         isophote_list = Ellipse(self.data).fit_image()
         assert np.any(isophote_list.stop_code == 5)
         for iso in isophote_list[1:]:
-            angles, radii, _ = iso.sample.values
+            angles, radii = iso.sample.angles, iso.sample.radii
             assert_allclose(radii, iso.sample.geometry.radius(angles))
 
     def test_masked_outer_isophote(self):
@@ -672,7 +672,7 @@ class TestEllipse:
         # Check that no zero-valued intensities were left behind in the
         # sample arrays when sampling outside the image.
         for iso in isophote_list:
-            assert not np.any(iso.sample.values[2] == 0)
+            assert not np.any(iso.sample.intensities == 0)
 
     def test_ellipse_shape(self):
         """
@@ -925,8 +925,8 @@ class TestMeasureIsophotes:
                                             integrmode='median', sclip=2.5,
                                             n_clip=3)
         for iso in isolist:
-            assert iso.sample.integrmode == 'median'
-            assert iso.sample.sclip == 2.5
+            assert iso.sample.integration_mode == 'median'
+            assert iso.sample.clip_sigma == 2.5
             assert iso.sample.n_clip == 3
 
     def test_outside_image(self):

@@ -130,9 +130,9 @@ def test_isophote_comparisons():
     sample0 = EllipseSample(data, sma1 + k)
     sample1 = EllipseSample(data, sma1 + k)
     sample2 = EllipseSample(data, sma2 + k)
-    sample0.update(fixed_parameters=DEFAULT_FIX)
-    sample1.update(fixed_parameters=DEFAULT_FIX)
-    sample2.update(fixed_parameters=DEFAULT_FIX)
+    sample0._update(fixed_parameters=DEFAULT_FIX)
+    sample1._update(fixed_parameters=DEFAULT_FIX)
+    sample2._update(fixed_parameters=DEFAULT_FIX)
     iso0 = Isophote(sample0, k, valid=True, stop_code=0)
     iso1 = Isophote(sample1, k, valid=True, stop_code=0)
     iso2 = Isophote(sample2, k, valid=True, stop_code=0)
@@ -170,19 +170,19 @@ def test_fix_geometry():
     geometry2 = EllipseGeometry(257.0, 255.0, 20.0, 0.5, 1.0)
     sample1 = EllipseSample(data, 20.0, geometry=geometry1)
     sample2 = EllipseSample(data, 20.0, geometry=geometry2)
-    sample1.update(fixed_parameters=DEFAULT_FIX)
-    sample2.update(fixed_parameters=DEFAULT_FIX)
+    sample1._update(fixed_parameters=DEFAULT_FIX)
+    sample2._update(fixed_parameters=DEFAULT_FIX)
     iso1 = Isophote(sample1, 0, valid=True, stop_code=0)
     iso2 = Isophote(sample2, 0, valid=True, stop_code=0)
 
     iso1.fix_geometry(iso2)
-    sample1.values = None
-    sample1.update(fixed_parameters=DEFAULT_FIX)
+    sample1._values = None
+    sample1._update(fixed_parameters=DEFAULT_FIX)
 
-    angles, radii, _ = sample1.values
+    angles, radii = sample1.angles, sample1.radii
     assert_allclose(radii, geometry2.radius(angles))
-    assert_allclose(sample1.values, sample2.values)
-    assert_allclose(sample1.mean, sample2.mean)
+    assert_allclose(sample1.intensities, sample2.intensities)
+    assert_allclose(sample1.intensity, sample2.intensity)
 
 
 def test_isophote_small_flux_box():
@@ -192,9 +192,9 @@ def test_isophote_small_flux_box():
     """
     data = make_test_image(seed=0)
     sample = EllipseSample(data, 0.2, x0=0.0, y0=0.0)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample._update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 0, valid=True, stop_code=0)
-    assert sample.actual_points > 0
+    assert sample.n_valid > 0
     assert isophote.total_flux_ellipse == 0.0
     assert isophote.total_flux_circle == 0.0
     assert isophote.n_pixels_ellipse == 0
@@ -223,8 +223,8 @@ def test_isophote_round_orientation_err():
     Test that the orientation error of a round isophote is zero.
     """
     data = make_test_image(eps=0.0, seed=0)
-    sample = EllipseSample(data, 20.0, eps=0.0)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample = EllipseSample(data, 20.0, ellipticity=0.0)
+    sample._update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 0, valid=True, stop_code=0)
     assert isophote.orientation_err == 0.0 * u.deg
     assert np.isfinite(isophote.ellipticity_err)
@@ -244,7 +244,7 @@ class TestIsophoteList:
         iso_list = []
         for k in range(slen):
             sample = EllipseSample(data, float(k + sma0))
-            sample.update(fixed_parameters=DEFAULT_FIX)
+            sample._update(fixed_parameters=DEFAULT_FIX)
             iso_list.append(Isophote(sample, k, valid=True, stop_code=0))
         return IsophoteList(iso_list)
 
@@ -420,7 +420,7 @@ class TestIsophoteList:
         x, y = isophote.sampled_coordinates()
         assert len(x) == len(y) == isophote.n_data
         radius = np.hypot(x - isophote.x0, y - isophote.y0)
-        assert_allclose(radius, isophote.sample.values[1])
+        assert_allclose(radius, isophote.sample.radii)
 
     def test_central_pixel(self):
         # Test the central pixel isophote.
@@ -600,7 +600,7 @@ def test_isophote_few_points_warnings(width, n_data):
     sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter('always')
-        sample.update(fixed_parameters=DEFAULT_FIX)
+        sample._update(fixed_parameters=DEFAULT_FIX)
         isophote = Isophote(sample, 1, valid=False, stop_code=3)
     assert len(record) == 0
     assert isophote.n_data == n_data
@@ -623,7 +623,7 @@ def test_isophote_few_points(width, has_deviations):
     angle = np.arctan2(yy - 256, xx - 256)
     mask = ~((angle > 0.0) & (angle < width))
     sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample._update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 1, valid=False, stop_code=3)
     assert 0 < isophote.n_data <= 5
     assert isophote.x0_err == 0.0

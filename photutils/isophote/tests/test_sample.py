@@ -3,6 +3,9 @@
 Tests for the sample module.
 """
 
+import copy
+import pickle
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -15,6 +18,7 @@ from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
 from photutils.isophote.isophote import Isophote
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DEFAULT_FIX = np.array([False, False, False, False])
 
@@ -36,8 +40,8 @@ def test_scatter(integrmode, amin, amax):
     the noise rms and then compare how close the pixel std dev estimated
     at extraction matches this input noise.
     """
-    sample = EllipseSample(DATA, 50.0, astep=0.2, integrmode=integrmode)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample = EllipseSample(DATA, 50.0, step=0.2, integration_mode=integrmode)
+    sample._update(fixed_parameters=DEFAULT_FIX)
     iso = Isophote(sample, 0, valid=True, stop_code=0)
 
     assert iso.pixel_stddev < amax
@@ -46,7 +50,7 @@ def test_scatter(integrmode, amin, amax):
 
 def test_coordinates():
     sample = EllipseSample(DATA, 50.0)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample._update(fixed_parameters=DEFAULT_FIX)
     x, y = sample.coordinates()
 
     assert isinstance(x, np.ndarray)
@@ -55,7 +59,7 @@ def test_coordinates():
 
 def test_sclip():
     sample = EllipseSample(DATA, 50.0, n_clip=3)
-    sample.update(fixed_parameters=DEFAULT_FIX)
+    sample._update(fixed_parameters=DEFAULT_FIX)
     x, y = sample.coordinates()
 
     assert isinstance(x, np.ndarray)
@@ -107,7 +111,8 @@ def test_invalid_ellipticity(integrmode, eps):
     Test that an ellipse with an ellipticity of 1 or larger, which has
     no elliptical path, cannot be sampled.
     """
-    sample = EllipseSample(DATA, 10.0, eps=eps, integrmode=integrmode)
+    sample = EllipseSample(DATA, 10.0, ellipticity=eps,
+                           integration_mode=integrmode)
     match = 'ellipticity must be less than 1'
     with pytest.raises(ValueError, match=match):
         sample.extract()
@@ -128,7 +133,8 @@ def test_nonfinite_center(integrmode, x0, y0):
     """
     Test that an ellipse with a nonfinite center cannot be sampled.
     """
-    sample = EllipseSample(DATA, 10.0, x0=x0, y0=y0, integrmode=integrmode)
+    sample = EllipseSample(DATA, 10.0, x0=x0, y0=y0,
+                           integration_mode=integrmode)
     match = 'center of the ellipse must be finite'
     with pytest.raises(ValueError, match=match):
         sample.extract()
@@ -148,11 +154,11 @@ def test_zero_inner_sma(integrmode):
     the sectors has zero size.
     """
     data = make_test_image(seed=0)
-    sample = EllipseSample(data, 1.0, astep=2.0, linear_growth=True,
-                           integrmode=integrmode)
-    sample.update(fixed_parameters=DEFAULT_FIX)
-    assert sample.actual_points > 0
-    assert np.isfinite(sample.mean)
+    sample = EllipseSample(data, 1.0, step=2.0, linear_growth=True,
+                           integration_mode=integrmode)
+    sample._update(fixed_parameters=DEFAULT_FIX)
+    assert sample.n_valid > 0
+    assert np.isfinite(sample.intensity)
 
 
 def test_invalid_image():
@@ -166,9 +172,9 @@ def test_invalid_image():
 
 
 def test_invalid_integrmode():
-    match = 'integrmode must be one of'
+    match = 'integration_mode must be one of'
     with pytest.raises(ValueError, match=match):
-        EllipseSample(DATA, 10.0, integrmode='foo')
+        EllipseSample(DATA, 10.0, integration_mode='foo')
     with pytest.raises(ValueError, match=match):
         Ellipse(DATA).fit_image(integrmode='foo')
     with pytest.raises(ValueError, match=match):
@@ -194,14 +200,16 @@ def test_nonfinite_values(integrmode):
     data = DATA.copy()
     data[254:259, 294:299] = np.nan
     data[286:291, 254:259] = np.inf
-    values = EllipseSample(data, 40.0, integrmode=integrmode).extract()
+    values = EllipseSample(data, 40.0, integration_mode=integrmode).extract()
     assert np.all(np.isfinite(values[2]))
 
     masked = np.ma.masked_invalid(data)
-    expected = EllipseSample(masked, 40.0, integrmode=integrmode).extract()
+    expected = EllipseSample(masked, 40.0,
+                             integration_mode=integrmode).extract()
     assert_array_equal(values, expected)
 
-    unmasked = EllipseSample(DATA, 40.0, integrmode=integrmode).extract()
+    unmasked = EllipseSample(DATA, 40.0,
+                             integration_mode=integrmode).extract()
     assert not np.array_equal(values[2], unmasked[2])
 
 
@@ -217,11 +225,11 @@ def test_gradient_radius(astep, linear_growth):
     different steps, so the gradients are not identical.
     """
     data = make_test_image(seed=0)
-    sample = EllipseSample(data, 20.0, astep=0.1)
-    sample.update(fixed_parameters=DEFAULT_FIX)
-    sample_step = EllipseSample(data, 20.0, astep=astep,
+    sample = EllipseSample(data, 20.0, step=0.1)
+    sample._update(fixed_parameters=DEFAULT_FIX)
+    sample_step = EllipseSample(data, 20.0, step=astep,
                                 linear_growth=linear_growth)
-    sample_step.update(fixed_parameters=DEFAULT_FIX)
+    sample_step._update(fixed_parameters=DEFAULT_FIX)
     assert_allclose(sample_step.gradient, sample.gradient, rtol=1e-3)
 
 
@@ -237,7 +245,7 @@ def test_update_keeps_fixed_parameters():
     sample.update()
     assert list(sample.geometry._fix) == [True, True, False, True]
 
-    sample.update(fixed_parameters=np.array([False, False, True, False]))
+    sample._update(fixed_parameters=np.array([False, False, True, False]))
     assert list(sample.geometry._fix) == [False, False, True, False]
 
 
@@ -253,12 +261,12 @@ def test_large_step_sectors(integrmode):
     data = make_test_image(seed=0)
     n_points = []
     for astep in (4.0, 5.0):
-        sample = EllipseSample(data, 2.0, astep=astep, linear_growth=True,
-                               integrmode=integrmode)
-        sample.update(fixed_parameters=DEFAULT_FIX)
-        assert sample.actual_points == sample.total_points
-        assert np.isfinite(sample.mean)
-        n_points.append(sample.total_points)
+        sample = EllipseSample(data, 2.0, step=astep, linear_growth=True,
+                               integration_mode=integrmode)
+        sample._update(fixed_parameters=DEFAULT_FIX)
+        assert sample.n_valid == sample.n_total
+        assert np.isfinite(sample.intensity)
+        n_points.append(sample.n_total)
     assert n_points[0] == n_points[1]
 
 
@@ -279,10 +287,10 @@ def test_sclip_constant_sample():
     """
     data = np.full((100, 100), 5.0)
     sample = EllipseSample(data, 10.0, n_clip=3,
-                           integrmode=NEAREST_NEIGHBOR)
+                           integration_mode=NEAREST_NEIGHBOR)
     sample.extract()
-    assert sample.total_points > 50
-    assert sample.actual_points == sample.total_points
+    assert sample.n_total > 50
+    assert sample.n_valid == sample.n_total
 
 
 def test_update_repeated():
@@ -305,7 +313,7 @@ def test_update_repeated():
 
     # The gradient is computed again if the sample values change.
     sample.geometry.x0 = 120.0
-    sample.values = None
+    sample._values = None
     sample.update()
     assert sample.gradient != gradient
 
@@ -338,13 +346,13 @@ def test_meaningful_gradient(profile, modulation, expected):
     source = profiles[profile] * (1.0 + modulation * np.cos(6.0 * theta))
     data = np.where(xx < 140, galaxy, source)
 
-    sample = EllipseSample(data, 20.0, x0=60.0, y0=100.0, eps=0.0)
+    sample = EllipseSample(data, 20.0, x0=60.0, y0=100.0, ellipticity=0.0)
     sample.update()
     reference = sample.gradient
     assert_allclose(reference, -12.27, atol=0.01)
 
     sample.geometry.x0 = 220.0
-    sample.values = None
+    sample._values = None
     sample.update()
     if expected is None:
         assert_allclose(sample.gradient, 0.8 * reference)
@@ -377,9 +385,9 @@ def test_mixed_infinities():
     data[j, i + 1] = -np.inf
     sample_inf = EllipseSample(data, 40.0)
     sample_inf.update()
-    assert sample_inf.total_points == sample.total_points
-    assert sample_inf.actual_points < sample.actual_points
-    assert np.all(np.isfinite(sample_inf.values))
+    assert sample_inf.n_total == sample.n_total
+    assert sample_inf.n_valid < sample.n_valid
+    assert np.all(np.isfinite(sample_inf.extract()))
 
 
 @pytest.mark.parametrize('sma', [1e20, 1e300])
@@ -391,8 +399,8 @@ def test_sampling_path_huge_sma(sma):
     sample = EllipseSample(DATA, sma)
     values = sample.extract()
     assert values.shape == (3, 0)
-    assert sample.total_points == 1
-    assert sample.actual_points == 0
+    assert sample.n_total == 1
+    assert sample.n_valid == 0
 
 
 @pytest.mark.parametrize('sma', [1.0, 40.0])
@@ -402,9 +410,9 @@ def test_sampling_path(sma):
     about one pixel, but by at most 0.5 radians.
     """
     data = make_test_image(seed=0)
-    sample = EllipseSample(data, sma, eps=0.3)
+    sample = EllipseSample(data, sma, ellipticity=0.3)
     angles, radii, _ = sample.extract()
-    assert sample.actual_points == sample.total_points
+    assert sample.n_valid == sample.n_total
     assert angles[0] == sample.geometry._initial_polar_angle
     assert_allclose(radii, sample.geometry.radius(angles))
     steps = np.minimum(1.0 / radii, 0.5)
@@ -417,7 +425,87 @@ def test_sample_sma_zero():
     data = make_test_image(seed=0)
     sample = EllipseSample(data, 0.0, x0=256.0, y0=256.0)
     sample.update()
-    assert sample.total_points == 1
-    assert sample.actual_points == 1
-    assert sample.values.shape == (3, 1)
+    assert sample.n_total == 1
+    assert sample.n_valid == 1
+    assert sample.extract().shape == (3, 1)
     assert sample.gradient is None
+
+
+def test_sample_named_arrays():
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 40.0, ellipticity=0.2, orientation=0.0,
+                           integration_mode='bilinear')
+    assert sample.angles is None
+    assert sample.radii is None
+    assert sample.intensities is None
+    sample.update()
+    assert sample.angles.shape == sample.intensities.shape
+    assert sample.radii.shape == sample.angles.shape
+    assert sample.n_valid == len(sample.intensities)
+    assert sample.n_valid <= sample.n_total
+    assert_allclose(sample.intensity, np.mean(sample.intensities))
+    assert_array_equal(sample.extract(),
+                       [sample.angles, sample.radii, sample.intensities])
+
+
+def test_sample_deprecated_values_setter():
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 40.0)
+    sample.update()
+    first = sample.intensities
+    with pytest.warns(PhotutilsDeprecationWarning, match="'values'"):
+        assert_array_equal(sample.values[2], first)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'values'"):
+        sample.values = None
+    assert sample.intensities is None
+    sample.extract()
+    assert_array_equal(sample.intensities, first)
+
+
+def test_sample_copy_and_pickle():
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 40.0)
+    sample.update()
+    for clone in (copy.copy(sample), copy.deepcopy(sample),
+                  pickle.loads(pickle.dumps(sample))):  # noqa: S301
+        assert_array_equal(clone.intensities, sample.intensities)
+        assert clone.n_valid == sample.n_valid
+
+
+@pytest.mark.parametrize(('old', 'new', 'value'),
+                         [('astep', 'step', 0.2),
+                          ('eps', 'ellipticity', 0.3),
+                          ('position_angle', 'orientation', 0.5),
+                          ('sclip', 'clip_sigma', 2.5),
+                          ('integrmode', 'integration_mode', MEAN)])
+def test_sample_deprecated_keywords(old, new, value):
+    data = make_test_image(seed=0)
+    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
+        old_sample = EllipseSample(data, 40.0, **{old: value})
+    new_sample = EllipseSample(data, 40.0, **{new: value})
+    assert_array_equal(old_sample.extract(), new_sample.extract())
+
+
+@pytest.mark.parametrize(('old', 'new'),
+                         [('mean', 'intensity'),
+                          ('actual_points', 'n_valid'),
+                          ('total_points', 'n_total'),
+                          ('sclip', 'clip_sigma'),
+                          ('integrmode', 'integration_mode')])
+def test_sample_deprecated_attributes(old, new):
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 40.0)
+    sample.update()
+    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
+        assert getattr(sample, old) == getattr(sample, new)
+    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
+        setattr(sample, old, getattr(sample, new))
+
+
+def test_sample_deprecated_update_fixed_parameters():
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 40.0)
+    with pytest.warns(PhotutilsDeprecationWarning,
+                      match="'fixed_parameters'"):
+        sample.update(fixed_parameters=DEFAULT_FIX)
+    assert sample.n_valid > 0
