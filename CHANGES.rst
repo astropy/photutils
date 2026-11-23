@@ -543,6 +543,13 @@ API Changes
     central pixel) are NaN. Previously, such columns had an object
     data type with `None` values. [#2553]
 
+- ``photutils.utils``
+
+  - ``NoDetectionsWarning`` is now a subclass of
+    ``AstropyUserWarning`` instead of ``AstropyWarning``, like the
+    other Photutils warnings. Warning filters for ``UserWarning`` or
+    ``AstropyUserWarning`` now also match it. [#2565]
+
 
 3.1.1 (2026-10-16)
 ------------------
