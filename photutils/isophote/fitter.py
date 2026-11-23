@@ -188,7 +188,7 @@ class EllipseFitter:
         minimum_amplitude_sample = None
 
         # These must be passed throughout the execution chain.
-        fixed_parameters = sample.geometry.fix
+        fixed_parameters = sample.geometry._fix
 
         # The orientation of a circle is undefined and its correction
         # diverges, so it is not fit if the ellipticity is fixed at
@@ -251,7 +251,7 @@ class EllipseFitter:
                            f'{sample.geometry.sma}: {exc}')
             if msg is not None:
                 warnings.warn(msg, AstropyUserWarning)
-                sample.geometry.fix = fixed_parameters
+                sample.geometry._fix = fixed_parameters
                 return Isophote(sample, i + 1, valid=False, stop_code=3)
 
             # Mask out coefficients that control fixed ellipse parameters.

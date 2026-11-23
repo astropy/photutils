@@ -73,12 +73,12 @@ def test_geometry_sma_override_resets_cached_attributes():
     assert geometry.sma == 10.0
     np.testing.assert_allclose(sample.geometry._area_factor,
                                expected_geometry._area_factor)
-    np.testing.assert_allclose(sample.geometry.sector_angular_width,
-                               expected_geometry.sector_angular_width)
-    np.testing.assert_allclose(sample.geometry.initial_polar_angle,
-                               expected_geometry.initial_polar_angle)
-    np.testing.assert_allclose(sample.geometry.initial_polar_radius,
-                               expected_geometry.initial_polar_radius)
+    np.testing.assert_allclose(sample.geometry._sector_angular_width,
+                               expected_geometry._sector_angular_width)
+    np.testing.assert_allclose(sample.geometry._initial_polar_angle,
+                               expected_geometry._initial_polar_angle)
+    np.testing.assert_allclose(sample.geometry._initial_polar_radius,
+                               expected_geometry._initial_polar_radius)
 
 
 @pytest.mark.parametrize(('x0', 'y0'), [(0.0, 40.0), (40.0, 0.0),
@@ -235,10 +235,10 @@ def test_update_keeps_fixed_parameters():
                                fix_center=True, fix_ellipticity=True)
     sample = EllipseSample(data, 20.0, geometry=geometry)
     sample.update()
-    assert list(sample.geometry.fix) == [True, True, False, True]
+    assert list(sample.geometry._fix) == [True, True, False, True]
 
     sample.update(fixed_parameters=np.array([False, False, True, False]))
-    assert list(sample.geometry.fix) == [False, False, True, False]
+    assert list(sample.geometry._fix) == [False, False, True, False]
 
 
 @pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
@@ -405,7 +405,7 @@ def test_sampling_path(sma):
     sample = EllipseSample(data, sma, eps=0.3)
     angles, radii, _ = sample.extract()
     assert sample.actual_points == sample.total_points
-    assert angles[0] == sample.geometry.initial_polar_angle
+    assert angles[0] == sample.geometry._initial_polar_angle
     assert_allclose(radii, sample.geometry.radius(angles))
     steps = np.minimum(1.0 / radii, 0.5)
     assert_allclose(np.diff(angles), steps[:-1])

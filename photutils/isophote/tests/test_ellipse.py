@@ -129,7 +129,7 @@ class TestEllipse:
         assert np.all(isolist.y0 == 256.0)
         assert_allclose(np.diff(isolist.sma[-3:]), 2.0)
 
-        assert not np.any(geometry.fix)
+        assert not np.any(geometry._fix)
         assert not geometry.linear_growth
 
         # A second call without these parameters fits the center and
@@ -401,7 +401,7 @@ class TestEllipse:
                          'orientation'):
                 assert_array_equal(getattr(result, name),
                                    getattr(isolist, name))
-        assert not np.any(geometry.fix)
+        assert not np.any(geometry._fix)
         assert not geometry.linear_growth
 
     @pytest.mark.parametrize(('kwargs', 'fixed_names'),
@@ -870,7 +870,7 @@ class TestMeasureIsophotes:
                  'intensity')
         values = {name: getattr(self.isolist, name).copy()
                   for name in names}
-        fixed = [iso.sample.geometry.fix.copy() for iso in self.isolist]
+        fixed = [iso.sample.geometry._fix.copy() for iso in self.isolist]
         ellipse = Ellipse(2.0 * self.data)
         isolist = ellipse.measure_isophotes(self.isolist)
 
@@ -878,7 +878,7 @@ class TestMeasureIsophotes:
             assert_equal(getattr(self.isolist, name), values[name])
         for iso, iso_ref, fix in zip(isolist, self.isolist, fixed,
                                      strict=True):
-            assert_equal(iso_ref.sample.geometry.fix, fix)
+            assert_equal(iso_ref.sample.geometry._fix, fix)
             assert iso.sample.geometry is not iso_ref.sample.geometry
 
     def test_geometries(self):

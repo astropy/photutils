@@ -611,6 +611,15 @@ API Changes
     ``EllipseGeometry.pa``, still return floats in radians. They will
     be removed in version 4.0. [#2568]
 
+  - The ``initialize_sector_geometry``, ``polar_angle_sector_limits``,
+    ``bounding_ellipses``, ``update_sma``, and ``reset_sma`` methods
+    and the ``sector_angular_width``, ``initial_polar_angle``,
+    ``initial_polar_radius``, and ``fix`` attributes of
+    ``EllipseGeometry`` are deprecated and will be removed in version
+    4.0. They were internal to the fitter. The ``fix_center``,
+    ``fix_orientation``, and ``fix_ellipticity`` properties report
+    which parameters are fixed. [#2568]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

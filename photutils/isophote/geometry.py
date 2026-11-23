@@ -9,7 +9,7 @@ import astropy.units as u
 import numpy as np
 from astropy import log
 
-from photutils.utils._deprecation import (deprecated_attribute,
+from photutils.utils._deprecation import (deprecated, deprecated_attribute,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument,
                                           warn_deprecated_attribute)
@@ -24,6 +24,12 @@ __all__ = ['EllipseGeometry']
 # this order.
 _HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center',
                         'a2': 'orientation', 'b2': 'ellipticity'}
+
+
+# The indices of the orientation and ellipticity in the ``fix`` array.
+_FIX_INDEX = {name: index for index, name
+              in enumerate(_HARMONIC_PARAMETERS.values())
+              if name != 'center'}
 
 
 def _make_fix_array(*, fix_center, fix_orientation, fix_ellipticity):
@@ -166,9 +172,9 @@ class EllipseGeometry:
 
         # Fixed parameters are flagged in here, in the order of the
         # harmonic coefficients that correct them.
-        self.fix = _make_fix_array(fix_center=fix_center,
-                                   fix_orientation=fix_orientation,
-                                   fix_ellipticity=fix_ellipticity)
+        self._fix = _make_fix_array(fix_center=fix_center,
+                                    fix_orientation=fix_orientation,
+                                    fix_ellipticity=fix_ellipticity)
 
         # Limits for sector angular width
         self._phi_min = 0.05
@@ -194,6 +200,38 @@ class EllipseGeometry:
         if isinstance(value, u.Quantity):
             value = value.to_value(u.rad)
         self._orientation_rad = value
+
+    @property
+    def fix_center(self):
+        """
+        Whether the center is kept fixed during the fit.
+        """
+        return bool(self._fix[0] and self._fix[1])
+
+    @property
+    def fix_orientation(self):
+        """
+        Whether the orientation is kept fixed during the fit.
+        """
+        return bool(self._fix[_FIX_INDEX['orientation']])
+
+    @property
+    def fix_ellipticity(self):
+        """
+        Whether the ellipticity is kept fixed during the fit.
+        """
+        return bool(self._fix[_FIX_INDEX['ellipticity']])
+
+    # Remove in 4.0
+    fix = deprecated_attribute('fix', '_fix', '3.2', until='4.0')
+    sector_angular_width = deprecated_attribute(
+        'sector_angular_width', '_sector_angular_width', '3.2',
+        until='4.0')
+    initial_polar_angle = deprecated_attribute(
+        'initial_polar_angle', '_initial_polar_angle', '3.2', until='4.0')
+    initial_polar_radius = deprecated_attribute(
+        'initial_polar_radius', '_initial_polar_radius', '3.2',
+        until='4.0')
 
     # Remove in 4.0
     eps = deprecated_attribute('eps', 'ellipticity', '3.2', until='4.0')
@@ -223,21 +261,22 @@ class EllipseGeometry:
         Reset attributes derived from the current semimajor axis length.
         """
         # Variables used in the calculation of the sector angular width
-        sma1, sma2 = self.bounding_ellipses()
+        sma1, sma2 = self._bounding_ellipses()
         inner_sma = min((sma2 - sma1), 3.0)
         self._area_factor = (sma2 - sma1) * inner_sma
 
-        for attr in ('sector_angular_width', 'initial_polar_angle',
-                     'initial_polar_radius'):
+        for attr in ('_sector_angular_width', '_initial_polar_angle',
+                     '_initial_polar_radius'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
         # The sma can eventually be zero.
         if self.sma > 0.0:
-            self.sector_angular_width = max(min((inner_sma / self.sma),
-                                                self._phi_max), self._phi_min)
-            self.initial_polar_angle = self.sector_angular_width / 2.0
-            self.initial_polar_radius = self.radius(self.initial_polar_angle)
+            self._sector_angular_width = max(
+                min((inner_sma / self.sma), self._phi_max), self._phi_min)
+            self._initial_polar_angle = self._sector_angular_width / 2.0
+            self._initial_polar_radius = self.radius(
+                self._initial_polar_angle)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def find_center(self, image, threshold=0.1, verbose=True):
@@ -399,13 +438,13 @@ class EllipseGeometry:
                 / np.sqrt(((1.0 - self.ellipticity) * np.cos(angle))**2
                           + (np.sin(angle))**2))
 
-    def initialize_sector_geometry(self, phi):
+    def _initialize_sector_geometry(self, phi):
         """
         Initialize geometry attributes associated with an elliptical
         sector at the given polar angle ``phi``.
 
         The sector spans the angular width stored in the
-        ``sector_angular_width`` attribute, centered on ``phi``. This
+        ``_sector_angular_width`` attribute, centered on ``phi``. This
         method computes:
 
         * the four vertices that define the elliptical sector on the
@@ -413,7 +452,7 @@ class EllipseGeometry:
         * the sector area (saved in the ``sector_area`` attribute)
         * the angular width of the next sector, computed from this
           sector's radii so that the sectors have roughly constant area
-          (saved in the ``sector_angular_width`` attribute)
+          (saved in the ``_sector_angular_width`` attribute)
 
         Parameters
         ----------
@@ -427,18 +466,18 @@ class EllipseGeometry:
         """
         # These polar radii bound the region between the inner
         # and outer ellipses that define the sector.
-        sma1, sma2 = self.bounding_ellipses()
+        sma1, sma2 = self._bounding_ellipses()
         eps_ = 1.0 - self.ellipticity
 
         # Polar vector at one side of the elliptical sector
-        self._phi1 = phi - self.sector_angular_width / 2.0
+        self._phi1 = phi - self._sector_angular_width / 2.0
         r1 = (sma1 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
         r2 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
 
         # Polar vector at the other side of the elliptical sector
-        self._phi2 = phi + self.sector_angular_width / 2.0
+        self._phi2 = phi + self._sector_angular_width / 2.0
         r3 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi2))**2
                                       + (math.sin(self._phi2))**2))
 
@@ -457,9 +496,9 @@ class EllipseGeometry:
         # come out with roughly constant area along the ellipse. The
         # width tends to infinity as the inner radius tends to zero.
         if r4 == 0:
-            self.sector_angular_width = self._phi_max
+            self._sector_angular_width = self._phi_max
         else:
-            self.sector_angular_width = max(
+            self._sector_angular_width = max(
                 min((self._area_factor / (r3 - r4) / r4), self._phi_max),
                 self._phi_min)
 
@@ -479,7 +518,7 @@ class EllipseGeometry:
 
         return vertex_x, vertex_y
 
-    def bounding_ellipses(self):
+    def _bounding_ellipses(self):
         """
         Compute the semimajor axis lengths of the two ellipses that
         bound the annulus where integrations take place.
@@ -506,14 +545,12 @@ class EllipseGeometry:
         # twice the semimajor axis length.
         return max(a1, 0.0), a2
 
-    def polar_angle_sector_limits(self):
+    def _polar_angle_sector_limits(self):
         """
         Return the two polar angles that bound the sector.
 
         The two bounding polar angles become available only after
-        calling the
-        :meth:`~photutils.isophote.EllipseGeometry.initialize_sector_geometry`
-        method.
+        calling the ``_initialize_sector_geometry`` method.
 
         Returns
         -------
@@ -625,7 +662,7 @@ class EllipseGeometry:
 
         return radius, angle
 
-    def update_sma(self, step):
+    def _update_sma(self, step):
         """
         Calculate an updated value for the semimajor axis, given the
         current value and the step value.
@@ -653,7 +690,7 @@ class EllipseGeometry:
             sma = self.sma * (1.0 + step)
         return sma
 
-    def reset_sma(self, step):
+    def _reset_sma(self, step):
         """
         Compute the semimajor axis length and the step value that
         reverse the direction of growth, from outwards to inwards.
@@ -673,8 +710,7 @@ class EllipseGeometry:
             The new semimajor axis length and the new step value to
             initiate the shrinking of the semimajor axis length. This is
             the step value that should be used when calling the
-            :meth:`~photutils.isophote.EllipseGeometry.update_sma`
-            method.
+            ``_update_sma`` method.
         """
         if self.linear_growth:
             sma = self.sma - step
@@ -685,3 +721,84 @@ class EllipseGeometry:
             step = aux - 1.0
 
         return sma, step
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def initialize_sector_geometry(self, phi):
+        """
+        Initialize the geometry of an elliptical sector.
+
+        Parameters
+        ----------
+        phi : float
+            The polar angle (radians) where the sector is located.
+
+        Returns
+        -------
+        x, y : 1D `~numpy.ndarray`
+            The x and y coordinates of each vertex as 1D arrays.
+        """
+        return self._initialize_sector_geometry(phi)
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def polar_angle_sector_limits(self):
+        """
+        Return the two polar angles that bound the sector.
+
+        Returns
+        -------
+        phi1, phi2 : float
+            The smaller and larger values of polar angle.
+        """
+        return self._polar_angle_sector_limits()
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def bounding_ellipses(self):
+        """
+        Compute the semimajor axis lengths of the annulus bounds.
+
+        Returns
+        -------
+        sma1, sma2 : float
+            The smaller and larger semimajor axis lengths.
+        """
+        return self._bounding_ellipses()
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def update_sma(self, step):
+        """
+        Calculate an updated value for the semimajor axis.
+
+        Parameters
+        ----------
+        step : float
+            The step value.
+
+        Returns
+        -------
+        sma : float
+            The new semimajor axis length.
+        """
+        return self._update_sma(step)
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def reset_sma(self, step):
+        """
+        Compute the semimajor axis length and step that reverse the
+        direction of growth.
+
+        Parameters
+        ----------
+        step : float
+            The current step value.
+
+        Returns
+        -------
+        sma, new_step : float
+            The new semimajor axis length and the new step value.
+        """
+        return self._reset_sma(step)

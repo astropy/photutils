@@ -509,10 +509,10 @@ class Ellipse:
         if linear is not None:
             geometry.linear_growth = bool(linear)
         if fix_center or fix_pa or fix_eps:
-            geometry.fix = _make_fix_array(fix_center=fix_center,
-                                           fix_orientation=fix_pa,
-                                           fix_ellipticity=fix_eps)
-        if np.all(geometry.fix):
+            geometry._fix = _make_fix_array(fix_center=fix_center,
+                                            fix_orientation=fix_pa,
+                                            fix_ellipticity=fix_eps)
+        if np.all(geometry._fix):
             msg = 'Everything is fixed. Fit not possible.'
             warnings.warn(msg, AstropyUserWarning)
             return IsophoteList([])
@@ -617,7 +617,7 @@ class Ellipse:
 
             # Update sma. If exceeded user-defined
             # maximum, bail out from this loop.
-            sma = isophote.sample.geometry.update_sma(step)
+            sma = isophote.sample.geometry._update_sma(step)
             if maxsma is not None and sma >= maxsma:
                 break
 
@@ -625,7 +625,7 @@ class Ellipse:
         # the first inward isophote starts from the geometry of the
         # first isophote, which is the closest one in sma.
         first_isophote = isophote_list[0]
-        sma, step = first_isophote.sample.geometry.reset_sma(step)
+        sma, step = first_isophote.sample.geometry._reset_sma(step)
         geometry = first_isophote.sample.geometry
 
         # Now, go from initial sma inwards towards center, until the
@@ -649,7 +649,7 @@ class Ellipse:
             geometry = isophote.sample.geometry
 
             # Figure out the next sma.
-            sma = isophote.sample.geometry.update_sma(step)
+            sma = isophote.sample.geometry._update_sma(step)
 
         # If user asked for minsma=0, extract special isophote there.
         # It is centered on the innermost fitted isophote, whose
@@ -1002,7 +1002,7 @@ class Ellipse:
     def _non_iterative(self, sma, geometry, sclip, n_clip, integrmode):
         sample = EllipseSample(self.image, sma, sclip=sclip, n_clip=n_clip,
                                geometry=geometry, integrmode=integrmode)
-        sample.update(fixed_parameters=geometry.fix)
+        sample.update(fixed_parameters=geometry._fix)
 
         # An isophote without any valid data points (e.g., an ellipse
         # outside of the image) is invalid.
@@ -1056,7 +1056,7 @@ class Ellipse:
         # geometry changed.
         isophote.sample.values = None
         isophote.sample.update(
-            fixed_parameters=isophote.sample.geometry.fix)
+            fixed_parameters=isophote.sample.geometry._fix)
 
         # We take the opportunity to change an eventual
         # negative stop code to its positive equivalent.

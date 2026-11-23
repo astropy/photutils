@@ -268,14 +268,14 @@ class _AreaIntegrator(_Integrator):
         self._phi = phi
 
         # Get image coordinates of the four vertices of the elliptical sector.
-        vertex_x, vertex_y = self._geometry.initialize_sector_geometry(phi)
+        vertex_x, vertex_y = self._geometry._initialize_sector_geometry(phi)
 
         self._sector_area = self._geometry.sector_area
 
         # Step in polar angle to be used by caller next time
         # when updating the current polar angle `phi` to point
         # to the next sector.
-        self._phistep = self._geometry.sector_angular_width
+        self._phistep = self._geometry._sector_angular_width
 
         # Define rectangular image area that encompasses the elliptical
         # sector. We have to account for rounding of pixel indices.
@@ -285,7 +285,7 @@ class _AreaIntegrator(_Integrator):
         j2 = int(max(vertex_y)) + 1
 
         # Polar angle limits for this sector
-        phi1, phi2 = self._geometry.polar_angle_sector_limits()
+        phi1, phi2 = self._geometry._polar_angle_sector_limits()
 
         # Ignore data point if the elliptical sector lies
         # partially, or totally, outside image boundaries.
@@ -301,7 +301,7 @@ class _AreaIntegrator(_Integrator):
             rp = np.hypot(dx, dy)
             phip = np.mod(np.arctan2(dy, dx) - geometry._orientation_rad,
                           2.0 * np.pi)
-            sma1, sma2 = geometry.bounding_ellipses()
+            sma1, sma2 = geometry._bounding_ellipses()
             eps_ = 1.0 - geometry.ellipticity
             aux = eps_ / np.sqrt((eps_ * np.cos(phip))**2
                                  + np.sin(phip)**2)
@@ -339,8 +339,8 @@ class _AreaIntegrator(_Integrator):
         result : float
             The polar angle step.
         """
-        _, phi2 = self._geometry.polar_angle_sector_limits()
-        return self._geometry.sector_angular_width / 2.0 + phi2 - self._phi
+        _, phi2 = self._geometry._polar_angle_sector_limits()
+        return self._geometry._sector_angular_width / 2.0 + phi2 - self._phi
 
     def get_sector_area(self):
         return self._sector_area

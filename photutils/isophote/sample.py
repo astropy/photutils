@@ -336,8 +336,8 @@ class EllipseSample:
                                                   angles, radii, intensities)
 
         # Initialize walk along elliptical path.
-        radius = self.geometry.initial_polar_radius
-        phi = self.geometry.initial_polar_angle
+        radius = self.geometry._initial_polar_radius
+        phi = self.geometry._initial_polar_angle
 
         # In case of an area integrator, ask the integrator to deliver
         # a hint of how much area the sectors will have. In case of too
@@ -511,7 +511,7 @@ class EllipseSample:
             return
 
         if fixed_parameters is not None:
-            self.geometry.fix = fixed_parameters
+            self.geometry._fix = fixed_parameters
 
         # Update the mean value first, using extraction from main sample.
         s = self.extract()

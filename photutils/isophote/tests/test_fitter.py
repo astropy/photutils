@@ -335,7 +335,7 @@ class TestMaxCenterShift:
         assert_allclose(shift, 2.0)
 
         # The center is held fixed only within this fit
-        assert np.array_equal(g.fix, DEFAULT_FIX)
+        assert np.array_equal(g._fix, DEFAULT_FIX)
 
     def test_shift_within_bound(self):
         # A bound larger than the true offset does not change the fit
@@ -365,14 +365,14 @@ class TestMaxCenterShift:
         # With PA and ellipticity fixed, holding the center at the bound
         # leaves nothing to fit, so the fit stops there.
         sample = EllipseSample(self.data, 40)
-        sample.geometry.fix = np.array([False, False, True, True])
+        sample.geometry._fix = np.array([False, False, True, True])
         isophote = EllipseFitter(sample).fit(max_center_shift=1.0)
 
         g = isophote.sample.geometry
         shift = np.hypot(g.x0 - DEFAULT_POS, g.y0 - DEFAULT_POS)
         assert_allclose(shift, 1.0)
         assert isophote.stop_code == 0
-        assert np.array_equal(g.fix, [False, False, True, True])
+        assert np.array_equal(g._fix, [False, False, True, True])
 
     @pytest.mark.parametrize('value', [-1.0, np.nan])
     def test_invalid(self, value):
@@ -500,12 +500,12 @@ def test_fit_does_not_modify_input(fix_eps, fix_center):
                                fix_ellipticity=fix_eps,
                                fix_center=fix_center)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
-    fix = sample.geometry.fix.copy()
+    fix = sample.geometry._fix.copy()
     EllipseFitter(sample).fit()
     assert sample.geometry.ellipticity == 0.0
     assert sample.geometry.orientation == 0.5 * u.rad
     assert (sample.geometry.x0, sample.geometry.y0) == (257.0, 255.0)
-    assert np.array_equal(sample.geometry.fix, fix)
+    assert np.array_equal(sample.geometry._fix, fix)
 
 
 def test_everything_fixed_no_data():
