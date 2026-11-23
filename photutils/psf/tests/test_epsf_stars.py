@@ -19,8 +19,9 @@ from astropy.utils.masked import Masked
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_equal
 
+from photutils.centroids import centroid_com
 from photutils.detection import DAOStarFinder, find_peaks
-from photutils.psf import make_psf_model_image
+from photutils.psf import PSFPhotometry, make_psf_model_image
 from photutils.psf.epsf_stars import (EPSFStar, EPSFStars, LinkedEPSFStar,
                                       _compute_mean_sky_coordinate,
                                       _create_weights_cutout,
@@ -28,6 +29,16 @@ from photutils.psf.epsf_stars import (EPSFStar, EPSFStars, LinkedEPSFStar,
 from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import ImagePSF
 from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
+
+
+@pytest.fixture
+def offcenter_star_data():
+    """
+    Create an image of a single star that is not centered on a pixel.
+    """
+    model = CircularGaussianPRF(flux=1000, x_0=25.2, y_0=24.7, fwhm=3.0)
+    yy, xx = np.mgrid[:51, :51]
+    return model(xx, yy)
 
 
 @pytest.fixture
@@ -1907,15 +1918,12 @@ class TestExtractStars:
         with pytest.raises(ValueError, match=match):
             extract_stars([simple_nddata, simple_nddata], catalog)
 
-    def test_finder_tables(self):
+    def test_finder_tables(self, offcenter_star_data):
         """
         Test that source tables from the star finders can be input
         directly.
         """
-        model = CircularGaussianPRF(flux=1000, x_0=25.2, y_0=24.7, fwhm=3.0)
-        yy, xx = np.mgrid[:51, :51]
-        data = model(xx, yy)
-
+        data = offcenter_star_data
         finder_table = DAOStarFinder(threshold=1.0, fwhm=3.0).find_stars(data)
         stars = extract_stars(data, finder_table, size=11)
         assert_allclose(stars.center, [finder_table['x_centroid'][0],
@@ -1925,6 +1933,33 @@ class TestExtractStars:
         peaks_table = find_peaks(data, threshold=1.0)
         stars = extract_stars(data, peaks_table, size=11)
         assert_allclose(stars.center, [25, 25])
+
+    def test_find_peaks_centroid_table(self, offcenter_star_data):
+        """
+        Test that the centroid columns of a ``find_peaks`` table take
+        priority over its peak columns.
+        """
+        data = offcenter_star_data
+        peaks_table = find_peaks(data, threshold=1.0,
+                                 centroid_func=centroid_com)
+        assert peaks_table['x_centroid'][0] != peaks_table['x_peak'][0]
+        stars = extract_stars(data, peaks_table, size=11)
+        assert_allclose(stars.center, [peaks_table['x_centroid'][0],
+                                       peaks_table['y_centroid'][0]])
+
+    def test_psf_photometry_table(self, offcenter_star_data):
+        """
+        Test that the fitted positions of a PSF photometry results
+        table take priority over its initial positions.
+        """
+        data = offcenter_star_data
+        psfphot = PSFPhotometry(CircularGaussianPRF(fwhm=3.0), (7, 7),
+                                aperture_radius=5)
+        init_params = Table({'x': [25.0], 'y': [25.0]})
+        results = psfphot(data, init_params=init_params)
+        assert_allclose(results['x_init'], 25.0)
+        stars = extract_stars(data, results, size=11)
+        assert_allclose(stars.center, [25.2, 24.7], atol=1e-4)
 
     def test_extract_stars_flux_estimation_failure(self):
         """
