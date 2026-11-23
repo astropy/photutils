@@ -664,8 +664,9 @@ fraction of valid points of an isophote is smaller than the
 with a stop code of 1. A smaller value lets the fit continue through
 isophotes that cross large masked regions.
 
-Cosmic rays and defective pixels are removed very effectively by
-combining sigma clipping with the ``'median'`` integration mode (see
+Tests with artificial images showed that cosmic rays and defective
+pixels are removed very effectively by combining sigma clipping with
+the ``'median'`` integration mode (see
 :ref:`isophote-integration-modes`).
 
 
