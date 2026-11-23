@@ -119,6 +119,30 @@ parameter of the STSDAS ``ellipse`` task. See the :ref:`isophote-faq`
 for more details.
 
 
+Source Tables as Input to ``extract_stars``
+===========================================
+
+The :func:`~photutils.psf.extract_stars` function now recognizes common
+alternative names for the pixel position columns of its input catalogs,
+such as ``x_centroid``, ``x_fit``, ``x_center``, and ``x_peak`` (and the
+same for ``y``). The output tables of the star finders and of the PSF
+photometry classes can therefore be input directly, without first
+creating a table with ``x`` and ``y`` columns. For an image ``data``::
+
+    >>> from photutils.detection import DAOStarFinder
+    >>> from photutils.psf import extract_stars
+    >>> finder = DAOStarFinder(threshold=100.0, fwhm=1.5)
+    >>> sources = finder(data)
+    >>> stars = extract_stars(data, sources, size=25)
+
+The x and y columns must have the same suffix. If a catalog has more
+than one pair of position columns, the fitted positions are used first.
+:func:`~photutils.psf.extract_stars`, `~photutils.psf.PSFPhotometry`,
+and `~photutils.psf.IterativePSFPhotometry` now search for the position
+columns in the same priority order. See :ref:`build-epsf` for more
+details.
+
+
 Dependency Version Updates
 ==========================
 
@@ -173,3 +197,25 @@ center before fitting.
 
 Breaking Changes
 ----------------
+
+Source Position Columns in the PSF Tools
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`~photutils.psf.PSFPhotometry` and
+`~photutils.psf.IterativePSFPhotometry` now use the fitted columns of
+an ``init_params`` table (e.g., ``x_fit``) before its initial columns
+(e.g., ``x_init``). A table of previous results therefore restarts the
+fit from its fitted values. Previously, it restarted the fit from its
+initial values. A row with a nonfinite or masked fitted value uses its
+initial values. To restart from the initial values, remove the fitted
+columns from the table.
+
+The x and y position columns of ``init_params`` and of the table
+returned by the ``finder`` must now have the same suffix. Previously,
+columns from different conventions (e.g., ``x_centroid`` and ``y_peak``)
+were silently combined.
+
+:func:`~photutils.psf.extract_stars` uses the same priority order. A
+catalog with both ``x`` and ``y`` columns and a pair of fitted or
+initial position columns now uses the fitted or initial positions,
+unless the catalog has a ``skycoord`` column.
