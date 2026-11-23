@@ -6,9 +6,32 @@ Tests for the exceptions module.
 import warnings
 
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 
-from photutils.utils import PhotutilsDeprecationWarning
+from photutils.utils import NoDetectionsWarning, PhotutilsDeprecationWarning
+
+
+class TestNoDetectionsWarning:
+    """
+    Tests for NoDetectionsWarning.
+    """
+
+    def test_subclass(self):
+        assert issubclass(NoDetectionsWarning, AstropyUserWarning)
+
+    def test_shown_after_astropy_user_warning_ignored(self):
+        # A filter added after a broader one takes precedence, so the
+        # warning can be kept while other AstropyUserWarning are
+        # ignored.
+        with warnings.catch_warnings(record=True) as records:
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            warnings.simplefilter('always', NoDetectionsWarning)
+            warnings.warn('other', AstropyUserWarning, stacklevel=1)
+            warnings.warn('test', NoDetectionsWarning, stacklevel=1)
+
+        assert [record.category for record in records] == [
+            NoDetectionsWarning]
 
 
 class TestPhotutilsDeprecationWarning:

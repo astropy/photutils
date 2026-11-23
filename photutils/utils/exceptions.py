@@ -4,13 +4,13 @@ Custom warning classes.
 """
 
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning, AstropyWarning)
+                                      AstropyUserWarning)
 
 __all__ = ['DeblendWarning', 'NoDetectionsWarning',
            'PhotutilsDeprecationWarning']
 
 
-class NoDetectionsWarning(AstropyWarning):
+class NoDetectionsWarning(AstropyUserWarning):
     """
     A warning class to indicate no sources were detected.
     """
