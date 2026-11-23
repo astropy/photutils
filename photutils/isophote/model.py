@@ -8,67 +8,19 @@ import numpy as np
 from scipy.interpolate import LSQUnivariateSpline
 
 from photutils.isophote._ellipse_model import build_ellipse_model_c
-from photutils.isophote.isophote import IsophoteList
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated,
+                                          deprecated_positional_kwargs)
 
 __all__ = ['build_ellipse_model']
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
-def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
-                        sma_interval=0.1):
+def _make_model_image(isolist, shape, *, fill_value, high_harmonics,
+                      sma_interval):
     """
-    Build a model elliptical galaxy image from a list of isophotes.
+    Make a model image from an `~photutils.isophote.IsophoteList`.
 
-    The intensity, ellipticity, position angle, and center of the
-    isophotes are interpolated with least-squares cubic splines onto a
-    grid of semimajor axis lengths spaced by ``sma_interval``. Each
-    interpolated ellipse is traced on the output image and its intensity
-    is distributed over the overlapping pixels with bilinear weights.
-    The pixel values are then normalized by the accumulated weights.
-
-    Parameters
-    ----------
-    shape : 2-tuple
-        The (ny, nx) shape of the output model image, usually the shape
-        of the array used to generate ``isolist``.
-
-    isolist : `~photutils.isophote.IsophoteList` instance
-        The isophote list created by the `~photutils.isophote.Ellipse`
-        class. It must contain at least 4 isophotes, sorted by strictly
-        increasing semimajor axis length. Isophotes with a nonfinite
-        intensity (e.g., the central pixel if it is masked) are ignored.
-
-    fill : float, optional
-        The constant value to fill empty pixels. If an output pixel has
-        no contribution from any isophote, it will be assigned this
-        value. The default is 0.
-
-    high_harmonics : bool, optional
-        Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
-        ``a4``, and ``b4``) to the result. See
-        `~photutils.isophote.Isophote` for details. Harmonics that could
-        not be computed (NaN) are treated as zero. The default
-        is `False`.
-
-    sma_interval : float, optional
-        The step in semimajor axis length of the grid on which the
-        isophote parameters are interpolated and the model ellipses are
-        drawn. It must be positive. Larger values are faster but can
-        leave gaps (filled with ``fill``) in the model. The default is
-        0.1.
-
-    Returns
-    -------
-    result : 2D `~numpy.ndarray`
-        The image with the model galaxy.
-
-    Raises
-    ------
-    ValueError
-        If ``isolist`` contains fewer than 4 isophotes with a finite
-        intensity or if its isophotes are not sorted by strictly
-        increasing semimajor axis length.
+    See `~photutils.isophote.IsophoteList.make_model_image` for the
+    parameters.
     """
     if len(isolist) == 0:
         msg = 'isolist must not be empty'
@@ -78,9 +30,9 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     # nonfinite over a range of semimajor axis lengths.
     finite = np.isfinite(isolist.intensity)
     if not np.all(finite):
-        isolist = IsophoteList([isophote for isophote, keep
-                                in zip(isolist, finite, strict=True)
-                                if keep])
+        isolist = type(isolist)([isophote for isophote, keep
+                                 in zip(isolist, finite, strict=True)
+                                 if keep])
 
     # The spline interpolation below requires at least 4 data points
     # (cubic splines) with strictly increasing sma values.
@@ -124,9 +76,10 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
         isolist.sma, isolist.x0, nodes)(finely_spaced_sma)
     y0_array = LSQUnivariateSpline(
         isolist.sma, isolist.y0, nodes)(finely_spaced_sma)
-    grad_array = LSQUnivariateSpline(
-        isolist.sma, isolist.gradient, nodes)(finely_spaced_sma)
     if high_harmonics:
+        grad_array = LSQUnivariateSpline(
+            isolist.sma, isolist.gradient, nodes)(finely_spaced_sma)
+
         # Shifting the position angle by pi also shifts the angle
         # origin of the harmonics by pi, which flips the sign of the
         # third-order harmonics and leaves the fourth-order harmonics
@@ -187,6 +140,42 @@ def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
     result /= weight
 
     # Fill value
-    result[empty] = fill
+    result[empty] = fill_value
 
     return result
+
+
+@deprecated('3.2', alternative='IsophoteList.make_model_image',
+            until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
+def build_ellipse_model(shape, isolist, fill=0.0, high_harmonics=False,
+                        sma_interval=0.1):
+    """
+    Build a model elliptical galaxy image from a list of isophotes.
+
+    Parameters
+    ----------
+    shape : 2-tuple
+        The (ny, nx) shape of the output model image.
+
+    isolist : `~photutils.isophote.IsophoteList` instance
+        The isophote list created by the `~photutils.isophote.Ellipse`
+        class.
+
+    fill : float, optional
+        The constant value to fill empty pixels.
+
+    high_harmonics : bool, optional
+        Whether to add the higher-order harmonics to the result.
+
+    sma_interval : float, optional
+        The step in semimajor axis length of the interpolation grid.
+
+    Returns
+    -------
+    result : 2D `~numpy.ndarray`
+        The image with the model galaxy.
+    """
+    return _make_model_image(isolist, shape, fill_value=fill,
+                             high_harmonics=high_harmonics,
+                             sma_interval=sma_interval)

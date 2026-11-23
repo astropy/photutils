@@ -110,12 +110,17 @@ class TestBuildEllipseModelPositionalKwargs:
     def test_positional_warns(self, small_isolist):
         shape, isolist = small_isolist
         match = 'build_ellipse_model'
-        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        outer = 'IsophoteList.make_model_image'
+        with (pytest.warns(PhotutilsDeprecationWarning, match=outer),
+              pytest.warns(PhotutilsDeprecationWarning, match=match)):
             build_ellipse_model(shape, isolist, 0.0)
 
-    def test_keyword_no_warning(self, small_isolist):
+    def test_keyword_no_positional_warning(self, small_isolist):
         shape, isolist = small_isolist
-        build_ellipse_model(shape, isolist, fill=0.0)
+        match = 'IsophoteList.make_model_image'
+        with pytest.warns(PhotutilsDeprecationWarning, match=match) as rec:
+            build_ellipse_model(shape, isolist, fill=0.0)
+        assert len(rec) == 1
 
 
 class TestEllipseSamplePositionalKwargs:

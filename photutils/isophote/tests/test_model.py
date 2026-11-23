@@ -22,6 +22,7 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import IsophoteList
 from photutils.isophote.model import build_ellipse_model
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.mark.remote_data
@@ -41,8 +42,8 @@ def test_model():
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', RuntimeWarning)
         isophote_list = ellipse.fit_image()
-    model = build_ellipse_model(data.shape, isophote_list,
-                                fill=np.mean(data[10:100, 10:100]))
+    model = isophote_list.make_model_image(
+        data.shape, fill_value=np.mean(data[10:100, 10:100]))
 
     assert data.shape == model.shape
 
@@ -76,9 +77,9 @@ def fixture_simulated_isolist():
 @pytest.mark.parametrize('sma_interval', [0.05, 0.1])
 def test_model_simulated_data(simulated_isolist, sma_interval):
     data, isophote_list = simulated_isolist
-    model = build_ellipse_model(data.shape, isophote_list,
-                                fill=np.mean(data[0:50, 0:50]),
-                                sma_interval=sma_interval)
+    model = isophote_list.make_model_image(
+        data.shape, fill_value=np.mean(data[0:50, 0:50]),
+        sma_interval=sma_interval)
 
     assert data.shape == model.shape
 
@@ -105,33 +106,70 @@ def test_model_minimum_radius():
                                           max_sma=350.0, step=0.4,
                                           n_clip=3)
 
-        model = build_ellipse_model(data.shape, isophote_list,
-                                    fill=np.mean(data[0:50, 0:50]))
+        model = isophote_list.make_model_image(
+            data.shape, fill_value=np.mean(data[0:50, 0:50]))
 
         # It's enough that the algorithm reached this point. The
         # actual accuracy of the modelling is being tested elsewhere.
         assert data.shape == model.shape
 
 
+def test_make_model_image_matches_function():
+    """
+    Test that the deprecated function gives the same image as the
+    method.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    match = 'IsophoteList.make_model_image'
+    for kwargs in ({}, {'high_harmonics': True}, {'sma_interval': 0.37}):
+        model = isolist.make_model_image(data.shape, fill_value=1.0,
+                                         **kwargs)
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            old = build_ellipse_model(data.shape, isolist, fill=1.0,
+                                      **kwargs)
+        assert_array_equal(model, old)
+
+
+def test_make_model_image_keyword_only():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_sma=20.0)
+    with pytest.raises(TypeError):
+        isolist.make_model_image(data.shape, 1.0)
+
+
+def test_make_model_image_nan_gradient():
+    """
+    Test that the gradient is not needed without high harmonics.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_sma=40.0)
+    expected = isolist.make_model_image(data.shape)
+    for isophote in isolist:
+        isophote.gradient = np.nan
+    model = isolist.make_model_image(data.shape)
+    assert_array_equal(model, expected)
+
+
 def test_model_inputs():
     match = 'isolist must not be empty'
     with pytest.raises(ValueError, match=match):
-        build_ellipse_model((10, 10), IsophoteList([]))
+        IsophoteList([]).make_model_image((10, 10))
 
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image(max_sma=20.0)
     match = 'isolist must contain at least 4 isophotes'
     with pytest.raises(ValueError, match=match):
-        build_ellipse_model(data.shape, isolist[-3:])
-    model = build_ellipse_model(data.shape, isolist[-4:])
+        isolist[-3:].make_model_image(data.shape)
+    model = isolist[-4:].make_model_image(data.shape)
     assert np.all(np.isfinite(model))
     assert np.max(model) > 0
 
     match = 'must be sorted by strictly increasing semimajor axis'
     with pytest.raises(ValueError, match=match):
-        build_ellipse_model(data.shape, isolist[::-1])
+        isolist[::-1].make_model_image(data.shape)
     with pytest.raises(ValueError, match=match):
-        build_ellipse_model(data.shape, isolist + isolist[-1:])
+        (isolist + isolist[-1:]).make_model_image(data.shape)
 
 
 def test_model_outer_isophote():
@@ -140,8 +178,8 @@ def test_model_outer_isophote():
     """
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image(max_sma=40.0)
-    model = build_ellipse_model(data.shape, isolist, fill=np.nan,
-                                sma_interval=10.0)
+    model = isolist.make_model_image(data.shape, fill_value=np.nan,
+                                     sma_interval=10.0)
 
     # The fitted isophotes have position angles near 0 or pi, so the
     # major axis is along the x axis.
@@ -164,7 +202,7 @@ def test_model_pa_wrap():
     assert np.any(pa < 0.1)
     assert np.any(pa > np.pi - 0.1)
 
-    model = build_ellipse_model(data.shape, isolist)
+    model = isolist.make_model_image(data.shape)
     yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
     radius = np.hypot(xx - 256, yy - 256)
     annulus = (radius >= 10) & (radius < 30)
@@ -183,7 +221,7 @@ def test_model_fill():
     # Model pixels with a zero intensity must not be filled.
     for isophote in isolist:
         isophote.intensity = 0.0
-    model = build_ellipse_model(data.shape, isolist, fill=np.nan)
+    model = isolist.make_model_image(data.shape, fill_value=np.nan)
     assert model[100, 100] == 0.0
     assert np.isnan(model[0, 0])
     assert np.all(model[np.isfinite(model)] == 0.0)
@@ -191,7 +229,7 @@ def test_model_fill():
 
 def test_model_harmonics():
     """
-    Test that high harmonics are included in build_ellipse_model.
+    Test that high harmonics are included in make_model_image.
     """
     x0 = y0 = 50
     xsig = 10
@@ -216,7 +254,7 @@ def test_model_harmonics():
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image(fix_center=True, fix_ellipticity=True)
 
-    model_image = build_ellipse_model(data.shape, isolist, high_harmonics=True)
+    model_image = isolist.make_model_image(data.shape, high_harmonics=True)
     residual = data - model_image
 
     mask = model_image > 0
@@ -234,12 +272,11 @@ def test_model_harmonics_gradient_sign():
     """
     data = make_test_image(nx=200, ny=200, seed=0)
     isolist = Ellipse(data).fit_image(max_sma=40.0)
-    model = build_ellipse_model(data.shape, isolist, high_harmonics=True)
+    model = isolist.make_model_image(data.shape, high_harmonics=True)
 
     for isophote in isolist:
         isophote.gradient = -isophote.gradient
-    model_flipped = build_ellipse_model(data.shape, isolist,
-                                        high_harmonics=True)
+    model_flipped = isolist.make_model_image(data.shape, high_harmonics=True)
     assert_allclose(model_flipped, model)
 
 
@@ -252,13 +289,12 @@ def test_model_missing_harmonics():
     isolist = Ellipse(data).fit_image(max_sma=40.0)
     isolist[10].a3 = None
     isolist[10].b4 = np.nan
-    model = build_ellipse_model(data.shape, isolist, high_harmonics=True)
+    model = isolist.make_model_image(data.shape, high_harmonics=True)
     assert np.all(np.isfinite(model))
 
     isolist[10].a3 = 0.0
     isolist[10].b4 = 0.0
-    model_zero = build_ellipse_model(data.shape, isolist,
-                                     high_harmonics=True)
+    model_zero = isolist.make_model_image(data.shape, high_harmonics=True)
     assert_allclose(model, model_zero)
 
 
@@ -272,9 +308,9 @@ def test_model_integration():
     g = EllipseGeometry(40, 55, 5.0, 0.5, np.pi / 3.0)
     ellipse = Ellipse(data, geometry=g)
     isophote_list = ellipse.fit_image()
-    model = build_ellipse_model(data.shape, isophote_list,
-                                fill=np.nanmean(data[105:, :5]),
-                                sma_interval=0.05)
+    model = isophote_list.make_model_image(
+        data.shape, fill_value=np.nanmean(data[105:, :5]),
+        sma_interval=0.05)
     assert np.nanmean(np.abs(model[100:, 60:] - data[100:, 60:])) < 2
 
 
@@ -448,7 +484,7 @@ def test_model_nonfinite_central_pixel():
     """
     data = make_test_image(nx=200, ny=200, seed=0)
     isolist = Ellipse(data).fit_image(max_sma=30.0)
-    expected = build_ellipse_model(data.shape, isolist)
+    expected = isolist.make_model_image(data.shape)
 
     mask = np.zeros(data.shape, dtype=bool)
     mask[100, 100] = True
@@ -459,7 +495,7 @@ def test_model_nonfinite_central_pixel():
     assert isolist[0].sma == 0
     assert np.isnan(isolist[0].intensity)
 
-    model = build_ellipse_model(data.shape, isolist)
+    model = isolist.make_model_image(data.shape)
     yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
     radius = np.hypot(xx - 100, yy - 100)
     annulus = (radius > 3) & (radius < 20)
@@ -468,4 +504,4 @@ def test_model_nonfinite_central_pixel():
 
     match = 'at least 4 isophotes with a finite intensity'
     with pytest.raises(ValueError, match=match):
-        build_ellipse_model(data.shape, isolist[:4])
+        isolist[:4].make_model_image(data.shape)

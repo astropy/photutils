@@ -198,10 +198,9 @@ position as a function of the semimajor axis length:
 
 We can build an elliptical model image from the
 `~photutils.isophote.IsophoteList` object using the
-:func:`~photutils.isophote.build_ellipse_model` function::
+:meth:`~photutils.isophote.IsophoteList.make_model_image` method::
 
-    >>> from photutils.isophote import build_ellipse_model
-    >>> model_image = build_ellipse_model(data.shape, isolist)
+    >>> model_image = isolist.make_model_image(data.shape)
     >>> residual = data - model_image
 
 Finally, let's plot the original data, overplotted with some isophotes,
@@ -214,8 +213,7 @@ the elliptical model image, and the residual image:
     import numpy as np
     from astropy.modeling.models import Gaussian2D
     from photutils.datasets import make_noise_image
-    from photutils.isophote import (Ellipse, EllipseGeometry,
-                                    build_ellipse_model)
+    from photutils.isophote import Ellipse, EllipseGeometry
 
     g = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40.0))
     ny = nx = 150
@@ -228,7 +226,7 @@ the elliptical model image, and the residual image:
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
-    model_image = build_ellipse_model(data.shape, isolist)
+    model_image = isolist.make_model_image(data.shape)
     residual = data - model_image
 
     fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(14, 5))

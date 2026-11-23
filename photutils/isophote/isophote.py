@@ -11,6 +11,7 @@ import numpy as np
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,
                                           fit_upper_harmonic)
+from photutils.isophote.model import _make_model_image
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs,
@@ -846,6 +847,64 @@ class IsophoteList:
             ``'main'`` or ``'all'`` is input together with other names.
         """
         return _isophote_list_to_table(self, columns=columns)
+
+    def make_model_image(self, shape, *, fill_value=0.0,
+                         high_harmonics=False, sma_interval=0.1):
+        """
+        Make a model elliptical galaxy image from the isophotes.
+
+        The isophote list must contain at least 4 isophotes, sorted by
+        strictly increasing semimajor axis length. Isophotes with a
+        nonfinite intensity (e.g., the central pixel if it is masked) are
+        ignored.
+
+        The intensity, ellipticity, orientation, and center of the
+        isophotes are interpolated with least-squares cubic splines onto a
+        grid of semimajor axis lengths spaced by ``sma_interval``. Each
+        interpolated ellipse is traced on the output image and its intensity
+        is distributed over the overlapping pixels with bilinear weights.
+        The pixel values are then normalized by the accumulated weights.
+
+        Parameters
+        ----------
+        shape : 2-tuple
+            The (ny, nx) shape of the output model image, usually the shape
+            of the array used to generate the isophotes.
+
+        fill_value : float, optional
+            The constant value to fill empty pixels. If an output pixel has
+            no contribution from any isophote, it will be assigned this
+            value. The default is 0.
+
+        high_harmonics : bool, optional
+            Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
+            ``a4``, and ``b4``) to the result. See
+            `~photutils.isophote.Isophote` for details. Harmonics that could
+            not be computed (NaN) are treated as zero. The default
+            is `False`.
+
+        sma_interval : float, optional
+            The step in semimajor axis length of the grid on which the
+            isophote parameters are interpolated and the model ellipses are
+            drawn. It must be positive. Larger values are faster but can
+            leave gaps (filled with ``fill_value``) in the model. The
+            default is 0.1.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The image with the model galaxy.
+
+        Raises
+        ------
+        ValueError
+            If the list contains fewer than 4 isophotes with a finite
+            intensity or if its isophotes are not sorted by strictly
+            increasing semimajor axis length.
+        """
+        return _make_model_image(self, shape, fill_value=fill_value,
+                                 high_harmonics=high_harmonics,
+                                 sma_interval=sma_interval)
 
     @deprecated('3.2', alternative='the ``properties`` attribute',
                 until='4.0')

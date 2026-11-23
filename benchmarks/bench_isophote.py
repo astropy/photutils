@@ -21,8 +21,7 @@ import numpy as np
 from bench_helpers import (add_memory_argument, print_environment,
                            set_memory_mode, time_best)
 
-from photutils.isophote import (Ellipse, EllipseGeometry, EllipseSample,
-                                build_ellipse_model)
+from photutils.isophote import Ellipse, EllipseGeometry, EllipseSample
 from photutils.isophote._ellipse_model import build_ellipse_model_c
 from photutils.isophote.tests.make_test_data import make_test_image
 
@@ -179,7 +178,7 @@ def bench_sample(*, sma_list=(20.0, 80.0), n_iter=20, repeats=3,
 
 def bench_model(*, maxsma=200.0, repeats=3, seed=0):
     """
-    Benchmark build_ellipse_model, with and without high harmonics.
+    Benchmark IsophoteList.make_model_image, with and without high harmonics.
 
     The isophote fit that provides the input IsophoteList is run once
     and is not included in the timings.
@@ -197,12 +196,13 @@ def bench_model(*, maxsma=200.0, repeats=3, seed=0):
     """
     data = make_galaxy_image(seed=seed)
     isolist = run_fit_image(data, maxsma=maxsma)
-    print(f'\n== build_ellipse_model ({data.shape[1]}x{data.shape[0]} '
-          f'image, {len(isolist)} isophotes) ==')
+    print('\n== IsophoteList.make_model_image '
+          f'({data.shape[1]}x{data.shape[0]} image, {len(isolist)} '
+          'isophotes) ==')
     print(f'{"variant":>18}{"time":>12}')
     for name, high_harmonics in (('no harmonics', False),
                                  ('high harmonics', True)):
-        bench = partial(build_ellipse_model, data.shape, isolist,
+        bench = partial(isolist.make_model_image, data.shape,
                         high_harmonics=high_harmonics)
         t_run = time_best(bench, repeats=repeats)
         print(f'{name:>18}{f"{t_run * 1e3:.1f}ms":>12}')

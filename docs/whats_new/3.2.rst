@@ -227,6 +227,21 @@ example, ``sma0``, ``maxsma``, ``conver``, ``sclip``, and
 deprecated and will be removed in version 4.0. See the changelog for
 the full list.
 
+Isophote Model Images
+^^^^^^^^^^^^^^^^^^^^^
+
+The ``build_ellipse_model`` function is deprecated and will be removed
+in version 4.0. Use the new
+:meth:`~photutils.isophote.IsophoteList.make_model_image` method
+instead. Its ``fill`` argument is now the keyword-only ``fill_value``
+argument::
+
+    # Old (deprecated)
+    model = build_ellipse_model(data.shape, isolist, fill=0.0)
+
+    # New
+    model = isolist.make_model_image(data.shape, fill_value=0.0)
+
 
 .. _whatsnew-3.2-breaking-changes:
 

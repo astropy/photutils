@@ -64,6 +64,10 @@ New Features
     ``IsophoteList.to_table`` now uses ``default_columns`` when
     ``columns`` is `None` (the new default). [#2568]
 
+  - Added an ``IsophoteList.make_model_image`` method to make a model
+    image from the isophotes. It replaces the ``build_ellipse_model``
+    function. [#2568]
+
 - ``photutils.psf``
 
   - The ``extract_stars`` function now recognizes common alternative
@@ -520,6 +524,11 @@ API Changes
 
   - ``Ellipse`` and ``EllipseSample`` now accept an array-like image,
     such as a nested list. [#2550]
+
+  - The ``build_ellipse_model`` function is deprecated and will be
+    removed in version 4.0. Use ``IsophoteList.make_model_image``
+    instead. Its ``fill`` argument is now the keyword-only
+    ``fill_value`` argument. [#2568]
 
   - ``build_ellipse_model`` now raises a ``ValueError`` if the input
     isophote list contains fewer than 4 isophotes with a finite
