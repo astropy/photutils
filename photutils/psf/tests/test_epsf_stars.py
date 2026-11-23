@@ -13,12 +13,15 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import (InverseVariance, NDData, StdDevUncertainty,
                             UnknownUncertainty, VarianceUncertainty)
-from astropy.table import Table
+from astropy.table import MaskedColumn, QTable, Table
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.masked import Masked
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.psf import make_psf_model_image
+from photutils.centroids import centroid_com
+from photutils.detection import DAOStarFinder, find_peaks
+from photutils.psf import PSFPhotometry, make_psf_model_image
 from photutils.psf.epsf_stars import (EPSFStar, EPSFStars, LinkedEPSFStar,
                                       _compute_mean_sky_coordinate,
                                       _create_weights_cutout,
@@ -26,6 +29,16 @@ from photutils.psf.epsf_stars import (EPSFStar, EPSFStars, LinkedEPSFStar,
 from photutils.psf.functional_models import CircularGaussianPRF
 from photutils.psf.image_models import ImagePSF
 from photutils.utils.tests.thread_test_helpers import check_concurrent_deepcopy
+
+
+@pytest.fixture
+def offcenter_star_data():
+    """
+    Create an image of a single star that is not centered on a pixel.
+    """
+    model = CircularGaussianPRF(flux=1000, x_0=25.2, y_0=24.7, fwhm=3.0)
+    yy, xx = np.mgrid[:51, :51]
+    return model(xx, yy)
 
 
 @pytest.fixture
@@ -1753,6 +1766,217 @@ class TestExtractStars:
         stars = extract_stars(NDData(data), catalog, size=11)
         assert_allclose(stars[0].flux, 121.0)
 
+    @pytest.mark.parametrize('suffix', ['_fit', 'fit', '_centroid',
+                                        'centroid', '_center', 'center',
+                                        '_cen', 'cen', '_pos', 'pos', '_0',
+                                        '0', '_init', 'init', '_peak'])
+    def test_position_column_names(self, stars_nddata, stars_table, suffix):
+        """
+        Test that alternative position column names give the same stars
+        as the ``x`` and ``y`` columns.
+        """
+        expected = extract_stars(stars_nddata, stars_table, size=11)
+        catalog = stars_table.copy()
+        catalog.rename_columns(['x', 'y'], [f'x{suffix}', f'y{suffix}'])
+        stars = extract_stars(stars_nddata, catalog, size=11)
+        assert_allclose(stars.center, expected.center)
+
+    def test_position_column_priority(self, simple_nddata):
+        """
+        Test the priority order of the position column names.
+        """
+        catalog = Table({'x_peak': [20], 'y_peak': [20]})
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [20, 20])
+
+        catalog['x_centroid'] = [25.0]
+        catalog['y_centroid'] = [26.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [25, 26])
+
+        catalog['x'] = [15.0]
+        catalog['y'] = [16.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [15, 16])
+
+        catalog['x_init'] = [28.0]
+        catalog['y_init'] = [29.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [28, 29])
+
+        catalog['x_fit'] = [30.0]
+        catalog['y_fit'] = [31.0]
+        stars = extract_stars(simple_nddata, catalog, size=11)
+        assert_allclose(stars.center, [30, 31])
+
+    def test_nonfinite_fit_position_not_extracted(self, simple_nddata):
+        """
+        Test that a star with a nonfinite fitted position is not
+        extracted at its initial position.
+        """
+        catalog = Table({'x_init': [20.0, 30.0], 'y_init': [20.0, 30.0],
+                         'x_fit': [20.5, np.nan], 'y_fit': [20.5, np.nan]})
+        match = '1 star\\(s\\) were not extracted'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars.center, [20.5, 20.5])
+
+    @pytest.mark.parametrize('masked_col', ['x_centroid', 'y_centroid'])
+    def test_masked_position_not_extracted(self, simple_nddata, masked_col):
+        """
+        Test that a star with a masked position is not extracted.
+        """
+        catalog = Table({'x_centroid': [20.0, 30.0],
+                         'y_centroid': [20.0, 30.0]})
+        catalog[masked_col] = MaskedColumn(catalog[masked_col],
+                                           mask=[False, True])
+        match = 'positions were masked or not finite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars.center, [20, 20])
+
+    def test_masked_quantity_position_not_extracted(self, simple_nddata):
+        """
+        Test that a star with a masked position is not extracted when
+        the position column is a masked `~astropy.units.Quantity`.
+        """
+        xpos = Masked([20.0, 30.0] * u.pix, mask=[False, True])
+        catalog = QTable({'x': xpos, 'y': [20.0, 30.0] * u.pix})
+        match = 'positions were masked or not finite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars.center, [20, 20])
+
+    def test_masked_flux_not_extracted(self, simple_nddata):
+        """
+        Test that a star with a masked catalog flux is not extracted.
+        """
+        flux = MaskedColumn([100.0, 200.0], mask=[False, True])
+        catalog = Table({'x': [20.0, 30.0], 'y': [20.0, 30.0], 'flux': flux})
+        match = 'flux values were masked or not finite'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(simple_nddata, catalog, size=11)
+        assert len(stars) == 1
+        assert_allclose(stars[0].flux, 100.0)
+
+    def test_position_columns_must_match(self, simple_nddata):
+        """
+        Test that x and y columns from different conventions are not
+        combined.
+        """
+        catalog = Table({'x_centroid': [25.0], 'y_peak': [25]})
+        match = "must have either 'x' and 'y' columns or a 'skycoord' column"
+        with pytest.raises(ValueError, match=match):
+            extract_stars(simple_nddata, catalog)
+
+    def test_skycoord_used_before_alternative_names(self, simple_wcs):
+        """
+        Test that a ``skycoord`` column takes precedence over
+        alternative position column names.
+        """
+        nddata = NDData(np.ones((50, 50)), wcs=simple_wcs)
+        skycoord = simple_wcs.pixel_to_world([20.0], [30.0])
+        catalog = Table({'skycoord': skycoord, 'x_centroid': [25.0],
+                         'y_centroid': [25.0]})
+        stars = extract_stars(nddata, catalog, size=11)
+        assert_allclose(stars.center, [20, 30], atol=1e-6)
+
+    def test_skycoord_limits_pixel_columns(self, simple_wcs):
+        """
+        Test that only the ``x`` and ``y`` columns are read as pixel
+        positions when the catalog has a ``skycoord`` column.
+        """
+        nddata = NDData(np.ones((50, 50)), wcs=simple_wcs)
+        skycoord = simple_wcs.pixel_to_world([20.0], [30.0])
+        catalog = Table({'skycoord': skycoord, 'x_fit': [25.0],
+                         'y_fit': [25.0], 'x': [15.0], 'y': [16.0]})
+        stars = extract_stars(nddata, catalog, size=11)
+        assert_allclose(stars.center, [15, 16])
+
+        catalog.remove_column('skycoord')
+        stars = extract_stars(nddata, catalog, size=11)
+        assert_allclose(stars.center, [25, 25])
+
+    def test_skycoord_with_alternative_names_no_wcs(self, simple_wcs):
+        """
+        Test that alternative position column names are not used in
+        place of a ``skycoord`` column when the image has no WCS.
+        """
+        skycoord = simple_wcs.pixel_to_world([20.0], [30.0])
+        catalog = Table({'skycoord': skycoord, 'x_centroid': [25.0],
+                         'y_centroid': [25.0]})
+        match = 'Other pixel position columns are not used'
+        with pytest.raises(ValueError, match=match):
+            extract_stars(np.ones((50, 50)), catalog, size=11)
+
+    def test_alternative_names_multiple_catalogs(self, simple_nddata):
+        """
+        Test alternative position column names with a separate catalog
+        for each image.
+        """
+        catalog1 = Table({'x_centroid': [25.0], 'y_centroid': [25.0]})
+        catalog2 = Table({'x_peak': [20], 'y_peak': [30]})
+        stars = extract_stars([simple_nddata, simple_nddata],
+                              [catalog1, catalog2], size=11)
+        assert_allclose(stars.center, [[25, 25], [20, 30]])
+
+    def test_alternative_names_single_catalog_multiple_images(
+            self, simple_nddata):
+        """
+        Test that a single catalog with multiple images still requires a
+        ``skycoord`` column.
+        """
+        catalog = Table({'x_centroid': [25.0], 'y_centroid': [25.0]})
+        match = "the catalog must have a 'skycoord' column"
+        with pytest.raises(ValueError, match=match):
+            extract_stars([simple_nddata, simple_nddata], catalog)
+
+    def test_finder_tables(self, offcenter_star_data):
+        """
+        Test that source tables from the star finders can be input
+        directly.
+        """
+        data = offcenter_star_data
+        finder_table = DAOStarFinder(threshold=1.0, fwhm=3.0).find_stars(data)
+        stars = extract_stars(data, finder_table, size=11)
+        assert_allclose(stars.center, [finder_table['x_centroid'][0],
+                                       finder_table['y_centroid'][0]])
+        assert_allclose(stars[0].flux, finder_table['flux'][0])
+
+        peaks_table = find_peaks(data, threshold=1.0)
+        stars = extract_stars(data, peaks_table, size=11)
+        assert_allclose(stars.center, [25, 25])
+
+    def test_find_peaks_centroid_table(self, offcenter_star_data):
+        """
+        Test that the centroid columns of a ``find_peaks`` table take
+        priority over its peak columns.
+        """
+        data = offcenter_star_data
+        peaks_table = find_peaks(data, threshold=1.0,
+                                 centroid_func=centroid_com)
+        assert peaks_table['x_centroid'][0] != peaks_table['x_peak'][0]
+        stars = extract_stars(data, peaks_table, size=11)
+        assert_allclose(stars.center, [peaks_table['x_centroid'][0],
+                                       peaks_table['y_centroid'][0]])
+
+    def test_psf_photometry_table(self, offcenter_star_data):
+        """
+        Test that the fitted positions of a PSF photometry results
+        table take priority over its initial positions.
+        """
+        data = offcenter_star_data
+        psfphot = PSFPhotometry(CircularGaussianPRF(fwhm=3.0), (7, 7),
+                                aperture_radius=5)
+        init_params = Table({'x': [25.0], 'y': [25.0]})
+        results = psfphot(data, init_params=init_params)
+        assert_allclose(results['x_init'], 25.0)
+        stars = extract_stars(data, results, size=11)
+        assert_allclose(stars.center, [25.2, 24.7], atol=1e-4)
+
     def test_extract_stars_flux_estimation_failure(self):
         """
         Test that EPSFStar creation failure emits warning for completely
@@ -1875,7 +2099,7 @@ class TestExtractStars:
         """
         table = Table({'x': [25.0, np.nan], 'y': [25.0, 30.0]})
 
-        match = 'positions were not finite'
+        match = 'positions were masked or not finite'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(simple_nddata, table, size=11)
 
@@ -2119,7 +2343,7 @@ def test_extract_stars_nonfinite_flux_column():
     data = np.ones((50, 50))
     catalog = Table({'x': [25.0, 10.0], 'y': [25.0, 10.0],
                      'flux': [100.0, np.nan]})
-    match = 'flux values were not finite'
+    match = 'flux values were masked or not finite'
     with pytest.warns(AstropyUserWarning, match=match):
         stars = extract_stars(NDData(data), catalog, size=11)
     assert len(stars) == 1

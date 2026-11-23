@@ -4,6 +4,8 @@ Tools for PSF-fitting photometry.
 """
 
 import copy
+import re
+import textwrap
 import warnings
 from collections.abc import Iterator
 
@@ -24,6 +26,23 @@ from photutils.utils._flags import define_flag_docstring
 from photutils.utils._parameters import as_pair
 
 __all__ = ['fit_2dgaussian', 'fit_fwhm']
+
+# Suffixes of the pixel position column names (e.g., x_fit and y_fit)
+# recognized by the PSF tools, in priority order. The same order is used
+# by extract_stars, PSFPhotometry, and IterativePSFPhotometry. The fit,
+# init, and unsuffixed names are in the same order as the flux names.
+_XY_COLNAME_SUFFIXES = ('_fit', 'fit', '_init', 'init', '', '_0', '0',
+                        '_centroid', 'centroid', '_center', 'center',
+                        '_cen', 'cen', '_pos', 'pos', '_peak')
+_X_COLNAMES = tuple(f'x{suffix}' for suffix in _XY_COLNAME_SUFFIXES)
+_Y_COLNAMES = tuple(f'y{suffix}' for suffix in _XY_COLNAME_SUFFIXES)
+
+# Flux column names recognized by PSFPhotometry and
+# IterativePSFPhotometry, in priority order. The extract_stars function
+# reads only the flux column.
+_FLUX_COLNAMES = ('flux_fit', 'fluxfit', 'flux_init', 'fluxinit', 'flux',
+                  'flux_0', 'flux0', 'source_sum', 'segment_flux',
+                  'kron_flux')
 
 
 def _copy_model_sharing_data(model):
@@ -693,6 +712,86 @@ def _get_psf_model_main_params(psf_model):
     return model_params
 
 
+def _format_name_list(names):
+    """
+    Format names as a comma-separated list that ends a sentence.
+
+    Parameters
+    ----------
+    names : list of str
+        The names to format.
+
+    Returns
+    -------
+    result : str
+        The formatted list.
+    """
+    return f"{', '.join(names[:-1])}, and {names[-1]}."
+
+
+_COLNAME_PLACEHOLDERS = {
+    '<x_colnames>': _format_name_list(
+        [f"``'{name}'``" for name in _X_COLNAMES]),
+    '<y_colnames>': _format_name_list(
+        [f"``'{name}'``" for name in _Y_COLNAMES]),
+    '<flux_colnames>': _format_name_list(
+        [f"``'{name}'``" for name in _FLUX_COLNAMES]),
+}
+
+
+def _fill_colname_placeholders(docstring):
+    """
+    Replace the column name placeholders in a docstring.
+
+    Each placeholder must be alone on its line, optionally after a
+    ``*`` bullet marker. The replacement text is wrapped using the
+    indentation of that line, which keeps it aligned on all Python
+    versions, including Python 3.13+, which strips the common leading
+    whitespace from docstrings at compile time.
+
+    Parameters
+    ----------
+    docstring : str
+        The input docstring.
+
+    Returns
+    -------
+    result : str
+        The docstring with the placeholders replaced.
+    """
+    placeholders = '|'.join(_COLNAME_PLACEHOLDERS)
+    pattern = re.compile(rf'^([ \t]*)(\* )?({placeholders})[ \t]*$',
+                         re.MULTILINE)
+
+    def replace(match):
+        indent, bullet, placeholder = match.groups(default='')
+        return textwrap.fill(_COLNAME_PLACEHOLDERS[placeholder], width=72,
+                             initial_indent=f'{indent}{bullet}',
+                             subsequent_indent=indent + ' ' * len(bullet),
+                             break_long_words=False, break_on_hyphens=False)
+
+    return pattern.sub(replace, docstring)
+
+
+def _update_colname_docstring(obj):
+    """
+    Decorator to replace the column name placeholders in a docstring.
+
+    Parameters
+    ----------
+    obj : class or function
+        The object whose docstring is updated in place.
+
+    Returns
+    -------
+    obj : class or function
+        The input object.
+    """
+    if obj.__doc__ is not None:
+        obj.__doc__ = _fill_colname_placeholders(obj.__doc__)
+    return obj
+
+
 def _create_call_docstring(*, iterative=False):
     """
     Decorator factory to create the __call__ method docstring for PSF
@@ -762,36 +861,34 @@ def _create_call_docstring(*, iterative=False):
             flux values refer to the model flux parameters and are
             not corrected for local background values (computed using
             ``local_bkg_estimator`` or input in a ``local_bkg`` column).
-            The allowed column names are:
+            The x and y column names must have the same suffix (e.g.,
+            ``'x_centroid'`` and ``'y_centroid'``). The allowed column
+            names are:
 
-            * ``'x_init'``, ``'xinit'``, ``'x'``, ``'x_0'``, ``'x0'``,
-              ``'xcentroid'``, ``'x_centroid'``, ``'x_peak'``, ``'xcen'``,
-              ``'x_cen'``, ``'xpos'``, ``'x_pos'``, ``'x_fit'``, and
-              ``'xfit'``.
+            * <x_colnames>
 
-            * ``'y_init'``, ``'yinit'``, ``'y'``, ``'y_0'``, ``'y0'``,
-              ``'ycentroid'``, ``'y_centroid'``, ``'y_peak'``, ``'ycen'``,
-              ``'y_cen'``, ``'ypos'``, ``'y_pos'``, ``'y_fit'``, and
-              ``'yfit'``.
+            * <y_colnames>
 
-            * ``'flux_init'``, ``'fluxinit'``, ``'flux'``, ``'flux_0'``,
-              ``'flux0'``, ``'flux_fit'``, ``'fluxfit'``, ``'source_sum'``,
-              ``'segment_flux'``, and ``'kron_flux'``.
+            * <flux_colnames>
 
             * If the PSF model has additional free parameters that are
               fit, they can be included in the table. The column names
               must match the parameter names in the PSF model. They can
-              also be suffixed with either the ``'_init'`` or ``'_fit'``
-              suffix. The suffix search order is ``'_init'``, ``''`` (no
-              suffix), and ``'_fit'``. For example, if the PSF model has
+              also be suffixed with either the ``'_fit'`` or ``'_init'``
+              suffix. The suffix search order is ``'_fit'``, ``'_init'``,
+              and ``''`` (no suffix). For example, if the PSF model has
               an additional parameter named "sigma", then the allowed
-              column names are: ``'sigma_init'``, ``'sigma'``, and
-              ``'sigma_fit'``. If the column name is not found in the
+              column names are: ``'sigma_fit'``, ``'sigma_init'``, and
+              ``'sigma'``. If the column name is not found in the
               table, then the default value from the PSF model will be
               used.
 
             The parameter names are searched in the input table in the
-            above order, stopping at the first match.
+            above order, stopping at the first match. A table of
+            previous results therefore restarts the fit from its fitted
+            values. If any fitted value in a row is nonfinite or
+            masked, then the initial values in that row are used
+            instead.
 
             If ``data`` is a `~astropy.units.Quantity` array, then the
             initial flux values in this table must also have
@@ -908,6 +1005,8 @@ def _create_call_docstring(*, iterative=False):
         flag_text = '\n'.join(flag_descriptions)
         customized_docstring = customized_docstring.replace(
             '<flag_descriptions>', flag_text)
+        customized_docstring = _fill_colname_placeholders(
+            customized_docstring)
 
         # Update the method's docstring
         func.__doc__ = customized_docstring

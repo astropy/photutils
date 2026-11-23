@@ -13,7 +13,8 @@ from astropy.table import QTable, vstack
 from photutils.psf._components import _ModelImageMixin
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.photometry import PSFPhotometry
-from photutils.psf.utils import _create_call_docstring
+from photutils.psf.utils import (_create_call_docstring,
+                                 _update_colname_docstring)
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._misc import split_masked_array
@@ -24,6 +25,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['IterativePSFPhotometry']
 
 
+@_update_colname_docstring
 class IterativePSFPhotometry(_ModelImageMixin):
     """
     Class to iteratively perform PSF photometry.
@@ -89,16 +91,14 @@ class IterativePSFPhotometry(_ModelImageMixin):
         keyword argument, and return a `~astropy.table.Table` containing
         the x and y centroid positions. These positions are used as
         the starting points for the PSF fitting. The allowed ``x``
-        column names are (same suffix for ``y``): ``'x_init'``,
-        ``'xinit'``, ``'x'``, ``'x_0'``, ``'x0'``, ``'xcentroid'``,
-        ``'x_centroid'``, ``'x_peak'``, ``'xcen'``, ``'x_cen'``,
-        ``'xpos'``, ``'x_pos'``, ``'x_fit'``, and ``'xfit'``. The (x,
-        y) values in ``init_params`` override this keyword *only for
-        the first iteration*. If this class is run on an image that has
-        units (i.e., a `~astropy.units.Quantity` array), then certain
-        ``finder`` keywords (e.g., ``threshold``) must have the same
-        units. Please see the documentation for the specific ``finder``
-        class for more information.
+        column names, in priority order, are (same suffix for ``y``):
+        <x_colnames>
+        The (x, y) values in ``init_params`` override this keyword *only
+        for the first iteration*. If this class is run on an image that
+        has units (i.e., a `~astropy.units.Quantity` array), then
+        certain ``finder`` keywords (e.g., ``threshold``) must have the
+        same units. Please see the documentation for the specific
+        ``finder`` class for more information.
 
     grouper : `~photutils.psf.SourceGrouper` or callable or `None`, optional
         A callable used to group sources. Typically, grouped sources

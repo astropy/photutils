@@ -485,7 +485,8 @@ class PSFDataProcessor:
                 or self.param_mapper.init_colnames['y'] not in
                 init_params.colnames):
             msg = ('init_params must contain valid column names for the '
-                   'x and y source positions')
+                   'x and y source positions. The x and y column names '
+                   'must have the same suffix.')
             raise ValueError(msg)
 
         flux_col = self.param_mapper.init_colnames['flux']
@@ -625,7 +626,8 @@ class PSFDataProcessor:
         y_name_found = self.param_mapper.find_column(sources, 'y')
         if x_name_found is None or y_name_found is None:
             msg = ("The table returned by the 'finder' must contain columns "
-                   'for x and y coordinates. Valid column names are: '
+                   'for x and y coordinates that have the same suffix. '
+                   'Valid column names are: '
                    f"x: {self.param_mapper.VALID_INIT_COLNAMES['x']}, "
                    f"y: {self.param_mapper.VALID_INIT_COLNAMES['y']}")
             raise ValueError(msg)

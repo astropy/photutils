@@ -59,6 +59,18 @@ New Features
     the stop code of the first isophote, the reason why it failed,
     and what to check. [#2560]
 
+- ``photutils.psf``
+
+  - The ``extract_stars`` function now recognizes common alternative
+    names for the pixel position columns, such as ``x_centroid``,
+    ``x_fit``, ``x_center``, and ``x_peak``, so the output tables of
+    the star finders and of the PSF photometry classes can be input
+    directly. [#2566]
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now recognize
+    the ``xcenter``, ``ycenter``, ``x_center``, and ``y_center``
+    source position column names. [#2566]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -425,6 +437,11 @@ Bug Fixes
     ``MaskedArray`` input is now combined with the input ``mask``.
     [#2541]
 
+  - Fixed ``extract_stars`` extracting a star whose position is masked
+    in the input catalog at the value under the mask. Such a star is
+    now skipped with a warning, like a star with a nonfinite position.
+    [#2566]
+
 - ``photutils.segmentation``
 
   - Fixed a race condition on free-threaded Python builds where
@@ -542,6 +559,35 @@ API Changes
     Values that are not defined (e.g., the gradient error of the
     central pixel) are NaN. Previously, such columns had an object
     data type with `None` values. [#2553]
+
+- ``photutils.psf``
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the
+    x and y source position columns of ``init_params`` and of the
+    ``finder`` table to have the same suffix. Previously, columns
+    from different conventions (e.g., ``x_centroid`` and ``y_peak``)
+    were silently combined. Such tables now raise a ``ValueError``
+    unless they also contain a matching pair of columns. [#2566]
+
+  - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now prefer
+    fitted columns over initial columns in ``init_params``, so a
+    previous results table restarts the fit from its fitted values.
+    A row with a nonfinite or masked fitted value uses its initial
+    values. [#2566]
+
+  - ``PSFPhotometry``, ``IterativePSFPhotometry``, and
+    ``extract_stars`` now search for the source position columns in
+    the same priority order. The columns with the ``_fit`` and
+    ``_init`` suffixes are used first, followed by the ``x`` and ``y``
+    columns and then the columns with the ``_0``, ``_centroid``,
+    ``_center``, ``_cen``, ``_pos``, and ``_peak`` suffixes. As a
+    result, ``extract_stars`` now uses a pair of fitted or initial
+    position columns before the ``x`` and ``y`` columns, unless the
+    catalog has a ``skycoord`` column. Previously, ``PSFPhotometry``
+    and ``IterativePSFPhotometry`` used the ``x_peak`` and ``y_peak``
+    columns before the ``_cen`` and ``_pos`` columns. A name with an
+    underscore (e.g., ``x_centroid``) is now always used before the
+    name without it (e.g., ``xcentroid``). [#2566]
 
 - ``photutils.utils``
 

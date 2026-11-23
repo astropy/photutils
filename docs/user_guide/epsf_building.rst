@@ -150,9 +150,15 @@ Extracting Star Cutouts
 
 Next, we need to extract cutouts of the stars using the
 :func:`~photutils.psf.extract_stars` function. This function requires
-a table of star positions either in pixel or sky coordinates. For this
-example we are using pixel coordinates, which need to be in table
-columns called ``x`` and ``y``.
+a table of star positions either in pixel or sky coordinates. For
+this example we are using pixel coordinates. The pixel positions can
+be in table columns called ``x`` and ``y``. Common alternative names,
+such as ``x_centroid`` and ``y_centroid`` or ``x_peak`` and ``y_peak``,
+are also recognized, so the output table of a star finder, such as our
+``sources`` table, can be input directly. If the table has a ``flux``
+column, as the star finder tables do, its values are used as the initial
+star fluxes. The star fluxes are refit while the ePSF is built, so
+approximate values are sufficient.
 
 We'll extract 25x25 pixel cutouts of our selected stars. Let's
 explicitly exclude stars that are too close to the image boundaries
@@ -165,12 +171,9 @@ explicitly exclude stars that are too close to the image boundaries
     >>> mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize)) &
     ...         (y > hsize) & (y < (data.shape[0] - 1 - hsize)))  # doctest: +REMOTE_DATA
 
-Now let's create the table of good star positions::
+Now let's select the good stars from the star finder table::
 
-    >>> from astropy.table import Table
-    >>> stars_tbl = Table()
-    >>> stars_tbl['x'] = x[mask]  # doctest: +REMOTE_DATA
-    >>> stars_tbl['y'] = y[mask]  # doctest: +REMOTE_DATA
+    >>> stars_tbl = sources[mask]  # doctest: +REMOTE_DATA
 
 The star cutouts from which we build the ePSF must have the
 background subtracted. Here we'll use the sigma-clipped median value
@@ -252,7 +255,6 @@ show the first 25 of them:
     import numpy as np
     from astropy.io import fits
     from astropy.stats import sigma_clipped_stats
-    from astropy.table import Table
     from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
@@ -274,9 +276,7 @@ show the first 25 of them:
     y = sources['y_centroid']
     mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
             & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
-    stars_tbl = Table()
-    stars_tbl['x'] = x[mask]
-    stars_tbl['y'] = y[mask]
+    stars_tbl = sources[mask]
 
     star_mask = np.zeros(data.shape, dtype=bool)
     yidx = np.round(sources['y_centroid']).astype(int)
@@ -393,7 +393,6 @@ Finally, let's show the constructed ePSF:
     import numpy as np
     from astropy.io import fits
     from astropy.stats import sigma_clipped_stats
-    from astropy.table import Table
     from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.detection import DAOStarFinder
@@ -416,9 +415,7 @@ Finally, let's show the constructed ePSF:
     y = sources['y_centroid']
     mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
             & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
-    stars_tbl = Table()
-    stars_tbl['x'] = x[mask]
-    stars_tbl['y'] = y[mask]
+    stars_tbl = sources[mask]
 
     star_mask = np.zeros(data.shape, dtype=bool)
     yidx = np.round(sources['y_centroid']).astype(int)
@@ -769,6 +766,7 @@ valid WCS:
 
     >>> import astropy.units as u
     >>> from astropy.coordinates import SkyCoord
+    >>> from astropy.table import Table
     >>> catalog = Table()
     >>> catalog['skycoord'] = SkyCoord(ra=[...]*u.deg, dec=[...]*u.deg)
     >>> stars = extract_stars([nddata1, nddata2], catalog, size=25)
