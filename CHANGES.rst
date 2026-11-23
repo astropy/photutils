@@ -64,11 +64,11 @@ New Features
   - The ``extract_stars`` function now recognizes common alternative
     names for the pixel position columns, such as ``x_centroid``,
     ``x_center``, and ``x_peak``, so the output tables of the star
-    finders can be input directly. [#2565]
+    finders can be input directly. [#2566]
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now recognize
     the ``xcenter``, ``ycenter``, ``x_center``, and ``y_center``
-    source position column names. [#2565]
+    source position column names. [#2566]
 
 Bug Fixes
 ^^^^^^^^^
@@ -439,7 +439,7 @@ Bug Fixes
   - Fixed ``extract_stars`` extracting a star whose position is masked
     in the input catalog at the value under the mask. Such a star is
     now skipped with a warning, like a star with a nonfinite position.
-    [#2565]
+    [#2566]
 
 - ``photutils.segmentation``
 
@@ -566,13 +566,13 @@ API Changes
     ``finder`` table to have the same suffix. Previously, columns
     from different conventions (e.g., ``x_centroid`` and ``y_peak``)
     were silently combined. Such tables now raise a ``ValueError``
-    unless they also contain a matching pair of columns. [#2565]
+    unless they also contain a matching pair of columns. [#2566]
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now prefer
     fitted columns over initial columns in ``init_params``, so a
     previous results table restarts the fit from its fitted values.
     A row with a nonfinite or masked fitted value uses its initial
-    values. [#2565]
+    values. [#2566]
 
   - ``PSFPhotometry``, ``IterativePSFPhotometry``, and
     ``extract_stars`` now search for the source position columns in
@@ -586,7 +586,7 @@ API Changes
     and ``IterativePSFPhotometry`` used the ``x_peak`` and ``y_peak``
     columns before the ``_cen`` and ``_pos`` columns. A name with an
     underscore (e.g., ``x_centroid``) is now always used before the
-    name without it (e.g., ``xcentroid``). [#2565]
+    name without it (e.g., ``xcentroid``). [#2566]
 
 - ``photutils.utils``
 
