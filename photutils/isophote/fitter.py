@@ -3,7 +3,6 @@
 Tools for fitting ellipses.
 """
 
-import abc
 import copy
 import math
 import warnings
@@ -315,7 +314,7 @@ class EllipseFitter:
                 # smaller) price here, by having multiple calls to the
                 # EllipseSample constructor.
                 previous_gradient = sample.gradient
-                sample = corrector.correct(sample, largest_harmonic)
+                sample = corrector(sample, largest_harmonic)
 
                 # Only the position correctors (indices 0 and 1) move
                 # the center.
@@ -412,20 +411,12 @@ class EllipseFitter:
                 or not 0.0 <= geometry.y0 <= ny - 1)
 
 
-class _ParameterCorrector(abc.ABC):
-    @abc.abstractmethod
-    def correct(self, sample, harmonic):
-        """
-        Return a new sample with the geometry parameter corrected using
-        the given harmonic amplitude.
-        """
-
-
-class _PositionCorrector(_ParameterCorrector):
-    @staticmethod
-    def finalize_correction(dx, dy, sample):
-        return sample._make_sample(x0=sample.geometry.x0 + dx,
-                                   y0=sample.geometry.y0 + dy)
+def _shift_center(sample, dx, dy):
+    """
+    Return a new sample with the center shifted by ``(dx, dy)``.
+    """
+    return sample._make_sample(x0=sample.geometry.x0 + dx,
+                               y0=sample.geometry.y0 + dy)
 
 
 def _limit_center_shift(sample, reference_center, max_shift):
@@ -462,57 +453,68 @@ def _limit_center_shift(sample, reference_center, max_shift):
         return sample, False
 
     scale = max_shift / shift - 1.0
-    sample = _PositionCorrector.finalize_correction(dx * scale, dy * scale,
-                                                    sample)
+    sample = _shift_center(sample, dx * scale, dy * scale)
     return sample, True
 
 
-class _PositionCorrector0(_PositionCorrector):
-    def correct(self, sample, harmonic):
-        aux = -harmonic * (1.0 - sample.geometry.eps) / sample.gradient
+def _correct_center_a1(sample, harmonic):
+    """
+    Return a new sample with the center corrected using the ``a1``
+    harmonic amplitude.
+    """
+    aux = -harmonic * (1.0 - sample.geometry.eps) / sample.gradient
 
-        dx = -aux * math.sin(sample.geometry.pa)
-        dy = aux * math.cos(sample.geometry.pa)
+    dx = -aux * math.sin(sample.geometry.pa)
+    dy = aux * math.cos(sample.geometry.pa)
 
-        return self.finalize_correction(dx, dy, sample)
-
-
-class _PositionCorrector1(_PositionCorrector):
-    def correct(self, sample, harmonic):
-        aux = -harmonic / sample.gradient
-
-        dx = aux * math.cos(sample.geometry.pa)
-        dy = aux * math.sin(sample.geometry.pa)
-
-        return self.finalize_correction(dx, dy, sample)
+    return _shift_center(sample, dx, dy)
 
 
-class _AngleCorrector(_ParameterCorrector):
-    def correct(self, sample, harmonic):
-        eps = sample.geometry.eps
-        sma = sample.geometry.sma
-        gradient = sample.gradient
+def _correct_center_b1(sample, harmonic):
+    """
+    Return a new sample with the center corrected using the ``b1``
+    harmonic amplitude.
+    """
+    aux = -harmonic / sample.gradient
 
-        correction = (harmonic * 2.0 * (1.0 - eps) / sma / gradient
-                      / ((1.0 - eps)**2 - 1.0))
+    dx = aux * math.cos(sample.geometry.pa)
+    dy = aux * math.sin(sample.geometry.pa)
 
-        # Make the angle lie between 0 and np.pi radians.
-        new_pa = (sample.geometry.pa + correction) % np.pi
-
-        return sample._make_sample(pa=new_pa)
+    return _shift_center(sample, dx, dy)
 
 
-class _EllipticityCorrector(_ParameterCorrector):
-    def correct(self, sample, harmonic):
-        eps = sample.geometry.eps
-        sma = sample.geometry.sma
-        gradient = sample.gradient
+def _correct_orientation(sample, harmonic):
+    """
+    Return a new sample with the position angle corrected using the
+    ``a2`` harmonic amplitude.
+    """
+    eps = sample.geometry.eps
+    sma = sample.geometry.sma
+    gradient = sample.gradient
 
-        correction = harmonic * 2.0 * (1.0 - eps) / sma / gradient
+    correction = (harmonic * 2.0 * (1.0 - eps) / sma / gradient
+                  / ((1.0 - eps)**2 - 1.0))
 
-        new_eps = sample.geometry.eps - correction
+    # Make the angle lie between 0 and np.pi radians.
+    new_pa = (sample.geometry.pa + correction) % np.pi
 
-        return sample._make_sample(eps=new_eps)
+    return sample._make_sample(pa=new_pa)
+
+
+def _correct_ellipticity(sample, harmonic):
+    """
+    Return a new sample with the ellipticity corrected using the ``b2``
+    harmonic amplitude.
+    """
+    eps = sample.geometry.eps
+    sma = sample.geometry.sma
+    gradient = sample.gradient
+
+    correction = harmonic * 2.0 * (1.0 - eps) / sma / gradient
+
+    new_eps = sample.geometry.eps - correction
+
+    return sample._make_sample(eps=new_eps)
 
 
 # The parameter corrector for each harmonic coefficient. The correctors
@@ -520,10 +522,10 @@ class _EllipticityCorrector(_ParameterCorrector):
 # fit_first_and_second_harmonics, which is also the order of the
 # ``fix`` array of EllipseGeometry.
 _CORRECTORS_BY_COEFFICIENT = {
-    'a1': _PositionCorrector0(),
-    'b1': _PositionCorrector1(),
-    'a2': _AngleCorrector(),
-    'b2': _EllipticityCorrector(),
+    'a1': _correct_center_a1,
+    'b1': _correct_center_b1,
+    'a2': _correct_orientation,
+    'b2': _correct_ellipticity,
 }
 _CORRECTORS = [_CORRECTORS_BY_COEFFICIENT[name]
                for name in _HARMONIC_PARAMETERS]
