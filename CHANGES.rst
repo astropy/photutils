@@ -575,16 +575,18 @@ API Changes
     values. [#2565]
 
   - ``PSFPhotometry``, ``IterativePSFPhotometry``, and
-    ``extract_stars`` now search for the source position columns
-    in the same priority order. The ``x`` and ``y`` columns are
-    used first, followed by the columns with the ``_fit``, ``_init``,
-    ``_0``, ``_centroid``, ``_center``, ``_cen``, ``_pos``, and
-    ``_peak`` suffixes. Previously, ``PSFPhotometry`` and
-    ``IterativePSFPhotometry`` used the ``x_init`` and ``y_init``
-    columns before the ``x`` and ``y`` columns, and the ``x_peak`` and
-    ``y_peak`` columns before the ``_cen`` and ``_pos`` columns. A
-    name with an underscore (e.g., ``x_centroid``) is now always used
-    before the name without it (e.g., ``xcentroid``). [#2565]
+    ``extract_stars`` now search for the source position columns in
+    the same priority order. The columns with the ``_fit`` and
+    ``_init`` suffixes are used first, followed by the ``x`` and ``y``
+    columns and then the columns with the ``_0``, ``_centroid``,
+    ``_center``, ``_cen``, ``_pos``, and ``_peak`` suffixes. As a
+    result, ``extract_stars`` now uses a pair of fitted or initial
+    position columns before the ``x`` and ``y`` columns, unless the
+    catalog has a ``skycoord`` column. Previously, ``PSFPhotometry``
+    and ``IterativePSFPhotometry`` used the ``x_peak`` and ``y_peak``
+    columns before the ``_cen`` and ``_pos`` columns. A name with an
+    underscore (e.g., ``x_centroid``) is now always used before the
+    name without it (e.g., ``xcentroid``). [#2565]
 
 - ``photutils.utils``
 
