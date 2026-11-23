@@ -532,6 +532,308 @@ decides where to stop growing from the fitted isophotes. A loop of
 independent fits is more likely to stop early or to give poor fits.
 
 
+.. _isophote-rejecting-pixels:
+
+Rejecting Contaminated Pixels
+-----------------------------
+
+Foreground stars, companion galaxies, cosmic rays, and defective
+pixels add light that does not follow the elliptical isophotes of the
+galaxy. They can distort the fitted ellipses and stop the fit early.
+Such pixels can be excluded from the fits with a mask, with sigma
+clipping, or with both.
+
+To demonstrate, let's add a bright star and a companion galaxy to the
+image::
+
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> star = Gaussian2D(amplitude=60.0, x_mean=195.0, y_mean=150.0,
+    ...                   x_stddev=2.5, y_stddev=2.5)
+    >>> companion = Gaussian2D(amplitude=25.0, x_mean=110.0, y_mean=190.0,
+    ...                        x_stddev=7.0, y_stddev=7.0)
+    >>> contaminated = data + star(xx, yy) + companion(xx, yy)
+
+First, we fit this image without rejecting any pixels::
+
+    >>> isolist1 = Ellipse(contaminated, geometry=geometry).fit_image()
+
+Masked pixels are excluded from the fits when the image is a
+`~numpy.ma.MaskedArray`. Nonfinite (NaN or infinity) image values are
+excluded in the same way, with a warning if they are not masked. A
+mask is the best choice for a large contaminated region whose location
+is known. Let's mask a circular region around the companion::
+
+    >>> mask = np.hypot(xx - 110.0, yy - 190.0) < 25.0
+    >>> masked_data = np.ma.masked_array(contaminated, mask=mask)
+
+Sigma clipping rejects the points sampled along an ellipse whose
+intensities differ from the mean of the sample by more than
+``clip_sigma`` standard deviations. The ``n_clip`` keyword is the
+number of clipping iterations. The default is 0, which means that no
+sigma clipping is performed. Sigma clipping is well suited to small
+features such as stars, and their positions do not need to be known.
+Let's fit the masked image with three iterations of 3-sigma clipping::
+
+    >>> ellipse2 = Ellipse(masked_data, geometry=geometry)
+    >>> isolist2 = ellipse2.fit_image(clip_sigma=3.0, n_clip=3)
+
+Now let's compare the two fits using the largest distance between the
+fitted centers and the galaxy center, for the isophotes with semimajor
+axis lengths from 10 to 90 pixels::
+
+    >>> for iso in (isolist1, isolist2):  # doctest: +SKIP
+    ...     idx = (iso.sma > 10) & (iso.sma < 90)
+    ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
+    ...     print(np.round(shift.max(), 1))
+    6.0
+    0.7
+
+Without rejection, the star and the companion pull the fitted centers
+by up to 6 pixels, the ellipticity reaches 0.53, and the fit stops at
+a semimajor axis length of about 92 pixels. With the mask and sigma
+clipping, the centers stay within 1 pixel of the galaxy center and the
+ellipticity stays between 0.39 and 0.42. The mask alone is not enough
+for this image, because the star still disturbs the fit.
+
+Let's plot the image with the masked region, and the residuals of the
+model images of the two fits (see :ref:`isophote-model-image`):
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D, Sersic2D
+    from astropy.visualization import simple_norm
+    from matplotlib.patches import Circle
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    star = Gaussian2D(amplitude=60.0, x_mean=195.0, y_mean=150.0,
+                      x_stddev=2.5, y_stddev=2.5)
+    companion = Gaussian2D(amplitude=25.0, x_mean=110.0, y_mean=190.0,
+                           x_stddev=7.0, y_stddev=7.0)
+    contaminated = data + star(xx, yy) + companion(xx, yy)
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    isolist1 = Ellipse(contaminated, geometry=geometry).fit_image()
+
+    mask = np.hypot(xx - 110.0, yy - 190.0) < 25.0
+    masked_data = np.ma.masked_array(contaminated, mask=mask)
+    ellipse2 = Ellipse(masked_data, geometry=geometry)
+    isolist2 = ellipse2.fit_image(clip_sigma=3.0, n_clip=3)
+
+    residual1 = contaminated - isolist1.make_model_image(shape)
+    residual2 = contaminated - isolist2.make_model_image(shape)
+
+    norm = simple_norm(contaminated, 'sqrt', percent=99.0)
+    fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(14, 5))
+    fig.subplots_adjust(left=0.04, right=0.98, bottom=0.02, top=0.98)
+    ax1.imshow(contaminated, origin='lower', norm=norm)
+    ax1.add_patch(Circle((110.0, 190.0), 25.0, edgecolor='white',
+                         facecolor='none', linestyle='dashed'))
+    ax1.set_title('Data and Masked Region')
+
+    ax2.imshow(residual1, origin='lower', vmin=-2, vmax=2)
+    ax2.set_title('Residual without Rejection')
+
+    ax3.imshow(residual2, origin='lower', vmin=-2, vmax=2)
+    ax3.set_title('Residual with Mask and Sigma Clipping')
+
+The star and the companion remain in both residual images, because
+they are not part of the elliptical model. Without rejection, the
+model is distorted around them, and it ends where the fit stopped.
+
+The ``n_flagged`` attribute gives the number of sampled points of
+each isophote that were flagged, i.e., points that are outside of the
+image, masked, nonfinite, or rejected by sigma clipping. If the
+fraction of valid points of an isophote is smaller than the
+``min_valid_fraction`` keyword (the default is 0.7), its fit stops
+with a stop code of 1. A smaller value lets the fit continue through
+isophotes that cross large masked regions.
+
+Cosmic rays and defective pixels are removed very effectively by
+combining sigma clipping with the ``'median'`` integration mode (see
+:ref:`isophote-integration-modes`).
+
+
+.. _isophote-controlling-fit:
+
+Controlling the Fit
+-------------------
+
+The keywords of :meth:`~photutils.isophote.Ellipse.fit_image` control
+where the isophotes are fitted, how the image is sampled, and which
+ellipse parameters are fitted. The main keywords are described here.
+See :meth:`~photutils.isophote.Ellipse.fit_image` for the complete
+descriptions.
+
+Semimajor Axis Range and Step
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The fit starts at the semimajor axis length given by ``sma_start``,
+which defaults to the ``sma`` value of the input geometry. The
+starting isophote should have a good signal-to-noise ratio and a
+clearly defined shape. It should not be at the center of the galaxy
+or at its faint outskirts.
+
+By default, the semimajor axis length grows and shrinks by a factor of
+(1 + ``step``), where ``step`` defaults to 0.1. With
+``linear_growth=True``, ``step`` is instead an increment in pixels.
+The ``min_sma`` and ``max_sma`` keywords limit the range of the
+semimajor axis lengths::
+
+    >>> isolist_linear = ellipse.fit_image(step=5.0, linear_growth=True,
+    ...                                    max_sma=60.0)
+    >>> print(isolist_linear.sma)
+    [ 0.  5. 10. 15. 20. 25. 30. 35. 40. 45. 50. 55.]
+
+If ``max_sma`` is `None` (the default), the outward growth stops when
+the relative error of the local intensity gradient exceeds
+``max_gradient_rel_err`` (the default is 0.5) for two consecutive
+isophotes. This is the main control that keeps the ellipses from
+growing into regions where the signal-to-noise ratio is too low. If
+``max_sma`` is set, the isophotes beyond that point are instead
+extracted up to ``max_sma`` with a fixed geometry, without fitting.
+
+The ``max_iterative_sma`` keyword sets where this noniterative mode
+starts. Isophotes with larger semimajor axis lengths are extracted
+with the geometry of the last fitted isophote and have a stop code of
+4. This is useful for regions of very low surface brightness, where
+the fits are unstable::
+
+    >>> isolist_fixed = ellipse.fit_image(max_iterative_sma=50.0,
+    ...                                   max_sma=100.0)
+    >>> print(isolist_fixed.stop_code[-3:])
+    [4 4 4]
+
+.. _isophote-integration-modes:
+
+Integration Modes
+^^^^^^^^^^^^^^^^^
+
+The ``integration_mode`` keyword sets how the image is sampled at
+each point along an ellipse:
+
+* ``'bilinear'`` (the default): bilinear interpolation of the pixels
+  around the point.
+
+* ``'nearest_neighbor'``: the value of the pixel nearest to the point.
+
+* ``'mean'``: the mean of the pixels in an elliptical sector around
+  the point.
+
+* ``'median'``: the median of the pixels in an elliptical sector
+  around the point.
+
+The elliptical sectors of the ``'mean'`` and ``'median'`` modes are
+pieces of an elliptical annulus whose width is set by ``step``. These
+modes average more pixels for each sampled point, especially with a
+larger ``step``, which increases the signal-to-noise ratio in the
+outer regions of a galaxy.
+
+The algorithm described in `Jedrzejewski (1987, MNRAS 226, 747)
+<https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_
+uses an elaborate, high-precision scheme to take into account the
+partial pixels that lie along the sector boundaries. That scheme is
+not implemented here. Instead, pixels at the sector boundaries are
+either fully included or discarded, depending on the positions of
+their centers relative to the sector. This design decision is based
+on two arguments. It would be difficult to include partial pixels in a
+median, and the simpler scheme is faster.
+
+In the ``'mean'`` and ``'median'`` modes, a sector with 6 or fewer
+valid pixels is sampled with bilinear interpolation instead, and the
+whole ellipse is sampled with bilinear interpolation if its sectors
+are smaller than one pixel. Bilinear interpolation was found to give
+smoother samples in those cases.
+
+.. _isophote-center-limit:
+
+Fixing or Limiting the Geometry
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, the center, ellipticity, and orientation of each isophote
+are fitted freely. The ``fix_center``, ``fix_ellipticity``, and
+``fix_orientation`` keywords hold a parameter of every isophote at
+the value of the input `~photutils.isophote.EllipseGeometry`.
+
+In the outer, low surface-brightness regions of a galaxy, a nearby
+star or companion galaxy can pull the fitted center away from the
+galaxy nucleus. There are two ways to control this. Setting
+``fix_center=True`` holds the center of every isophote at the center
+of the input geometry. Setting ``max_center_shift`` to a distance in
+pixels lets the center move freely within a circle of that radius
+around the center of the input geometry. If the fit of an isophote
+would move the center outside this circle, the center of that
+isophote is placed on the circle and held fixed for the rest of its
+fit, while the ellipticity and orientation continue to be fitted. The
+next isophote starts from that position and may move its center back
+inside the circle.
+
+For the contaminated image above, where the fitted centers move by up
+to 6 pixels without rejection, a limit of 2 pixels gives::
+
+    >>> ellipse3 = Ellipse(contaminated, geometry=geometry)
+    >>> isolist3 = ellipse3.fit_image(max_center_shift=2.0)
+    >>> shift = np.hypot(isolist3.x0 - 160.0, isolist3.y0 - 140.0)
+    >>> print(np.round(shift.max(), 2))
+    2.0
+
+The ``wander`` parameter of the STSDAS ``ellipse`` task is different.
+It limits the x and y sizes of each individual center correction
+during the iterations, not the total distance from the input center.
+When a single correction exceeds ``wander``, STSDAS stops iterating
+and extracts the following isophotes in the same direction (outward or
+inward) without fitting them.
+
+Convergence
+^^^^^^^^^^^
+
+The fit of an isophote converges when the largest harmonic amplitude
+is smaller than ``convergence`` (the default is 0.05) times the rms
+of the residuals of the harmonic fit, scaled by the square root of
+the mean sector area. At least ``miniters`` iterations (the default is
+10) are performed before this criterion is applied. If the fit has
+not converged after ``maxiters`` iterations (the default is 50), the
+isophote has the best geometry that was found and a stop code of 2.
+
+Combining Fits
+^^^^^^^^^^^^^^
+
+A single set of keywords does not always suit the whole galaxy. The
+inner and outer regions can be fitted separately and the two lists
+combined. Here the outer region is fitted with a larger step and the
+``'median'`` integration mode, starting from its own initial
+ellipse::
+
+    >>> inner = ellipse.fit_image(max_sma=40.0)
+    >>> geometry_outer = EllipseGeometry(x0=160, y0=140, sma=50,
+    ...                                  ellipticity=0.4,
+    ...                                  orientation=40.0 * u.deg)
+    >>> ellipse_outer = Ellipse(data, geometry=geometry_outer)
+    >>> outer = ellipse_outer.fit_image(min_sma=40.0, step=0.2,
+    ...                                 integration_mode='median')
+    >>> combined = inner + outer
+    >>> combined.sort()
+
+The same approach helps when a fit stalls at some semimajor axis
+length, e.g., where the isophotes of the galaxy change shape or twist
+abruptly. The fit can be restarted beyond that length with a new
+initial ellipse.
+
+
+.. _isophote-model-image:
+
 Model Images and Residuals
 --------------------------
 
