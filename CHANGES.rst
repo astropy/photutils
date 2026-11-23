@@ -436,6 +436,11 @@ Bug Fixes
     ``MaskedArray`` input is now combined with the input ``mask``.
     [#2541]
 
+  - Fixed ``extract_stars`` extracting a star whose position is masked
+    in the input catalog at the value under the mask. Such a star is
+    now skipped with a warning, like a star with a nonfinite position.
+    [#2565]
+
 - ``photutils.segmentation``
 
   - Fixed a race condition on free-threaded Python builds where
@@ -567,8 +572,19 @@ API Changes
     fitted columns over initial columns in ``init_params``, so a
     previous results table restarts the fit from its fitted values.
     A row with a nonfinite or masked fitted value uses its initial
-    values. The position column priority order is now shared with
-    ``extract_stars``. [#2565]
+    values. [#2565]
+
+  - ``PSFPhotometry``, ``IterativePSFPhotometry``, and
+    ``extract_stars`` now search for the source position columns
+    in the same priority order. The ``x`` and ``y`` columns are
+    used first, followed by the columns with the ``_fit``, ``_init``,
+    ``_0``, ``_centroid``, ``_center``, ``_cen``, ``_pos``, and
+    ``_peak`` suffixes. Previously, ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` used the ``x_init`` and ``y_init``
+    columns before the ``x`` and ``y`` columns, and the ``x_peak`` and
+    ``y_peak`` columns before the ``_cen`` and ``_pos`` columns. A
+    name with an underscore (e.g., ``x_centroid``) is now always used
+    before the name without it (e.g., ``xcentroid``). [#2565]
 
 - ``photutils.utils``
 
