@@ -388,8 +388,10 @@ def batch_centroid_win(const real_t[:, ::1] data, *,
         The segmentation masking method:
 
         * 0: disables masking
+
         * 1: excludes neighbor-source pixels
           (``(seg > 0) & (seg != label)``)
+
         * 4: replaces neighbor-source pixels with the values mirrored
           across the (rounded) window center (the symmetric
           ``'correct'`` method). A neighbor pixel whose mirror falls
@@ -653,8 +655,10 @@ def batch_kron_radius(const real_t[:, ::1] data, *,
         The segmentation masking method:
 
         * 0: disables masking
+
         * 1: excludes neighbor-source pixels
           (``(seg > 0) & (seg != label)``)
+
         * 4: replaces neighbor-source pixels with the values mirrored
           across the (rounded) aperture center (the symmetric
           ``'correct'`` method). A neighbor pixel whose mirror falls
@@ -836,8 +840,10 @@ def batch_flux_radius_prepare(const real_t[:, ::1] data, *,
         The segmentation masking method:
 
         * 0: disables masking
+
         * 1: zeroes neighbor-source pixels
           (``(seg > 0) & (seg != label)``)
+
         * 4: replaces neighbor-source pixels with the values mirrored
           across the (rounded) cutout center (the symmetric
           ``'correct'`` method). A neighbor pixel whose mirror falls

@@ -1594,6 +1594,7 @@ def _prepare_uncertainty_info(data):
 
         - 'type' : str
           One of 'none', 'weights', or 'uncertainty'.
+
         - 'array' : `~numpy.ndarray` (only if type='weights' or
           type='uncertainty')
           The weight array (type='weights') or the standard

@@ -456,12 +456,18 @@ class SourceGrouper:
             object containing the grouping results. The object provides:
 
             - ``groups`` : array of group IDs for each source
+
             - ``n_sources`` : total number of sources
+
             - ``n_groups`` : total number of groups
+
             - ``sizes`` : group size for each source
+
             - ``group_centers`` : centroid coordinates for each group
+
             - ``get_group_sources(group_id)`` : retrieve sources in a
               specific group
+
             - ``plot()`` : visualize the grouping with color-coded
               apertures
 

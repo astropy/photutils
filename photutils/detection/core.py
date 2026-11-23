@@ -215,10 +215,13 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     * :attr:`x_centroid` property: the object centroid in the x
       direction.
+
     * :attr:`y_centroid` property: the object centroid in the y
       direction.
+
     * `apply_filters` method: filter the catalog using
       algorithm-specific criteria.
+
     * ``default_columns`` attribute: a tuple of column names used
       by `to_table` when no explicit columns are given. This should
       be set in the subclass ``__init__``.
@@ -228,7 +231,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     * `_get_init_attributes`: return attribute names to copy
       during slicing. The override should include
       ``'default_columns'`` in the returned tuple.
+
     * `make_cutouts`: customize how cutout arrays are extracted.
+
     * `cutout_data`: customize the cutouts used for photometry
       (e.g., zeroing negative pixels).
 

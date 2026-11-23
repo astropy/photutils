@@ -55,6 +55,7 @@ _METHOD_BULLETS = """\
 * ``'exact'`` (default):
   Calculates the exact geometric overlap area. Weights are
   continuous in the range [0, 1].
+
 * ``'center'``:
   Binary weighting based on the pixel center. Weights are
   either 0 or 1. A pixel is included only if its center lies
@@ -62,6 +63,7 @@ _METHOD_BULLETS = """\
   on the outer aperture boundary are excluded (weight 0). For
   an annulus, pixel centers lying exactly on the inner boundary
   are included (weight 1).
+
 * ``'subpixel'``:
   Approximates the overlap by averaging binary samples on a
   subgrid. The number of samples is set by the ``subpixels``
@@ -117,18 +119,22 @@ mask_method : {'none', 'mask', 'source_only', 'background_only', \
     * ``'none'`` (default):
       The ``segmentation_image`` is ignored and all pixels within the
       aperture are included.
+
     * ``'mask'``:
       Pixels belonging to neighboring sources (i.e., labeled but not
       the target source) are excluded.
+
     * ``'source_only'``:
       Only pixels belonging to the target source are included. Both
       neighboring sources and background pixels are excluded.
+
     * ``'background_only'``:
       Only background pixels are included. Pixels belonging to any
       source are excluded, including the source at the aperture
       position (if any). This method is intended for estimating the
       local background, e.g., within an annulus aperture. The
       ``labels`` keyword is not used.
+
     * ``'correct'``:
       Pixels belonging to neighboring sources are replaced by the
       values of the pixels mirrored across the aperture center. If a
@@ -192,15 +198,20 @@ def _update_method_subpixels_docstring(obj):
 
     * ``<method_subpixels_descriptions>`` : the full ``method`` and
       ``subpixels`` parameter descriptions.
+
     * ``<method_bullets>`` : only the ``'exact'``, ``'center'``, and
       ``'subpixel'`` bullet list, e.g., for a parameter that uses a
       custom name and introduction.
+
     * ``<subpixels_description>`` : only the ``subpixels`` parameter
       description.
+
     * ``<segmentation_descriptions>`` : the ``segmentation_image``,
       ``labels``, and ``mask_method`` parameter descriptions.
+
     * ``<flag_descriptions>`` : the bullet list of aperture quality
       flags.
+
     * ``<compute_overlap_docs>`` : the Parameters and Returns sections
       of the ``_compute_overlap`` method.
 

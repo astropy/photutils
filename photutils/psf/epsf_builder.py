@@ -3631,20 +3631,33 @@ class EPSFBuilder:
         The structured result object contains:
 
         - epsf: The final constructed ePSF
+
         - fitted_stars: Stars with updated centers/fluxes
+
         - iterations: Number of iterations performed
+
         - converged: Whether convergence was achieved
+
         - final_center_accuracy: Final center movement accuracy
+
         - final_converged_fraction: Fraction of stars that met the
           accuracy
+
         - n_excluded_stars: Number of stars excluded due to fit failures
+
         - excluded_star_indices: Indices of excluded stars
+
         - smoothing_kernel: Smoothing kernel of the final iteration
+
         - fit_shape: Fitting box of the final iteration
+
         - iteration_epsfs: ePSF image after each iteration
+
         - iteration_info: Table of the convergence statistics of each
           iteration
+
         - initial_epsf: Image of the input ePSF, if any
+
         - center_asymmetry: Offset of the center of mass of the final
           ePSF from its symmetry center
         """

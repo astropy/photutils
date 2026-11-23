@@ -72,11 +72,16 @@ def covariances():
     Raw ``(N, 2, 2)`` covariance matrices covering the shape cases.
 
     0. Resolved axis-aligned ellipse (det 4, min eigenvalue 1).
+
     1. Point-like, all zeros (det 0, min eigenvalue 0).
+
     2. Rank-1 degenerate along x (det 0, min eigenvalue 0).
+
     3. Elongated with one unresolved axis (det 0.2, min eigenvalue
        0.05, which is below 1/12 while det is above (1/12)**2).
+
     4. Not positive semidefinite (det -3, min eigenvalue -1).
+
     5. Partially nonfinite.
     """
     return np.array([[[4.0, 0.0], [0.0, 1.0]],

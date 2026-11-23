@@ -3258,12 +3258,16 @@ class SourceCatalog:
 
         * the bounding box of the source is smaller than 3 pixels along
           either axis
+
         * the pixels left in the fit do not determine the quadratic
           polynomial, which requires at least 6 pixels that are not all
           in two rows or two columns of the box
+
         * the quadratic fit does not have a maximum
+
         * the quadratic fit maximum falls on or outside the outermost
           pixel centers of the bounding-box cutout
+
         * there are no unmasked pixels within the source segment
 
         A fit is not performed if the peak pixel is at the edge of the
@@ -3297,12 +3301,16 @@ class SourceCatalog:
 
         * the bounding box of the source is smaller than 3 pixels along
           either axis
+
         * the pixels left in the fit do not determine the quadratic
           polynomial, which requires at least 6 pixels that are not all
           in two rows or two columns of the box
+
         * the quadratic fit does not have a maximum
+
         * the quadratic fit maximum falls on or outside the outermost
           pixel centers of the bounding-box cutout
+
         * there are no unmasked pixels within the source segment
 
         A fit is not performed if the peak pixel is at the edge of the

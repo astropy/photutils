@@ -791,16 +791,22 @@ class PSFDataProcessor:
             Dictionary containing cutout information:
 
             - 'valid' : bool, whether the cutout is valid
+
             - 'reason' : str or None, reason if invalid ('no_overlap'
               or 'fully_masked')
+
             - 'xx' : 1D array or None, x pixel indices of the unmasked
               cutout pixels
+
             - 'yy' : 1D array or None, y pixel indices of the unmasked
               cutout pixels
+
             - 'cutout' : 1D array or None, data values of the unmasked
               cutout pixels, with the local background subtracted if
               it is finite
+
             - 'n_pixels' : int, number of unmasked pixels in the cutout
+
             - 'cen_index' : int or nan, index in the 1D arrays of the
               pixel containing the source center, or nan if that pixel
               is masked or outside the image

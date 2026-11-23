@@ -197,11 +197,17 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         Must be `None` if ``params_per_source`` is input:
 
         * circle: ``(r,)``
+
         * circular annulus: ``(r_in, r_out)``
+
         * ellipse: ``(a, b, theta)``
+
         * elliptical annulus: ``(a_in, b_in, a_out, b_out, theta)``
+
         * rectangle: ``(w, h, theta)``
+
         * rectangular annulus: ``(w_in, h_in, w_out, h_out, theta)``
+
         * polygon: the flattened counterclockwise vertex offsets
           ``(x0, y0, x1, y1, ...)`` relative to each position (at least
           3 vertices, i.e., 6 values)
@@ -243,12 +249,16 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
         The segmentation masking method. The default is 0.
 
         * 0: disables masking.
+
         * 1: excludes neighbor-source pixels
           (``(seg > 0) & (seg != label)``).
+
         * 2: excludes all pixels not assigned to the target source
           (``seg != label``).
+
         * 3: excludes all labeled pixels (``seg > 0``), the
           ``'background_only'`` method. The labels are ignored.
+
         * 4: replaces neighbor-source pixels with the values mirrored
           across the (rounded) aperture center (the symmetric
           ``'correct'`` method). A neighbor pixel whose mirror falls
@@ -337,29 +347,38 @@ def batch_aperture_sums(const real_t[:, ::1] data, const real_t[:, ::1] error,
 
         * ``FLAG_COL_N_PIXELS``: the number of nonzero-fraction pixels
           inside the data
+
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked
+
         * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels
           excluded as nonfinite data (by ``mask_nonfinite`` or by mask
           bit 2) that are not input-masked, plus 1 if the accumulated
           sum is nonfinite (see below)
+
         * ``FLAG_COL_NONFINITE_ERROR``: a 0/1 indicator of whether a
           contributing pixel has a nonfinite error (detected from the
           accumulated variance, always 0 if ``error`` is `None`)
+
         * ``FLAG_COL_SEG``: the number of those unmasked pixels that
           lie on a neighboring source (for method 3, on any labeled
           source) and were excluded or corrected by the segmentation
           masking. Background pixels excluded by method 2 are not
           counted
+
         * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
           that could not be corrected by the segmentation masking
+
         * ``FLAG_COL_VALID``: the number of contributing pixels
           (unmasked, not excluded by the segmentation masking, and
           finite when ``mask_nonfinite`` is nonzero)
+
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
+
         * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
           that lie on a neighboring source
+
         * ``FLAG_COL_UNCORRECTED_MASKED``: the number of those masked
           pixels whose mirror pixel was also unavailable
 

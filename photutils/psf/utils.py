@@ -921,25 +921,33 @@ def _create_call_docstring(*, iterative=False):
             The table will contain the following columns:
 
             * ``'id'`` : unique identification number for the source
+
             * ``'group_id'`` : unique identification number for the
               source group
+
             * ``'group_size'`` : the total number of sources in the group.
               This number includes sources that are in the group,
               but were not fit due to being masked, having no overlap
               with the input data, or having too few pixels
               for a fit.{iter_detected_column}
+
             * ``'local_bkg'`` : the local background value subtracted
               from the data before the fit (zero if no local background
               was used)
+
             * ``'x_init'``, ``'x_fit'``, ``'x_err'`` : the initial,
               fit, and error of the source x center
+
             * ``'y_init'``, ``'y_fit'``, ``'y_err'`` : the initial, fit,
               and error of the source y center
+
             * ``'flux_init'``, ``'flux_fit'``, ``'flux_err'`` : the
               initial, fit, and error of the source flux
+
             * ``'<name>_init'``, ``'<name>_fit'``, ``'<name>_err'`` :
               the initial, fit, and error of any additional free model
               parameter, where ``<name>`` is the parameter name
+
             * ``'n_pixels_fit'`` : the number of unmasked pixels used to
               fit the source
 
@@ -952,6 +960,7 @@ def _create_call_docstring(*, iterative=False):
               of the absolute value of the fit residuals divided by
               the fit flux. ``'qfit'`` is zero for sources that are
               perfectly fit by the PSF model.
+
             * ``'cfit'`` : a quality-of-fit metric defined as the
               fit residual (data - model) in the initial central pixel
               value divided by the fit flux. NaN values indicate that
@@ -960,9 +969,11 @@ def _create_call_docstring(*, iterative=False):
               sources that are sharper than the PSF model (e.g., cosmic
               ray, hot pixel, etc.). Large negative values indicate
               sources that are broader than the PSF model.
+
             * ``'reduced_chi2'`` : the reduced chi-squared statistic. If
               no ``error`` array is provided, ``'reduced_chi2'`` values
               will be NaN.
+
             * ``'flags'`` : The bitwise quality flags for the source.
               A warning is issued if one or more fits may not have
               converged. See `~photutils.psf.decode_psf_flags` for
@@ -986,7 +997,7 @@ def _create_call_docstring(*, iterative=False):
             # Customizations for IterativePSFPhotometry
             indent = ' ' * 12
             suffix = (' *only for the first iteration*')
-            iter_detected_column = (f"\n{indent}* ``'iter_detected'`` : "
+            iter_detected_column = (f"\n\n{indent}* ``'iter_detected'`` : "
                                     'the iteration number in which the\n'
                                     f"{indent}  source was detected")
             customized_docstring = base_docstring.format(
