@@ -638,8 +638,17 @@ API Changes
     ``fix_ellipticity``, and its ``eps``, ``pa``, and ``astep``
     attributes were renamed to ``ellipticity``, ``orientation``, and
     ``step``. The old names are deprecated and will be removed in
-    version 4.0. The ``orientation`` keyword accepts an angular
-    ``Quantity`` or a float in radians. [#2568]
+    version 4.0. The ``orientation`` keyword and attribute of
+    ``EllipseGeometry`` and the ``orientation`` keyword of
+    ``EllipseSample`` require an angular ``Quantity`` and raise a
+    ``TypeError`` for a number without units. The deprecated ``pa``
+    and ``position_angle`` keywords and the deprecated ``pa``
+    attribute accept a number in radians. [#2568]
+
+  - Passing the orientation of ``EllipseGeometry`` as a positional
+    number without units is deprecated and will be removed in version
+    4.0. The number is interpreted as radians. Pass an angular
+    ``Quantity`` instead. [#2568]
 
   - The ``pa`` and ``pa_err`` attributes of ``Isophote`` and
     ``IsophoteList`` and the corresponding ``IsophoteList.to_table``

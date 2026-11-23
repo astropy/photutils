@@ -47,8 +47,9 @@ For this example, let's create a simple simulated galaxy image::
 
 We must provide the elliptical isophote fitter with an initial ellipse
 to be fitted. This ellipse geometry is defined with the
-`~photutils.isophote.EllipseGeometry` class. Here we'll define an
-initial ellipse whose orientation is offset from the data::
+`~photutils.isophote.EllipseGeometry` class. The orientation must be
+an angular `~astropy.units.Quantity`. Here we'll define an initial
+ellipse whose orientation is offset from the data::
 
     >>> import astropy.units as u
     >>> from photutils.isophote import EllipseGeometry

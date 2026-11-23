@@ -105,9 +105,10 @@ galaxy can pull the fitted centers away from the galaxy nucleus. Unlike
 ``fix_center``, the centers are still fitted within that distance. For
 an image ``data`` of a galaxy centered near (256, 256)::
 
+    >>> import astropy.units as u
     >>> from photutils.isophote import Ellipse, EllipseGeometry
     >>> geometry = EllipseGeometry(x0=256, y0=256, sma=20, ellipticity=0.2,
-    ...                            orientation=0.2)
+    ...                            orientation=10.0 * u.deg)
     >>> ellipse = Ellipse(data, geometry=geometry)
     >>> isolist = ellipse.fit_image(max_center_shift=2.0)
 
@@ -266,7 +267,7 @@ to::
 
     # New
     geometry = EllipseGeometry(x0, y0, 20.0, ellipticity=0.2,
-                               orientation=0.5)
+                               orientation=0.5 * u.rad)
     isolist = Ellipse(data, geometry=geometry).fit_image(
         max_sma=100.0, clip_sigma=2.5)
     print(isolist.intensity, isolist.ellipticity, isolist.orientation)
@@ -278,6 +279,26 @@ columns are `~astropy.units.Quantity` values in degrees, measured
 counterclockwise from the positive x axis. The deprecated ``pa`` and
 ``pa_err`` attributes still return floats in radians until they are
 removed.
+
+An orientation given under the new name must carry units. The
+``orientation`` keyword and attribute of
+`~photutils.isophote.EllipseGeometry` and the ``orientation`` keyword
+of `~photutils.isophote.EllipseSample` require an angular
+`~astropy.units.Quantity`, and a number without units raises a
+``TypeError``. A number without units is still accepted as radians
+with the deprecated ``pa`` and ``position_angle`` keywords and the
+deprecated ``pa`` attribute. Passing the orientation of
+`~photutils.isophote.EllipseGeometry` as a positional number without
+units is deprecated. The number is interpreted as radians, as before.
+Code that passes the orientation positionally changes from::
+
+    # Old (deprecated)
+    geometry = EllipseGeometry(x0, y0, 20.0, 0.2, 0.5)
+
+to::
+
+    # New
+    geometry = EllipseGeometry(x0, y0, 20.0, 0.2, 0.5 * u.rad)
 
 The ``'main'`` and ``'all'`` values of the ``columns`` keyword of
 `~photutils.isophote.IsophoteList.to_table` are deprecated. Use
@@ -340,8 +361,9 @@ EllipseGeometry
 
 These are the keywords and the attributes of
 `~photutils.isophote.EllipseGeometry`. The ``orientation`` keyword
-accepts an angular `~astropy.units.Quantity` or a float in radians, and
-the attribute is a `~astropy.units.Quantity` in degrees.
+and attribute require an angular `~astropy.units.Quantity`, and the
+attribute is a `~astropy.units.Quantity` in degrees. The deprecated
+``pa`` keyword and attribute use a float in radians.
 
 .. list-table::
    :header-rows: 1
