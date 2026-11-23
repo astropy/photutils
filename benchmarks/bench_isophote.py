@@ -17,6 +17,7 @@ import argparse
 import warnings
 from functools import partial
 
+import astropy.units as u
 import numpy as np
 from bench_helpers import (add_memory_argument, print_environment,
                            set_memory_mode, time_best)
@@ -33,7 +34,7 @@ EXTRACT_MODES = ('bilinear', 'nearest_neighbor', 'mean', 'median')
 X0 = Y0 = 256.0
 SMA_START = 20.0
 ELLIPTICITY = 0.2
-ORIENTATION = 0.0
+ORIENTATION = 0.0 * u.rad
 
 
 def make_galaxy_image(*, seed=0):

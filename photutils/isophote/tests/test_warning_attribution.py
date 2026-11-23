@@ -6,6 +6,7 @@ are attributed to the line of the caller.
 
 import warnings
 
+import astropy.units as u
 import numpy as np
 import pytest
 
@@ -28,7 +29,7 @@ def fixture_isolist(data):
 
 def _make_geometry():
     return EllipseGeometry(x0=64.0, y0=64.0, sma=10.0, ellipticity=0.2,
-                           orientation=np.pi / 2)
+                           orientation=(np.pi / 2) * u.rad)
 
 
 def _record(func):
@@ -56,14 +57,15 @@ def _assert_attributed(func, *, n_warnings):
 # The renamed keywords of each callable, as (old name, value) pairs. The
 # values are those of the new names in the base keywords below.
 GEOMETRY_KWARGS = {'x0': 64.0, 'y0': 64.0, 'sma': 10.0,
-                   'ellipticity': 0.2, 'orientation': 0.5, 'step': 0.1,
+                   'ellipticity': 0.2, 'orientation': 0.5 * u.rad,
+                   'step': 0.1,
                    'fix_orientation': False, 'fix_ellipticity': False}
 GEOMETRY_RENAMES = {'eps': 'ellipticity', 'pa': 'orientation',
                     'astep': 'step', 'fix_pa': 'fix_orientation',
                     'fix_eps': 'fix_ellipticity'}
 
 SAMPLE_KWARGS = {'x0': 64.0, 'y0': 64.0, 'step': 0.1, 'ellipticity': 0.2,
-                 'orientation': 0.5, 'clip_sigma': 3.0, 'n_clip': 0,
+                 'orientation': 0.5 * u.rad, 'clip_sigma': 3.0, 'n_clip': 0,
                  'integration_mode': 'bilinear'}
 SAMPLE_RENAMES = {'nclip': 'n_clip', 'astep': 'step',
                   'eps': 'ellipticity', 'position_angle': 'orientation',
@@ -123,14 +125,37 @@ class TestEllipseGeometry:
 
     def test_positional(self):
         _assert_attributed(
-            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5, 0.1),
+            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5 * u.rad,
+                                    0.1),
             n_warnings=1)
 
     def test_positional_and_old_keyword(self):
         _assert_attributed(
-            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5, 0.1,
+            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5 * u.rad,
+                                    0.1, fix_pa=False),
+            n_warnings=2)
+
+    def test_orientation_number(self):
+        _assert_attributed(
+            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5),
+            n_warnings=1)
+
+    def test_orientation_number_and_old_keyword(self):
+        _assert_attributed(
+            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5,
                                     fix_pa=False),
             n_warnings=2)
+
+    def test_orientation_number_and_positional(self):
+        _assert_attributed(
+            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5, 0.1),
+            n_warnings=2)
+
+    def test_orientation_number_positional_and_old_keyword(self):
+        _assert_attributed(
+            lambda: EllipseGeometry(64.0, 64.0, 10.0, 0.2, 0.5, 0.1,
+                                    fix_pa=False),
+            n_warnings=3)
 
     def test_find_center_positional(self, data):
         geometry = _make_geometry()

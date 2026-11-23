@@ -5,6 +5,7 @@ Tests for the integrator module.
 
 import warnings
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -266,7 +267,7 @@ def test_median_integrator_value(values, expected):
     Test that the median of an even number of pixel values is the
     average of the two middle values, as in the STSDAS ellipse task.
     """
-    geometry = EllipseGeometry(10.0, 10.0, 5.0, 0.2, 0.0)
+    geometry = EllipseGeometry(10.0, 10.0, 5.0, 0.2, 0.0 * u.rad)
     integrator = _INTEGRATORS['median'](np.zeros((20, 20)), geometry, [], [],
                                         [])
     assert integrator.compute_sample_value(np.array(values)) == expected
@@ -276,7 +277,7 @@ def _sample_point(integrmode, data, x, y):
     """
     Sample a single image point using the given integrator.
     """
-    geometry = EllipseGeometry(x, y, 1.0, 0.0, 0.0)
+    geometry = EllipseGeometry(x, y, 1.0, 0.0, 0.0 * u.rad)
     intensities = []
     integrator = _INTEGRATORS[integrmode](data, geometry, [], [], intensities)
     integrator.integrate(0.0, 0.0)
@@ -330,7 +331,7 @@ def test_fit_center(integrmode):
     """
     yy, xx = np.mgrid[0:101, 0:101]
     data = Gaussian2D(100.0, 50.0, 50.0, 12.0, 8.0, theta=0.5)(xx, yy)
-    geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5)
+    geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5 * u.rad)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image(integration_mode=integrmode, sma_start=10.0,
                                 max_sma=25.0)

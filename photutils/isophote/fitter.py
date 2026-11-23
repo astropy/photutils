@@ -154,6 +154,7 @@ class _EllipseFitter:
         :meth:`~photutils.isophote.Ellipse.fit_isophote` instead to fit
         a single isophote:
 
+        >>> import astropy.units as u
         >>> import numpy as np
         >>> from astropy.modeling.models import Gaussian2D
         >>> from photutils.datasets import make_noise_image
@@ -165,7 +166,7 @@ class _EllipseFitter:
         ...                                       stddev=2.0, seed=0)
         >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20,
         ...                            ellipticity=0.5,
-        ...                            orientation=np.deg2rad(30))
+        ...                            orientation=30 * u.deg)
         >>> ellipse = Ellipse(data, geometry=geometry)
         >>> isophote = ellipse.fit_isophote(20)
         >>> isophote.stop_code

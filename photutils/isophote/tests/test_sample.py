@@ -5,6 +5,7 @@ Tests for the sample module.
 
 import copy
 import pickle
+import warnings
 
 import astropy.units as u
 import numpy as np
@@ -65,11 +66,11 @@ def test_sclip():
 
 
 def test_geometry_sma_override_resets_cached_attributes():
-    geometry = EllipseGeometry(25.0, 25.0, 10.0, 0.3, np.pi / 4.0,
+    geometry = EllipseGeometry(25.0, 25.0, 10.0, 0.3, (np.pi / 4.0) * u.rad,
                                step=0.2)
     sample = EllipseSample(DATA, 20.0, geometry=geometry)
     expected_geometry = EllipseGeometry(25.0, 25.0, 20.0, 0.3,
-                                        np.pi / 4.0, step=0.2)
+                                        (np.pi / 4.0) * u.rad, step=0.2)
 
     assert sample.geometry.sma == 20.0
     assert geometry.sma == 10.0
@@ -117,7 +118,7 @@ def test_invalid_ellipticity(integrmode, eps):
     with pytest.raises(ValueError, match=match):
         sample.update()
 
-    geometry = EllipseGeometry(256.0, 256.0, 10.0, eps, 0.0)
+    geometry = EllipseGeometry(256.0, 256.0, 10.0, eps, 0.0 * u.rad)
     ellipse = Ellipse(DATA, geometry=geometry)
     with pytest.raises(ValueError, match=match):
         ellipse.fit_image(integration_mode=integrmode)
@@ -139,7 +140,7 @@ def test_nonfinite_center(integrmode, x0, y0):
     with pytest.raises(ValueError, match=match):
         sample.update()
 
-    geometry = EllipseGeometry(x0, y0, 10.0, 0.2, 0.0)
+    geometry = EllipseGeometry(x0, y0, 10.0, 0.2, 0.0 * u.rad)
     ellipse = Ellipse(DATA, geometry=geometry)
     with pytest.raises(ValueError, match=match):
         ellipse.fit_image(integration_mode=integrmode)
@@ -237,7 +238,7 @@ def test_update_keeps_fixed_parameters():
     of the geometry.
     """
     data = make_test_image(seed=0)
-    geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0,
+    geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0 * u.rad,
                                fix_center=True, fix_ellipticity=True)
     sample = EllipseSample(data, 20.0, geometry=geometry)
     sample.update()
@@ -431,7 +432,8 @@ def test_sample_sma_zero():
 
 def test_sample_named_arrays():
     data = make_test_image(seed=0)
-    sample = EllipseSample(data, 40.0, ellipticity=0.2, orientation=0.0,
+    sample = EllipseSample(data, 40.0, ellipticity=0.2,
+                           orientation=0.0 * u.rad,
                            integration_mode='bilinear')
     assert sample.angles is None
     assert sample.radii is None
@@ -473,7 +475,7 @@ def test_sample_copy_and_pickle():
 @pytest.mark.parametrize(('old', 'new', 'value'),
                          [('astep', 'step', 0.2),
                           ('eps', 'ellipticity', 0.3),
-                          ('position_angle', 'orientation', 0.5),
+                          ('position_angle', 'orientation', 0.5 * u.rad),
                           ('sclip', 'clip_sigma', 2.5),
                           ('integrmode', 'integration_mode', 'mean')])
 def test_sample_deprecated_keywords(old, new, value):
@@ -482,6 +484,70 @@ def test_sample_deprecated_keywords(old, new, value):
         old_sample = EllipseSample(data, 40.0, **{old: value})
     new_sample = EllipseSample(data, 40.0, **{new: value})
     assert_array_equal(old_sample.extract(), new_sample.extract())
+
+
+class TestOrientationUnits:
+    """
+    Test that the ``orientation`` of a sample requires units and that a
+    number without units is accepted only on the legacy paths.
+    """
+
+    @staticmethod
+    def _records(func):
+        with warnings.catch_warnings(record=True) as records:
+            warnings.simplefilter('always')
+            result = func()
+        records = [record for record in records
+                   if issubclass(record.category,
+                                 PhotutilsDeprecationWarning)]
+        return records, result
+
+    def test_keyword_quantity(self):
+        records, sample = self._records(
+            lambda: EllipseSample(DATA, 40.0, orientation=30.0 * u.deg))
+        assert records == []
+        assert_allclose(sample.geometry._orientation_rad, np.pi / 6)
+
+    @pytest.mark.parametrize('value', [0.5, 0, np.float64(0.5)],
+                             ids=['float', 'int', 'float64'])
+    def test_keyword_number(self, value):
+        match = 'orientation must be an angular Quantity, e.g., 30 \\* u.deg'
+        with pytest.raises(TypeError, match=match):
+            EllipseSample(DATA, 40.0, orientation=value)
+
+    def test_omitted(self):
+        records, sample = self._records(lambda: EllipseSample(DATA, 40.0))
+        assert records == []
+        assert sample.geometry._orientation_rad == 0.0
+        assert sample.geometry.orientation == 0.0 * u.deg
+
+    def test_position_angle_number(self):
+        records, sample = self._records(
+            lambda: EllipseSample(DATA, 40.0, position_angle=0.5))
+        assert len(records) == 1
+        assert "'position_angle' was deprecated" in str(records[0].message)
+        assert records[0].filename == __file__
+        assert sample.geometry._orientation_rad == 0.5
+
+    def test_positional_number(self):
+        records, sample = self._records(
+            lambda: EllipseSample(DATA, 40.0, 256.0, 256.0, 0.1, 0.2, 0.5))
+        assert len(records) == 1
+        assert 'positionally' in str(records[0].message)
+        assert records[0].filename == __file__
+        assert sample.geometry._orientation_rad == 0.5
+
+    def test_copy_and_pickle(self):
+        sample = EllipseSample(DATA, 40.0, orientation=0.5 * u.rad)
+
+        def clones():
+            return (copy.copy(sample), copy.deepcopy(sample),
+                    pickle.loads(pickle.dumps(sample)))  # noqa: S301
+
+        records, result = self._records(clones)
+        assert records == []
+        for clone in result:
+            assert clone.geometry._orientation_rad == 0.5
 
 
 @pytest.mark.parametrize(('old', 'new'),

@@ -3,6 +3,7 @@
 Tests for the harmonics module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
@@ -201,7 +202,7 @@ def test_upper_harmonics_sign():
     y, x = np.mgrid[0:ny, 0:nx]
     data = g1(x, y) + g2(x, y)
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.9,
-                               orientation=angle)
+                               orientation=angle * u.rad)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
@@ -247,7 +248,7 @@ def test_upper_harmonics_values(sign):
     data = 1000.0 * np.exp(-sma / 15.0)
 
     geometry = EllipseGeometry(x0=100, y0=100, sma=20, ellipticity=eps,
-                               orientation=pa)
+                               orientation=pa * u.rad)
     isolist = Ellipse(data, geometry=geometry).fit_image(max_sma=50.0)
     mask = (isolist.sma > 10) & (isolist.sma < 45)
     assert np.count_nonzero(mask) > 10
@@ -337,7 +338,7 @@ def test_short_arc_isophote_errors():
     theta = np.arctan2(yy - 256.0, xx - 256.0)
     mask = (theta < 0.5) | (theta > 0.56)
     geometry = EllipseGeometry(x0=256.0, y0=256.0, sma=220.0,
-                               ellipticity=0.2, orientation=0.0)
+                               ellipticity=0.2, orientation=0.0 * u.rad)
     ellipse = Ellipse(np.ma.masked_array(data, mask=mask), geometry=geometry)
     isophote = ellipse.fit_isophote(220.0)
 

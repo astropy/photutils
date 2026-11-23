@@ -1566,7 +1566,7 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
     n_rows = len(table)
     isophotes = []
     for i in range(n_rows):
-        geometry = EllipseGeometry(
+        geometry = EllipseGeometry._from_radians(
             values['x0'][i], values['y0'][i], values['sma'][i],
             values['ellipticity'][i], values['orientation'][i],
             step=step, linear_growth=linear_growth)

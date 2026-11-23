@@ -3,8 +3,10 @@
 Tools for storing parameters for the geometry of an ellipse.
 """
 
+import inspect
 import math
 import warnings
+from functools import wraps
 
 import astropy.units as u
 import numpy as np
@@ -13,6 +15,7 @@ from astropy import log
 from photutils.utils._deprecation import (deprecated, deprecated_attribute,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument,
+                                          renamed_argument_message,
                                           warn_deprecated_attribute)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -86,6 +89,84 @@ def _eccentric_anomaly(phi, eps):
     """
     anomaly = math.atan2(math.sin(phi), (1.0 - eps) * math.cos(phi))
     return phi + (anomaly - phi + math.pi) % (2.0 * math.pi) - math.pi
+
+
+def _validate_orientation(value):
+    """
+    Raise a `TypeError` if an orientation is not a
+    `~astropy.units.Quantity`.
+    """
+    if not isinstance(value, u.Quantity):
+        msg = ('orientation must be an angular Quantity, e.g., '
+               '30 * u.deg')
+        raise TypeError(msg)
+
+
+# Remove in 4.0
+def _legacy_orientation_rad(value):
+    """
+    Return an orientation in radians.
+
+    The orientation is an angular `~astropy.units.Quantity` or a number
+    in radians.
+    """
+    if isinstance(value, u.Quantity):
+        return value.to_value(u.rad)
+    return value
+
+
+# Remove in 4.0
+def _orientation_argument(old_name, *, warn_number):
+    """
+    Make a decorator that handles the ``orientation`` argument of a
+    constructor.
+
+    A number without units is accepted as radians only from the
+    deprecated ``old_name`` keyword or as a positional argument, with a
+    deprecation warning for the positional argument if ``warn_number``
+    is `True`. A number given with the ``orientation`` keyword raises a
+    `TypeError`.
+
+    The ``old_name`` keyword is renamed here, rather than by the
+    renamed-argument decorator, because that decorator passes it on
+    as the ``orientation`` keyword, which can then no longer be told
+    apart from a number given with the ``orientation`` keyword. This
+    decorator must be placed inside both the renamed-argument and the
+    positional-argument decorators so that its warnings point to the
+    caller.
+    """
+    rename_msg = renamed_argument_message(old_name, 'orientation', '3.2',
+                                          '4.0')
+    number_msg = ('Passing the orientation as a number without units was '
+                  'deprecated in version 3.2 and will be removed in '
+                  'version 4.0. The number is interpreted as radians. Pass '
+                  'an angular Quantity instead, e.g., value * u.rad.')
+
+    def decorator(func):
+        position = list(inspect.signature(func).parameters).index(
+            'orientation')
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if old_name in kwargs:
+                warnings.warn(rename_msg, PhotutilsDeprecationWarning,
+                              stacklevel=4)
+                if 'orientation' in kwargs or len(args) > position:
+                    msg = (f'cannot specify both "{old_name}" and '
+                           '"orientation".')
+                    raise TypeError(msg)
+                kwargs['orientation'] = kwargs.pop(old_name)
+            elif 'orientation' in kwargs:
+                _validate_orientation(kwargs['orientation'])
+            elif (warn_number and len(args) > position
+                  and not isinstance(args[position], u.Quantity)):
+                warnings.warn(number_msg, PhotutilsDeprecationWarning,
+                              stacklevel=4)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 # Remove in 4.0
@@ -170,20 +251,29 @@ class EllipseGeometry:
         .. deprecated:: 3.2
             The ``eps`` keyword is deprecated. Use ``ellipticity``
             instead.
-    orientation : float or `~astropy.units.Quantity`
-        The orientation of the semimajor axis, measured
-        counterclockwise from the positive x axis of the image array.
-        It is an angular `~astropy.units.Quantity` (e.g., an
-        `~astropy.coordinates.Angle`) or a float in radians. The
-        ``orientation`` attribute is a `~astropy.units.Quantity` in
-        degrees. The fitted orientations are in the range of 0 to 180
-        degrees. When the orientations are near either end of the
-        range, noise can make the solution jump back and forth between
-        successive isophotes, by amounts close to 180 degrees.
+    orientation : `~astropy.units.Quantity`
+        The orientation of the semimajor axis as an angular
+        `~astropy.units.Quantity` (e.g., ``30 * u.deg`` or an
+        `~astropy.coordinates.Angle`), measured counterclockwise from
+        the positive x axis of the image array. The ``orientation``
+        attribute is a `~astropy.units.Quantity` in degrees. The fitted
+        orientations are in the range of 0 to 180 degrees. When the
+        orientations are near either end of the range, noise can make
+        the solution jump back and forth between successive isophotes,
+        by amounts close to 180 degrees.
 
         .. deprecated:: 3.2
             The ``pa`` keyword is deprecated. Use ``orientation``
-            instead.
+            instead. A number without units is accepted as radians
+            with the ``pa`` keyword.
+
+        .. deprecated:: 3.2
+            Passing the orientation as the fifth positional argument
+            as a number without units is deprecated. The number is
+            interpreted as radians. Pass an angular
+            `~astropy.units.Quantity` instead (e.g., ``value * u.rad``).
+            A number without units given with the ``orientation``
+            keyword raises a `TypeError`.
     step : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
@@ -233,6 +323,7 @@ class EllipseGeometry:
     orientation : `~astropy.units.Quantity`
         The orientation of the semimajor axis in degrees, measured
         counterclockwise from the positive x axis of the image array.
+        It must be set with an angular `~astropy.units.Quantity`.
     pa : float
         .. deprecated:: 3.2
             Use ``orientation`` instead. It is a float in radians.
@@ -265,22 +356,56 @@ class EllipseGeometry:
         .. deprecated:: 3.2
             This attribute was internal to the fitter and has no
             replacement.
+
+    Raises
+    ------
+    TypeError
+        If ``orientation`` is given with the ``orientation`` keyword as
+        a number without units.
     """
 
     @deprecated_renamed_argument(
-        ['eps', 'pa', 'astep', 'fix_pa', 'fix_eps'],
-        ['ellipticity', 'orientation', 'step', 'fix_orientation',
-         'fix_ellipticity'],
+        ['eps', 'astep', 'fix_pa', 'fix_eps'],
+        ['ellipticity', 'step', 'fix_orientation', 'fix_ellipticity'],
         '3.2', until='4.0')
     @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
+    @_orientation_argument('pa', warn_number=True)
     def __init__(self, x0, y0, sma, ellipticity, orientation, step=0.1,
                  linear_growth=False, fix_center=False,
                  fix_orientation=False, fix_ellipticity=False):
+        self._initialize(x0, y0, sma, ellipticity,
+                         _legacy_orientation_rad(orientation), step=step,
+                         linear_growth=linear_growth, fix_center=fix_center,
+                         fix_orientation=fix_orientation,
+                         fix_ellipticity=fix_ellipticity)
+
+    @classmethod
+    def _from_radians(cls, x0, y0, sma, ellipticity, orientation,
+                      **kwargs):
+        """
+        Make a geometry with the orientation given as a number in
+        radians.
+
+        This is the constructor for the internal code. It issues no
+        warning and does not convert the orientation.
+        """
+        geometry = cls.__new__(cls)
+        geometry._initialize(x0, y0, sma, ellipticity, orientation,
+                             **kwargs)
+        return geometry
+
+    def _initialize(self, x0, y0, sma, ellipticity, orientation, *,
+                    step=0.1, linear_growth=False, fix_center=False,
+                    fix_orientation=False, fix_ellipticity=False):
+        """
+        Set the attributes of a new geometry, with the orientation in
+        radians.
+        """
         self.x0 = x0
         self.y0 = y0
         self.sma = sma
         self.ellipticity = ellipticity
-        self.orientation = orientation
+        self._orientation_rad = orientation
 
         self.step = step
         self.linear_growth = linear_growth
@@ -304,17 +429,16 @@ class EllipseGeometry:
         `~astropy.units.Quantity` in degrees.
 
         The angle is measured counterclockwise from the positive x axis
-        of the image array. It can be set with an angular
-        `~astropy.units.Quantity` or with a float in radians.
+        of the image array. It must be set with an angular
+        `~astropy.units.Quantity`.
         """
         return np.rad2deg(self._orientation_rad) << u.deg
 
     @orientation.setter
     def orientation(self, value):  # numpydoc ignore=GL08
         # The internal code uses the orientation as a float in radians.
-        if isinstance(value, u.Quantity):
-            value = value.to_value(u.rad)
-        self._orientation_rad = value
+        _validate_orientation(value)
+        self._orientation_rad = value.to_value(u.rad)
 
     @property
     def fix_center(self):
@@ -388,7 +512,7 @@ class EllipseGeometry:
     def pa(self, value):  # numpydoc ignore=GL08
         warn_deprecated_attribute('pa', 'orientation', since='3.2',
                                   until='4.0')
-        self.orientation = value
+        self._orientation_rad = _legacy_orientation_rad(value)
 
     def _reset_sma_dependent_attributes(self):
         """

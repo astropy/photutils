@@ -3,6 +3,7 @@
 Tools for making a simulated image for tests.
 """
 
+import astropy.units as u
 import numpy as np
 from astropy.io import fits
 
@@ -55,7 +56,7 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
     xcen = nx / 2 if x0 is None else x0
     ycen = ny / 2 if y0 is None else y0
 
-    g = EllipseGeometry(xcen, ycen, sma, eps, pa, step=0.1,
+    g = EllipseGeometry(xcen, ycen, sma, eps, pa * u.rad, step=0.1,
                         linear_growth=False)
 
     y, x = np.mgrid[0:ny, 0:nx]

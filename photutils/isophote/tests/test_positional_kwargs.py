@@ -4,6 +4,7 @@ Tests for deprecation warnings when optional arguments are passed
 positionally.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 
@@ -28,14 +29,14 @@ class TestEllipsePositionalKwargs:
 
     def test_init_positional_warns(self):
         geometry = EllipseGeometry(x0=64, y0=64, sma=10, ellipticity=0.2,
-                                   orientation=np.pi / 2)
+                                   orientation=(np.pi / 2) * u.rad)
         match = '__init__'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             Ellipse(self.data, geometry)
 
     def test_init_keyword_no_warning(self):
         geometry = EllipseGeometry(x0=64, y0=64, sma=10, ellipticity=0.2,
-                                   orientation=np.pi / 2)
+                                   orientation=(np.pi / 2) * u.rad)
         Ellipse(self.data, geometry=geometry)
 
     def test_fit_image_positional_warns(self):
@@ -67,15 +68,15 @@ class TestEllipseGeometryPositionalKwargs:
     def test_init_positional_warns(self):
         match = '__init__'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
-            EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2)
+            EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0 * u.rad, 0.2)
 
     def test_init_keyword_no_warning(self):
-        EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, step=0.2)
+        EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0 * u.rad, step=0.2)
 
     def test_find_center_positional_warns(self):
         data = make_test_image(seed=0)
         geometry = EllipseGeometry(x0=256, y0=256, sma=10, ellipticity=0.2,
-                                   orientation=np.pi / 2)
+                                   orientation=(np.pi / 2) * u.rad)
         match = 'find_center'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             geometry.find_center(data, 0.5)
@@ -83,7 +84,7 @@ class TestEllipseGeometryPositionalKwargs:
     def test_find_center_keyword_no_warning(self):
         data = make_test_image(seed=0)
         geometry = EllipseGeometry(x0=256, y0=256, sma=10, ellipticity=0.2,
-                                   orientation=np.pi / 2)
+                                   orientation=(np.pi / 2) * u.rad)
         geometry.find_center(data, threshold=0.5)
 
 

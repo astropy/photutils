@@ -33,7 +33,7 @@ def test_model():
     data = hdu[0].data[0]
     hdu.close()
 
-    g = EllipseGeometry(530.0, 511, 10.0, 0.1, np.deg2rad(10.0))
+    g = EllipseGeometry(530.0, 511, 10.0, 0.1, np.deg2rad(10.0) * u.rad)
     ellipse = Ellipse(data, geometry=g)
 
     # NOTE: this sometimes emits warnings (e.g., py38, ubuntu), but
@@ -62,7 +62,7 @@ def fixture_simulated_isolist():
     data = make_test_image(nx=200, ny=200, i0=10.0, sma=5.0, eps=0.5,
                            pa=np.pi / 3.0, noise=0.05, seed=0)
 
-    g = EllipseGeometry(100.0, 100.0, 5.0, 0.5, np.pi / 3.0)
+    g = EllipseGeometry(100.0, 100.0, 5.0, 0.5, (np.pi / 3.0) * u.rad)
     ellipse = Ellipse(data, geometry=g)
 
     # Catch warnings that may arise from empty slices. This started
@@ -96,7 +96,7 @@ def test_model_minimum_radius():
     filepath = get_pkg_data_filename('data/minimum_radius_test.fits')
     with fits.open(filepath) as hdu:
         data = hdu[0].data
-        g = EllipseGeometry(50.0, 45, 530.0, 0.1, np.deg2rad(10.0))
+        g = EllipseGeometry(50.0, 45, 530.0, 0.1, np.deg2rad(10.0) * u.rad)
         g.find_center(data)
         ellipse = Ellipse(data, geometry=g)
 
@@ -271,7 +271,7 @@ def test_model_harmonics():
     data += 5 * harm
 
     geometry = EllipseGeometry(x0=x0, y0=y0, sma=30, ellipticity=eps,
-                               orientation=theta)
+                               orientation=theta * u.rad)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image(fix_center=True, fix_ellipticity=True)
 
@@ -326,7 +326,7 @@ def test_model_integration():
     """
     data = make_test_image(nx=80, ny=110, i0=100.0, sma=60.0, eps=0.5,
                            pa=np.pi / 3.0, noise=0.05, seed=0)
-    g = EllipseGeometry(40, 55, 5.0, 0.5, np.pi / 3.0)
+    g = EllipseGeometry(40, 55, 5.0, 0.5, (np.pi / 3.0) * u.rad)
     ellipse = Ellipse(data, geometry=g)
     isophote_list = ellipse.fit_image()
     model = isophote_list.make_model_image(

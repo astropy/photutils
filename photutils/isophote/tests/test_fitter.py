@@ -126,8 +126,9 @@ def test_everything_fixed():
     Test that the isophote is extracted with the input geometry,
     without fitting, if all the ellipse parameters are fixed.
     """
-    geometry = EllipseGeometry(250.0, 260.0, 40.0, 0.3, 1.0, fix_center=True,
-                               fix_orientation=True, fix_ellipticity=True)
+    geometry = EllipseGeometry(250.0, 260.0, 40.0, 0.3, 1.0 * u.rad,
+                               fix_center=True, fix_orientation=True,
+                               fix_ellipticity=True)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
     isophote = _EllipseFitter(sample).fit()
     assert isophote.stop_code == 4
@@ -299,7 +300,7 @@ def test_fitting_all():
     # Initial guess is off in all parameters. We find that the initial
     # guesses, especially for position angle, must be kinda close to the
     # actual value. 20% off max seems to work in this case of high SNR.
-    sample = EllipseSample(data, sma, orientation=(1.2 * angle))
+    sample = EllipseSample(data, sma, orientation=((1.2 * angle) * u.rad))
     fitter = _EllipseFitter(sample)
     isophote = fitter.fit()
 
@@ -311,7 +312,7 @@ def test_fitting_all():
     # Within about 3 degrees
     assert_allclose(g.orientation.to_value(u.rad), angle, atol=0.05)
 
-    sample_m = EllipseSample(data, sma, orientation=(1.2 * angle),
+    sample_m = EllipseSample(data, sma, orientation=((1.2 * angle) * u.rad),
                              integration_mode='mean')
     fitter_m = _EllipseFitter(sample_m)
     isophote_m = fitter_m.fit()
@@ -399,7 +400,7 @@ class TestM51:
 
         # Sample taken in high SNR region
         sample = EllipseSample(self.data, 21.44, ellipticity=0.18,
-                               orientation=np.deg2rad(36.0))
+                               orientation=np.deg2rad(36.0) * u.rad)
         fitter = _EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -415,7 +416,7 @@ class TestM51:
         # tolerances below include the values of the original code.
         sample = EllipseSample(self.data, 61.16, x0=253.15, y0=260.15,
                                ellipticity=0.219,
-                               orientation=np.deg2rad(77.5 + 90))
+                               orientation=np.deg2rad(77.5 + 90) * u.rad)
         fitter = _EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -430,7 +431,7 @@ class TestM51:
         # data points lay outside the image frame. This checks
         # for the presence of gaps in the sample arrays.
         sample = EllipseSample(self.data, 330.0, ellipticity=0.2,
-                               orientation=np.deg2rad(90),
+                               orientation=np.deg2rad(90) * u.rad,
                                integration_mode='median')
         fitter = _EllipseFitter(sample)
         isophote = fitter.fit()
@@ -441,7 +442,7 @@ class TestM51:
         # This code finds central x and y offset by about 0.1 pixel wrt the
         # spp code. In here we use as input the position computed by this
         # code, thus this test is checking just the extraction algorithm.
-        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, step=0.1,
+        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0 * u.rad, step=0.1,
                             linear_growth=False)
         isophote = _central_isophote(self.data, g)
 
@@ -475,7 +476,7 @@ def test_fixed_round_ellipse(fix_center):
 
     The position angle of a circle is undefined, so it is not fit.
     """
-    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5,
+    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5 * u.rad,
                                fix_ellipticity=True, fix_center=fix_center)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
     isophote = _EllipseFitter(sample).fit()
@@ -496,7 +497,7 @@ def test_fit_does_not_modify_input(fix_eps, fix_center):
     Test that fitting a round starting ellipse does not modify the
     geometry of the input sample.
     """
-    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5,
+    geometry = EllipseGeometry(257.0, 255.0, 40.0, 0.0, 0.5 * u.rad,
                                fix_ellipticity=fix_eps,
                                fix_center=fix_center)
     sample = EllipseSample(DATA, 40.0, geometry=geometry)
@@ -513,7 +514,7 @@ def test_everything_fixed_no_data():
     Test that an isophote extracted without fitting is invalid if it has
     no valid data points.
     """
-    geometry = EllipseGeometry(250.0, 260.0, 2000.0, 0.3, 1.0,
+    geometry = EllipseGeometry(250.0, 260.0, 2000.0, 0.3, 1.0 * u.rad,
                                fix_center=True, fix_orientation=True,
                                fix_ellipticity=True)
     sample = EllipseSample(DATA, 2000.0, geometry=geometry)

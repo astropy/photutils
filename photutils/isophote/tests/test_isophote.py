@@ -176,8 +176,8 @@ def test_fix_geometry():
     new ellipse.
     """
     data = make_test_image(seed=0)
-    geometry1 = EllipseGeometry(256.0, 256.0, 20.0, 0.1, 0.0)
-    geometry2 = EllipseGeometry(257.0, 255.0, 20.0, 0.5, 1.0)
+    geometry1 = EllipseGeometry(256.0, 256.0, 20.0, 0.1, 0.0 * u.rad)
+    geometry2 = EllipseGeometry(257.0, 255.0, 20.0, 0.5, 1.0 * u.rad)
     sample1 = EllipseSample(data, 20.0, geometry=geometry1)
     sample2 = EllipseSample(data, 20.0, geometry=geometry2)
     sample1._update(fixed_parameters=DEFAULT_FIX)
@@ -219,7 +219,7 @@ def test_isophote_fluxes_integer_center():
     data = np.ones((51, 51))
     npix = []
     for x0 in (25, 25.0):
-        geometry = EllipseGeometry(x0, x0, 10.0, 0.3, 0.5)
+        geometry = EllipseGeometry(x0, x0, 10.0, 0.3, 0.5 * u.rad)
         sample = EllipseSample(data, 10.0, geometry=geometry)
         sample.update()
         isophote = Isophote(sample, 1, valid=True, stop_code=0)
@@ -436,7 +436,7 @@ class TestIsophoteList:
 
     def test_central_pixel(self):
         # Test the central pixel isophote.
-        geometry = EllipseGeometry(257.0, 258.0, 10.0, 0.2, 0.3)
+        geometry = EllipseGeometry(257.0, 258.0, 10.0, 0.2, 0.3 * u.rad)
         cenpix = _central_isophote(self.data, geometry)
         assert type(cenpix) is Isophote
         assert cenpix.x0 == cenpix.sample.geometry.x0
@@ -513,7 +513,7 @@ class TestIsophoteList:
         test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
-        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0 * u.rad)
         ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(max_sma=27)
 
@@ -540,7 +540,7 @@ class TestIsophoteList:
         test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
-        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0 * u.rad)
         ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(max_sma=27)
         match = 'Invalid column name'
@@ -556,7 +556,7 @@ class TestIsophoteList:
         test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
-        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0 * u.rad)
         ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(max_sma=27)
         match = "'grad_error' attribute was deprecated"
@@ -572,7 +572,7 @@ class TestIsophoteList:
         test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
                                    background=100.0, noise=1.0e-6, i0=100.0,
                                    sma=10.0, eps=0.2, pa=0.0, seed=1)
-        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0 * u.rad)
         ellipse = Ellipse(test_img, geometry=g)
         isolist = ellipse.fit_image(max_sma=27)
         tbl = isolist.to_table(columns=isolist.properties)

@@ -37,7 +37,7 @@ def _central_isophote(image, geometry):
     geometry.sma = 0.0
     geometry.ellipticity = 0.0
     geometry._orientation_rad = 0.0
-    sample = EllipseSample(image, 0.0, geometry=geometry)
+    sample = EllipseSample._from_radians(image, 0.0, geometry=geometry)
     sample.update()
     return Isophote(sample, 0, valid=True, stop_code=0)
 
@@ -229,8 +229,8 @@ class Ellipse:
         else:
             _x0 = image.shape[1] / 2
             _y0 = image.shape[0] / 2
-            self._geometry = EllipseGeometry(_x0, _y0, 10.0, 0.2,
-                                             np.pi / 2)
+            self._geometry = EllipseGeometry._from_radians(
+                _x0, _y0, 10.0, 0.2, np.pi / 2)
 
     @deprecated('3.2', alternative='EllipseGeometry.find_center',
                 until='4.0')
@@ -1025,9 +1025,9 @@ class Ellipse:
             # A zero sma requires special handling.
             return _central_isophote(self.image, geometry)
 
-        sample = EllipseSample(self.image, sma, clip_sigma=clip_sigma,
-                               n_clip=n_clip, geometry=geometry,
-                               integration_mode=integration_mode)
+        sample = EllipseSample._from_radians(
+            self.image, sma, clip_sigma=clip_sigma, n_clip=n_clip,
+            geometry=geometry, integration_mode=integration_mode)
         fitter = _EllipseFitter(sample)
 
         # The center shift is measured from the input geometry, which
@@ -1041,9 +1041,9 @@ class Ellipse:
 
     def _non_iterative(self, sma, geometry, clip_sigma, n_clip,
                        integration_mode):
-        sample = EllipseSample(self.image, sma, clip_sigma=clip_sigma,
-                               n_clip=n_clip, geometry=geometry,
-                               integration_mode=integration_mode)
+        sample = EllipseSample._from_radians(
+            self.image, sma, clip_sigma=clip_sigma, n_clip=n_clip,
+            geometry=geometry, integration_mode=integration_mode)
         sample._update(fixed_parameters=geometry._fix)
 
         # An isophote without any valid data points (e.g., an ellipse

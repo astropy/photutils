@@ -10,7 +10,9 @@ import astropy.units as u
 import numpy as np
 
 from photutils.isophote._polar_path import compute_polar_path
-from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.geometry import (EllipseGeometry,
+                                         _legacy_orientation_rad,
+                                         _orientation_argument)
 from photutils.isophote.integrator import _INTEGRATORS
 from photutils.utils._deprecation import (deprecated_attribute,
                                           deprecated_getattr,
@@ -114,16 +116,17 @@ class EllipseSample:
         .. deprecated:: 3.2
             The ``eps`` keyword is deprecated. Use ``ellipticity``
             instead.
-    orientation : float or `~astropy.units.Quantity`, optional
-        The orientation of the semimajor axis of the ellipse, measured
-        from the positive x-axis of the image array towards the
-        positive y-axis. A float is in radians and a
-        `~astropy.units.Quantity` must have angular units. The default
-        is 0.
+    orientation : `~astropy.units.Quantity`, optional
+        The orientation of the semimajor axis of the ellipse as an
+        angular `~astropy.units.Quantity` (e.g., ``30 * u.deg``),
+        measured from the positive x-axis of the image array towards
+        the positive y-axis. The default is 0 degrees.
 
         .. deprecated:: 3.2
             The ``position_angle`` keyword is deprecated. Use
-            ``orientation`` instead.
+            ``orientation`` instead. A number without units is
+            accepted as radians with the ``position_angle`` keyword or
+            as a positional argument.
     clip_sigma : float, optional
         The sigma-clip sigma value. The default is 3.0.
 
@@ -244,7 +247,9 @@ class EllipseSample:
     Raises
     ------
     TypeError
-        If ``image`` is a `~astropy.units.Quantity` array.
+        If ``image`` is a `~astropy.units.Quantity` array or if
+        ``orientation`` is given with the ``orientation`` keyword as a
+        number without units.
 
     ValueError
         If ``image`` is not a 2D array or ``integration_mode`` is not a
@@ -252,15 +257,46 @@ class EllipseSample:
     """
 
     @deprecated_renamed_argument(
-        ['nclip', 'astep', 'eps', 'position_angle', 'sclip', 'integrmode'],
-        ['n_clip', 'step', 'ellipticity', 'orientation', 'clip_sigma',
-         'integration_mode'],
-        ['3.0', '3.2', '3.2', '3.2', '3.2', '3.2'], until='4.0')
+        ['nclip', 'astep', 'eps', 'sclip', 'integrmode'],
+        ['n_clip', 'step', 'ellipticity', 'clip_sigma', 'integration_mode'],
+        ['3.0', '3.2', '3.2', '3.2', '3.2'], until='4.0')
     @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
+    @_orientation_argument('position_angle', warn_number=False)
     def __init__(self, image, sma, x0=None, y0=None, step=0.1,
-                 ellipticity=0.2, orientation=0.0, clip_sigma=3.0,
+                 ellipticity=0.2, orientation=0 * u.deg, clip_sigma=3.0,
                  n_clip=0, linear_growth=False,
                  integration_mode='bilinear', geometry=None):
+        # The orientation is ignored if a geometry is input.
+        if geometry is None:
+            orientation = _legacy_orientation_rad(orientation)
+        self._initialize(image, sma, x0=x0, y0=y0, step=step,
+                         ellipticity=ellipticity, orientation=orientation,
+                         clip_sigma=clip_sigma, n_clip=n_clip,
+                         linear_growth=linear_growth,
+                         integration_mode=integration_mode,
+                         geometry=geometry)
+
+    @classmethod
+    def _from_radians(cls, image, sma, **kwargs):
+        """
+        Make a sample with the orientation given as a number in
+        radians.
+
+        This is the constructor for the internal code. It issues no
+        warning and does not convert the orientation.
+        """
+        sample = cls.__new__(cls)
+        sample._initialize(image, sma, **kwargs)
+        return sample
+
+    def _initialize(self, image, sma, *, x0=None, y0=None, step=0.1,
+                    ellipticity=0.2, orientation=0.0, clip_sigma=3.0,
+                    n_clip=0, linear_growth=False,
+                    integration_mode='bilinear', geometry=None):
+        """
+        Set the attributes of a new sample, with the orientation in
+        radians.
+        """
         image = _validate_image(image)
         if integration_mode not in _INTEGRATORS:
             msg = ('integration_mode must be one of '
@@ -282,9 +318,9 @@ class EllipseSample:
             _x0 = image.shape[1] / 2 if x0 is None else x0
             _y0 = image.shape[0] / 2 if y0 is None else y0
 
-            self.geometry = EllipseGeometry(_x0, _y0, sma, ellipticity,
-                                            orientation, step=step,
-                                            linear_growth=linear_growth)
+            self.geometry = EllipseGeometry._from_radians(
+                _x0, _y0, sma, ellipticity, orientation, step=step,
+                linear_growth=linear_growth)
 
         # Sigma-clip parameters
         self.clip_sigma = clip_sigma
@@ -737,7 +773,7 @@ class EllipseSample:
         are `None` are taken from this sample.
         """
         geometry = self.geometry
-        return EllipseSample(
+        return EllipseSample._from_radians(
             self.image, geometry.sma if sma is None else sma,
             x0=geometry.x0 if x0 is None else x0,
             y0=geometry.y0 if y0 is None else y0,
