@@ -80,6 +80,7 @@ extensions += [
 
 redirects = {
     'user_guide/epsf': 'epsf_building.html',
+    'user_guide/isophote_faq': 'isophote.html',
     'user_guide/profiles': 'radial_profiles.html',
 }
 

@@ -8,7 +8,9 @@ The `~photutils.isophote` package provides tools to fit elliptical
 isophotes to a galaxy image. The isophotes are measured using the
 iterative method described by `Jedrzejewski (1987, MNRAS 226, 747)
 <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
-The fit gives the intensity, ellipticity, orientation, and center of
+See the documentation of the `~photutils.isophote.Ellipse` class and
+:ref:`isophote-algorithm` for details about the algorithm. The fit
+gives the intensity, ellipticity, orientation, and center of
 the isophotes as a function of the semimajor axis length, along with
 the deviations of the isophotes from perfect ellipses.
 
@@ -305,7 +307,8 @@ A poor initial ellipticity or orientation can also prevent the fits
 from converging, even for an image with a high signal-to-noise ratio.
 If most of the isophotes have a stop code of 2 (see
 :ref:`isophote-results`), run the fit again with a different initial
-ellipticity or orientation.
+ellipticity or orientation. For images with a low signal-to-noise
+ratio, see :ref:`isophote-low-snr`.
 
 Finding the Galaxy Center
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1027,28 +1030,239 @@ useful for measuring an image along user-defined ellipses::
     >>> print(isolist3.sma)
     [ 5. 10. 20.]
 
-Additional Example Notebooks (Online)
--------------------------------------
 
-Additional example notebooks showing examples with real data and
-advanced usage are available online:
+.. _isophote-low-snr:
 
-* `Basic example of the Ellipse fitting tool <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example1.ipynb>`_
+Low Signal-to-Noise Images
+--------------------------
 
-* `Running Ellipse with sigma clipping <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example2.ipynb>`_
+The fitting algorithm corrects the ellipse parameters by dividing the
+harmonic amplitudes by the local radial gradient (see
+:ref:`isophote-geometry-corrections`). The gradient is measured from
+the mean intensities of two ellipses whose semimajor axis lengths
+differ by only 10%. For a low surface brightness galaxy, or any image
+where the noise of a pixel is comparable to the galaxy intensity, the
+difference between these two means can be smaller than its noise. The
+corrections are then dominated by noise. The ellipse wanders or
+diverges, and the fit stops after a few isophotes. If the first
+isophote cannot be fit, :meth:`~photutils.isophote.Ellipse.fit_image`
+emits a "No meaningful fit was possible" warning and returns an empty
+list.
 
-* `Building an image model from results obtained by Ellipse fitting <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example3.ipynb>`_
+No setting of the fit parameters solves this reliably. In particular,
+the ``max_gradient_rel_err`` parameter only controls where the outward
+growth stops, so it does not help the first isophote. Multiplying the
+image by a constant does not help either, because the algorithm does
+not depend on the intensity scale.
 
-* `Advanced Ellipse example: multiband photometry and masked arrays <https://github.com/astropy/photutils-datasets/blob/main/notebooks/isophote/isophote_example4.ipynb>`_
+Whether the first isophote can be fit depends on the noise along one
+ellipse. A fit that fails therefore often succeeds from a slightly
+different starting semimajor axis length (the ``sma_start`` parameter),
+e.g., one that is 10% larger or smaller.
+
+The opposite failure is also possible.
+:meth:`~photutils.isophote.Ellipse.fit_image` is not a detection
+test. If there is no detectable galaxy at the starting position, the
+fit can follow the noise and return isophotes without a warning.
+Check that the galaxy is detected before fitting it, e.g., with the
+tools described in :ref:`image_segmentation`.
+
+The most effective solution is to increase the signal-to-noise ratio
+of the pixels by smoothing the image before fitting it, e.g., with a
+Gaussian kernel with a standard deviation of 2 to 3 pixels:
+
+.. doctest-skip::
+
+    >>> from astropy.convolution import Gaussian2DKernel, convolve
+    >>> from photutils.isophote import Ellipse
+    >>> smoothed = convolve(data, Gaussian2DKernel(2.0))
+    >>> ellipse = Ellipse(smoothed, geometry=geometry)
+    >>> isolist = ellipse.fit_image()
+
+Fits of the smoothed image are much more likely to succeed, and they
+reach larger semimajor axis lengths.
+
+Smoothing lowers the central intensities and makes the isophotes
+rounder at semimajor axis lengths comparable to the kernel size. To
+measure intensities that are not affected by the smoothing, use the
+:meth:`~photutils.isophote.Ellipse.measure_isophotes` method to
+measure the original image along the ellipses that were fit to the
+smoothed image (see :ref:`isophote_fixed_ellipses`):
+
+.. doctest-skip::
+
+    >>> isolist_data = Ellipse(data).measure_isophotes(isolist)
+
+If the ellipse geometry of the galaxy is already known, the isophotes
+can also be extracted without fitting them. With
+``max_iterative_sma=0``, all the isophotes have the geometry of the
+input `~photutils.isophote.EllipseGeometry`. The ``max_sma`` parameter
+must then be set, because otherwise the outward growth stops where the
+gradient error exceeds ``max_gradient_rel_err``:
+
+.. doctest-skip::
+
+    >>> ellipse = Ellipse(data, geometry=geometry)
+    >>> isolist = ellipse.fit_image(max_iterative_sma=0.0, max_sma=60.0)
+
+The ``'mean'`` and ``'median'`` integration modes with a larger
+``step`` (e.g., 0.3) average more pixels for each sample point (see
+:ref:`isophote-integration-modes`). They can help for moderately noisy
+images, but they are less reliable than smoothing the image.
+
+
+.. _isophote-algorithm:
+
+Algorithm Notes
+---------------
+
+The overall fitting procedure is described in the Notes section of the
+`~photutils.isophote.Ellipse` class. This section gives more details
+about some of its steps.
+
+.. _isophote-geometry-corrections:
+
+Geometry Corrections
+^^^^^^^^^^^^^^^^^^^^
+
+The basic elliptical isophote fitting algorithm, as described in
+`Jedrzejewski (1987, MNRAS 226, 747)
+<https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_,
+computes corrections for the current ellipse's geometrical parameters
+by essentially "projecting" the fitted harmonic amplitudes onto the
+image plane:
+
+.. math::
+
+    {\delta}_{X0} = \frac {-B_{1}} {I'}
+
+.. math::
+
+    {\delta}_{Y0} = \frac {-A_{1} (1 - {\epsilon})} {I'}
+
+.. math::
+
+    {\delta}_{\epsilon} = \frac {-2 B_{2} (1 - {\epsilon})} {I' a_0}
+
+.. math::
+
+    {\delta}_{\Theta} = \frac {2 A_{2} (1 - {\epsilon})} {I' a_0 [(1 - {\epsilon}) ^ 2 - 1]}
+
+where :math:`{\delta}_{X0}` and :math:`{\delta}_{Y0}` are the center
+corrections along the major and minor axes of the ellipse,
+respectively, :math:`\epsilon` is the ellipticity, :math:`\Theta` is
+the orientation, :math:`A_i` and :math:`B_i` are the coefficients
+of :math:`\sin(iE)` and :math:`\cos(iE)` in the harmonic fit to the
+sampled intensities as a function of the angle :math:`E` from the
+major axis, and :math:`I'` is the derivative of the intensity along
+the major axis direction evaluated at a semimajor axis length of
+:math:`a_0`. The center corrections are then rotated by the
+orientation to give the corrections along the image x and y axes.
+
+.. _isophote-gradient:
+
+Radial Gradient
+^^^^^^^^^^^^^^^
+
+The radial intensity gradient is the most critical quantity computed
+by the fitting algorithm. As can be seen from the above formulae,
+small :math:`I'` values lead to large values for the correction terms.
+Thus, :math:`I'` errors may lead to large fluctuations in these terms,
+when :math:`I'` itself is small. This usually happens at the fainter,
+outer regions of galaxy images. `Busko (1996, ASPC 101, 139)
+<https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_
+found by numerical experiments that the precision to which a given
+ellipse can be fitted is related to the relative error in the local
+radial gradient.
+
+Because of the gradient's critical role, the algorithm has a number of
+features to allow its estimation even under difficult conditions. The
+default gradient computation, the one used by the algorithm when it
+first starts to fit a new isophote, is based on two intensity samples.
+The first is extracted at the current ellipse and the second at a
+similar ellipse with a 10% larger semimajor axis.
+
+If the gradient so estimated is not meaningful, the algorithm extracts
+the second sample again, this time using a 20% larger semimajor axis.
+In this context, a meaningful gradient is negative and is either
+steeper than one third of a reference gradient or measured with a
+relative error smaller than 20%. The reference is the gradient of the
+previous iteration of the fit of the same isophote. If no reference is
+available, which is the case for the first iteration of each
+isophote, the reference is the current gradient plus its error, so
+any negative gradient is meaningful.
+
+If still no meaningful gradient can be measured, the algorithm uses
+the reference gradient multiplied by a factor of 0.8, which makes it
+shallower. The current gradient error then cannot be computed and is
+NaN.
+
+The factor of 0.8 is roughly what is expected between two isophotes
+from semimajor-axis geometrical-sampling steps of 10% to 20% and a de
+Vaucouleurs law or the inner region of an exponential disk (within
+about 5 effective radii). These rules follow the STSDAS ``ellipse``
+task, with two differences. First, the STSDAS task keeps the reference
+from one isophote to the next, starting from a fixed guess. Second,
+the STSDAS task never accepts a gradient that is shallower than one
+third of the reference. Here such a gradient is accepted if its
+relative error is smaller than 20%. Otherwise, a single gradient that
+is much steeper than the following ones would replace them for
+several iterations.
+
+The use of approximate gradient estimators may seem in contradiction
+with the fact that isophote fitting errors depend on gradient error,
+as well as with the fact that the algorithm itself is so sensitive to
+the gradient value. The rationale behind the use of approximate
+estimators, however, is based on the fact that the gradient value is
+used only to compute increments, not the ellipse parameters
+themselves. Approximate estimators are useful along the first steps in
+the iteration sequence, in particular when local image contamination
+(stars, defects, etc.) might make it difficult to find the correct
+path toward the solution. However, if the gradient is still not well
+determined at convergence, the subsequent error computations, and the
+algorithm's behavior from that point on, will take the fact into
+account properly. For instance, the 3rd and 4th harmonic amplitude
+errors depend on the gradient relative error, and if this is not
+computable at the current isophote, the algorithm uses a fixed
+relative gradient error of 0.8 in order to generate sensible estimates
+for those harmonic errors.
+
+Error Estimation
+^^^^^^^^^^^^^^^^
+
+Most parameters computed directly at each isophote have their errors
+computed by standard error propagation. Errors in the ellipse geometry
+parameters, on the other hand, cannot be estimated in the same way,
+since these parameters are not computed directly but result from a
+number of updates from a starting guess value. An error analysis based
+on numerical experiments (`Busko 1996, ASPC 101, 139
+<https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_)
+showed that the best error estimators for these geometrical parameters
+can be found by simply "projecting" the harmonic amplitude errors that
+come from the least-squares covariance matrix by the same formulae
+that are used to "project" the associated parameter updates (see
+:ref:`isophote-geometry-corrections`). In other words, errors for the
+ellipse center, ellipticity, and orientation are computed by those
+formulae, but replacing the least-squares amplitudes by their errors.
+This is empirical and difficult to justify in terms of any theoretical
+error analysis, but it produces sensible error estimators in practice.
+
+Flux Accuracy
+^^^^^^^^^^^^^
+
+Each isophote also holds the integrated flux and the number of valid
+pixels inside its ellipse (the ``total_flux_ellipse`` and
+``n_pixels_ellipse`` attributes) and inside the circle with the same
+center and a radius equal to the semimajor axis length
+(``total_flux_circle`` and ``n_pixels_circle``). The integrated fluxes
+and areas computed by `~photutils.isophote.Ellipse` were checked
+against results produced by the IRAF ``noao.digiphot.apphot`` tasks
+``phot`` and ``polyphot``, using artificial images. Quantities
+computed by `~photutils.isophote.Ellipse` match the reference ones to
+within 0.1% in all tested cases.
 
 
 API Reference
 -------------
 
 :doc:`../reference/isophote_api`
-
-
-.. toctree::
-    :hidden:
-
-    isophote_faq.rst
