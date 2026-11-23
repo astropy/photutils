@@ -288,9 +288,10 @@ class Ellipse:
         parameters of the `~photutils.isophote.EllipseGeometry`
         instance used by this class. If none of them is set, the
         fixed parameters of that instance are used. Likewise, the
-        ``linear_growth`` parameter overrides the ``linear_growth`` attribute
-        of that instance. These overrides apply only to this call. The
-        `~photutils.isophote.EllipseGeometry` instance is not modified.
+        ``linear_growth`` parameter overrides the ``linear_growth``
+        attribute of that instance. These overrides apply only to this
+        call. The `~photutils.isophote.EllipseGeometry` instance is not
+        modified.
 
         If the center, orientation, and ellipticity are all fixed,
         by the fix_XXX parameters or by the
@@ -309,8 +310,8 @@ class Ellipse:
             poor and it will diverge very easily if not tied to other
             previously fit isophotes. It can't start from the maximum
             value either because the maximum is not known beforehand,
-            depending on signal-to-noise. The ``sma_start`` value should be
-            selected such that the corresponding isophote has a good
+            depending on signal-to-noise. The ``sma_start`` value should
+            be selected such that the corresponding isophote has a good
             signal-to-noise ratio and a clearly defined geometry. If set
             to `None` (the default), one of two actions will be taken:
             if a `~photutils.isophote.EllipseGeometry` instance was
@@ -360,9 +361,9 @@ class Ellipse:
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
             level). For the first isophote, the minimum number of
-            iterations is 2 * ``miniters`` to ensure that, even departing
-            from not-so-good initial values, the algorithm has a better
-            chance to converge to a sensible solution.
+            iterations is 2 * ``miniters`` to ensure that, even
+            departing from not-so-good initial values, the algorithm
+            has a better chance to converge to a sensible solution.
 
         maxiters : int, optional
             The maximum number of iterations to perform. The default is
@@ -394,9 +395,10 @@ class Ellipse:
             regions.
 
             A number of actions may happen when the gradient error
-            exceeds ``max_gradient_rel_err`` (or becomes nonsignificant
-            and is set to `None`). If the maximum semimajor axis specified
-            by ``max_sma`` is set to `None`, semimajor axis growth is
+            exceeds ``max_gradient_rel_err`` (or cannot be computed,
+            in which case the ``gradient_rel_err`` of the isophote is
+            NaN). If the maximum semimajor axis specified by
+            ``max_sma`` is set to `None`, semimajor axis growth is
             stopped and the algorithm proceeds inwards to the galaxy
             center. If ``max_sma`` is set to some finite value, and this
             value is larger than the current semimajor axis length, the
@@ -427,8 +429,8 @@ class Ellipse:
             semimajor axis length is increased by a factor of (1.
             + ``step``), and the process is repeated until either
             the semimajor axis value reaches the value of parameter
-            ``max_sma``, or the last fitted ellipse has more than a given
-            fraction of its sampled points flagged out (see
+            ``max_sma``, or the last fitted ellipse has more than a
+            given fraction of its sampled points flagged out (see
             ``min_valid_fraction``). The process then resumes from the
             first fitted ellipse (at ``sma_start``) inwards, in steps
             of (1./(1. + ``step``)), until the semimajor axis length
@@ -727,8 +729,8 @@ class Ellipse:
         step : float, optional
             The step value that defines the sampling annulus (pixels
             if linear growth is used, otherwise a relative value). See
-            the ``linear_growth`` parameter. The step must be positive. The
-            default is 0.1.
+            the ``linear_growth`` parameter. The step must be positive.
+            The default is 0.1.
 
         convergence : float, optional
             The main convergence criterion. Iterations stop when the
@@ -763,8 +765,8 @@ class Ellipse:
 
             .. deprecated:: 3.2
                This keyword argument is deprecated and will be removed
-               in version 4.0. The ``max_gradient_rel_err`` criterion compares
-               consecutive isophotes. It is applied by
+               in version 4.0. The ``max_gradient_rel_err`` criterion
+               compares consecutive isophotes. It is applied by
                :meth:`~photutils.isophote.Ellipse.fit_image`, so it has
                no effect when fitting a single isophote.
 
@@ -791,8 +793,8 @@ class Ellipse:
             just one isophote, this parameter is used only by the code
             that defines the details of how elliptical arc segments
             ("sectors") are extracted from the image when using area
-            extraction modes (see the ``integration_mode`` parameter). If
-            `None` (default), the ``linear_growth`` attribute of the
+            extraction modes (see the ``integration_mode`` parameter).
+            If `None` (default), the ``linear_growth`` attribute of the
             starting geometry is used.
 
         max_iterative_sma : float or `None`, optional

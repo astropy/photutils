@@ -211,8 +211,9 @@ position as a function of the semimajor axis length:
     ax1.set_xlabel('Semimajor Axis Length (pix)')
     ax1.set_ylabel('Ellipticity')
 
-    ax2.errorbar(isolist.sma, isolist.orientation.value,
-                 yerr=isolist.orientation_err.value, fmt='o', markersize=4)
+    ax2.errorbar(isolist.sma, isolist.orientation.to_value(u.deg),
+                 yerr=isolist.orientation_err.to_value(u.deg), fmt='o',
+                 markersize=4)
     ax2.set_xlabel('Semimajor Axis Length (pix)')
     ax2.set_ylabel('Orientation (deg)')
 

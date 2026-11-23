@@ -274,9 +274,9 @@ meaningful fit was possible" warning and returns an empty list.
 
 No setting of the fit parameters solves this reliably. In particular,
 the ``max_gradient_rel_err`` parameter only controls where the outward
-growth stops, so it does not help the first isophote. Multiplying the image
-by a constant does not help either, because the algorithm does not
-depend on the intensity scale.
+growth stops, so it does not help the first isophote. Multiplying the
+image by a constant does not help either, because the algorithm does
+not depend on the intensity scale.
 
 Whether the first isophote can be fit depends on the noise along one
 ellipse. A fit that fails therefore often succeeds from a slightly

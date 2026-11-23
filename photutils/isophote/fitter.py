@@ -105,8 +105,8 @@ class _EllipseFitter:
 
             .. deprecated:: 3.2
                This keyword argument is deprecated and will be removed
-               in version 4.0. The ``max_gradient_rel_err`` criterion compares
-               consecutive isophotes. It is applied by
+               in version 4.0. The ``max_gradient_rel_err`` criterion
+               compares consecutive isophotes. It is applied by
                :meth:`~photutils.isophote.Ellipse.fit_image`, so it has
                no effect when fitting a single isophote.
 
@@ -153,11 +153,16 @@ class _EllipseFitter:
 
         Examples
         --------
+        The `~photutils.isophote.EllipseFitter` class is deprecated. Use
+        :meth:`~photutils.isophote.Ellipse.fit_isophote` instead to fit
+        a single isophote:
+
         >>> import numpy as np
         >>> from astropy.modeling.models import Gaussian2D
         >>> from photutils.datasets import make_noise_image
         >>> from photutils.isophote import Ellipse, EllipseGeometry
-        >>> model = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40))
+        >>> model = Gaussian2D(100.0, 75, 75, 20, 12,
+        ...                    theta=np.deg2rad(40))
         >>> y, x = np.mgrid[0:150, 0:150]
         >>> data = model(x, y) + make_noise_image((150, 150), mean=0.0,
         ...                                       stddev=2.0, seed=0)
@@ -373,8 +378,8 @@ class _EllipseFitter:
         reached zero.
 
         This must be called before the sample with this geometry is
-        extracted. A fixed ellipticity is not changed. A fixed position
-        angle is not changed either.
+        extracted. A fixed ellipticity is not changed. A fixed
+        orientation is not changed either.
         """
         if fixed_parameters[_ELLIPTICITY_INDEX]:
             return

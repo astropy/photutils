@@ -993,8 +993,13 @@ def test_fit_image_renamed_keywords(old, new, value):
     data = make_test_image(seed=0)
     ellipse = Ellipse(data)
     # A linear step of 0.1 pixels would fit thousands of isophotes.
-    extra = {'step': 5.0} if new == 'linear_growth' else {}
+    # The sigma-clip value has an effect only with clipping iterations.
+    extra = {'linear_growth': {'step': 5.0},
+             'clip_sigma': {'n_clip': 3}}.get(new, {})
     expected = ellipse.fit_image(**{new: value}, **extra)
+    if new == 'clip_sigma':
+        default = ellipse.fit_image(**extra)
+        assert not np.array_equal(expected.intensity, default.intensity)
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
         result = ellipse.fit_image(**{old: value}, **extra)
     assert_array_equal(result.intensity, expected.intensity)
@@ -1007,13 +1012,18 @@ def test_fit_image_renamed_keywords(old, new, value):
 def test_fit_isophote_renamed_keywords(old, new, value):
     data = make_test_image(seed=0)
     ellipse = Ellipse(data)
-    expected = ellipse.fit_isophote(40.0, **{new: value})
+    # The sigma-clip value has an effect only with clipping iterations.
+    extra = {'n_clip': 3} if new == 'clip_sigma' else {}
+    expected = ellipse.fit_isophote(40.0, **{new: value}, **extra)
+    if new == 'clip_sigma':
+        default = ellipse.fit_isophote(40.0, **extra)
+        assert expected.intensity != default.intensity
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
-        result = ellipse.fit_isophote(40.0, **{old: value})
+        result = ellipse.fit_isophote(40.0, **{old: value}, **extra)
     assert result.intensity == expected.intensity
     with (pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"),
           pytest.raises(TypeError)):
-        ellipse.fit_isophote(40.0, **{old: value, new: value})
+        ellipse.fit_isophote(40.0, **{old: value, new: value}, **extra)
 
 
 def test_fit_image_positional_order_unchanged():

@@ -139,8 +139,8 @@ class EllipseSample:
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
         `False`.
-    integration_mode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
-            optional
+    integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
+            'median'}, optional
         The integration mode. The 'mean' and 'median' modes integrate
         over elliptical sectors and fall back to 'bilinear' for sectors
         smaller than 1 pixel. The default is 'bilinear'.
@@ -247,8 +247,8 @@ class EllipseSample:
         If ``image`` is a `~astropy.units.Quantity` array.
 
     ValueError
-        If ``image`` is not a 2D array or ``integration_mode`` is not a valid
-        integration mode.
+        If ``image`` is not a 2D array or ``integration_mode`` is not a
+        valid integration mode.
     """
 
     @deprecated_renamed_argument(
@@ -429,8 +429,8 @@ class EllipseSample:
         # Here the actual sampling takes place. This is called only once
         # during the life of an EllipseSample instance, because it's
         # an expensive calculation. This method should not be called
-        # from external code. To force it to rerun, set "sample._values =
-        # None" before calling sample.extract().
+        # from external code. To force it to rerun, set
+        # "sample._values = None" before calling sample.extract().
 
         # Individual extracted sample points will be stored in here.
         angles = []
@@ -586,8 +586,9 @@ class EllipseSample:
         one third of a reference gradient or measured with a relative
         error smaller than 20%. The STSDAS task does not use the
         relative error. The reference is the gradient from the last
-        update of this sample. `~photutils.isophote.Ellipse.fit_isophote`
-        sets it to the gradient of its previous iteration. If there is
+        update of this sample.
+        `~photutils.isophote.Ellipse.fit_isophote` sets it to the
+        gradient of its previous iteration. If there is
         no reference, the first estimate plus its error is used. If
         neither estimate is meaningful, the gradient is set to 0.8
         times the reference and its error is set to `None`.
@@ -595,19 +596,19 @@ class EllipseSample:
         The intensity and the gradient are computed only if the
         sample values changed since the last call.
 
-        If there are no valid sampled points, ``intensity``, ``gradient``,
-        and ``gradient_err`` are set to NaN and ``gradient_rel_err`` is
-        set to `None`.
+        If there are no valid sampled points, ``intensity``,
+        ``gradient``, and ``gradient_err`` are set to NaN and
+        ``gradient_rel_err`` is set to `None`.
 
         Parameters
         ----------
         fixed_parameters : `None` or array_like, optional
             An array of the fixed parameters. Must have 4 elements, the
-            flags for the center (the first two elements), the position
-            angle, and the ellipticity, in the order of the ``fix``
-            attribute of `~photutils.isophote.EllipseGeometry`. If
-            `None`, the fixed parameters of the ``geometry`` attribute
-            are not changed.
+            flags for the center (the first two elements), the
+            orientation, and the ellipticity, in the order of the
+            ``fix`` attribute of `~photutils.isophote.EllipseGeometry`.
+            If `None`, the fixed parameters of the ``geometry``
+            attribute are not changed.
 
             .. deprecated:: 3.2
                 The ``fixed_parameters`` keyword is deprecated.

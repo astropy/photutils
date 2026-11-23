@@ -139,7 +139,6 @@ class Isophote:
               or its center moved outside of the image). The isophote
               has the best geometry found before that. This code is
               returned by
-              :meth:`~photutils.isophote.Ellipse.fit_isophote` and
               :meth:`~photutils.isophote.Ellipse.fit_isophote`.
               :meth:`~photutils.isophote.Ellipse.fit_image` replaces
               such an isophote with one that has the geometry of a
@@ -945,9 +944,9 @@ class IsophoteList:
             `~astropy.table.QTable`. The allowed column names are the
             names in the ``properties`` attribute. If ``columns`` is
             `None`, then a default list of properties (as defined by
-            the ``default_columns`` attribute) will be used. A deprecated
-            name gives a column with its new name and emits a
-            deprecation warning. The deprecated ``'main'`` and
+            the ``default_columns`` attribute) will be used. A
+            deprecated name gives a column with its new name and emits
+            a deprecation warning. The deprecated ``'main'`` and
             ``'all'`` values are equivalent to `None` and to the
             `properties` attribute, respectively.
 
@@ -1034,28 +1033,29 @@ class IsophoteList:
         """
         Make a model elliptical galaxy image from the isophotes.
 
-        The isophote list must contain at least 4 isophotes, sorted by
-        strictly increasing semimajor axis length. Isophotes with a
-        nonfinite intensity (e.g., the central pixel if it is masked) are
-        ignored.
+        The isophote list must contain at least 4 isophotes, sorted
+        by strictly increasing semimajor axis length. Isophotes with a
+        nonfinite intensity (e.g., the central pixel if it is masked)
+        are ignored.
 
         The intensity, ellipticity, orientation, and center of the
-        isophotes are interpolated with least-squares cubic splines onto a
-        grid of semimajor axis lengths spaced by ``sma_interval``. Each
-        interpolated ellipse is traced on the output image and its intensity
-        is distributed over the overlapping pixels with bilinear weights.
-        The pixel values are then normalized by the accumulated weights.
+        isophotes are interpolated with least-squares cubic splines
+        onto a grid of semimajor axis lengths spaced by
+        ``sma_interval``. Each interpolated ellipse is traced on the
+        output image and its intensity is distributed over the
+        overlapping pixels with bilinear weights. The pixel values are
+        then normalized by the accumulated weights.
 
         Parameters
         ----------
         shape : 2-tuple
-            The (ny, nx) shape of the output model image, usually the shape
-            of the array used to generate the isophotes.
+            The (ny, nx) shape of the output model image, usually the
+            shape of the array used to generate the isophotes.
 
         fill_value : float, optional
-            The constant value to fill empty pixels. If an output pixel has
-            no contribution from any isophote, it will be assigned this
-            value. The default is 0.
+            The constant value to fill empty pixels. If an output pixel
+            has no contribution from any isophote, it will be assigned
+            this value. The default is 0.
 
         high_harmonics : bool, optional
             Whether to add the higher-order harmonics (i.e., ``a3``,
@@ -1067,10 +1067,10 @@ class IsophoteList:
 
         sma_interval : float, optional
             The step in semimajor axis length of the grid on which the
-            isophote parameters are interpolated and the model ellipses are
-            drawn. It must be positive. Larger values are faster but can
-            leave gaps (filled with ``fill_value``) in the model. The
-            default is 0.1.
+            isophote parameters are interpolated and the model ellipses
+            are drawn. It must be positive. Larger values are faster but
+            can leave gaps (filled with ``fill_value``) in the model.
+            The default is 0.1.
 
         Returns
         -------
@@ -1342,7 +1342,10 @@ def _isophote_list_to_table(isophote_list, *, columns=None):
         for name in table_columns:
             if name in _deprecation_map:
                 new_name = _deprecation_map[name]
-                msg = (f'The {name!r} attribute was deprecated in version '
+                # The names that are not attributes were only columns.
+                noun = ('attribute' if name in _DEPRECATED_ATTRIBUTES
+                        else 'column')
+                msg = (f'The {name!r} {noun} was deprecated in version '
                        f'{since[name]}. Use {new_name!r} instead. It will be '
                        f'removed in version {until}.')
                 warnings.warn(msg, PhotutilsDeprecationWarning,

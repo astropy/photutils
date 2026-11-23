@@ -576,7 +576,7 @@ class TestIsophoteList:
         assert len(rec) == 1
         assert_equal(values, tbl['gradient_rel_err'])
 
-        match = "'grad_rerror' attribute was deprecated"
+        match = "'grad_rerror' column was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match) as rec:
             tbl2 = isolist.to_table(columns=['grad_rerror'])
         assert len(rec) == 1

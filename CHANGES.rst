@@ -567,7 +567,7 @@ API Changes
     invalid ``integration_mode`` instead of a ``KeyError`` when the
     image is sampled. [#2564]
 
-  - The ``n_iter``, ``n_data``, ``n_flag``, and ``stop_code``
+  - The ``n_iter``, ``n_data``, ``n_flagged``, and ``stop_code``
     properties of ``IsophoteList`` now return integer arrays, and
     ``valid`` returns a boolean array. Previously, they returned float
     arrays. [#2550]
