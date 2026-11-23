@@ -12,18 +12,33 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.isophote.fitter import (DEFAULT_CONVERGENCE, DEFAULT_FFLAG,
                                        DEFAULT_MAXGERR, DEFAULT_MAXIT,
-                                       DEFAULT_MINIT, CentralEllipseFitter,
-                                       EllipseFitter)
+                                       DEFAULT_MINIT, EllipseFitter)
 from photutils.isophote.geometry import EllipseGeometry, _make_fix_array
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
-from photutils.isophote.sample import (CentralEllipseSample, EllipseSample,
-                                       _validate_image)
+from photutils.isophote.sample import EllipseSample, _validate_image
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 
 __all__ = ['Ellipse']
+
+
+def _central_isophote(image, geometry):
+    """
+    Make the isophote of the central pixel.
+
+    The input geometry is not modified. The central isophote has
+    ``sma``, ``eps``, and ``pa`` of zero and holds a single bilinear
+    sample at the center.
+    """
+    geometry = copy.deepcopy(geometry)
+    geometry.sma = 0.0
+    geometry.eps = 0.0
+    geometry.pa = 0.0
+    sample = EllipseSample(image, 0.0, geometry=geometry)
+    sample.update()
+    return Isophote(sample, 0, valid=True, stop_code=0)
 
 
 class Ellipse:
@@ -952,9 +967,7 @@ class Ellipse:
         isophote_list = []
         for geometry in geometries:
             if geometry.sma == 0:
-                sample = CentralEllipseSample(self.image, 0.0,
-                                              geometry=geometry)
-                isophote = CentralEllipseFitter(sample).fit()
+                isophote = _central_isophote(self.image, geometry)
             else:
                 isophote = self._non_iterative(geometry.sma, geometry, sclip,
                                                n_clip, integrmode)
@@ -966,16 +979,14 @@ class Ellipse:
 
     def _iterative(self, sma, geometry, sclip, n_clip, integrmode, conver,
                    minit, maxit, fflag, *, max_center_shift=None):
-        if sma > 0.0:
-            # Iterative fitter
-            sample = EllipseSample(self.image, sma, sclip=sclip,
-                                   n_clip=n_clip, geometry=geometry,
-                                   integrmode=integrmode)
-            fitter = EllipseFitter(sample)
-        else:
+        if sma <= 0.0:
             # A zero sma requires special handling.
-            sample = CentralEllipseSample(self.image, 0.0, geometry=geometry)
-            fitter = CentralEllipseFitter(sample)
+            return _central_isophote(self.image, geometry)
+
+        sample = EllipseSample(self.image, sma, sclip=sclip,
+                               n_clip=n_clip, geometry=geometry,
+                               integrmode=integrmode)
+        fitter = EllipseFitter(sample)
 
         # The center shift is measured from the input geometry, which
         # fitting does not modify (each sample uses a copy).

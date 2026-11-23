@@ -411,3 +411,13 @@ def test_sampling_path(sma):
     assert_allclose(np.diff(angles), steps[:-1])
     phi_max = 2.0 * np.pi + 0.05
     assert angles[-1] <= phi_max < angles[-1] + steps[-1]
+
+
+def test_sample_sma_zero():
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 0.0, x0=256.0, y0=256.0)
+    sample.update()
+    assert sample.total_points == 1
+    assert sample.actual_points == 1
+    assert sample.values.shape == (3, 1)
+    assert sample.gradient is None

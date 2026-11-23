@@ -571,6 +571,11 @@ API Changes
     and ``n_pixels_circle``. The old names are deprecated and will be
     removed in version 4.0. [#2568]
 
+  - The internal ``CentralEllipseSample``, ``CentralEllipseFitter``,
+    and ``CentralPixel`` classes were removed. The central pixel is
+    now a regular ``Isophote`` with ``sma`` of zero. ``Isophote`` has
+    a new ``geometry`` attribute. [#2568]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

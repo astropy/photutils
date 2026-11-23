@@ -10,10 +10,10 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.isophote.geometry import _HARMONIC_PARAMETERS, _make_fix_array
+from photutils.isophote.geometry import _HARMONIC_PARAMETERS
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics)
-from photutils.isophote.isophote import CentralPixel, Isophote
+from photutils.isophote.isophote import Isophote
 from photutils.utils._deprecation import deprecated_renamed_argument
 
 __all__ = ['EllipseFitter']
@@ -529,39 +529,3 @@ _CORRECTORS_BY_COEFFICIENT = {
 }
 _CORRECTORS = [_CORRECTORS_BY_COEFFICIENT[name]
                for name in _HARMONIC_PARAMETERS]
-
-
-class CentralEllipseFitter(EllipseFitter):
-    """
-    A special Fitter class to handle the case of the central pixel in
-    the galaxy image.
-    """
-
-    def fit(self, **kwargs):  # noqa: ARG002
-        """
-        Perform just a simple 1-pixel extraction at the current (x0, y0)
-        position using bilinear interpolation.
-
-        Parameters
-        ----------
-        **kwargs : dict, optional
-            Keyword arguments are ignored, but allowed to match
-            the calling signature of the parent class.
-
-        Returns
-        -------
-        result : ``CentralPixel`` instance
-            The central pixel value. For convenience, the
-            ``CentralPixel`` class inherits from the
-            `~photutils.isophote.Isophote` class, although it's not
-            really a true isophote but just a single intensity value
-            at the central position. Thus, most of its attributes are
-            hardcoded to `None` or another default value when
-            appropriate.
-        """
-        # Default values
-        fixed_parameters = _make_fix_array(fix_center=False, fix_pa=False,
-                                           fix_eps=False)
-
-        self._sample.update(fixed_parameters=fixed_parameters)
-        return CentralPixel(self._sample)

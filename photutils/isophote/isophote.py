@@ -108,6 +108,10 @@ class Isophote:
 
     Attributes
     ----------
+    geometry : `~photutils.isophote.EllipseGeometry`
+        The geometry of the isophote. It is the same object as the
+        geometry of the ``sample``. The central pixel has ``sma``,
+        ``eps``, and ``pa`` of zero.
     intens : float
         The mean intensity along the elliptical path.
     rms : float
@@ -203,6 +207,11 @@ class Isophote:
         self.n_iter = n_iter
         self.valid = valid
         self.stop_code = stop_code
+        self.geometry = sample.geometry
+
+        if sample.geometry.sma == 0:
+            self._set_central_values(sample)
+            return
 
         if sample.geometry.sma > 0:
             self.intens = sample.mean
@@ -252,6 +261,34 @@ class Isophote:
             (self.a4, self.b4, self.a4_err,
              self.b4_err) = self._compute_deviations(sample, 4)
 
+    def _set_central_values(self, sample):
+        # The central pixel holds a single intensity value. Some values
+        # are set to zero to ease certain tasks such as model building
+        # and plotting magnitude errors.
+        self.intens = sample.mean
+        self.rms = None
+        self.int_err = 0.0
+        self.pix_stddev = None
+        self.grad = 0.0
+        self.gradient_err = None
+        self.gradient_rel_err = None
+        self.sarea = None
+        self.n_data = sample.actual_points
+        self.n_flag = sample.total_points - sample.actual_points
+
+        self.total_flux_ellipse = self.total_flux_circle = None
+        self.n_pixels_ellipse = self.n_pixels_circle = None
+
+        self.a3 = self.b3 = 0.0
+        self.a4 = self.b4 = 0.0
+        self.a3_err = self.b3_err = 0.0
+        self.a4_err = self.b4_err = 0.0
+
+        self.ellip_err = 0.0
+        self.pa_err = 0.0
+        self.x0_err = 0.0
+        self.y0_err = 0.0
+
     # Remove in 4.0
     def __getattr__(self, name):
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
@@ -298,35 +335,35 @@ class Isophote:
         """
         The semimajor axis length (pixels).
         """
-        return self.sample.geometry.sma
+        return self.geometry.sma
 
     @property
     def eps(self):
         """
         The ellipticity of the ellipse.
         """
-        return self.sample.geometry.eps
+        return self.geometry.eps
 
     @property
     def pa(self):
         """
         The position angle (radians) of the ellipse.
         """
-        return self.sample.geometry.pa
+        return self.geometry.pa
 
     @property
     def x0(self):
         """
         The center x coordinate (pixel).
         """
-        return self.sample.geometry.x0
+        return self.geometry.x0
 
     @property
     def y0(self):
         """
         The center y coordinate (pixel).
         """
-        return self.sample.geometry.y0
+        return self.geometry.y0
 
     def _compute_fluxes(self):
         """
@@ -524,65 +561,6 @@ class Isophote:
             in degrees.
         """
         return _isophote_list_to_table([self])
-
-
-class CentralPixel(Isophote):
-    """
-    Specialized Isophote class for the galaxy central pixel.
-
-    This class holds only a single intensity value at the central
-    position. Thus, most of its attributes are hardcoded to `None` or a
-    default value when appropriate.
-
-    Parameters
-    ----------
-    sample : `~photutils.isophote.EllipseSample` instance
-        The sample information.
-    """
-
-    def __init__(self, sample):
-        super().__init__(sample, 0, valid=True, stop_code=0)
-
-        self.intens = sample.mean
-
-        # Some values are set to zero to ease certain tasks
-        # such as model building and plotting magnitude errors.
-        self.rms = None
-        self.int_err = 0.0
-        self.pix_stddev = None
-        self.grad = 0.0
-        self.gradient_err = None
-        self.gradient_rel_err = None
-        self.sarea = None
-        self.n_data = sample.actual_points
-        self.n_flag = sample.total_points - sample.actual_points
-
-        self.total_flux_ellipse = self.total_flux_circle = None
-        self.n_pixels_ellipse = self.n_pixels_circle = None
-
-        self.a3 = self.b3 = 0.0
-        self.a4 = self.b4 = 0.0
-        self.a3_err = self.b3_err = 0.0
-        self.a4_err = self.b4_err = 0.0
-
-        self.ellip_err = 0.0
-        self.pa_err = 0.0
-        self.x0_err = 0.0
-        self.y0_err = 0.0
-
-    @property
-    def eps(self):
-        """
-        The ellipticity of the ellipse.
-        """
-        return 0.0
-
-    @property
-    def pa(self):
-        """
-        The position angle (radians) of the ellipse.
-        """
-        return 0.0
 
 
 class IsophoteList:

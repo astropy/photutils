@@ -10,12 +10,13 @@ from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.datasets.load import _get_path
-from photutils.isophote.fitter import CentralEllipseFitter, EllipseFitter
+from photutils.isophote.ellipse import _central_isophote
+from photutils.isophote.fitter import EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.harmonics import fit_first_and_second_harmonics
 from photutils.isophote.integrator import MEAN
 from photutils.isophote.isophote import Isophote
-from photutils.isophote.sample import CentralEllipseSample, EllipseSample
+from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -440,9 +441,7 @@ class TestM51:
         # code, thus this test is checking just the extraction algorithm.
         g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, astep=0.1,
                             linear_growth=False)
-        sample = CentralEllipseSample(self.data, 0.0, geometry=g)
-        fitter = CentralEllipseFitter(sample)
-        isophote = fitter.fit()
+        isophote = _central_isophote(self.data, g)
 
         # The central pixel intensity is about 3% larger than found by
         # the spp code.

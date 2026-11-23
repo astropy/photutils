@@ -10,7 +10,7 @@ import pytest
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.model import build_ellipse_model
-from photutils.isophote.sample import CentralEllipseSample, EllipseSample
+from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -147,14 +147,14 @@ class TestEllipseSamplePositionalKwargs:
         sample.update(fixed_parameters=fix)
 
 
-class TestCentralEllipseSamplePositionalKwargs:
+class TestCentralSamplePositionalKwargs:
     """
-    Test CentralEllipseSample.update.
+    Test EllipseSample.update for the central pixel.
     """
 
     def test_update_positional_warns(self):
         data = make_test_image(seed=0)
-        sample = CentralEllipseSample(data, 0.0)
+        sample = EllipseSample(data, 0.0)
         fix = np.array([False, False, False, False])
         match = 'update'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
@@ -162,6 +162,6 @@ class TestCentralEllipseSamplePositionalKwargs:
 
     def test_update_keyword_no_warning(self):
         data = make_test_image(seed=0)
-        sample = CentralEllipseSample(data, 0.0)
+        sample = EllipseSample(data, 0.0)
         fix = np.array([False, False, False, False])
         sample.update(fixed_parameters=fix)

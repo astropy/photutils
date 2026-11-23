@@ -11,10 +11,10 @@ from astropy.io import fits
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.datasets.load import _get_path
-from photutils.isophote.ellipse import Ellipse
+from photutils.isophote.ellipse import Ellipse, _central_isophote
 from photutils.isophote.fitter import EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.isophote import CentralPixel, Isophote, IsophoteList
+from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -420,10 +420,10 @@ class TestIsophoteList:
         assert_allclose(radius, isophote.sample.values[1])
 
     def test_central_pixel(self):
-        # Test the central_pixel method.
-        sample = EllipseSample(self.data, 10.0)
-        sample.update()
-        cenpix = CentralPixel(sample)
+        # Test the central pixel isophote.
+        geometry = EllipseGeometry(257.0, 258.0, 10.0, 0.2, 0.3)
+        cenpix = _central_isophote(self.data, geometry)
+        assert type(cenpix) is Isophote
         assert cenpix.x0 == cenpix.sample.geometry.x0
         assert cenpix.y0 == cenpix.sample.geometry.y0
         assert cenpix.eps == 0.0
@@ -642,7 +642,7 @@ def test_to_table_dtypes():
     """
     data = make_test_image(nx=200, ny=200, seed=0)
     isolist = Ellipse(data).fit_image(maxsma=20.0)
-    assert isinstance(isolist[0], CentralPixel)
+    assert type(isolist[0]) is Isophote
 
     for columns in ('main', 'all'):
         tbl = isolist.to_table(columns=columns)
@@ -657,3 +657,19 @@ def test_to_table_dtypes():
     tbl = isolist[0].to_table()
     assert tbl['gradient_rel_err'].dtype.kind == 'f'
     assert np.isnan(tbl['gradient_rel_err'][0])
+
+
+def test_central_isophote_is_plain_isophote():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    iso = isolist[0]
+    assert type(iso) is Isophote
+    assert iso.sma == 0.0
+    assert iso.geometry is iso.sample.geometry
+    assert iso.eps == 0.0
+    assert iso.pa == 0.0
+    assert iso.geometry.eps == 0.0
+    assert iso.geometry.pa == 0.0
+    assert iso.grad == 0.0
+    assert iso.a3 == 0.0
+    assert iso.x0_err == 0.0

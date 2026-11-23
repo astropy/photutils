@@ -18,7 +18,7 @@ from photutils.datasets import make_noise_image
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.isophote import CentralPixel, Isophote, IsophoteList
+from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -839,8 +839,8 @@ class TestMeasureIsophotes:
         assert np.any(self.isolist.stop_code == 5)
         assert_allclose(isolist.intens, self.isolist.intens)
 
-        # The central pixel is a CentralPixel with stop_code 0.
-        assert isinstance(isolist[0], CentralPixel)
+        # The central pixel is a plain Isophote with stop_code 0.
+        assert type(isolist[0]) is Isophote
         assert isolist[0].sma == 0.0
         assert_equal(isolist.stop_code[1:], 4)
 

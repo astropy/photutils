@@ -311,6 +311,9 @@ class EllipseSample:
         return s
 
     def _extract(self, *, phi_min=0.05):
+        if self.geometry.sma == 0:
+            return self._extract_center()
+
         # Here the actual sampling takes place. This is called only once
         # during the life of an EllipseSample instance, because it's
         # an expensive calculation. This method should not be called
@@ -433,6 +436,22 @@ class EllipseSample:
 
         return angles, radii, intensities
 
+    def _extract_center(self):
+        # The central pixel is a single bilinear sample at (x0, y0).
+        angles = []
+        radii = []
+        intensities = []
+
+        integrator = INTEGRATORS['bilinear'](self.image, self.geometry,
+                                             angles, radii, intensities)
+        integrator.integrate(0.0, 0.0)
+
+        self.total_points = 1
+        self.actual_points = len(intensities)
+
+        return np.array([np.array(angles), np.array(radii),
+                         np.array(intensities)])
+
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def update(self, fixed_parameters=None):
         """
@@ -477,6 +496,18 @@ class EllipseSample:
             `None`, the fixed parameters of the ``geometry`` attribute
             are not changed.
         """
+        if self.geometry.sma == 0:
+            # The central pixel has a single sample and no gradient.
+            # The fixed parameters are ignored.
+            s = self.extract()
+
+            # The central pixel may be masked or nonfinite.
+            self.mean = s[2][0] if self.actual_points > 0 else np.nan
+            self.gradient = None
+            self.gradient_err = None
+            self.gradient_rel_err = None
+            return
+
         if fixed_parameters is not None:
             self.geometry.fix = fixed_parameters
 
@@ -641,50 +672,3 @@ class EllipseSample:
         x = radii * np.cos(angles + self.geometry.pa) + self.geometry.x0
         y = radii * np.sin(angles + self.geometry.pa) + self.geometry.y0
         return x, y
-
-
-class CentralEllipseSample(EllipseSample):
-    """
-    An `~photutils.isophote.EllipseSample` subclass designed to handle
-    the special case of the central pixel in the galaxy image.
-    """
-
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def update(self, fixed_parameters=None):  # noqa: ARG002
-        """
-        Update this `~photutils.isophote.EllipseSample` instance with
-        the intensity integrated at the (x0, y0) center position using
-        bilinear integration. The local gradient is set to `None`.
-
-        Parameters
-        ----------
-        fixed_parameters : `None` or array_like, optional
-            An array of the fixed parameters. Must have 4 elements, the
-            flags for the center (the first two elements), the position
-            angle, and the ellipticity, in the order of the ``fix``
-            attribute of `~photutils.isophote.EllipseGeometry`. This
-            keyword is ignored in this subclass.
-        """
-        s = self.extract()
-
-        # The central pixel may be masked or nonfinite.
-        self.mean = s[2][0] if self.actual_points > 0 else np.nan
-
-        self.gradient = None
-        self.gradient_err = None
-        self.gradient_rel_err = None
-
-    def _extract(self):
-        angles = []
-        radii = []
-        intensities = []
-
-        integrator = INTEGRATORS['bilinear'](self.image, self.geometry,
-                                             angles, radii, intensities)
-        integrator.integrate(0.0, 0.0)
-
-        self.total_points = 1
-        self.actual_points = len(intensities)
-
-        return np.array([np.array(angles), np.array(radii),
-                         np.array(intensities)])
