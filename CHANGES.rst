@@ -63,8 +63,9 @@ New Features
 
   - The ``extract_stars`` function now recognizes common alternative
     names for the pixel position columns, such as ``x_centroid``,
-    ``x_center``, and ``x_peak``, so the output tables of the star
-    finders can be input directly. [#2566]
+    ``x_fit``, ``x_center``, and ``x_peak``, so the output tables of
+    the star finders and of the PSF photometry classes can be input
+    directly. [#2566]
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now recognize
     the ``xcenter``, ``ycenter``, ``x_center``, and ``y_center``
