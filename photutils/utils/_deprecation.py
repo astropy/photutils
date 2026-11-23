@@ -443,7 +443,7 @@ class DeprecatedColumnMixin:
     _deprecation_since = None
     _deprecation_until = None
 
-    def _warn_deprecated(self, name, new_name, *, stacklevel=4):
+    def _warn_deprecated(self, name, new_name, *, stacklevel=5):
         """
         Issue a deprecation warning for a column name.
 
@@ -456,7 +456,10 @@ class DeprecatedColumnMixin:
             The new column name.
 
         stacklevel : int, optional
-            The stack level for the warning. The default is 4.
+            The stack level for the warning. The default of 5 points
+            to the caller of a public table method that calls
+            ``_translate_names``, which calls ``_translate_name``,
+            which calls this method.
         """
         since = _get_since(self._deprecation_since, name)
         since_str = ''
@@ -475,7 +478,7 @@ class DeprecatedColumnMixin:
         warnings.warn(msg, PhotutilsDeprecationWarning,
                       stacklevel=stacklevel)
 
-    def _translate_name(self, name, *, stacklevel=4):
+    def _translate_name(self, name, *, stacklevel=5):
         """
         Translate a single name, issue a warning, and return the new
         name.
@@ -486,7 +489,8 @@ class DeprecatedColumnMixin:
             The column name to be translated.
 
         stacklevel : int, optional
-            The stack level for the warning. The default is 4.
+            The stack level for the warning. The default of 5 points
+            to the caller of the public table method.
 
         Returns
         -------
@@ -500,7 +504,7 @@ class DeprecatedColumnMixin:
             return new_name
         return name
 
-    def _translate_names(self, names, *, stacklevel=4):
+    def _translate_names(self, names, *, stacklevel=5):
         """
         Translate a single name or a list/tuple of names.
 
@@ -510,7 +514,8 @@ class DeprecatedColumnMixin:
             The column name(s) to be translated.
 
         stacklevel : int, optional
-            The stack level for the warning. The default is 4.
+            The stack level for the warning. The default of 5 points
+            to the caller of the public table method.
 
         Returns
         -------

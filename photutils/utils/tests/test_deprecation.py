@@ -421,6 +421,53 @@ class TestDeprecatedColumn:
         assert len(recwarn) == 0
 
 
+# Each operation uses a deprecated column name once, through one public
+# entry point, so the warning must point at the lambda line here
+COLUMN_OPERATIONS = {
+    'getitem': lambda tbl: tbl['old'],
+    'getitem_list': lambda tbl: tbl[['old', 'stable']],
+    'getitem_tuple': lambda tbl: tbl[('old', 'stable')],
+    'setitem': lambda tbl: tbl.__setitem__('old', [0, 0, 0]),
+    'delitem': lambda tbl: tbl.__delitem__('old'),
+    'contains': lambda tbl: 'old' in tbl,
+    'keep_columns': lambda tbl: tbl.keep_columns('old'),
+    'keep_columns_list': lambda tbl: tbl.keep_columns(['old', 'stable']),
+    'remove_column': lambda tbl: tbl.remove_column('old'),
+    'remove_columns': lambda tbl: tbl.remove_columns('old'),
+    'remove_columns_list': lambda tbl: tbl.remove_columns(['old',
+                                                           'stable']),
+    'rename_column': lambda tbl: tbl.rename_column('old', 'other'),
+    'rename_columns': lambda tbl: tbl.rename_columns(['old'], ['other']),
+    'replace_column': lambda tbl: tbl.replace_column('old', [0, 0, 0]),
+    'add_index': lambda tbl: tbl.add_index('old'),
+    'add_index_list': lambda tbl: tbl.add_index(['old', 'stable']),
+    'remove_indices': lambda tbl: tbl.remove_indices('old'),
+    'sort': lambda tbl: tbl.sort('old'),
+    'sort_list': lambda tbl: tbl.sort(['old', 'stable']),
+    'group_by': lambda tbl: tbl.group_by('old'),
+    'group_by_list': lambda tbl: tbl.group_by(['old', 'stable']),
+}
+
+
+@pytest.mark.parametrize('use_qtable', [False, True])
+@pytest.mark.parametrize('operation', list(COLUMN_OPERATIONS))
+def test_deprecated_column_warning_points_at_caller(raw_data, use_qtable,
+                                                    operation):
+    """
+    Test that each public entry point of the deprecated-column tables
+    attributes its single warning to the caller line.
+    """
+    table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP,
+                                              use_qtable=use_qtable)
+    if operation == 'remove_indices':
+        table.add_index('new')
+    match = "The column name 'old' was deprecated"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        COLUMN_OPERATIONS[operation](table)
+    assert len(record) == 1
+    assert record[0].filename == __file__
+
+
 class TestFutureColumnNames:
     """
     Tests for the ``photutils.future_column_names`` opt-in flag.
