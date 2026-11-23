@@ -571,7 +571,7 @@ class Ellipse:
             # fitted isophote is the initial guess for the next one.
             if isophote_list:
                 miniters_a = miniters
-                geometry = isophote_list[-1].sample.geometry
+                geometry = isophote_list[-1].geometry
             else:
                 miniters_a = 2 * miniters
             isophote = fit(geometry, sma, miniters=miniters_a,
@@ -904,7 +904,7 @@ class Ellipse:
         # used as initial guess for next isophote.
         geometry = self._geometry
         if isophote_list:
-            geometry = isophote_list[-1].sample.geometry
+            geometry = isophote_list[-1].geometry
 
         # The step and linear values define the sampling annulus. They
         # are set on a copy so that the input geometry is not modified.

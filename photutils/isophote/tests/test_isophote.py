@@ -11,7 +11,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
-from astropy.table import QTable, Table
+from astropy.table import MaskedColumn, QTable, Table
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.datasets.load import _get_path
@@ -955,3 +955,76 @@ def test_from_table_then_measure_and_model():
     measured = ellipse.measure_isophotes(loaded)
     assert_allclose(measured.intensity, isolist.intensity, rtol=1e-6)
     assert measured[3].sample is not None
+
+
+def test_from_table_masked_columns():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    names = ['sma', 'x0', 'y0', 'ellipticity', 'orientation',
+             'intensity', 'n_data', 'stop_code', 'valid']
+    tbl = Table(isolist.to_table(columns=names))
+
+    # A masked float entry becomes NaN
+    intensity = MaskedColumn(tbl['intensity'].copy())
+    intensity.data[2] = -999.0
+    intensity[2] = np.ma.masked
+    tbl['intensity'] = intensity
+    result = IsophoteList.from_table(tbl)
+    assert np.isnan(result.intensity[2])
+    assert np.isfinite(result.intensity[3])
+
+    # A masked entry elsewhere raises
+    for name in ('sma', 'orientation', 'n_data', 'stop_code', 'valid'):
+        bad = Table(isolist.to_table(columns=names))
+        col = MaskedColumn(bad[name].copy())
+        col[1] = np.ma.masked
+        bad[name] = col
+        with pytest.raises(ValueError, match=name):
+            IsophoteList.from_table(bad)
+
+
+def test_from_table_csv_valid_column(tmp_path):
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = isolist.to_table(columns=['sma', 'x0', 'y0', 'ellipticity',
+                                    'orientation', 'valid'])
+    tbl['valid'][1] = False
+    path = tmp_path / 'isophotes.csv'
+    tbl.write(path)
+    tbl2 = QTable.read(path)
+    tbl2['orientation'].unit = u.deg
+    result = IsophoteList.from_table(tbl2)
+    assert not result.valid[1]
+    assert result.valid[0]
+
+    tbl2['valid'] = ['yes'] * len(tbl2)
+    with pytest.raises(ValueError, match='valid'):
+        IsophoteList.from_table(tbl2)
+    tbl2['valid'] = 1.5
+    with pytest.raises(ValueError, match='valid'):
+        IsophoteList.from_table(tbl2)
+
+
+def test_from_table_conflicting_columns():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = QTable(isolist.to_table())
+    tbl['pa'] = tbl['orientation'] + 10 * u.deg
+    with pytest.raises(ValueError, match=r"'pa'.*'orientation'"):
+        IsophoteList.from_table(tbl)
+
+    tbl = QTable(isolist.to_table())
+    tbl['int_err'] = tbl['intensity_err']
+    tbl['intens_err'] = 2 * tbl['intensity_err']
+    tbl.remove_column('intensity_err')
+    with pytest.raises(ValueError, match=r"'int_err'.*'intens_err'"):
+        IsophoteList.from_table(tbl)
+
+
+def test_fit_isophote_with_table_isophote_list():
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    isolist = ellipse.fit_image()
+    loaded = IsophoteList.from_table(isolist.to_table())
+    iso = ellipse.fit_isophote(30.0, isophote_list=loaded)
+    assert iso.sample is not None

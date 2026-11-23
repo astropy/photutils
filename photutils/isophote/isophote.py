@@ -1302,16 +1302,25 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
                        'grad_rerror': 'gradient_rel_err',
                        'intens_err': 'intensity_err'}
     since = {**_DEPRECATED_SINCE, 'grad_rerror': '3.0', 'intens_err': '3.2'}
-    columns = {name: name for name in table.colnames
-               if name in _PROPERTY_NAMES}
+    matches = {}
     for name in table.colnames:
-        new_name = deprecation_map.get(name)
-        if new_name is None or new_name in columns:
-            continue
-        msg = (f'The {name!r} column name was deprecated in version '
-               f'{since[name]}. Use {new_name!r} instead. It will be '
-               'removed in version 4.0.')
-        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+        new_name = name if name in _PROPERTY_NAMES else deprecation_map.get(
+            name)
+        if new_name is not None:
+            matches.setdefault(new_name, []).append(name)
+
+    columns = {}
+    for new_name, names in matches.items():
+        if len(names) > 1:
+            msg = (f'The table columns {names[0]!r} and {names[1]!r} both '
+                   f'give {new_name!r}. Remove one of them.')
+            raise ValueError(msg)
+        name = names[0]
+        if name != new_name:
+            msg = (f'The {name!r} column name was deprecated in version '
+                   f'{since[name]}. Use {new_name!r} instead. It will be '
+                   'removed in version 4.0.')
+            warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
         columns[new_name] = name
 
     for name in _REQUIRED_COLUMNS:
@@ -1320,9 +1329,19 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
             raise ValueError(msg)
 
     # Each value is a list of Python scalars, with angles in radians.
+    dtypes = {name: dtype for name, dtype, _, _ in _ISOPHOTE_PROPERTIES}
     values = {}
     for name, column_name in columns.items():
         column = table[column_name]
+        if hasattr(column, 'unmasked'):  # astropy Masked Quantity
+            data = np.asarray(column.unmasked)
+        else:
+            data = np.ma.getdata(column)
+        mask = getattr(column, 'mask', None)
+        if mask is None or mask is np.ma.nomask:
+            mask = np.zeros(len(data), dtype=bool)
+        mask = np.asarray(mask, dtype=bool)
+
         if name in ('orientation', 'orientation_err'):
             unit = getattr(column, 'unit', None)
             if unit is None:
@@ -1331,14 +1350,32 @@ def _isophote_list_from_table(cls, table, *, step, linear_growth):
                        f"table[{column_name!r}].unit = 'deg'.")
                 raise ValueError(msg)
             try:
-                angle = u.Quantity(np.asarray(column), unit).to_value(u.rad)
+                data = u.Quantity(data, unit).to_value(u.rad)
             except u.UnitConversionError:
                 msg = (f'The {column_name!r} column must have an angular '
                        f'unit, not {unit}.')
                 raise ValueError(msg) from None
-            values[name] = angle.tolist()
-        else:
-            values[name] = np.asarray(column).tolist()
+
+        if mask.any():
+            if dtypes[name] is not float or name in _REQUIRED_COLUMNS:
+                msg = (f'The {column_name!r} column has masked values, '
+                       'which are not allowed in this column.')
+                raise ValueError(msg)
+            data = np.where(mask, np.nan, data.astype(float))
+
+        if name == 'valid' and data.dtype.kind in 'USO':
+            mapping = {'true': True, 'false': False}
+            try:
+                data = [mapping[str(item).strip().lower()]
+                        for item in data]
+            except KeyError:
+                msg = ("The 'valid' column must contain True or False "
+                       'values.')
+                raise ValueError(msg) from None
+        elif name == 'valid' and data.dtype.kind not in 'biu':
+            msg = "The 'valid' column must contain True or False values."
+            raise ValueError(msg)
+        values[name] = np.asarray(data).tolist()
 
     n_rows = len(table)
     isophotes = []
