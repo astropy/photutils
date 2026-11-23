@@ -5,68 +5,113 @@ Introduction
 ------------
 
 The `~photutils.isophote` package provides tools to fit elliptical
-isophotes to a galaxy image. The isophotes in the image are measured
-using an iterative method described by `Jedrzejewski (1987, MNRAS 226,
-747)
+isophotes to a galaxy image. The isophotes are measured using the
+iterative method described by `Jedrzejewski (1987, MNRAS 226, 747)
 <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
-See the documentation of the :class:`~photutils.isophote.Ellipse`
-class for details about the algorithm. Please also see the
-:ref:`isophote-faq`.
+The fit gives the intensity, ellipticity, orientation, and center of
+the isophotes as a function of the semimajor axis length, along with
+the deviations of the isophotes from perfect ellipses.
+
+The method was designed for elliptical galaxies. It needs an intensity
+that decreases outward over the fitted region (i.e., a well-defined
+negative radial intensity gradient). The fits may not converge for
+other types of objects (e.g., planetary nebulae).
+
+The main classes are:
+
+* `~photutils.isophote.EllipseGeometry` defines the ellipse where the
+  fit starts.
+
+* `~photutils.isophote.Ellipse` fits the isophotes of an image.
+
+* `~photutils.isophote.IsophoteList` holds the results. It is a list
+  of `~photutils.isophote.Isophote` objects, one for each semimajor
+  axis length.
+
+The shape of an ellipse is described by its ellipticity, defined as
+
+.. math::
+
+    \epsilon = 1 - \frac{b}{a}
+
+where :math:`a` and :math:`b` are the semimajor and semiminor axis
+lengths. The ellipticity is used instead of the eccentricity because
+it relates better to the visual flattening of an ellipse. A slightly
+flattened circle is easily seen to have an ellipticity of about 0.1.
+The same ellipse has an eccentricity of 0.44, which is not obvious
+from visual inspection. The two quantities are related by
+
+.. math::
+
+    e = \sqrt{1 - (1 - \epsilon)^2}
+
+The orientation of an ellipse is the angle of its semimajor axis,
+measured counterclockwise from the positive x axis of the image.
+
 
 Getting Started
 ---------------
 
-For this example, let's create a simple simulated galaxy image::
+For this example, let's simulate an elliptical galaxy with a Sersic
+profile. The galaxy has an ellipticity of 0.4 and an orientation of 40
+degrees, and it is not at the center of the image::
 
     >>> import numpy as np
-    >>> from astropy.modeling.models import Gaussian2D
+    >>> from astropy.modeling.models import Sersic2D
     >>> from photutils.datasets import make_noise_image
 
-    >>> g = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40.0))
-    >>> ny = nx = 150
-    >>> y, x = np.mgrid[0:ny, 0:nx]
-    >>> noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
-    ...                          stddev=2.0, seed=1234)
-    >>> data = g(x, y) + noise
+    >>> galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+    ...                   y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    >>> shape = (300, 300)
+    >>> yy, xx = np.mgrid[0:300, 0:300]
+    >>> noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+    ...                          stddev=0.5, seed=0)
+    >>> data = galaxy(xx, yy) + noise
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D
+    from astropy.modeling.models import Sersic2D
+    from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
 
-    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40.0))
-    ny = nx = 150
-    y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
-                             stddev=2.0, seed=1234)
-    data = g(x, y) + noise
-    fig, ax = plt.subplots()
-    ax.imshow(data, origin='lower')
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
 
-We must provide the elliptical isophote fitter with an initial ellipse
-to be fitted. This ellipse geometry is defined with the
+    norm = simple_norm(data, 'sqrt', percent=99.0)
+    fig, ax = plt.subplots()
+    ax.imshow(data, origin='lower', norm=norm)
+
+The fit needs an initial ellipse, which is defined with the
 `~photutils.isophote.EllipseGeometry` class. The orientation must be
-an angular `~astropy.units.Quantity`. Here we'll define an initial
-ellipse whose orientation is offset from the data::
+an angular `~astropy.units.Quantity`. Here the initial ellipse has the
+center of the galaxy, but its ellipticity and orientation differ from
+those of the galaxy::
 
     >>> import astropy.units as u
     >>> from photutils.isophote import EllipseGeometry
-    >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+    >>> geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
     ...                            orientation=20.0 * u.deg)
 
-Let's show this initial ellipse guess:
+Let's show this initial ellipse:
 
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
+    >>> from astropy.visualization import simple_norm
     >>> from photutils.aperture import EllipticalAperture
     >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
     ...                           geometry.sma * (1 - geometry.ellipticity),
     ...                           theta=geometry.orientation)
+    >>> norm = simple_norm(data, 'sqrt', percent=99.0)
     >>> fig, ax = plt.subplots()
-    >>> ax.imshow(data, origin='lower')
+    >>> ax.imshow(data, origin='lower', norm=norm)
     >>> aper.plot(color='white')
 
 .. plot::
@@ -74,81 +119,306 @@ Let's show this initial ellipse guess:
     import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D
+    from astropy.modeling.models import Sersic2D
+    from astropy.visualization import simple_norm
     from photutils.aperture import EllipticalAperture
     from photutils.datasets import make_noise_image
     from photutils.isophote import EllipseGeometry
 
-    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40.0))
-    ny = nx = 150
-    y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
-                             stddev=2.0, seed=1234)
-    data = g(x, y) + noise
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
 
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
     aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
                               geometry.sma * (1 - geometry.ellipticity),
                               theta=geometry.orientation)
+    norm = simple_norm(data, 'sqrt', percent=99.0)
     fig, ax = plt.subplots()
-    ax.imshow(data, origin='lower')
+    ax.imshow(data, origin='lower', norm=norm)
     aper.plot(color='white')
 
 Next, we create an instance of the `~photutils.isophote.Ellipse`
-class, inputting the data to be fitted and the initial ellipse
-geometry object::
+class, inputting the image and the initial ellipse geometry::
 
     >>> from photutils.isophote import Ellipse
     >>> ellipse = Ellipse(data, geometry=geometry)
 
-To perform the elliptical isophote fit, we run the
-:meth:`~photutils.isophote.Ellipse.fit_image` method::
+To fit the isophotes, we run the
+:meth:`~photutils.isophote.Ellipse.fit_image` method. The fit starts
+at the semimajor axis length of the initial ellipse. It grows outward
+until the intensity gradient can no longer be measured, and then
+inward to the center of the galaxy::
 
     >>> isolist = ellipse.fit_image()
 
-The result is a list of isophotes as an
-`~photutils.isophote.IsophoteList` object, whose attributes are the
-fit values for each `~photutils.isophote.Isophote` sorted by the
-semimajor axis length. Let's print the fit orientations, which are
-`~astropy.units.Quantity` values in degrees::
+The result is an `~photutils.isophote.IsophoteList` object, sorted by
+the semimajor axis length. Its attributes are arrays that hold the fit
+values of the isophotes. Let's print the median ellipticity and
+orientation of the isophotes with semimajor axis lengths from 10 to 90
+pixels. They match the values of the simulated galaxy::
 
-    >>> print(isolist.orientation)  # doctest: +SKIP
-    [0.00000000e+00 1.61211421e+00 1.44103825e+00 9.91751790e-02
-     1.77832869e+02 1.73762515e+02 1.66779176e+02 1.64296230e+02
-     1.86957384e+00 1.86957384e+00 1.86957384e+00 1.62243879e+00
-     1.78197541e+02 5.14309877e+00 5.97739334e+00 1.43304228e+01
-     1.79909048e+01 2.17936647e+01 2.61639199e+01 4.04680582e+01
-     6.56238296e+01 5.76456122e+01 5.65167325e+01 3.51507381e+01
-     3.51507381e+01 3.73989296e+01 4.24485247e+01 4.37983841e+01
-     4.00140829e+01 3.88329844e+01 3.90727846e+01 3.60216876e+01
-     3.80434491e+01 3.96038897e+01 3.98812149e+01 3.97439323e+01
-     3.93087073e+01 3.88934660e+01 3.95763093e+01 4.04680582e+01
-     3.93831497e+01 3.88730153e+01 3.96456891e+01 3.94533206e+01
-     3.95195921e+01 4.03703527e+01 4.00016707e+01 4.02205256e+01
-     3.93462802e+01 3.93462802e+01 3.93462802e+01 4.06242336e+01
-     4.06242336e+01 3.76060070e+01 3.76060070e+01] deg
+    >>> idx = (isolist.sma > 10) & (isolist.sma < 90)
+    >>> print(np.round(np.median(isolist.ellipticity[idx]), 2))
+    0.4
+    >>> print(np.round(np.median(isolist.orientation[idx]), 0))
+    40.0 deg
 
-We can also show the isophote values as a table, which is again sorted
-by the semimajor axis length (``sma``)::
+The :meth:`~photutils.isophote.IsophoteList.to_table` method returns
+the isophote values as a table::
 
     >>> print(isolist.to_table())  # doctest: +SKIP
-           sma                intensity       ... n_iter stop_code
-                                              ...
-    ------------------ ---------------------- ... ------ ---------
-                   0.0     103.36486267669721 ...      0         0
-    0.5346972612827552     101.85758347160414 ...     10         0
-    0.5881669874110307     101.68719303286363 ...     10         0
-    0.6469836861521338      101.5058988661627 ...     11         0
-    0.7116820547673471     101.37369354568321 ...     10         0
-                   ...                    ... ...    ...       ...
-    51.874849202000036      3.406252920574752 ...     10         0
-     57.06233412220004     1.5402218528922258 ...     50         2
-     62.76856753442005     0.7335240348369152 ...     50         2
-     69.04542428786206     0.3611664673700657 ...     50         2
-     75.94996671664828 -0.0020389321260497247 ...     38         0
-      83.5449633883131   -0.04143562472379122 ...      1         5
-    Length = 55 rows
+           sma              intensity      ... n_iter stop_code
+                                           ...
+    ------------------ ------------------- ... ------ ---------
+                   0.0  392.48758849279517 ...      0         0
+    0.5346972612827552   268.2307594317041 ...     14         0
+    0.5881669874110307  257.93087422324777 ...     10         0
+    0.6469836861521338  247.13865766087417 ...     10         0
+    0.7116820547673471  235.60867454024628 ...     10         0
+                   ...                 ... ...    ...       ...
+    111.19834626984479  0.3001491098553055 ...     50         2
+    122.31818089682928 0.19406535096049538 ...     12         0
+     134.5499989865122 0.09571824540441994 ...     22         0
+    148.00499888516345 0.11318072729707639 ...     50         0
+     162.8054987736798 0.05465160382491108 ...      3         1
+    Length = 62 rows
+
+Let's plot the ellipticity, orientation, and the center x and y
+position as a function of the semimajor axis length:
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Sersic2D
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    ellipse = Ellipse(data, geometry=geometry)
+    isolist = ellipse.fit_image()
+
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2,
+                                                 figsize=(8, 8))
+    fig.subplots_adjust(hspace=0.35, wspace=0.35)
+
+    ax1.errorbar(isolist.sma, isolist.ellipticity,
+                 yerr=isolist.ellipticity_err, fmt='o', markersize=4)
+    ax1.set_xlabel('Semimajor Axis Length (pix)')
+    ax1.set_ylabel('Ellipticity')
+
+    ax2.errorbar(isolist.sma, isolist.orientation.to_value(u.deg),
+                 yerr=isolist.orientation_err.to_value(u.deg), fmt='o',
+                 markersize=4)
+    ax2.set_xlabel('Semimajor Axis Length (pix)')
+    ax2.set_ylabel('Orientation (deg)')
+
+    ax3.errorbar(isolist.sma, isolist.x0, yerr=isolist.x0_err, fmt='o',
+                 markersize=4)
+    ax3.set_xlabel('Semimajor Axis Length (pix)')
+    ax3.set_ylabel('x0')
+
+    ax4.errorbar(isolist.sma, isolist.y0, yerr=isolist.y0_err, fmt='o',
+                 markersize=4)
+    ax4.set_xlabel('Semimajor Axis Length (pix)')
+    ax4.set_ylabel('y0')
+
+The geometry is poorly constrained for the innermost isophotes, which
+cover only a few pixels, and for the outermost isophotes, where the
+noise dominates.
+
+The ``intensity`` attribute is the mean intensity along each isophote.
+Let's plot it to show the surface brightness profile of the galaxy:
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Sersic2D
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    ellipse = Ellipse(data, geometry=geometry)
+    isolist = ellipse.fit_image()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.errorbar(isolist.sma, isolist.intensity, yerr=isolist.intensity_err,
+                fmt='o', markersize=4)
+    ax.set_yscale('log')
+    ax.set_xlabel('Semimajor Axis Length (pix)')
+    ax.set_ylabel('Intensity')
+
+
+.. _isophote-initial-ellipse:
+
+Defining the Initial Ellipse
+----------------------------
+
+The fitting algorithm cannot find where the galaxy is located in the
+image. The center of the initial ellipse must be close to the center
+of the galaxy for the fit to work. The initial ellipticity and
+orientation should be reasonable estimates, but they do not need to be
+accurate, as shown above.
+
+If no geometry is input, `~photutils.isophote.Ellipse` uses a default
+`~photutils.isophote.EllipseGeometry` at the center of the image, with
+a semimajor axis length of 10 pixels, an ellipticity of 0.2, and an
+orientation of 90 degrees. This works only for a galaxy that is close
+to the center of the image. The galaxy in this example is 14 pixels
+from the image center. The fit with the default geometry emits a
+"No meaningful fit was possible" warning and returns an empty list:
+
+.. doctest-skip::
+
+    >>> isolist_default = Ellipse(data).fit_image()
+    >>> len(isolist_default)
+    0
+
+A poor initial ellipticity or orientation can also prevent the fits
+from converging, even for an image with a high signal-to-noise ratio.
+If most of the isophotes have a stop code of 2 (see
+:ref:`isophote-results`), run the fit again with a different initial
+ellipticity or orientation.
+
+Finding the Galaxy Center
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :meth:`~photutils.isophote.EllipseGeometry.find_center` method
+runs an "object centerer" that refines an approximate center. If it
+finds the galaxy, it modifies the center of the
+`~photutils.isophote.EllipseGeometry` object in place. Here the input
+center is about 7 pixels from the galaxy center::
+
+    >>> geometry2 = EllipseGeometry(x0=165, y0=135, sma=20, ellipticity=0.3,
+    ...                             orientation=20.0 * u.deg)
+    >>> geometry2.find_center(data, verbose=False)
+    >>> print(geometry2.x0, geometry2.y0)
+    160.0 140.0
+
+The object centerer scans an 11x11 pixel window centered on the
+input coordinates. At each position, it extracts two concentric,
+roughly circular samples, an inner disk with a radius of about 3.5
+pixels and an outer ring with a radius of about 8 pixels. It then
+computes a signal-to-noise-like criterion from the mean intensities
+(:math:`f_1` and :math:`f_2`) and the standard deviations
+(:math:`\sigma_1` and :math:`\sigma_2`) of the two samples:
+
+.. math::
+
+    c = \frac{f_{1} - f_{2}}{{\sqrt{\sigma_{1}^{2} + \sigma_{2}^{2}}}}
+
+The position where this criterion is a maximum is accepted as the new
+center if the criterion exceeds the ``threshold`` parameter. The new
+center is a whole-pixel position. Otherwise, the center is not
+changed.
+
+The default threshold value is 0.1. This value and the sizes of the
+samples and the window were found by trial and error using a number of
+both artificial and real galaxy images. Very flattened galaxies (an
+ellipticity of about 0.7) cannot be detected by such a simple
+algorithm. Increasing the threshold makes the object centerer
+stricter, in the sense that it will not detect faint objects. The
+criterion has no upper limit, so only a threshold value of `numpy.inf`
+guarantees that the center coordinates are not modified.
+
+The `~photutils.isophote.Ellipse` class does not run the object
+centerer. To use it, call
+:meth:`~photutils.isophote.EllipseGeometry.find_center` before the
+`~photutils.isophote.EllipseGeometry` object is input to
+`~photutils.isophote.Ellipse`.
+
+
+.. _isophote-results:
+
+Working with the Results
+------------------------
+
+Isophotes and Isophote Lists
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An `~photutils.isophote.IsophoteList` is a list of
+`~photutils.isophote.Isophote` objects, sorted by the semimajor axis
+length. Each attribute of an `~photutils.isophote.Isophote` is a
+single value. The same attribute of an
+`~photutils.isophote.IsophoteList` is an array with one value for each
+isophote. The first isophote in a list returned by
+:meth:`~photutils.isophote.Ellipse.fit_image` is the central pixel of
+the galaxy, with a semimajor axis length of zero.
+
+An `~photutils.isophote.IsophoteList` can be indexed and sliced like a
+Python list. An index returns an `~photutils.isophote.Isophote` and a
+slice returns an `~photutils.isophote.IsophoteList`. The
+:meth:`~photutils.isophote.IsophoteList.get_closest` method returns
+the isophote whose semimajor axis length is closest to the input
+value::
+
+    >>> isophote = isolist.get_closest(40.0)
+    >>> print(np.round(isophote.sma, 1))
+    39.0
+
+Each isophote has a ``stop_code`` that tells how its fit ended:
+
+* 0: The fit converged.
+
+* 1: Fewer than the ``min_valid_fraction`` fraction of the sampled
+  points are valid.
+
+* 2: The maximum number of iterations was reached. The isophote has
+  the best geometry that was found.
+
+* 3: The harmonic fit failed or there are too few valid points to fit.
+  Such isophotes are not included in the results of
+  :meth:`~photutils.isophote.Ellipse.fit_image`.
+
+* 4: The isophote was extracted with a fixed geometry, without
+  fitting.
+
+* 5: No meaningful gradient could be measured or the ellipse diverged.
+  The isophote was extracted with the geometry of a previously fitted
+  isophote.
+
+See the `~photutils.isophote.Isophote` documentation for the complete
+descriptions.
+
+Tables
+^^^^^^
+
+The ``properties`` attribute of an `~photutils.isophote.IsophoteList`
+lists the names of all the isophote properties. The
+``default_columns`` attribute lists the ones that
+:meth:`~photutils.isophote.IsophoteList.to_table` returns by default.
+Use the ``columns`` keyword to select the columns of the table::
+
+    >>> tbl = isolist.to_table(columns=['sma', 'intensity', 'ellipticity'])
+    >>> print(tbl.colnames)
+    ['sma', 'intensity', 'ellipticity']
 
 The table can be saved to a file and loaded back into an
 `~photutils.isophote.IsophoteList` with the
@@ -186,53 +456,84 @@ an image along them, pass the list to
 The ``step`` and ``linear_growth`` keywords of ``from_table`` set the
 sampling annulus of each isophote for this measurement.
 
-Let's plot the ellipticity, orientation, and the center x and y
-position as a function of the semimajor axis length:
+Sampled Data
+^^^^^^^^^^^^
+
+Each fitted `~photutils.isophote.Isophote` keeps the data that were
+sampled along its ellipse in its ``sample`` attribute, which is an
+`~photutils.isophote.EllipseSample` object. The ``angles``, ``radii``,
+and ``intensities`` attributes of the sample are the polar angles (in
+radians, measured from the semimajor axis), the polar radii, and the
+intensities of the sampled points. The
+:meth:`~photutils.isophote.Isophote.sampled_coordinates` method
+returns the image coordinates of the sampled points.
+
+Let's plot a few isophotes over the image, along with their sampled
+intensities as a function of the angle. Each set of intensities is
+divided by the mean intensity of its isophote. For a good fit, the
+intensities show no systematic variation with the angle:
 
 .. plot::
 
     import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D
+    from astropy.modeling.models import Sersic2D
+    from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.isophote import Ellipse, EllipseGeometry
 
-    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40.0))
-    ny = nx = 150
-    y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
-                             stddev=2.0, seed=1234)
-    data = g(x, y) + noise
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2,
-                                                 figsize=(8, 8))
-    fig.subplots_adjust(hspace=0.35, wspace=0.35)
+    norm = simple_norm(data, 'sqrt', percent=99.0)
+    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12, 5))
+    ax1.imshow(data, origin='lower', norm=norm)
+    for sma in (10, 20, 40, 80):
+        isophote = isolist.get_closest(sma)
+        x, y = isophote.sampled_coordinates()
+        line, = ax1.plot(x, y)
+        sample = isophote.sample
+        ax2.plot(np.rad2deg(sample.angles),
+                 sample.intensities / isophote.intensity, '.',
+                 color=line.get_color(), markersize=3,
+                 label=f'sma = {isophote.sma:.0f} pix')
+    ax1.set_title('Isophotes')
+    ax2.set_xlabel('Angle from the Semimajor Axis (deg)')
+    ax2.set_ylabel('Intensity / Mean Intensity')
+    ax2.legend()
 
-    ax1.errorbar(isolist.sma, isolist.ellipticity,
-                 yerr=isolist.ellipticity_err, fmt='o', markersize=4)
-    ax1.set_xlabel('Semimajor Axis Length (pix)')
-    ax1.set_ylabel('Ellipticity')
+Fitting a Single Isophote
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    ax2.errorbar(isolist.sma, isolist.orientation.to_value(u.deg),
-                 yerr=isolist.orientation_err.to_value(u.deg), fmt='o',
-                 markersize=4)
-    ax2.set_xlabel('Semimajor Axis Length (pix)')
-    ax2.set_ylabel('Orientation (deg)')
+The :meth:`~photutils.isophote.Ellipse.fit_isophote` method fits one
+isophote at a given semimajor axis length and returns an
+`~photutils.isophote.Isophote`::
 
-    ax3.errorbar(isolist.sma, isolist.x0, yerr=isolist.x0_err, fmt='o',
-                 markersize=4)
-    ax3.set_xlabel('Semimajor Axis Length (pix)')
-    ax3.set_ylabel('x0')
+    >>> isophote = ellipse.fit_isophote(30.0)
+    >>> print(np.round(isophote.ellipticity, 2))
+    0.4
 
-    ax4.errorbar(isolist.sma, isolist.y0, yerr=isolist.y0_err, fmt='o',
-                 markersize=4)
-    ax4.set_xlabel('Semimajor Axis Length (pix)')
-    ax4.set_ylabel('y0')
+Calling this method in a loop over a set of semimajor axis lengths
+does not reproduce :meth:`~photutils.isophote.Ellipse.fit_image`.
+:meth:`~photutils.isophote.Ellipse.fit_image` starts each fit from the
+geometry of the closest isophote that was already fitted, and it
+decides where to stop growing from the fitted isophotes. A loop of
+independent fits is more likely to stop early or to give poor fits.
+
+
+Model Images and Residuals
+--------------------------
 
 We can build an elliptical model image from the
 `~photutils.isophote.IsophoteList` object using the
@@ -241,25 +542,28 @@ We can build an elliptical model image from the
     >>> model_image = isolist.make_model_image(data.shape)
     >>> residual = data - model_image
 
-Finally, let's plot the original data, overplotted with some isophotes,
-the elliptical model image, and the residual image:
+Let's plot the original data, the elliptical model image, and the
+residual image:
 
 .. plot::
 
     import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D
+    from astropy.modeling.models import Sersic2D
+    from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.isophote import Ellipse, EllipseGeometry
 
-    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40.0))
-    ny = nx = 150
-    y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
-                             stddev=2.0, seed=1234)
-    data = g(x, y) + noise
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, ellipticity=0.5,
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
@@ -267,21 +571,16 @@ the elliptical model image, and the residual image:
     model_image = isolist.make_model_image(data.shape)
     residual = data - model_image
 
+    norm = simple_norm(data, 'sqrt', percent=99.0)
     fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(14, 5))
     fig.subplots_adjust(left=0.04, right=0.98, bottom=0.02, top=0.98)
-    ax1.imshow(data, origin='lower')
+    ax1.imshow(data, origin='lower', norm=norm)
     ax1.set_title('Data')
 
-    smas = np.linspace(10, 50, 5)
-    for sma in smas:
-        iso = isolist.get_closest(sma)
-        x, y = iso.sampled_coordinates()
-        ax1.plot(x, y, color='white')
-
-    ax2.imshow(model_image, origin='lower')
+    ax2.imshow(model_image, origin='lower', norm=norm)
     ax2.set_title('Ellipse Model')
 
-    ax3.imshow(residual, origin='lower')
+    ax3.imshow(residual, origin='lower', vmin=-2, vmax=2)
     ax3.set_title('Residual')
 
 
@@ -304,9 +603,9 @@ bright, and measure it along the isophotes fit above. The outermost
 isophotes are dominated by noise and can have negative intensities, so
 the color is calculated only where both intensities are positive::
 
-    >>> noise2 = make_noise_image((ny, nx), distribution='gaussian',
-    ...                           mean=0.0, stddev=2.0, seed=5678)
-    >>> data2 = 0.5 * g(x, y) + noise2
+    >>> noise2 = make_noise_image(shape, distribution='gaussian', mean=0.0,
+    ...                           stddev=0.5, seed=5678)
+    >>> data2 = 0.5 * galaxy(xx, yy) + noise2
     >>> isolist2 = Ellipse(data2).measure_isophotes(isolist)
     >>> mask = (isolist.intensity > 0) & (isolist2.intensity > 0)
     >>> ratio = isolist2.intensity[mask] / isolist.intensity[mask]
@@ -317,7 +616,7 @@ each input ellipse, with the same geometry. The input can also be a
 sequence of `~photutils.isophote.EllipseGeometry` objects, which is
 useful for measuring an image along user-defined ellipses::
 
-    >>> geometries = [EllipseGeometry(x0=75, y0=75, sma=sma, ellipticity=0.4,
+    >>> geometries = [EllipseGeometry(x0=160, y0=140, sma=sma, ellipticity=0.4,
     ...                               orientation=40.0 * u.deg)
     ...               for sma in (5.0, 10.0, 20.0)]
     >>> isolist3 = Ellipse(data).measure_isophotes(geometries)
