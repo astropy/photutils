@@ -782,6 +782,97 @@ def test_isophote_deprecated_orientation_names():
     assert tbl['orientation_err'].unit == u.deg
 
 
+# The deprecated Isophote attribute names that were plain instance
+# attributes, with their new names and deprecation versions.
+SETTABLE_RENAMED = {
+    'intens': ('intensity', '3.2'),
+    'int_err': ('intensity_err', '3.2'),
+    'grad': ('gradient', '3.2'),
+    'pix_stddev': ('pixel_stddev', '3.2'),
+    'sarea': ('sector_area', '3.2'),
+    'n_flag': ('n_flagged', '3.2'),
+    'ellip_err': ('ellipticity_err', '3.2'),
+    'tflux_e': ('total_flux_ellipse', '3.2'),
+    'tflux_c': ('total_flux_circle', '3.2'),
+    'npix_e': ('n_pixels_ellipse', '3.2'),
+    'npix_c': ('n_pixels_circle', '3.2'),
+    'grad_error': ('gradient_err', '3.0'),
+    'grad_r_error': ('gradient_rel_err', '3.0'),
+    'niter': ('n_iter', '3.0'),
+    'ndata': ('n_data', '3.0'),
+    'nflag': ('n_flagged', '3.0'),
+}
+
+
+def _make_isophote():
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 20.0)
+    sample._update(fixed_parameters=DEFAULT_FIX)
+    return Isophote(sample, 0, valid=True, stop_code=0)
+
+
+@pytest.mark.parametrize(('old', 'new', 'since'),
+                         [(old, *value)
+                          for old, value in SETTABLE_RENAMED.items()])
+def test_isophote_deprecated_attribute_assignment(old, new, since):
+    iso = _make_isophote()
+    match = f"'{old}' attribute was deprecated in version {since}"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        setattr(iso, old, 7)
+    assert record[0].filename == __file__
+    assert getattr(iso, new) == 7
+    assert old not in vars(iso)
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        assert getattr(iso, old) == 7
+    assert record[0].filename == __file__
+
+
+def test_isophote_deprecated_assignment_changes_list():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    expected = isolist[5].intensity - 50.0
+    with pytest.warns(PhotutilsDeprecationWarning, match="'intens'"):
+        isolist[5].intens = expected
+    assert isolist.intensity[5] == expected
+
+
+def test_isophote_deprecated_angle_assignment():
+    iso = _make_isophote()
+    match = "'pa_err' attribute was deprecated in version 3.2"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        iso.pa_err = np.pi / 4
+    assert record[0].filename == __file__
+    assert_allclose(iso.orientation_err.to_value(u.deg), 45.0)
+    assert 'pa_err' not in vars(iso)
+
+    for name in ('pa', 'eps'):
+        with pytest.raises(AttributeError):
+            setattr(iso, name, 0.5)
+        assert name not in vars(iso)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'eps'") as record:
+        assert iso.eps == iso.ellipticity
+    assert record[0].filename == __file__
+    with pytest.warns(PhotutilsDeprecationWarning, match="'pa'") as record:
+        assert iso.pa == iso.geometry._orientation_rad
+    assert record[0].filename == __file__
+
+
+def test_isophote_copy_and_pickle_no_warnings():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    tbl = isolist.to_table(columns=isolist.properties)
+    table_isolist = IsophoteList.from_table(tbl)
+    for iso in (isolist[5], table_isolist[5]):
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            clones = (copy.copy(iso), copy.deepcopy(iso),
+                      pickle.loads(pickle.dumps(iso)))  # noqa: S301
+        for clone in clones:
+            assert clone.intensity == iso.intensity
+            assert clone.n_data == iso.n_data
+            assert clone.orientation_err == iso.orientation_err
+
+
 def test_to_table_default_columns():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image()

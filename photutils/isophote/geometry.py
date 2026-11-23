@@ -4,6 +4,7 @@ Tools for storing parameters for the geometry of an ellipse.
 """
 
 import math
+import warnings
 
 import astropy.units as u
 import numpy as np
@@ -13,6 +14,7 @@ from photutils.utils._deprecation import (deprecated, deprecated_attribute,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument,
                                           warn_deprecated_attribute)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['EllipseGeometry']
 
@@ -81,6 +83,46 @@ def _eccentric_anomaly(phi, eps):
     """
     anomaly = math.atan2(math.sin(phi), (1.0 - eps) * math.cos(phi))
     return phi + (anomaly - phi + math.pi) % (2.0 * math.pi) - math.pi
+
+
+# Remove in 4.0
+def _warn_deprecated_fix():
+    msg = ("The 'fix' attribute was deprecated in version 3.2. Use "
+           "'fix_center', 'fix_orientation', and 'fix_ellipticity' "
+           'instead. It will be removed in version 4.0.')
+    warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+
+
+# Remove in 4.0
+def _deprecated_internal_attribute(name, description):
+    """
+    Make a property for a deprecated attribute that is internal to the
+    fitter and has no replacement.
+
+    Getting or setting the property issues a deprecation warning and
+    forwards to the private attribute with the same name.
+    """
+    private_name = f'_{name}'
+    msg = (f'The {name!r} attribute was deprecated in version 3.2. It is '
+           'internal to the fitter and has no replacement. It will be '
+           'removed in version 4.0.')
+
+    def getter(self):
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        return getattr(self, private_name)
+
+    def setter(self, value):
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        setattr(self, private_name, value)
+
+    doc = f"""
+    {description}
+
+    .. deprecated:: 3.2
+        This attribute is internal to the fitter and has no
+        replacement.
+    """
+    return property(getter, setter, doc=doc)
 
 
 class EllipseGeometry:
@@ -287,15 +329,34 @@ class EllipseGeometry:
         return bool(self._fix[_FIX_INDEX['ellipticity']])
 
     # Remove in 4.0
-    fix = deprecated_attribute('fix', '_fix', '3.2', until='4.0')
-    sector_angular_width = deprecated_attribute(
-        'sector_angular_width', '_sector_angular_width', '3.2',
-        until='4.0')
-    initial_polar_angle = deprecated_attribute(
-        'initial_polar_angle', '_initial_polar_angle', '3.2', until='4.0')
-    initial_polar_radius = deprecated_attribute(
-        'initial_polar_radius', '_initial_polar_radius', '3.2',
-        until='4.0')
+    @property
+    def fix(self):
+        """
+        The array of fixed-parameter flags for the center (the first
+        two elements), the orientation, and the ellipticity.
+
+        .. deprecated:: 3.2
+            Use ``fix_center``, ``fix_orientation``, and
+            ``fix_ellipticity`` instead.
+        """
+        _warn_deprecated_fix()
+        return self._fix
+
+    @fix.setter
+    def fix(self, value):  # numpydoc ignore=GL08
+        _warn_deprecated_fix()
+        self._fix = value
+
+    # Remove in 4.0
+    sector_angular_width = _deprecated_internal_attribute(
+        'sector_angular_width',
+        'The angular width (radians) of the integration sectors.')
+    initial_polar_angle = _deprecated_internal_attribute(
+        'initial_polar_angle',
+        'The polar angle (radians) of the first sample point.')
+    initial_polar_radius = _deprecated_internal_attribute(
+        'initial_polar_radius',
+        'The radius (pixels) of the ellipse at the initial polar angle.')
 
     # Remove in 4.0
     eps = deprecated_attribute('eps', 'ellipticity', '3.2', until='4.0')

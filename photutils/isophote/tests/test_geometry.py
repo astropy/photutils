@@ -484,12 +484,18 @@ def test_geometry_deprecated_methods(name, args):
                                   'initial_polar_radius'])
 def test_geometry_deprecated_sector_attributes(name):
     geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5)
-    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{name}'"):
+    match = (f"The '{name}' attribute was deprecated in version 3.2. It "
+             'is internal to the fitter and has no replacement. It will '
+             'be removed in version 4.0.')
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
         value = getattr(geometry, name)
+    assert record[0].filename == __file__
     assert value == getattr(geometry, f'_{name}')
-    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{name}'"):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
         setattr(geometry, name, 0.1)
+    assert record[0].filename == __file__
     assert getattr(geometry, f'_{name}') == 0.1
+    assert "'_" not in getattr(EllipseGeometry, name).__doc__
 
 
 def test_geometry_fix_flags():
@@ -498,10 +504,16 @@ def test_geometry_fix_flags():
     assert geometry.fix_center is False
     assert geometry.fix_orientation is True
     assert geometry.fix_ellipticity is False
-    with pytest.warns(PhotutilsDeprecationWarning, match="'fix'"):
+    match = ("The 'fix' attribute was deprecated in version 3.2. Use "
+             "'fix_center', 'fix_orientation', and 'fix_ellipticity' "
+             'instead. It will be removed in version 4.0.')
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
         assert_array_equal(geometry.fix, [False, False, True, False])
-    with pytest.warns(PhotutilsDeprecationWarning, match="'fix'"):
+    assert record[0].filename == __file__
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
         geometry.fix = np.array([True, True, False, True])
+    assert record[0].filename == __file__
+    assert "'_fix'" not in EllipseGeometry.fix.__doc__
     assert geometry.fix_center is True
     assert geometry.fix_orientation is False
     assert geometry.fix_ellipticity is True

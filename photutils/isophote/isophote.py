@@ -14,7 +14,8 @@ from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
                                           _fit_upper_harmonic)
 from photutils.isophote.model import _make_model_image
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
-                                          deprecated, deprecated_getattr,
+                                          deprecated, deprecated_attribute,
+                                          deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           warn_deprecated_attribute)
 from photutils.utils._misc import _get_meta
@@ -395,14 +396,49 @@ class Isophote:
         self.y0_err = 0.0
 
     # Remove in 4.0
-    def __getattr__(self, name):
-        if name in _DEPRECATED_RADIANS:
-            warn_deprecated_attribute(name, _DEPRECATED_ATTRIBUTES[name],
-                                      since=_DEPRECATED_SINCE[name],
-                                      until='4.0')
-            return getattr(self, _DEPRECATED_RADIANS[name])
-        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
-                                  since=_DEPRECATED_SINCE, until='4.0')
+    @property
+    def eps(self):
+        """
+        The ellipticity of the ellipse.
+
+        .. deprecated:: 3.2
+            Use ``ellipticity`` instead.
+        """
+        warn_deprecated_attribute('eps', 'ellipticity', since='3.2',
+                                  until='4.0')
+        return self.ellipticity
+
+    # Remove in 4.0
+    @property
+    def pa(self):
+        """
+        The orientation of the semimajor axis as a float in radians.
+
+        .. deprecated:: 3.2
+            Use ``orientation`` instead.
+        """
+        warn_deprecated_attribute('pa', 'orientation', since='3.2',
+                                  until='4.0')
+        return self._orientation_rad
+
+    # Remove in 4.0
+    @property
+    def pa_err(self):
+        """
+        The orientation error as a float in radians.
+
+        .. deprecated:: 3.2
+            Use ``orientation_err`` instead.
+        """
+        warn_deprecated_attribute('pa_err', 'orientation_err', since='3.2',
+                                  until='4.0')
+        return self._orientation_err_rad
+
+    @pa_err.setter
+    def pa_err(self, value):  # numpydoc ignore=GL08
+        warn_deprecated_attribute('pa_err', 'orientation_err', since='3.2',
+                                  until='4.0')
+        self._orientation_err_rad = value
 
     # The comparison methods are deprecated. Compare the ``sma`` values
     # instead. The isophotes are compared by their semimajor axis
@@ -725,6 +761,18 @@ class Isophote:
             `~astropy.units.Quantity` columns in degrees.
         """
         return _isophote_list_to_table([self])
+
+
+# Remove in 4.0
+# The other deprecated names were plain instance attributes, so they are
+# properties that read and write the new attributes.
+for _name, _new_name in _DEPRECATED_ATTRIBUTES.items():
+    if _name not in ('eps', 'pa', 'pa_err'):
+        setattr(Isophote, _name,
+                deprecated_attribute(_name, _new_name,
+                                     _DEPRECATED_SINCE[_name], until='4.0'))
+
+del _name, _new_name
 
 
 class IsophoteList:
