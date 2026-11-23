@@ -121,7 +121,7 @@ def test_make_model_image_matches_function():
     """
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image()
-    match = 'IsophoteList.make_model_image'
+    match = "The 'build_ellipse_model' function was deprecated"
     for kwargs in ({}, {'high_harmonics': True}, {'sma_interval': 0.37}):
         model = isolist.make_model_image(data.shape, fill_value=1.0,
                                          **kwargs)

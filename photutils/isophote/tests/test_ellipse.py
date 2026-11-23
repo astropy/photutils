@@ -283,7 +283,7 @@ class TestEllipse:
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ellipse = Ellipse(self.data, geometry=geometry, threshold=0.1)
 
-        match = 'Use EllipseGeometry.find_center instead'
+        match = "The 'Ellipse.set_threshold' method was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ellipse.set_threshold(0.1)
 

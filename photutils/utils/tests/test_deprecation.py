@@ -1248,6 +1248,107 @@ def test_deprecated():
     assert 'a future version' in msg
 
 
+class TestDeprecatedNames:
+    """
+    Test that the warning of the @deprecated decorator names the
+    deprecated function, method, or class.
+    """
+
+    @staticmethod
+    def _check(func, message):
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
+            func()
+        assert len(record) == 1
+        assert str(record[0].message) == message
+        assert record[0].filename == __file__
+
+    @pytest.mark.parametrize('alternative', [None, 'new_function'])
+    def test_function(self, alternative):
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        def old_function():
+            """
+            Old function.
+            """
+            return 1
+
+        use = '' if alternative is None else ' Use new_function instead.'
+        message = ("The 'old_function' function was deprecated in version "
+                   f'3.2.{use} It will be removed in version 4.0.')
+        self._check(old_function, message)
+
+    @pytest.mark.parametrize('alternative', [None, 'Example.new_method'])
+    def test_method(self, alternative):
+        class Example:
+            @deprecated('3.2', alternative=alternative, until='4.0')
+            def old_method(self):
+                """
+                Old method.
+                """
+                return 1
+
+        use = ('' if alternative is None
+               else ' Use Example.new_method instead.')
+        message = ("The 'Example.old_method' method was deprecated in "
+                   f'version 3.2.{use} It will be removed in version 4.0.')
+        self._check(Example().old_method, message)
+
+    @pytest.mark.parametrize('alternative', [None, 'NewClass'])
+    def test_class(self, alternative):
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        class OldClass:
+            """
+            Old class.
+            """
+
+        use = '' if alternative is None else ' Use NewClass instead.'
+        message = ("The 'OldClass' class was deprecated in version 3.2."
+                   f'{use} It will be removed in version 4.0.')
+        self._check(OldClass, message)
+
+    def test_property(self):
+        class Example:
+            @property
+            @deprecated('3.2', alternative="the 'new' attribute",
+                        until='4.0', obj_type='attribute')
+            def old(self):
+                """
+                Old attribute.
+                """
+                return 1
+
+        message = ("The 'Example.old' attribute was deprecated in version "
+                   "3.2. Use the 'new' attribute instead. It will be "
+                   'removed in version 4.0.')
+        self._check(lambda: Example().old, message)
+
+    def test_no_until(self):
+        message = ("The '_example_func5' function was deprecated in "
+                   'version 1.0. It will be removed in a future version.')
+        self._check(lambda: _example_func5(1, 2, 3), message)
+
+    @pytest.mark.parametrize('alternative', [None, 'new_function'])
+    def test_docstring_note(self, alternative):
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        def old_function():
+            """
+            Old function.
+            """
+
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        class OldClass:
+            """
+            Old class.
+            """
+
+        use = '' if alternative is None else ' Use new_function instead.'
+        note = ('.. deprecated:: 3.2\n    This function was deprecated in '
+                f'version 3.2 and will be removed in version 4.0.{use}\n')
+        assert note in old_function.__doc__
+        assert note in OldClass.__doc__
+        assert "'old_function'" not in old_function.__doc__
+        assert "'OldClass'" not in OldClass.__doc__
+
+
 def test_deprecated_attribute():
     class Thing:
         new = 1

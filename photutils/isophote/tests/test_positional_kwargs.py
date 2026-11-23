@@ -110,15 +110,15 @@ class TestBuildEllipseModelPositionalKwargs:
 
     def test_positional_warns(self, small_isolist):
         shape, isolist = small_isolist
-        match = 'build_ellipse_model'
-        outer = 'IsophoteList.make_model_image'
+        match = "'fill' positionally to 'build_ellipse_model'"
+        outer = "The 'build_ellipse_model' function was deprecated"
         with (pytest.warns(PhotutilsDeprecationWarning, match=outer),
               pytest.warns(PhotutilsDeprecationWarning, match=match)):
             build_ellipse_model(shape, isolist, 0.0)
 
     def test_keyword_no_positional_warning(self, small_isolist):
         shape, isolist = small_isolist
-        match = 'IsophoteList.make_model_image'
+        match = "The 'build_ellipse_model' function was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match) as rec:
             build_ellipse_model(shape, isolist, fill=0.0)
         assert len(rec) == 1

@@ -248,7 +248,8 @@ and a keyword, and the names follow the conventions of the rest
 of Photutils (spelled-out words, ``n_`` for counts, and ``_err`` for
 errors). Every old name still works with a
 `~photutils.utils.exceptions.PhotutilsDeprecationWarning`, which names
-the replacement if there is one, and will be removed in version 4.0.
+the old name and its replacement, if there is one, and will be removed
+in version 4.0.
 Names that were already deprecated in version 3.0 (e.g.,
 ``grad_error``, ``niter``) now point directly to the new names.
 

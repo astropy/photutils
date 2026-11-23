@@ -29,15 +29,16 @@ from photutils._future_column_names import get_future_column_names
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
-def deprecated(since, *, alternative=None, until=None):
+def deprecated(since, *, alternative=None, until=None, obj_type=None):
     """
-    Decorator to mark a function or method as deprecated.
+    Decorator to mark a function, method, or class as deprecated.
 
     This is a wrapper around `astropy.utils.decorators.deprecated` that
     allows for an optional ``until`` parameter to specify when the
-    deprecated functionality will be removed. If ``until`` is provided,
-    the warning message will include both the deprecation version and the
-    removal version.
+    deprecated functionality will be removed. The warning message names
+    the deprecated object by its qualified name (e.g.,
+    ``'EllipseGeometry.update_sma'``) and includes the deprecation
+    version, the alternative if one is given, and the removal version.
 
     Parameters
     ----------
@@ -51,28 +52,88 @@ def deprecated(since, *, alternative=None, until=None):
 
     until : str or int, optional
         The version in which the deprecated functionality will be removed.
-        If `None`, the removal version is not mentioned in the warning
-        message.
+        If `None`, the warning message says that it will be removed in a
+        future version.
+
+    obj_type : str or None, optional
+        The type of the deprecated object in the warning message, e.g.,
+        ``'attribute'`` for the getter of a property. If `None`, it is
+        ``'class'``, ``'method'``, or ``'function'``.
 
     Returns
     -------
     decorator : function
-        A decorator function that can be applied to any function or method
-        to mark it as deprecated.
+        A decorator function that can be applied to any function, method,
+        or class to mark it as deprecated.
     """
-    if until is None:
-        message = (f'This function was deprecated in version {since} and will '
-                   'be removed in a future version.')
-    else:
-        remove_version = 'version ' + str(until)
-        message = (f'This function was deprecated in version {since} and will '
-                   f'be removed in {remove_version}.')
+    remove_version = ('a future version' if until is None
+                      else f'version {until}')
+    use = '' if alternative is None else ' Use {alternative} instead.'
 
+    # The message in the docstring note does not name the object.
+    doc_message = (f'This function was deprecated in version {since} and '
+                   f'will be removed in {remove_version}.')
     if alternative is not None:
-        message += f' Use {alternative} instead.'
+        doc_message += f' Use {alternative} instead.'
 
-    return astropy_deprecated(since, message=message,
-                              warning_type=PhotutilsDeprecationWarning)
+    def decorator(obj):  # numpydoc ignore=GL08
+        func = getattr(obj, '__func__', obj)
+        # Drop the enclosing scopes of an object defined in a function.
+        name = func.__qualname__.rpartition('<locals>.')[2]
+        if obj_type is not None:
+            type_name = obj_type
+        elif isinstance(obj, type):
+            type_name = 'class'
+        elif '.' in name:
+            type_name = 'method'
+        else:
+            type_name = 'function'
+
+        # The name and the alternative are inserted by the format fields
+        # of the astropy decorator.
+        message = (f"The '{{func}}' {{obj_type}} was deprecated in version "
+                   f'{since}.{use} It will be removed in {remove_version}.')
+        result = astropy_deprecated(
+            since, message=message, name=name, alternative=alternative,
+            obj_type=type_name,
+            warning_type=PhotutilsDeprecationWarning)(obj)
+
+        message = message.format(func=name, obj_type=type_name,
+                                 alternative=alternative)
+        replace_docstring_message(result, message, doc_message)
+        return result
+
+    return decorator
+
+
+def replace_docstring_message(obj, message, doc_message):
+    """
+    Replace ``message`` with ``doc_message`` in the docstrings that
+    `astropy.utils.decorators.deprecated` changed.
+
+    Parameters
+    ----------
+    obj : object
+        The object returned by `astropy.utils.decorators.deprecated`.
+        For a class, the docstrings of its ``__init__`` and ``__new__``
+        methods are also changed.
+
+    message : str
+        The warning message.
+
+    doc_message : str
+        The message for the docstring note.
+    """
+    targets = [obj, getattr(obj, '__func__', None)]
+    if isinstance(obj, type):
+        targets.extend(obj.__dict__.get(name)
+                       for name in ('__init__', '__new__'))
+    for target in targets:
+        if target is None:
+            continue
+        doc = target.__doc__
+        if doc and message in doc:
+            target.__doc__ = doc.replace(message, doc_message, 1)
 
 
 def deprecated_renamed_argument(old_name, new_name, since, *, until=None):

@@ -646,7 +646,8 @@ def test_geometry_deprecated_methods(name, args):
     geometry._initialize_sector_geometry(0.1)
     geometry2._initialize_sector_geometry(0.1)
     expected = getattr(geometry, f'_{name}')(*args)
-    with pytest.warns(PhotutilsDeprecationWarning, match='version 3.2'):
+    match = f"The 'EllipseGeometry.{name}' method was deprecated"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         result = getattr(geometry2, name)(*args)
     assert_allclose(result, expected)
 

@@ -924,8 +924,8 @@ def test_to_table_deprecated_shortcuts(name):
 
 def test_get_names_deprecated():
     isolist = IsophoteList([])
-    with pytest.warns(PhotutilsDeprecationWarning,
-                      match='properties') as record:
+    match = "The 'IsophoteList.get_names' method was deprecated"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
         assert isolist.get_names() == isolist.properties
     assert record[0].filename == __file__
 
@@ -946,7 +946,8 @@ def test_fix_geometry_deprecated():
     sample = EllipseSample(data, 20.0)
     sample._update(fixed_parameters=DEFAULT_FIX)
     iso = Isophote(sample, 0, valid=True, stop_code=0)
-    with pytest.warns(PhotutilsDeprecationWarning, match='version 3.2'):
+    match = "The 'Isophote.fix_geometry' method was deprecated"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         iso.fix_geometry(iso)
 
 

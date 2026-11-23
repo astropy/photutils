@@ -363,13 +363,15 @@ def test_harmonic_fit_singular():
 def test_harmonic_functions_deprecated():
     phi = np.linspace(0.0, 2.0 * np.pi, 20, endpoint=False)
     coeffs = np.array([1.0, 0.1, 0.2, 0.3, 0.4])
-    match = 'version 3.2'
+    match = "The 'first_and_second_harmonic_function' function was"
     with pytest.warns(PhotutilsDeprecationWarning, match=match):
         values = harmonics.first_and_second_harmonic_function(phi, coeffs)
+    match = "The 'fit_first_and_second_harmonics' function was"
     with pytest.warns(PhotutilsDeprecationWarning, match=match):
         fit_coeffs, _ = harmonics.fit_first_and_second_harmonics(phi,
                                                                  values)
     assert_allclose(fit_coeffs, coeffs, atol=1.0e-10)
+    match = "The 'fit_upper_harmonic' function was"
     with pytest.warns(PhotutilsDeprecationWarning, match=match):
         fit_coeffs, _ = harmonics.fit_upper_harmonic(phi, values, 3)
     assert fit_coeffs.shape == (3,)
