@@ -1787,6 +1787,24 @@ def test_init_params_nonfinite_fit_fallback(bad_col, use_mask):
     assert_allclose(phot_tbl['fwhm_init'], [3.1, 3.05])
 
 
+def test_init_params_nonfinite_fit_fallback_no_underscore():
+    """
+    Test the fallback to the initial values for the column names
+    without an underscore.
+    """
+    psf_model = CircularGaussianPRF(flux=1.0, fwhm=3.1)
+    psfphot = PSFPhotometry(psf_model, (9, 9))
+
+    tbl = Table({'xinit': [10.4, 30.4], 'yinit': [10.3, 30.3],
+                 'fluxinit': [5.0, 6.0],
+                 'xfit': [10.1, np.nan], 'yfit': [9.9, 29.9],
+                 'fluxfit': [7.0, 8.0]})
+    phot_tbl = psfphot(make_two_source_image(), init_params=tbl)
+    assert_allclose(phot_tbl['x_init'], [10.1, 30.4])
+    assert_allclose(phot_tbl['y_init'], [9.9, 30.3])
+    assert_allclose(phot_tbl['flux_init'], [7.0, 6.0])
+
+
 def test_init_params_nonfinite_fit_fallback_units():
     """
     Test the fallback to the initial values with flux units.

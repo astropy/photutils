@@ -202,7 +202,7 @@ class _PSFParameterMapper:
 
         All parameters in such a row are replaced so that the row has a
         consistent set of values. Initial positions are used only if
-        both the x and y columns are present.
+        the table has x and y initial columns with the same suffix.
 
         Parameters
         ----------
@@ -213,25 +213,34 @@ class _PSFParameterMapper:
             A dictionary mapping parameter aliases to the column names
             found in the table.
         """
-        fit_cols = {alias: col for alias, col in found_cols.items()
-                    if col in (f'{alias}_fit', f'{alias}fit')
-                    and self.init_colnames[alias] in table.colnames}
-        if not {'x', 'y'} <= fit_cols.keys():
-            fit_cols.pop('x', None)
-            fit_cols.pop('y', None)
-        if not fit_cols:
+        # Map each fitted column to its initial column
+        init_cols = {}
+        for alias, col in found_cols.items():
+            if col not in (f'{alias}_fit', f'{alias}fit'):
+                continue
+            suffixes = ('_init',)
+            if alias in self.MAIN_ALIASES:
+                suffixes += ('init',)
+            for suffix in suffixes:
+                names = [f'{alias}{suffix}']
+                if alias in ('x', 'y'):
+                    names = [f'x{suffix}', f'y{suffix}']
+                if all(name in table.colnames for name in names):
+                    init_cols[col] = f'{alias}{suffix}'
+                    break
+        if not init_cols:
             return
 
         is_bad = np.zeros(len(table), dtype=bool)
-        for col in fit_cols.values():
+        for col in init_cols:
             values = table[col]
             is_bad |= np.asarray(getattr(values, 'mask', False))
             values = getattr(values, 'unmasked', values)
             is_bad |= ~np.isfinite(np.ma.getdata(values))
 
         if is_bad.any():
-            for alias, col in fit_cols.items():
-                table[col][is_bad] = table[self.init_colnames[alias]][is_bad]
+            for col, init_col in init_cols.items():
+                table[col][is_bad] = table[init_col][is_bad]
 
     def rename_table_columns(self, table):
         """
