@@ -14,9 +14,8 @@ from photutils.isophote.fitter import (DEFAULT_CONVERGENCE,
                                        DEFAULT_MAX_GRADIENT_REL_ERR,
                                        DEFAULT_MAXITERS,
                                        DEFAULT_MIN_VALID_FRACTION,
-                                       DEFAULT_MINITERS, EllipseFitter)
+                                       DEFAULT_MINITERS, _EllipseFitter)
 from photutils.isophote.geometry import EllipseGeometry, _make_fix_array
-from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import EllipseSample, _validate_image
 from photutils.utils._deprecation import (deprecated,
@@ -286,7 +285,7 @@ class Ellipse:
                   miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
                   min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
                   max_gradient_rel_err=DEFAULT_MAX_GRADIENT_REL_ERR,
-                  clip_sigma=3.0, n_clip=0, integration_mode=BILINEAR,
+                  clip_sigma=3.0, n_clip=0, integration_mode='bilinear',
                   linear_growth=None, max_iterative_sma=None,
                   fix_center=False, fix_orientation=False,
                   fix_ellipticity=False, *, max_center_shift=None):
@@ -700,7 +699,7 @@ class Ellipse:
             fit(geometry, 0.0, miniters=miniters)
 
         # Sort list of isophotes according to sma.
-        isophote_list.sort()
+        isophote_list.sort(key=lambda iso: iso.sma)
 
         return IsophoteList(isophote_list)
 
@@ -728,7 +727,7 @@ class Ellipse:
                      miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
                      min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
                      maxgerr=None,  # noqa: ARG002
-                     clip_sigma=3.0, n_clip=0, integration_mode=BILINEAR,
+                     clip_sigma=3.0, n_clip=0, integration_mode='bilinear',
                      linear_growth=None, max_iterative_sma=None,
                      noniterate=False,
                      going_inwards=None,  # noqa: ARG002
@@ -955,7 +954,7 @@ class Ellipse:
         return isophote
 
     def measure_isophotes(self, isophotes, *, clip_sigma=3.0, n_clip=0,
-                          integration_mode=BILINEAR):
+                          integration_mode='bilinear'):
         """
         Measure the image along a set of ellipses without fitting.
 
@@ -1043,7 +1042,7 @@ class Ellipse:
                                                integration_mode)
             isophote_list.append(isophote)
 
-        isophote_list.sort()
+        isophote_list.sort(key=lambda iso: iso.sma)
 
         return IsophoteList(isophote_list)
 
@@ -1057,7 +1056,7 @@ class Ellipse:
         sample = EllipseSample(self.image, sma, clip_sigma=clip_sigma,
                                n_clip=n_clip, geometry=geometry,
                                integration_mode=integration_mode)
-        fitter = EllipseFitter(sample)
+        fitter = _EllipseFitter(sample)
 
         # The center shift is measured from the input geometry, which
         # fitting does not modify (each sample uses a copy).
@@ -1080,7 +1079,7 @@ class Ellipse:
         if sample.n_valid == 0:
             return Isophote(sample, 0, valid=False, stop_code=3)
 
-        # Build isophote without iterating with an EllipseFitter.
+        # Build isophote without iterating with a fitter.
         return Isophote(sample, 0, valid=True, stop_code=4)
 
     @staticmethod
@@ -1121,7 +1120,7 @@ class Ellipse:
         isophote.
         """
         isophote = isophote_list[-1]
-        isophote.fix_geometry(reference)
+        isophote._fix_geometry(reference)
 
         # Force new extraction of raw data, since
         # geometry changed.

@@ -4,17 +4,16 @@ Tools for integrating over pixels.
 """
 
 import abc
+import warnings
 
 import numpy as np
 
-__all__ = ['BILINEAR', 'INTEGRATORS', 'MEAN', 'MEDIAN', 'NEAREST_NEIGHBOR']
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-
-# Integration modes
-NEAREST_NEIGHBOR = 'nearest_neighbor'
-BILINEAR = 'bilinear'
-MEAN = 'mean'
-MEDIAN = 'median'
+# The integration mode constants were deprecated in version 3.2. They
+# are not in ``__all__`` so that the wildcard import in the subpackage
+# does not warn. See ``__getattr__`` below.
+__all__ = []
 
 
 class _Integrator(abc.ABC):
@@ -260,9 +259,9 @@ class _AreaIntegrator(_Integrator):
 
         # Build auxiliary bilinear integrator to be used when
         # sector areas contain a too small number of valid pixels.
-        self._bilinear_integrator = INTEGRATORS[BILINEAR](image, geometry,
-                                                          angles, radii,
-                                                          intensities)
+        self._bilinear_integrator = _INTEGRATORS['bilinear'](image, geometry,
+                                                             angles, radii,
+                                                             intensities)
 
     def integrate(self, radius, phi):
         self._phi = phi
@@ -379,9 +378,65 @@ class _MedianIntegrator(_AreaIntegrator):
 
 
 # Specific integrator subclasses can be instantiated from here.
-INTEGRATORS = {
-    NEAREST_NEIGHBOR: _NearestNeighborIntegrator,
-    BILINEAR: _BiLinearIntegrator,
-    MEAN: _MeanIntegrator,
-    MEDIAN: _MedianIntegrator,
+_INTEGRATORS = {
+    'nearest_neighbor': _NearestNeighborIntegrator,
+    'bilinear': _BiLinearIntegrator,
+    'mean': _MeanIntegrator,
+    'median': _MedianIntegrator,
 }
+
+# The deprecated public constants and the strings or objects that
+# replace them.
+_DEPRECATED_CONSTANTS = {
+    'BILINEAR': 'bilinear',
+    'NEAREST_NEIGHBOR': 'nearest_neighbor',
+    'MEAN': 'mean',
+    'MEDIAN': 'median',
+    'INTEGRATORS': _INTEGRATORS,
+}
+
+
+def _get_deprecated_constant(name, module_name):
+    """
+    Return a deprecated module-level constant and warn.
+
+    This function must be called directly from a module ``__getattr__``
+    so that the warning points to the line that used the constant.
+
+    Parameters
+    ----------
+    name : str
+        The name of the constant.
+
+    module_name : str
+        The name of the module that was searched, used in the error
+        message.
+
+    Returns
+    -------
+    value : str or dict
+        The value of the constant.
+
+    Raises
+    ------
+    AttributeError
+        If ``name`` is not a deprecated constant.
+    """
+    if name not in _DEPRECATED_CONSTANTS:
+        msg = f'module {module_name!r} has no attribute {name!r}'
+        raise AttributeError(msg)
+
+    value = _DEPRECATED_CONSTANTS[name]
+    if name == 'INTEGRATORS':
+        advice = ('Pass the integration mode as a string, such as '
+                  "'bilinear', 'nearest_neighbor', 'mean', or 'median'.")
+    else:
+        advice = f'Use the string {value!r} instead.'
+    msg = (f'{name} was deprecated in version 3.2 and will be removed in '
+           f'version 4.0. {advice}')
+    warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+    return value
+
+
+def __getattr__(name):
+    return _get_deprecated_constant(name, __name__)

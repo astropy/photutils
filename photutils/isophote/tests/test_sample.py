@@ -13,8 +13,6 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
-                                           NEAREST_NEIGHBOR)
 from photutils.isophote.isophote import Isophote
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
@@ -27,10 +25,10 @@ DATA = make_test_image(background=100.0, i0=0.0, noise=10.0, seed=0)
 
 # The median is not so good at estimating rms.
 @pytest.mark.parametrize(('integrmode', 'amin', 'amax'),
-                         [(NEAREST_NEIGHBOR, 7.0, 15.0),
-                          (BILINEAR, 7.0, 15.0),
-                          (MEAN, 7.0, 15.0),
-                          (MEDIAN, 6.0, 15.0)])
+                         [('nearest_neighbor', 7.0, 15.0),
+                          ('bilinear', 7.0, 15.0),
+                          ('mean', 7.0, 15.0),
+                          ('median', 6.0, 15.0)])
 def test_scatter(integrmode, amin, amax):
     """
     Check that the pixel standard deviation can be reliably estimated
@@ -103,8 +101,8 @@ def test_default_center():
     assert sample.geometry.y0 == DATA.shape[0] / 2
 
 
-@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
-                                        MEDIAN])
+@pytest.mark.parametrize('integrmode', ['nearest_neighbor', 'bilinear', 'mean',
+                                        'median'])
 @pytest.mark.parametrize('eps', [1.0, 1.5])
 def test_invalid_ellipticity(integrmode, eps):
     """
@@ -125,8 +123,8 @@ def test_invalid_ellipticity(integrmode, eps):
         ellipse.fit_image(integration_mode=integrmode)
 
 
-@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
-                                        MEDIAN])
+@pytest.mark.parametrize('integrmode', ['nearest_neighbor', 'bilinear', 'mean',
+                                        'median'])
 @pytest.mark.parametrize(('x0', 'y0'), [(np.nan, 256.0), (256.0, np.nan),
                                         (np.inf, 256.0), (256.0, -np.inf)])
 def test_nonfinite_center(integrmode, x0, y0):
@@ -147,7 +145,7 @@ def test_nonfinite_center(integrmode, x0, y0):
         ellipse.fit_image(integration_mode=integrmode)
 
 
-@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+@pytest.mark.parametrize('integrmode', ['mean', 'median'])
 def test_zero_inner_sma(integrmode):
     """
     Test the area integration modes when the inner bounding ellipse of
@@ -188,8 +186,8 @@ def test_array_like_image():
     assert_array_equal(sample.extract(), expected.extract())
 
 
-@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR, MEAN,
-                                        MEDIAN])
+@pytest.mark.parametrize('integrmode', ['nearest_neighbor', 'bilinear', 'mean',
+                                        'median'])
 def test_nonfinite_values(integrmode):
     """
     Test that nonfinite values are excluded from the sample, like
@@ -249,7 +247,7 @@ def test_update_keeps_fixed_parameters():
     assert list(sample.geometry._fix) == [False, False, True, False]
 
 
-@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+@pytest.mark.parametrize('integrmode', ['mean', 'median'])
 def test_large_step_sectors(integrmode):
     """
     Test the area integration modes when the step is larger than twice
@@ -287,7 +285,7 @@ def test_sclip_constant_sample():
     """
     data = np.full((100, 100), 5.0)
     sample = EllipseSample(data, 10.0, n_clip=3,
-                           integration_mode=NEAREST_NEIGHBOR)
+                           integration_mode='nearest_neighbor')
     sample.extract()
     assert sample.n_total > 50
     assert sample.n_valid == sample.n_total
@@ -477,7 +475,7 @@ def test_sample_copy_and_pickle():
                           ('eps', 'ellipticity', 0.3),
                           ('position_angle', 'orientation', 0.5),
                           ('sclip', 'clip_sigma', 2.5),
-                          ('integrmode', 'integration_mode', MEAN)])
+                          ('integrmode', 'integration_mode', 'mean')])
 def test_sample_deprecated_keywords(old, new, value):
     data = make_test_image(seed=0)
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):

@@ -9,14 +9,16 @@ from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose
 from scipy.optimize import leastsq
 
+from photutils.isophote import harmonics
 from photutils.isophote.ellipse import Ellipse
-from photutils.isophote.fitter import EllipseFitter
+from photutils.isophote.fitter import _EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.harmonics import (first_and_second_harmonic_function,
-                                          fit_first_and_second_harmonics,
-                                          fit_upper_harmonic)
+from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
+                                          _fit_first_and_second_harmonics,
+                                          _fit_upper_harmonic)
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 def test_harmonics_1():
@@ -64,7 +66,7 @@ def test_harmonics_2():
             + a2_0 * np.sin(2 * theta) + b2_0 * np.cos(2 * theta)
             + 0.01 * rng.standard_normal(npts))
 
-    harmonics = fit_first_and_second_harmonics(theta, data)
+    harmonics = _fit_first_and_second_harmonics(theta, data)
     y0, a1, b1, a2, b2 = harmonics[0]
     data_fit = (y0 + a1 * np.sin(theta) + b1 * np.cos(theta)
                 + a2 * np.sin(2 * theta) + b2 * np.cos(2 * theta)
@@ -89,7 +91,7 @@ def test_harmonics_3():
     data = (y0_0 + a1_0 * np.sin(order * theta) + b1_0 * np.cos(order * theta)
             + 0.01 * rng.standard_normal(npts))
 
-    harmonic = fit_upper_harmonic(theta, data, order)
+    harmonic = _fit_upper_harmonic(theta, data, order)
     y0, a1, b1 = harmonic[0]
     rng = np.random.default_rng(0)
     data_fit = (y0 + a1 * np.sin(order * theta) + b1 * np.cos(order * theta)
@@ -112,7 +114,7 @@ class TestFitEllipseSamples:
         sample = EllipseSample(self.data1, 40.0)
         s = sample.extract()
 
-        harmonics = fit_first_and_second_harmonics(s[0], s[2])
+        harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert_allclose(np.mean(y0), 200.019, atol=0.001)
@@ -122,7 +124,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), -0.00911, atol=0.001)
 
         # Check that harmonics subtract nicely.
-        model = first_and_second_harmonic_function(
+        model = _first_and_second_harmonic_function(
             s[0], np.array([y0, a1, b1, a2, b2]))
         residual = s[2] - model
 
@@ -134,7 +136,7 @@ class TestFitEllipseSamples:
         sample = EllipseSample(self.data1, 40.0, ellipticity=0.1)
         s = sample.extract()
 
-        harmonics = fit_first_and_second_harmonics(s[0], s[2])
+        harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert_allclose(np.mean(y0), 188.686, atol=0.001)
@@ -148,7 +150,7 @@ class TestFitEllipseSamples:
         sample = EllipseSample(self.data1, x0=220.0, y0=210.0, sma=40.0)
         s = sample.extract()
 
-        harmonics = fit_first_and_second_harmonics(s[0], s[2])
+        harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert_allclose(np.mean(y0), 152.660, atol=0.001)
@@ -161,7 +163,7 @@ class TestFitEllipseSamples:
         sample = EllipseSample(self.data2, 40.0, ellipticity=0.4)
         s = sample.extract()
 
-        harmonics = fit_first_and_second_harmonics(s[0], s[2])
+        harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
         assert_allclose(np.mean(y0), 245.102, atol=0.001)
@@ -173,7 +175,7 @@ class TestFitEllipseSamples:
     def test_fit_upper_harmonics(self):
         data = make_test_image(noise=1.0e-10, seed=0)
         sample = EllipseSample(data, 40)
-        fitter = EllipseFitter(sample)
+        fitter = _EllipseFitter(sample)
         iso = fitter.fit(maxiters=400)
 
         assert_allclose(iso.a3, 6.825e-7, atol=1.0e-8)
@@ -260,9 +262,9 @@ def test_harmonic_fits_exact():
     """
     phi = np.linspace(0.0, 2 * np.pi, 50, endpoint=False)
     coeffs = np.array([100.0, 1e-3, -2e-3, 3.0, -4.0])
-    intensities = first_and_second_harmonic_function(phi, coeffs)
-    fit_coeffs, covariance = fit_first_and_second_harmonics(phi,
-                                                            intensities)
+    intensities = _first_and_second_harmonic_function(phi, coeffs)
+    fit_coeffs, covariance = _fit_first_and_second_harmonics(phi,
+                                                             intensities)
     assert_allclose(fit_coeffs, coeffs, rtol=0, atol=1e-12)
 
     # For angles sampled uniformly over the full circle, the harmonic
@@ -273,7 +275,7 @@ def test_harmonic_fits_exact():
     assert_allclose(covariance, expected, rtol=0, atol=1e-15)
 
     intensities = 10.0 + 2e-4 * np.sin(4 * phi) - 3e-4 * np.cos(4 * phi)
-    fit_coeffs, covariance = fit_upper_harmonic(phi, intensities, 4)
+    fit_coeffs, covariance = _fit_upper_harmonic(phi, intensities, 4)
     assert_allclose(fit_coeffs, [10.0, 2e-4, -3e-4], rtol=0, atol=1e-12)
     expected = np.diag([1.0, 2.0, 2.0]) / n_points
     assert_allclose(covariance, expected, rtol=0, atol=1e-15)
@@ -283,10 +285,10 @@ def test_harmonic_fits_too_few_points():
     phi = np.array([0.0, 1.0, 2.0, 3.0])
     match = 'At least 5 data points are required'
     with pytest.raises(ValueError, match=match):
-        fit_first_and_second_harmonics(phi, phi)
+        _fit_first_and_second_harmonics(phi, phi)
     match = 'At least 3 data points are required'
     with pytest.raises(ValueError, match=match):
-        fit_upper_harmonic(phi[:2], phi[:2], 3)
+        _fit_upper_harmonic(phi[:2], phi[:2], 3)
 
 
 def test_harmonic_fit_short_arc():
@@ -298,7 +300,7 @@ def test_harmonic_fit_short_arc():
     phi = 1.0 + 0.05 * np.arange(17) / 16.0
     rng = np.random.default_rng(0)
     intensities = 100.0 + rng.standard_normal(len(phi))
-    coeffs, covariance = fit_first_and_second_harmonics(phi, intensities)
+    coeffs, covariance = _fit_first_and_second_harmonics(phi, intensities)
 
     # The reference covariance matrix is computed from the QR
     # decomposition of the design matrix.
@@ -320,7 +322,7 @@ def test_harmonic_fit_degenerate_angles(phi):
     constrain all of the harmonic coefficients.
     """
     intensities = 10.0 + np.arange(len(phi))
-    coeffs, covariance = fit_first_and_second_harmonics(phi, intensities)
+    coeffs, covariance = _fit_first_and_second_harmonics(phi, intensities)
     assert np.all(np.isfinite(coeffs))
     assert covariance is None
 
@@ -351,7 +353,22 @@ def test_harmonic_fit_singular():
     Test that the covariance matrix is None for a singular fit.
     """
     phi = np.zeros(10)
-    coeffs, covariance = fit_first_and_second_harmonics(phi,
-                                                        np.arange(10.0))
+    coeffs, covariance = _fit_first_and_second_harmonics(phi,
+                                                         np.arange(10.0))
     assert coeffs.shape == (5,)
     assert covariance is None
+
+
+def test_harmonic_functions_deprecated():
+    phi = np.linspace(0.0, 2.0 * np.pi, 20, endpoint=False)
+    coeffs = np.array([1.0, 0.1, 0.2, 0.3, 0.4])
+    match = 'version 3.2'
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        values = harmonics.first_and_second_harmonic_function(phi, coeffs)
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        fit_coeffs, _ = harmonics.fit_first_and_second_harmonics(phi,
+                                                                 values)
+    assert_allclose(fit_coeffs, coeffs, atol=1.0e-10)
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        fit_coeffs, _ = harmonics.fit_upper_harmonic(phi, values, 3)
+    assert fit_coeffs.shape == (3,)

@@ -11,10 +11,11 @@ import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.isophote.geometry import _HARMONIC_PARAMETERS
-from photutils.isophote.harmonics import (first_and_second_harmonic_function,
-                                          fit_first_and_second_harmonics)
+from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
+                                          _fit_first_and_second_harmonics)
 from photutils.isophote.isophote import Isophote
 from photutils.utils._deprecation import deprecated_renamed_argument
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['EllipseFitter']
 
@@ -35,7 +36,7 @@ _ORIENTATION_INDEX = list(_HARMONIC_PARAMETERS.values()).index('orientation')
 _ELLIPTICITY_INDEX = list(_HARMONIC_PARAMETERS.values()).index('ellipticity')
 
 
-class EllipseFitter:
+class _EllipseFitter:
     """
     Class to fit ellipses.
 
@@ -160,8 +161,7 @@ class EllipseFitter:
         >>> import numpy as np
         >>> from astropy.modeling.models import Gaussian2D
         >>> from photutils.datasets import make_noise_image
-        >>> from photutils.isophote import (EllipseFitter, EllipseGeometry,
-        ...                                 EllipseSample)
+        >>> from photutils.isophote import Ellipse, EllipseGeometry
         >>> model = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40))
         >>> y, x = np.mgrid[0:150, 0:150]
         >>> data = model(x, y) + make_noise_image((150, 150), mean=0.0,
@@ -169,9 +169,8 @@ class EllipseFitter:
         >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20,
         ...                            ellipticity=0.5,
         ...                            orientation=np.deg2rad(30))
-        >>> sample = EllipseSample(data, geometry.sma, geometry=geometry)
-        >>> fitter = EllipseFitter(sample)
-        >>> isophote = fitter.fit()
+        >>> ellipse = Ellipse(data, geometry=geometry)
+        >>> isophote = ellipse.fit_isophote(20)
         >>> isophote.stop_code
         0
         """
@@ -253,8 +252,8 @@ class EllipseFitter:
                        f'{sample.geometry.sma}')
             else:
                 try:
-                    coeffs = fit_first_and_second_harmonics(values[0],
-                                                            values[2])[0]
+                    coeffs = _fit_first_and_second_harmonics(values[0],
+                                                             values[2])[0]
                 except Exception as exc:
                     msg = ('The harmonic fit failed at SMA '
                            f'{sample.geometry.sma}: {exc}')
@@ -280,7 +279,7 @@ class EllipseFitter:
             # Check if converged. As in the STSDAS ellipse task, the
             # residual rms is scaled by the square root of the sector
             # area to account for the smoothing from area averaging.
-            model = first_and_second_harmonic_function(values[0], coeffs)
+            model = _first_and_second_harmonic_function(values[0], coeffs)
             residual = values[2] - model
 
             if ((convergence * np.sqrt(sample.sector_area) * np.std(residual))
@@ -531,7 +530,7 @@ def _correct_ellipticity(sample, harmonic):
 
 # The parameter corrector for each harmonic coefficient. The correctors
 # are listed in the order of the coefficients returned by
-# fit_first_and_second_harmonics, which is also the order of the
+# _fit_first_and_second_harmonics, which is also the order of the
 # ``fix`` array of EllipseGeometry.
 _CORRECTORS_BY_COEFFICIENT = {
     'a1': _correct_center_a1,
@@ -541,3 +540,24 @@ _CORRECTORS_BY_COEFFICIENT = {
 }
 _CORRECTORS = [_CORRECTORS_BY_COEFFICIENT[name]
                for name in _HARMONIC_PARAMETERS]
+
+
+class EllipseFitter(_EllipseFitter):
+    """
+    Class to fit ellipses.
+
+    .. deprecated:: 3.2
+        This class is deprecated and will be removed in version 4.0.
+        Use `~photutils.isophote.Ellipse.fit_isophote` instead.
+
+    Parameters
+    ----------
+    sample : `~photutils.isophote.EllipseSample` instance
+        The sample data to be fitted.
+    """
+
+    def __init__(self, sample):
+        msg = ('EllipseFitter was deprecated in version 3.2 and will be '
+               'removed in version 4.0. Use Ellipse.fit_isophote instead.')
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        super().__init__(sample)

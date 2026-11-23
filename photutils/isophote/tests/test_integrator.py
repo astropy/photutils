@@ -9,13 +9,15 @@ from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose, assert_array_equal
 
+import photutils.isophote
 from photutils.datasets.load import _get_path
+from photutils.isophote import integrator
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.integrator import (BILINEAR, INTEGRATORS, MEAN, MEDIAN,
-                                           NEAREST_NEIGHBOR)
+from photutils.isophote.integrator import _INTEGRATORS
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.mark.remote_data
@@ -27,7 +29,7 @@ class TestData:
         self.data = hdu[0].data
         hdu.close()
 
-    def make_sample(self, *, masked=False, sma=40.0, integrmode=BILINEAR):
+    def make_sample(self, *, masked=False, sma=40.0, integrmode='bilinear'):
         if masked:
             data = np.ma.masked_values(self.data, 200.0, atol=10.0, rtol=0.0)
         else:
@@ -73,7 +75,7 @@ class TestUnmasked(TestData):
         assert sample.n_valid == 57
 
     def test_nearest_neighbor(self):
-        s, sample = self.make_sample(integrmode=NEAREST_NEIGHBOR)
+        s, sample = self.make_sample(integrmode='nearest_neighbor')
 
         assert len(s[0]) == 225
         # Intensities
@@ -87,7 +89,7 @@ class TestUnmasked(TestData):
         assert sample.n_valid == 225
 
     def test_mean(self):
-        s, sample = self.make_sample(integrmode=MEAN)
+        s, sample = self.make_sample(integrmode='mean')
 
         assert len(s[0]) == 64
         # Intensities
@@ -102,7 +104,7 @@ class TestUnmasked(TestData):
         assert sample.n_valid == 64
 
     def test_mean_small(self):
-        s, sample = self.make_sample(sma=5.0, integrmode=MEAN)
+        s, sample = self.make_sample(sma=5.0, integrmode='mean')
 
         assert len(s[0]) == 29
         # Intensities
@@ -117,7 +119,7 @@ class TestUnmasked(TestData):
         assert sample.n_valid == 29
 
     def test_median(self):
-        s, sample = self.make_sample(integrmode=MEDIAN)
+        s, sample = self.make_sample(integrmode='median')
 
         assert len(s[0]) == 64
         # Intensities
@@ -135,7 +137,7 @@ class TestUnmasked(TestData):
 @pytest.mark.remote_data
 class TestMasked(TestData):
     def test_bilinear(self):
-        s, sample = self.make_sample(masked=True, integrmode=BILINEAR)
+        s, sample = self.make_sample(masked=True, integrmode='bilinear')
 
         assert len(s[0]) == 157
         # Intensities
@@ -149,7 +151,7 @@ class TestMasked(TestData):
         assert sample.n_valid == 157
 
     def test_mean(self):
-        s, sample = self.make_sample(masked=True, integrmode=MEAN)
+        s, sample = self.make_sample(masked=True, integrmode='mean')
 
         assert len(s[0]) == 51
         # Intensities
@@ -165,7 +167,7 @@ class TestMasked(TestData):
 
 
 @pytest.mark.parametrize('integrmode',
-                         [NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN])
+                         ['nearest_neighbor', 'bilinear', 'mean', 'median'])
 def test_masked_and_nonfinite(integrmode):
     """
     Test that masked pixels and nonfinite pixels are excluded in the
@@ -191,7 +193,7 @@ def test_masked_and_nonfinite(integrmode):
 
 
 @pytest.mark.parametrize('integrmode',
-                         [NEAREST_NEIGHBOR, BILINEAR, MEAN, MEDIAN])
+                         ['nearest_neighbor', 'bilinear', 'mean', 'median'])
 def test_masked_infinite_values(integrmode):
     """
     Test that infinite values of both signs in masked pixels do not
@@ -214,7 +216,7 @@ def test_masked_infinite_values(integrmode):
     assert_array_equal(sample_inf.extract(), sample.extract())
 
 
-@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR])
+@pytest.mark.parametrize('integrmode', ['nearest_neighbor', 'bilinear'])
 @pytest.mark.parametrize('x0', [1.0e30, -1.0e30])
 def test_very_large_path_coordinates(integrmode, x0):
     """
@@ -230,7 +232,7 @@ def test_very_large_path_coordinates(integrmode, x0):
     assert sample.n_valid == 0
 
 
-@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+@pytest.mark.parametrize('integrmode', ['mean', 'median'])
 def test_area_sectors_outside_image(integrmode):
     """
     Test that the area integrators skip the sectors that are not
@@ -263,8 +265,8 @@ def test_median_integrator_value(values, expected):
     average of the two middle values, as in the STSDAS ellipse task.
     """
     geometry = EllipseGeometry(10.0, 10.0, 5.0, 0.2, 0.0)
-    integrator = INTEGRATORS[MEDIAN](np.zeros((20, 20)), geometry, [], [],
-                                     [])
+    integrator = _INTEGRATORS['median'](np.zeros((20, 20)), geometry, [], [],
+                                        [])
     assert integrator.compute_sample_value(np.array(values)) == expected
 
 
@@ -274,7 +276,7 @@ def _sample_point(integrmode, data, x, y):
     """
     geometry = EllipseGeometry(x, y, 1.0, 0.0, 0.0)
     intensities = []
-    integrator = INTEGRATORS[integrmode](data, geometry, [], [], intensities)
+    integrator = _INTEGRATORS[integrmode](data, geometry, [], [], intensities)
     integrator.integrate(0.0, 0.0)
     return intensities
 
@@ -293,7 +295,7 @@ def test_bilinear_edges(x, y, expected):
     the first pixel center instead of extrapolating to them.
     """
     data = np.array([[0.0, 10.0], [0.0, 10.0]])
-    assert_allclose(_sample_point(BILINEAR, data, x, y), expected)
+    assert_allclose(_sample_point('bilinear', data, x, y), expected)
 
 
 @pytest.mark.parametrize(('x', 'y', 'expected'),
@@ -316,10 +318,10 @@ def test_nearest_neighbor_pixel(x, y, expected):
     Pixel centers are at integer coordinates.
     """
     data = np.tile(np.arange(4.0) * 10.0, (4, 1))
-    assert_allclose(_sample_point(NEAREST_NEIGHBOR, data, x, y), expected)
+    assert_allclose(_sample_point('nearest_neighbor', data, x, y), expected)
 
 
-@pytest.mark.parametrize('integrmode', [NEAREST_NEIGHBOR, BILINEAR])
+@pytest.mark.parametrize('integrmode', ['nearest_neighbor', 'bilinear'])
 def test_fit_center(integrmode):
     """
     Test that the fitted center of a symmetric source is not offset.
@@ -334,7 +336,7 @@ def test_fit_center(integrmode):
     assert_allclose(np.median(isolist.y0), 50.0, atol=0.05)
 
 
-@pytest.mark.parametrize('integrmode', [MEAN, MEDIAN])
+@pytest.mark.parametrize('integrmode', ['mean', 'median'])
 def test_area_integrator_full_sectors(integrmode):
     """
     Test that the area integrators sample whole sectors, including a
@@ -354,3 +356,28 @@ def test_area_integrator_full_sectors(integrmode):
     good = np.abs(angles) < 3.0
     assert np.any(angles[good] < 0.0)
     assert_allclose(values[good], angles[good], atol=0.012)
+
+
+@pytest.mark.parametrize('name', ['BILINEAR', 'NEAREST_NEIGHBOR', 'MEAN',
+                                  'MEDIAN', 'INTEGRATORS'])
+def test_integrator_constants_deprecated(name):
+    assert name not in integrator.__all__
+    assert name not in vars(photutils.isophote)
+    with pytest.warns(PhotutilsDeprecationWarning, match=name):
+        value = getattr(photutils.isophote, name)
+    with pytest.warns(PhotutilsDeprecationWarning, match=name):
+        assert getattr(integrator, name) == value
+
+
+def test_integrator_getattr_unknown_name():
+    for module in (photutils.isophote, integrator):
+        assert not hasattr(module, 'NOT_A_NAME')
+        with pytest.raises(AttributeError, match='NOT_A_NAME'):
+            module.NOT_A_NAME  # noqa: B018
+
+
+def test_isophote_wildcard_import():
+    namespace = {}
+    exec('from photutils.isophote import *', namespace)  # noqa: S102
+    assert 'Ellipse' in namespace
+    assert 'BILINEAR' not in namespace

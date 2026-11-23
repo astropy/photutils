@@ -530,6 +530,22 @@ API Changes
     instead. Its ``fill`` argument is now the keyword-only
     ``fill_value`` argument. [#2568]
 
+  - The ``EllipseFitter`` class, the ``first_and_second_harmonic_function``,
+    ``fit_first_and_second_harmonics``, and ``fit_upper_harmonic``
+    functions, the ``Isophote.fix_geometry`` method, and the
+    comparison operators of ``Isophote`` are deprecated and will be
+    removed in version 4.0. Use ``Ellipse.fit_isophote`` instead of
+    ``EllipseFitter``, and compare the ``sma`` values instead of the
+    isophotes. The harmonic functions and ``fix_geometry`` have no
+    public replacement. The ``BILINEAR``, ``NEAREST_NEIGHBOR``,
+    ``MEAN``, ``MEDIAN``, and ``INTEGRATORS`` constants of
+    ``photutils.isophote.integrator`` are deprecated and will be
+    removed in version 4.0. Pass the integration mode as a string, such
+    as ``'bilinear'``, instead. These constants are no longer in the
+    ``__all__`` of the integrator module, so
+    ``from photutils.isophote import *`` no longer provides them.
+    [#2568]
+
   - ``build_ellipse_model`` now raises a ``ValueError`` if the input
     isophote list contains fewer than 4 isophotes with a finite
     intensity or is not sorted by strictly increasing semimajor axis

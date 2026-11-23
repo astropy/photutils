@@ -11,7 +11,7 @@ import numpy as np
 
 from photutils.isophote._polar_path import compute_polar_path
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.integrator import INTEGRATORS
+from photutils.isophote.integrator import _INTEGRATORS
 from photutils.utils._deprecation import (deprecated_attribute,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs,
@@ -265,9 +265,9 @@ class EllipseSample:
                  n_clip=0, linear_growth=False,
                  integration_mode='bilinear', geometry=None):
         image = _validate_image(image)
-        if integration_mode not in INTEGRATORS:
+        if integration_mode not in _INTEGRATORS:
             msg = ('integration_mode must be one of '
-                   f'{sorted(INTEGRATORS)}')
+                   f'{sorted(_INTEGRATORS)}')
             raise ValueError(msg)
         self.image = image
         self.integration_mode = integration_mode
@@ -446,7 +446,7 @@ class EllipseSample:
         self.n_valid = 0
 
         # Build integrator.
-        integrator = INTEGRATORS[self.integration_mode](
+        integrator = _INTEGRATORS[self.integration_mode](
             self.image, self.geometry, angles, radii, intensities)
 
         # Initialize walk along elliptical path.
@@ -469,10 +469,10 @@ class EllipseSample:
             radii = []
             intensities = []
             if area < 1.0:
-                integrator = INTEGRATORS['bilinear'](
+                integrator = _INTEGRATORS['bilinear'](
                     self.image, self.geometry, angles, radii, intensities)
             else:
-                integrator = INTEGRATORS[self.integration_mode](
+                integrator = _INTEGRATORS[self.integration_mode](
                     self.image, self.geometry, angles, radii, intensities)
 
         # Walk along elliptical path, integrating at specified places
@@ -556,8 +556,8 @@ class EllipseSample:
         radii = []
         intensities = []
 
-        integrator = INTEGRATORS['bilinear'](self.image, self.geometry,
-                                             angles, radii, intensities)
+        integrator = _INTEGRATORS['bilinear'](self.image, self.geometry,
+                                              angles, radii, intensities)
         integrator.integrate(0.0, 0.0)
 
         self.n_total = 1
@@ -589,7 +589,7 @@ class EllipseSample:
         one third of a reference gradient or measured with a relative
         error smaller than 20%. The STSDAS task does not use the
         relative error. The reference is the gradient from the last
-        update of this sample. `~photutils.isophote.EllipseFitter`
+        update of this sample. `~photutils.isophote.Ellipse.fit_isophote`
         sets it to the gradient of its previous iteration. If there is
         no reference, the first estimate plus its error is used. If
         neither estimate is meaningful, the gradient is set to 0.8

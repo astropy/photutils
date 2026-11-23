@@ -15,7 +15,7 @@ from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse, _central_isophote
-from photutils.isophote.fitter import EllipseFitter
+from photutils.isophote.fitter import _EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import (_ISOPHOTE_PROPERTIES, Isophote,
                                          IsophoteList)
@@ -39,7 +39,7 @@ class TestIsophote:
         # Low noise image, fitted perfectly by sample
         data = make_test_image(noise=1.0e-10, seed=0)
         sample = EllipseSample(data, 40)
-        fitter = EllipseFitter(sample)
+        fitter = _EllipseFitter(sample)
         iso = fitter.fit(maxiters=400)
 
         assert iso.valid
@@ -70,7 +70,7 @@ class TestIsophote:
 
     def test_m51(self):
         sample = EllipseSample(self.data, 21.44)
-        fitter = EllipseFitter(sample)
+        fitter = _EllipseFitter(sample)
         iso = fitter.fit()
 
         assert iso.valid
@@ -114,7 +114,7 @@ class TestIsophote:
         # fits with 20 iterations, which is the minimum number of
         # iterations (2 * minit) for the first isophote.
         sample = EllipseSample(self.data, 10)
-        fitter = EllipseFitter(sample)
+        fitter = _EllipseFitter(sample)
         iso = fitter.fit(miniters=20)
 
         assert iso.valid
@@ -122,6 +122,8 @@ class TestIsophote:
         assert iso.n_iter == 20
 
 
+@pytest.mark.filterwarnings('ignore::photutils.utils.exceptions.'
+                            'PhotutilsDeprecationWarning')
 def test_isophote_comparisons():
     data = make_test_image(seed=0)
     sma1 = 40.0
@@ -162,7 +164,7 @@ def test_isophote_comparisons():
 
 def test_fix_geometry():
     """
-    Test that a sample re-extracted after ``fix_geometry`` lies on the
+    Test that a sample re-extracted after ``_fix_geometry`` lies on the
     new ellipse.
     """
     data = make_test_image(seed=0)
@@ -175,7 +177,7 @@ def test_fix_geometry():
     iso1 = Isophote(sample1, 0, valid=True, stop_code=0)
     iso2 = Isophote(sample2, 0, valid=True, stop_code=0)
 
-    iso1.fix_geometry(iso2)
+    iso1._fix_geometry(iso2)
     sample1._values = None
     sample1._update(fixed_parameters=DEFAULT_FIX)
 
@@ -827,3 +829,23 @@ def test_get_names_deprecated():
                       match='properties') as record:
         assert isolist.get_names() == isolist.properties
     assert record[0].filename == __file__
+
+
+def test_isophote_comparisons_deprecated():
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image()
+    match = 'omparing isophotes'
+    for compare in (lambda a, b: a < b, lambda a, b: a > b,
+                    lambda a, b: a <= b, lambda a, b: a >= b,
+                    lambda a, b: a == b):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            compare(isolist[1], isolist[2])
+
+
+def test_fix_geometry_deprecated():
+    data = make_test_image(seed=0)
+    sample = EllipseSample(data, 20.0)
+    sample._update(fixed_parameters=DEFAULT_FIX)
+    iso = Isophote(sample, 0, valid=True, stop_code=0)
+    with pytest.warns(PhotutilsDeprecationWarning, match='version 3.2'):
+        iso.fix_geometry(iso)

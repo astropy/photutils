@@ -61,7 +61,6 @@ from astropy.table import Table
 
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
-from photutils.isophote.integrator import BILINEAR
 
 
 @pytest.mark.parametrize('name', ['synth_highsnr'])
@@ -73,7 +72,7 @@ def test_regression(name):
     at synth_table_mean.txt to compare results visually with
     synth_table_mean.fits.
     """
-    integrmode = BILINEAR
+    integrmode = 'bilinear'
     verbose = False
     filename = f'{name}_table.fits'
     path = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
@@ -184,7 +183,7 @@ def test_regression(name):
             tniter.extend((niter_i, niter_t, niter_d))
             tstop.extend((stop_i, stop_t, stop_d))
 
-        if name == 'synth_highsnr' and integrmode == BILINEAR:
+        if name == 'synth_highsnr' and integrmode == 'bilinear':
             assert abs(x0_d) <= 0.21
             assert abs(y0_d) <= 0.21
 

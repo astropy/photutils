@@ -18,10 +18,10 @@ __all__ = ['EllipseGeometry']
 
 
 # The first and second harmonic coefficients of the isophote fit, in
-# the order returned by fit_first_and_second_harmonics after the mean,
+# the order returned by _fit_first_and_second_harmonics after the mean,
 # and the ellipse parameter that each one corrects. The ``fix`` array of
-# EllipseGeometry and the parameter correctors of EllipseFitter follow
-# this order.
+# EllipseGeometry and the parameter correctors of the isophote fitter
+# follow this order.
 _HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center',
                         'a2': 'orientation', 'b2': 'ellipticity'}
 

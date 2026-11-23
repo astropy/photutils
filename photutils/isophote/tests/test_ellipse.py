@@ -90,7 +90,7 @@ class TestEllipse:
         assert isinstance(isophote_list[0], Isophote)
 
         # Verify that the list is properly sorted in semimajor axis length.
-        assert isophote_list[-1] > isophote_list[0]
+        assert isophote_list[-1].sma > isophote_list[0].sma
 
         # The fit should stop when too many sample points fall outside
         # the image frame.
@@ -105,7 +105,7 @@ class TestEllipse:
                                           max_sma=80.0)
 
         # Verify that the list is properly sorted in semimajor axis length.
-        assert isophote_list[-1] > isophote_list[0]
+        assert isophote_list[-1].sma > isophote_list[0].sma
 
         # Difference in sma between successive isophotes must be constant.
         step = isophote_list[-1].sma - isophote_list[-2].sma

@@ -8,9 +8,9 @@ import warnings
 import astropy.units as u
 import numpy as np
 
-from photutils.isophote.harmonics import (first_and_second_harmonic_function,
-                                          fit_first_and_second_harmonics,
-                                          fit_upper_harmonic)
+from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
+                                          _fit_first_and_second_harmonics,
+                                          _fit_upper_harmonic)
 from photutils.isophote.model import _make_model_image
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
@@ -134,7 +134,7 @@ class Isophote:
               has the best geometry found before that. This code is
               returned by
               :meth:`~photutils.isophote.Ellipse.fit_isophote` and
-              :meth:`~photutils.isophote.EllipseFitter.fit`.
+              :meth:`~photutils.isophote.Ellipse.fit_isophote`.
               :meth:`~photutils.isophote.Ellipse.fit_image` replaces
               such an isophote with one that has the geometry of a
               previously fitted isophote and a stop code of 5. If it is
@@ -370,34 +370,47 @@ class Isophote:
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since=_DEPRECATED_SINCE, until='4.0')
 
-    # These methods are useful for sorting lists of instances. The
-    # isophotes are compared by their semimajor axis length. Objects
-    # without a semimajor axis length are not comparable.
+    # The comparison methods are deprecated. Compare the ``sma`` values
+    # instead. The isophotes are compared by their semimajor axis
+    # length. Objects without a semimajor axis length are not
+    # comparable.
+    @staticmethod
+    def _warn_comparison():
+        msg = ('Comparing isophotes was deprecated in version 3.2 and '
+               'will be removed in version 4.0. Compare the isophote.sma '
+               'values instead.')
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+
     def __lt__(self, other):
+        self._warn_comparison()
         try:
             return self.sma < other.sma
         except AttributeError:
             return NotImplemented
 
     def __gt__(self, other):
+        self._warn_comparison()
         try:
             return self.sma > other.sma
         except AttributeError:
             return NotImplemented
 
     def __le__(self, other):
+        self._warn_comparison()
         try:
             return self.sma <= other.sma
         except AttributeError:
             return NotImplemented
 
     def __ge__(self, other):
+        self._warn_comparison()
         try:
             return self.sma >= other.sma
         except AttributeError:
             return NotImplemented
 
     def __eq__(self, other):
+        self._warn_comparison()
         try:
             return self.sma == other.sma
         except AttributeError:
@@ -519,9 +532,9 @@ class Isophote:
 
         try:
             # Upper (third and fourth) harmonics
-            up_coeffs, up_inv_hessian = fit_upper_harmonic(sample.angles,
-                                                           sample.intensities,
-                                                           n)
+            up_coeffs, up_inv_hessian = _fit_upper_harmonic(sample.angles,
+                                                            sample.intensities,
+                                                            n)
 
             scale = self.sma * abs(sample.gradient)
             a = up_coeffs[1] / scale
@@ -572,10 +585,10 @@ class Isophote:
             return
 
         try:
-            coeffs, covariance = fit_first_and_second_harmonics(
+            coeffs, covariance = _fit_first_and_second_harmonics(
                 self.sample.angles, self.sample.intensities)
-            model = first_and_second_harmonic_function(self.sample.angles,
-                                                       coeffs)
+            model = _first_and_second_harmonic_function(self.sample.angles,
+                                                        coeffs)
             var_residual = np.std(self.sample.intensities - model,
                                   ddof=len(coeffs)) ** 2
             errors = np.sqrt(np.diagonal(covariance * var_residual))
@@ -603,6 +616,22 @@ class Isophote:
             self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
             self.ellipticity_err = 0.0
 
+    def _fix_geometry(self, isophote):
+        """
+        Fix the geometry of this isophote to be identical to the input
+        isophote. See the deprecated ``fix_geometry`` method.
+        """
+        self.sample.geometry.ellipticity = isophote.sample.geometry.ellipticity
+        self.sample.geometry._orientation_rad = (
+            isophote.sample.geometry._orientation_rad)
+        self.sample.geometry.x0 = isophote.sample.geometry.x0
+        self.sample.geometry.y0 = isophote.sample.geometry.y0
+
+        # The initial polar radius and sector width depend on the
+        # ellipticity, so they must be recomputed for the new geometry.
+        self.sample.geometry._reset_sma_dependent_attributes()
+
+    @deprecated('3.2', until='4.0')
     def fix_geometry(self, isophote):
         """
         Fix the geometry of a problematic isophote to be identical to
@@ -623,15 +652,7 @@ class Isophote:
         isophote : `~photutils.isophote.Isophote` instance
             The isophote from which to take the geometry information.
         """
-        self.sample.geometry.ellipticity = isophote.sample.geometry.ellipticity
-        self.sample.geometry._orientation_rad = (
-            isophote.sample.geometry._orientation_rad)
-        self.sample.geometry.x0 = isophote.sample.geometry.x0
-        self.sample.geometry.y0 = isophote.sample.geometry.y0
-
-        # The initial polar radius and sector width depend on the
-        # ellipticity, so they must be recomputed for the new geometry.
-        self.sample.geometry._reset_sma_dependent_attributes()
+        self._fix_geometry(isophote)
 
     def sampled_coordinates(self):
         """
@@ -724,7 +745,7 @@ class IsophoteList:
         """
         Sort the list of isophotes by semimajor axis length.
         """
-        self._list.sort()
+        self._list.sort(key=lambda iso: iso.sma)
 
     def insert(self, index, value):
         """
