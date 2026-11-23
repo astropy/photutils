@@ -371,9 +371,9 @@ An `~photutils.isophote.IsophoteList` is a list of
 length. Each attribute of an `~photutils.isophote.Isophote` is a
 single value. The same attribute of an
 `~photutils.isophote.IsophoteList` is an array with one value for each
-isophote. The first isophote in a list returned by
-:meth:`~photutils.isophote.Ellipse.fit_image` is the central pixel of
-the galaxy, with a semimajor axis length of zero.
+isophote. With the default ``min_sma`` of 0, the first isophote in a
+list returned by :meth:`~photutils.isophote.Ellipse.fit_image` is the
+central pixel of the galaxy, with a semimajor axis length of zero.
 
 An `~photutils.isophote.IsophoteList` can be indexed and sliced like a
 Python list. An index returns an `~photutils.isophote.Isophote` and a
@@ -406,6 +406,12 @@ Each isophote has a ``stop_code`` that tells how its fit ended:
 * 5: No meaningful gradient could be measured or the ellipse diverged.
   The isophote was extracted with the geometry of a previously fitted
   isophote.
+
+* -1: No meaningful gradient could be measured or the ellipse
+  diverged. This code is returned only by
+  :meth:`~photutils.isophote.Ellipse.fit_isophote`.
+  :meth:`~photutils.isophote.Ellipse.fit_image` replaces such an
+  isophote with one that has a stop code of 5.
 
 See the `~photutils.isophote.Isophote` documentation for the complete
 descriptions.
@@ -454,7 +460,7 @@ for each isophote. They can still be used to make a model image with
 an image along them, pass the list to
 :meth:`~photutils.isophote.Ellipse.measure_isophotes`::
 
-    >>> measured = ellipse.measure_isophotes(loaded)  # doctest: +SKIP
+    >>> measured = ellipse.measure_isophotes(loaded)
 
 The ``step`` and ``linear_growth`` keywords of ``from_table`` set the
 sampling annulus of each isophote for this measurement.
@@ -593,10 +599,11 @@ axis lengths from 10 to 90 pixels::
 
 Without rejection, the star and the companion pull the fitted centers
 by up to 6 pixels, the ellipticity reaches 0.53, and the fit stops at
-a semimajor axis length of about 92 pixels. With the mask and sigma
-clipping, the centers stay within 1 pixel of the galaxy center and the
-ellipticity stays between 0.39 and 0.42. The mask alone is not enough
-for this image, because the star still disturbs the fit.
+a semimajor axis length of about 92 pixels. Over this range of
+semimajor axis lengths, the mask and sigma clipping keep the centers
+within 1 pixel of the galaxy center and the ellipticity between 0.39
+and 0.42. The mask alone is not enough for this image, because the
+star still disturbs the fit.
 
 Let's plot the image with the masked region, and the residuals of the
 model images of the two fits (see :ref:`isophote-model-image`):
@@ -829,6 +836,10 @@ ellipse::
     ...                                 integration_mode='median')
     >>> combined = inner + outer
     >>> combined.sort()
+
+The ``+`` operator concatenates two lists, and the
+:meth:`~photutils.isophote.IsophoteList.sort` method sorts the
+isophotes by their semimajor axis lengths.
 
 The same approach helps when a fit stalls at some semimajor axis
 length, e.g., where the isophotes of the galaxy change shape or twist
@@ -1103,7 +1114,10 @@ gradient error exceeds ``max_gradient_rel_err``:
 
 .. doctest-skip::
 
-    >>> ellipse = Ellipse(data, geometry=geometry)
+    >>> geometry_known = EllipseGeometry(x0=160, y0=140, sma=20,
+    ...                                  ellipticity=0.4,
+    ...                                  orientation=40.0 * u.deg)
+    >>> ellipse = Ellipse(data, geometry=geometry_known)
     >>> isolist = ellipse.fit_image(max_iterative_sma=0.0, max_sma=60.0)
 
 The ``'mean'`` and ``'median'`` integration modes with a larger
