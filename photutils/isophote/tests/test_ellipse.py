@@ -4,6 +4,7 @@ Tests for the ellipse module.
 """
 
 import math
+import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import astropy.units as u
@@ -11,6 +12,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
+from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
@@ -435,6 +437,40 @@ class TestEllipse:
                                    getattr(isolist, name))
         assert not np.any(geometry._fix)
         assert not geometry.linear_growth
+
+    def test_fit_image_threads_shared_sigma_clip(self):
+        """
+        Test that concurrent fit_image calls that share a SigmaClip
+        object give the same results as serial calls.
+
+        Before astropy 8.1, a SigmaClip object stores its clipping
+        bounds on itself while it is called.
+        """
+        images = []
+        for idx in range(4):
+            data = make_test_image(background=100.0 * idx, seed=idx)
+            data[250:256, 290:296] += 2000.0
+            images.append(data)
+        sigma_clip = SigmaClip(sigma=2.5, maxiters=3)
+
+        def fit(data):
+            return Ellipse(data).fit_image(max_sma=30.0,
+                                           sigma_clip=sigma_clip)
+
+        expected = [fit(data) for data in images]
+        # A short switch interval makes the threads interleave often.
+        interval = sys.getswitchinterval()
+        sys.setswitchinterval(1.0e-6)
+        try:
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                results = list(executor.map(fit, images))
+        finally:
+            sys.setswitchinterval(interval)
+
+        for idx, result in enumerate(results):
+            isolist = expected[idx % len(images)]
+            assert_array_equal(result.n_flagged, isolist.n_flagged)
+            assert_array_equal(result.intensity, isolist.intensity)
 
     @pytest.mark.parametrize(('kwargs', 'fixed_names'),
                              [({'fix_center': True}, ('x0', 'y0')),
@@ -1003,13 +1039,14 @@ class TestMeasureIsophotes:
         Test that the sampling options are passed to the samples.
         """
         ellipse = Ellipse(self.data)
+        sigma_clip = SigmaClip(sigma=2.5, maxiters=3)
         isolist = ellipse.measure_isophotes(self.isolist[1:5],
                                             integration_mode='median',
-                                            clip_sigma=2.5, n_clip=3)
+                                            sigma_clip=sigma_clip)
         for iso in isolist:
             assert iso.sample.integration_mode == 'median'
-            assert iso.sample.clip_sigma == 2.5
-            assert iso.sample.n_clip == 3
+            assert iso.sample.sigma_clip.sigma == 2.5
+            assert iso.sample.sigma_clip.maxiters == 3
 
     def test_outside_image(self):
         """
@@ -1045,7 +1082,6 @@ FIT_IMAGE_RENAMES = [
     ('minit', 'miniters', 5), ('maxit', 'maxiters', 5),
     ('fflag', 'min_valid_fraction', 0.5),
     ('maxgerr', 'max_gradient_rel_err', 0.001),
-    ('sclip', 'clip_sigma', 2.5),
     ('integrmode', 'integration_mode', 'mean'),
     ('linear', 'linear_growth', True),
     ('maxrit', 'max_iterative_sma', 50.0),
@@ -1056,7 +1092,6 @@ FIT_IMAGE_RENAMES = [
 FIT_ISOPHOTE_RENAMES = [
     ('conver', 'convergence', 0.001), ('minit', 'miniters', 5),
     ('maxit', 'maxiters', 5), ('fflag', 'min_valid_fraction', 0.5),
-    ('sclip', 'clip_sigma', 2.5),
     ('integrmode', 'integration_mode', 'mean'),
     ('linear', 'linear_growth', True),
     ('maxrit', 'max_iterative_sma', 20.0),
@@ -1097,9 +1132,7 @@ def test_fit_image_renamed_keywords(old, new, value):
     data = make_test_image(seed=0)
     ellipse = Ellipse(data)
     # A linear step of 0.1 pixels would fit thousands of isophotes.
-    # The sigma-clip value has an effect only with clipping iterations.
-    extra = {'linear_growth': {'step': 5.0},
-             'clip_sigma': {'n_clip': 3}}.get(new, {})
+    extra = {'linear_growth': {'step': 5.0}}.get(new, {})
     expected = ellipse.fit_image(**{new: value}, **extra)
     # The value must change the result, so that a shim that dropped
     # the keyword would fail.
@@ -1116,11 +1149,11 @@ def test_fit_image_renamed_keywords(old, new, value):
 def test_fit_isophote_renamed_keywords(old, new, value):
     data = make_test_image(seed=0)
     ellipse = Ellipse(data)
-    # The sigma-clip value has an effect only with clipping iterations,
-    # and the minimum valid fraction only when data points are flagged.
-    extra = {'clip_sigma': {'n_clip': 3},
-             'min_valid_fraction': {'n_clip': 1,
-                                    'clip_sigma': 1.0}}.get(new, {})
+    # The minimum valid fraction has an effect only when data points
+    # are flagged.
+    sigma_clip = SigmaClip(sigma=1.0, maxiters=1, cenfunc='mean',
+                           stdfunc='std')
+    extra = {'min_valid_fraction': {'sigma_clip': sigma_clip}}.get(new, {})
     expected = ellipse.fit_isophote(40.0, **{new: value}, **extra)
     # The value must change the result, so that a shim that dropped
     # the keyword would fail.
@@ -1132,6 +1165,96 @@ def test_fit_isophote_renamed_keywords(old, new, value):
     with (pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"),
           pytest.raises(TypeError)):
         ellipse.fit_isophote(40.0, **{old: value, new: value}, **extra)
+
+
+# The deprecated sigma-clipping keywords
+LEGACY_CLIP_KWARGS = [{'sclip': 2.5, 'n_clip': 3},
+                      {'sclip': 2.5, 'nclip': 3}]
+
+
+def _legacy_sigma_clip():
+    """
+    Return the sigma clipping equivalent to ``LEGACY_CLIP_KWARGS``.
+    """
+    return SigmaClip(sigma=2.5, maxiters=3, cenfunc='mean', stdfunc='std')
+
+
+@pytest.mark.parametrize('kwargs', LEGACY_CLIP_KWARGS)
+def test_fit_image_deprecated_clip_keywords(kwargs):
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    expected = ellipse.fit_image(max_sma=60.0,
+                                 sigma_clip=_legacy_sigma_clip())
+    # The clipping must change the result, so that a shim that dropped
+    # the keywords would fail.
+    assert not _isophote_lists_equal(expected,
+                                     ellipse.fit_image(max_sma=60.0))
+    match = "Use argument 'sigma_clip' instead"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        result = ellipse.fit_image(max_sma=60.0, **kwargs)
+    assert len(record) == 2
+    assert _isophote_lists_equal(result, expected)
+
+
+@pytest.mark.parametrize('kwargs', LEGACY_CLIP_KWARGS)
+def test_fit_isophote_deprecated_clip_keywords(kwargs):
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    expected = ellipse.fit_isophote(40.0, sigma_clip=_legacy_sigma_clip())
+    assert not _isophotes_equal(expected, ellipse.fit_isophote(40.0))
+    match = "Use argument 'sigma_clip' instead"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        result = ellipse.fit_isophote(40.0, **kwargs)
+    assert len(record) == 2
+    assert _isophotes_equal(result, expected)
+
+
+def test_fit_image_positional_clip_values():
+    """
+    Test that the deprecated sigma-clipping values keep their
+    positions in the argument list.
+    """
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    expected = ellipse.fit_image(max_sma=60.0,
+                                 sigma_clip=_legacy_sigma_clip())
+    with pytest.warns(PhotutilsDeprecationWarning) as record:
+        result = ellipse.fit_image(None, 0.0, 60.0, 0.1, 0.05, 10, 50, 0.7,
+                                   0.5, 2.5, 3)
+    messages = sorted(str(item.message) for item in record)
+    assert len(messages) == 3
+    assert messages[0].startswith("'n_clip' was deprecated")
+    assert messages[1].startswith("'sclip' was deprecated")
+    assert 'positional' in messages[2]
+    assert _isophote_lists_equal(result, expected)
+
+
+def test_invalid_sigma_clip():
+    """
+    Test that an invalid sigma_clip raises an error even if no sample is
+    made.
+    """
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    match = 'sigma_clip must be a SigmaClip instance'
+    with pytest.raises(TypeError, match=match):
+        ellipse.fit_image(fix_center=True, fix_orientation=True,
+                          fix_ellipticity=True, sigma_clip=3.0)
+    with pytest.raises(TypeError, match=match):
+        ellipse.measure_isophotes([], sigma_clip=3.0)
+    with pytest.raises(TypeError, match=match):
+        ellipse.fit_isophote(40.0, sigma_clip=3.0)
+
+
+@pytest.mark.parametrize('method', ['fit_image', 'fit_isophote'])
+def test_deprecated_clip_keywords_with_sigma_clip(method):
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    args = (40.0,) if method == 'fit_isophote' else ()
+    match = 'sigma_clip cannot be used with the deprecated'
+    with (pytest.warns(PhotutilsDeprecationWarning, match="'n_clip'"),
+          pytest.raises(ValueError, match=match)):
+        getattr(ellipse, method)(*args, sigma_clip=SigmaClip(), n_clip=3)
 
 
 def test_fit_image_positional_order_unchanged():
@@ -1148,10 +1271,10 @@ def test_measure_isophotes_keywords_have_no_shim():
     data = make_test_image(seed=0)
     ellipse = Ellipse(data)
     isolist = ellipse.fit_image()
-    for old in ('sclip', 'integrmode'):
+    for old in ('sclip', 'n_clip', 'integrmode'):
         with pytest.raises(TypeError):
             ellipse.measure_isophotes(isolist, **{old: 3.0})
-    result = ellipse.measure_isophotes(isolist, clip_sigma=3.0,
+    result = ellipse.measure_isophotes(isolist, sigma_clip=SigmaClip(),
                                        integration_mode='mean')
     assert len(result) == len(isolist)
 

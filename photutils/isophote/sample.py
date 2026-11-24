@@ -8,6 +8,7 @@ import warnings
 
 import astropy.units as u
 import numpy as np
+from astropy.stats import SigmaClip
 
 from photutils.isophote._polar_path import compute_polar_path
 from photutils.isophote.geometry import (EllipseGeometry,
@@ -17,14 +18,14 @@ from photutils.isophote.integrator import _INTEGRATORS
 from photutils.utils._deprecation import (deprecated_attribute,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs,
-                                          deprecated_renamed_argument)
+                                          deprecated_renamed_argument,
+                                          warn_deprecated_attribute)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 # Remove in 4.0
 _DEPRECATED_SAMPLE_ATTRIBUTES = {
     'gradient_error': 'gradient_err',
     'gradient_relative_error': 'gradient_rel_err',
-    'nclip': 'n_clip',
 }
 
 __all__ = ['EllipseSample']
@@ -39,6 +40,156 @@ _GRADIENT_RADIUS_RETRY = 0.2
 # The largest relative error of a gradient that is meaningful by itself,
 # without being compared to a reference gradient.
 _MAX_GRADIENT_REL_ERR = 0.2
+
+
+def _copy_sigma_clip(sigma_clip):
+    """
+    Validate the input sigma clipping and return a copy of it.
+
+    Before astropy 8.1, a `~astropy.stats.SigmaClip` object stores
+    its clipping bounds on itself while it is called. A `SigmaClip`
+    object that is shared by concurrent fits would mix their bounds,
+    so each fit uses its own copy.
+
+    Parameters
+    ----------
+    sigma_clip : `~astropy.stats.SigmaClip` or `None`
+        The sigma clipping.
+
+    Returns
+    -------
+    sigma_clip : `~astropy.stats.SigmaClip` or `None`
+        A copy of the sigma clipping, or `None` for no sigma clipping.
+
+    Raises
+    ------
+    TypeError
+        If ``sigma_clip`` is not a `~astropy.stats.SigmaClip` instance
+        or `None`.
+    """
+    if sigma_clip is None:
+        return None
+    if not isinstance(sigma_clip, SigmaClip):
+        msg = 'sigma_clip must be a SigmaClip instance'
+        raise TypeError(msg)
+    return copy.copy(sigma_clip)
+
+
+# Remove in 4.0
+def _legacy_sigma_clip(sigma_clip, *, sclip, n_clip, nclip=None):
+    """
+    Return the sigma clipping defined by the deprecated ``sclip``,
+    ``n_clip``, and ``nclip`` keywords.
+
+    The legacy clipping is centered on the mean. It was skipped unless
+    the number of iterations was set, and its sigma value was 3 by
+    default.
+
+    Parameters
+    ----------
+    sigma_clip : `~astropy.stats.SigmaClip` or `None`
+        The value of the ``sigma_clip`` keyword. A copy of it is
+        returned if none of the deprecated keywords is set.
+
+    sclip : float or `None`
+        The sigma-clip sigma value.
+
+    n_clip, nclip : int or `None`
+        The number of sigma-clip iterations.
+
+    Returns
+    -------
+    sigma_clip : `~astropy.stats.SigmaClip` or `None`
+        The sigma clipping, or `None` for no sigma clipping.
+
+    Raises
+    ------
+    ValueError
+        If ``sigma_clip`` and a deprecated keyword are both set.
+
+    TypeError
+        If ``sigma_clip`` is not a `~astropy.stats.SigmaClip` instance
+        or `None`.
+    """
+    if n_clip is None:
+        n_clip = nclip
+    if sclip is None and n_clip is None:
+        return _copy_sigma_clip(sigma_clip)
+    if sigma_clip is not None:
+        msg = ('sigma_clip cannot be used with the deprecated sclip, '
+               'n_clip, or nclip keywords')
+        raise ValueError(msg)
+    if not n_clip:
+        return None
+    return SigmaClip(sigma=3.0 if sclip is None else sclip,
+                     maxiters=n_clip, cenfunc='mean', stdfunc='std')
+
+
+# Remove in 4.0
+def _deprecated_clip_attribute(name, since):
+    """
+    Make a property for a deprecated sigma-clipping attribute.
+
+    The property gets its value from the ``sigma_clip`` attribute, and
+    setting it replaces that attribute with one that has the new value
+    and keeps the other settings. Without sigma clipping, the ``sclip``
+    value is kept for a later ``n_clip`` value.
+
+    Parameters
+    ----------
+    name : {'sclip', 'n_clip', 'nclip'}
+        The deprecated attribute name.
+
+    since : str
+        The version in which the attribute was deprecated.
+
+    Returns
+    -------
+    result : property
+        The property to assign to the old name in the class body.
+    """
+    key = 'sclip' if name == 'sclip' else 'n_clip'
+
+    def legacy_values(self):  # numpydoc ignore=GL08
+        sigma_clip = self.sigma_clip
+        if sigma_clip is None:
+            return {'sclip': self._sclip, 'n_clip': 0}
+        return {'sclip': sigma_clip.sigma, 'n_clip': sigma_clip.maxiters}
+
+    def getter(self):  # numpydoc ignore=GL08
+        warn_deprecated_attribute(name, 'sigma_clip', since=since,
+                                  until='4.0', stacklevel=2)
+        return legacy_values(self)[key]
+
+    def setter(self, value):  # numpydoc ignore=GL08
+        warn_deprecated_attribute(name, 'sigma_clip', since=since,
+                                  until='4.0', stacklevel=2)
+        values = legacy_values(self)
+        values[key] = value
+        self._sclip = values['sclip']
+        sigma_clip = self.sigma_clip
+        if not values['n_clip']:
+            self.sigma_clip = None
+        elif sigma_clip is None:
+            self.sigma_clip = _legacy_sigma_clip(None, **values)
+        else:
+            # A new sigma value replaces the lower and upper values.
+            # Otherwise, they are kept.
+            sigma_lower = None if key == 'sclip' else sigma_clip.sigma_lower
+            sigma_upper = None if key == 'sclip' else sigma_clip.sigma_upper
+            self.sigma_clip = SigmaClip(
+                sigma=values['sclip'], sigma_lower=sigma_lower,
+                sigma_upper=sigma_upper, maxiters=values['n_clip'],
+                cenfunc=sigma_clip.cenfunc, stdfunc=sigma_clip.stdfunc,
+                grow=sigma_clip.grow)
+
+    doc = f"""
+    Deprecated sigma-clipping attribute.
+
+    .. deprecated:: {since}
+        Use ``sigma_clip`` instead.
+    """
+    return property(getter, setter, doc=doc)
 
 
 def _validate_image(image):
@@ -133,19 +284,20 @@ class EllipseSample:
             accepted as radians with the ``position_angle`` keyword or
             as a positional argument.
 
-    clip_sigma : float, optional
-        The sigma-clip sigma value. The default is 3.0.
+    sclip : float, optional
+        The sigma-clip sigma value.
 
         .. deprecated:: 3.2
-            The ``sclip`` keyword is deprecated. Use ``clip_sigma``
-            instead.
+            Use ``sigma_clip`` instead. The ``sclip`` and ``n_clip``
+            keywords are equivalent to ``sigma_clip=SigmaClip(
+            sigma=sclip, maxiters=n_clip, cenfunc='mean',
+            stdfunc='std')``.
 
     n_clip : int, optional
-        The number of sigma-clip iterations. Set to zero to skip
-        sigma clipping. The default is 0.
+        The number of sigma-clip iterations.
 
-        .. deprecated:: 3.0
-            The ``nclip`` keyword is deprecated. Use ``n_clip`` instead.
+        .. deprecated:: 3.2
+            Use ``sigma_clip`` instead.
 
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
@@ -168,6 +320,18 @@ class EllipseSample:
         ``linear_growth`` keywords are ignored. The input geometry is
         not modified. The default is `None`.
 
+    sigma_clip : `~astropy.stats.SigmaClip` or `None`, optional
+        A `~astropy.stats.SigmaClip` object that defines the sigma
+        clipping of the intensities sampled along the ellipse. The
+        clipped data points are removed from the sample. If `None`
+        (default), no sigma clipping is performed.
+
+    nclip : int, optional
+        The number of sigma-clip iterations.
+
+        .. deprecated:: 3.0
+            Use ``sigma_clip`` instead.
+
     Attributes
     ----------
     image : 2D `~numpy.ndarray`
@@ -181,19 +345,20 @@ class EllipseSample:
         .. deprecated:: 3.2
             Use ``integration_mode`` instead.
 
-    clip_sigma : float
-        The sigma-clip sigma value.
+    sigma_clip : `~astropy.stats.SigmaClip` or `None`
+        The sigma clipping of the sampled intensities.
 
     sclip : float
         .. deprecated:: 3.2
-            Use ``clip_sigma`` instead.
+            Use ``sigma_clip`` instead.
 
     n_clip : int
-        The number of sigma-clip iterations.
+        .. deprecated:: 3.2
+            Use ``sigma_clip`` instead.
 
     nclip : int
         .. deprecated:: 3.0
-            Use ``n_clip`` instead.
+            Use ``sigma_clip`` instead.
 
     angles : 1D `~numpy.ndarray` or `None`
         The angles of the valid sampled points. It is `None` until
@@ -280,9 +445,10 @@ class EllipseSample:
     Raises
     ------
     TypeError
-        If ``image`` is a `~astropy.units.Quantity` array or if
+        If ``image`` is a `~astropy.units.Quantity` array, if
         ``orientation`` is given with the ``orientation`` keyword as a
-        number without units.
+        number without units, or if ``sigma_clip`` is not a
+        `~astropy.stats.SigmaClip` instance.
 
     ValueError
         If ``image`` is not a 2D array or ``integration_mode`` is not a
@@ -290,21 +456,26 @@ class EllipseSample:
     """
 
     @deprecated_renamed_argument(
-        ['nclip', 'astep', 'eps', 'sclip', 'integrmode'],
-        ['n_clip', 'step', 'ellipticity', 'clip_sigma', 'integration_mode'],
-        ['3.0', '3.2', '3.2', '3.2', '3.2'], until='4.0')
+        ['astep', 'eps', 'integrmode', 'sclip', 'n_clip', 'nclip'],
+        ['step', 'ellipticity', 'integration_mode', None, None, None],
+        ['3.2', '3.2', '3.2', '3.2', '3.2', '3.0'], until='4.0',
+        alternative=[None, None, None, 'sigma_clip', 'sigma_clip',
+                     'sigma_clip'])
     @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
     @_orientation_argument('position_angle', warn_number=False)
     def __init__(self, image, sma, x0=None, y0=None, step=0.1,
-                 ellipticity=0.2, orientation=0 * u.deg, clip_sigma=3.0,
-                 n_clip=0, linear_growth=False,
-                 integration_mode='bilinear', geometry=None):
+                 ellipticity=0.2, orientation=0 * u.deg, sclip=None,
+                 n_clip=None, linear_growth=False,
+                 integration_mode='bilinear', geometry=None, *,
+                 sigma_clip=None, nclip=None):
         # The orientation is ignored if a geometry is input.
         if geometry is None:
             orientation = _legacy_orientation_rad(orientation)
+        sigma_clip = _legacy_sigma_clip(sigma_clip, sclip=sclip,
+                                        n_clip=n_clip, nclip=nclip)
         self._initialize(image, sma, x0=x0, y0=y0, step=step,
                          ellipticity=ellipticity, orientation=orientation,
-                         clip_sigma=clip_sigma, n_clip=n_clip,
+                         sigma_clip=sigma_clip,
                          linear_growth=linear_growth,
                          integration_mode=integration_mode,
                          geometry=geometry)
@@ -323,9 +494,9 @@ class EllipseSample:
         return sample
 
     def _initialize(self, image, sma, *, x0=None, y0=None, step=0.1,
-                    ellipticity=0.2, orientation=0.0, clip_sigma=3.0,
-                    n_clip=0, linear_growth=False,
-                    integration_mode='bilinear', geometry=None):
+                    ellipticity=0.2, orientation=0.0, sigma_clip=None,
+                    linear_growth=False, integration_mode='bilinear',
+                    geometry=None):
         """
         Set the attributes of a new sample, with the orientation in
         radians.
@@ -355,9 +526,7 @@ class EllipseSample:
                 _x0, _y0, sma, ellipticity, orientation, step=step,
                 linear_growth=linear_growth)
 
-        # Sigma-clip parameters
-        self.clip_sigma = clip_sigma
-        self.n_clip = n_clip
+        self.sigma_clip = sigma_clip
 
         # Extracted values associated with this sample.
         self._values = None
@@ -386,7 +555,12 @@ class EllipseSample:
                                          until='4.0')
     total_points = deprecated_attribute('total_points', 'n_total', '3.2',
                                         until='4.0')
-    sclip = deprecated_attribute('sclip', 'clip_sigma', '3.2', until='4.0')
+    # The sigma value of the deprecated sigma-clipping attributes
+    # without sigma clipping. Remove in 4.0.
+    _sclip = 3.0
+    sclip = _deprecated_clip_attribute('sclip', '3.2')
+    n_clip = _deprecated_clip_attribute('n_clip', '3.2')
+    nclip = _deprecated_clip_attribute('nclip', '3.0')
     integrmode = deprecated_attribute('integrmode', 'integration_mode',
                                       '3.2', until='4.0')
 
@@ -592,29 +766,19 @@ class EllipseSample:
                          np.array(intensities)])
 
     def _sigma_clip(self, angles, radii, intensities):
-        # Can't use scipy or astropy tools because they use masked
-        # arrays. Also, they operate on a single array, and we need to
-        # operate on three arrays simultaneously. We need something
-        # that physically removes the clipped points from the arrays,
-        # since that is what the remaining of the `ellipse` code
-        # expects.
+        # The clipped points are removed from the three arrays, since
+        # that is what the rest of the code expects.
         angles = np.asarray(angles)
         radii = np.asarray(radii)
         intensities = np.asarray(intensities)
 
-        for _ in range(self.n_clip):
-            if intensities.size == 0:
-                break
-            mean = np.mean(intensities)
-            sig = np.std(intensities)
-            lower = mean - self.clip_sigma * sig
-            upper = mean + self.clip_sigma * sig
-            keep = (intensities >= lower) & (intensities <= upper)
-            angles = angles[keep]
-            radii = radii[keep]
-            intensities = intensities[keep]
+        if self.sigma_clip is None or intensities.size == 0:
+            return angles, radii, intensities
 
-        return angles, radii, intensities
+        clipped = self.sigma_clip(intensities, masked=True)
+        keep = ~np.ma.getmaskarray(clipped)
+
+        return angles[keep], radii[keep], intensities[keep]
 
     def _extract_center(self):
         # The central pixel is a single bilinear sample at (x0, y0).
@@ -809,8 +973,7 @@ class EllipseSample:
             self.image, geometry.sma if sma is None else sma,
             x0=geometry.x0 if x0 is None else x0,
             y0=geometry.y0 if y0 is None else y0,
-            step=geometry.step, clip_sigma=self.clip_sigma,
-            n_clip=self.n_clip,
+            step=geometry.step, sigma_clip=self.sigma_clip,
             ellipticity=(geometry.ellipticity if ellipticity is None
                          else ellipticity),
             orientation=(geometry._orientation_rad if orientation is None

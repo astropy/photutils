@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
+from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
@@ -142,15 +143,15 @@ def test_fit_keeps_sample_settings():
     Test that the sample of the fitted isophote, which is made by the
     parameter correctors, keeps the settings of the input sample.
     """
+    sigma_clip = SigmaClip(sigma=2.5, maxiters=2)
     sample = EllipseSample(DATA, 60.0, step=0.2, ellipticity=0.3,
-                           clip_sigma=2.5, n_clip=2,
+                           sigma_clip=sigma_clip,
                            integration_mode='mean')
     isophote = _EllipseFitter(sample).fit()
     fitted_sample = isophote.sample
     assert isophote.stop_code == 0
     assert fitted_sample is not sample
-    assert fitted_sample.clip_sigma == 2.5
-    assert fitted_sample.n_clip == 2
+    assert fitted_sample.sigma_clip is sample.sigma_clip
     assert fitted_sample.integration_mode == 'mean'
     assert fitted_sample.geometry.sma == 60.0
     assert fitted_sample.geometry.step == 0.2

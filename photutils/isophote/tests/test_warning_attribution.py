@@ -65,16 +65,19 @@ GEOMETRY_RENAMES = {'eps': 'ellipticity', 'pa': 'orientation',
                     'fix_eps': 'fix_ellipticity'}
 
 SAMPLE_KWARGS = {'x0': 64.0, 'y0': 64.0, 'step': 0.1, 'ellipticity': 0.2,
-                 'orientation': 0.5 * u.rad, 'clip_sigma': 3.0, 'n_clip': 0,
+                 'orientation': 0.5 * u.rad,
                  'integration_mode': 'bilinear'}
-SAMPLE_RENAMES = {'nclip': 'n_clip', 'astep': 'step',
+SAMPLE_RENAMES = {'astep': 'step',
                   'eps': 'ellipticity', 'position_angle': 'orientation',
-                  'sclip': 'clip_sigma', 'integrmode': 'integration_mode'}
+                  'integrmode': 'integration_mode'}
+
+# The deprecated sigma-clipping keywords, which are replaced by the
+# sigma_clip keyword
+LEGACY_CLIP_KEYWORDS = ['sclip', 'n_clip', 'nclip']
 
 FIT_IMAGE_KWARGS = {'sma_start': 10.0, 'min_sma': 8.0, 'max_sma': 12.0,
                     'convergence': 0.05, 'miniters': 10, 'maxiters': 50,
                     'min_valid_fraction': 0.7, 'max_gradient_rel_err': 0.5,
-                    'clip_sigma': 3.0, 'n_clip': 0,
                     'integration_mode': 'bilinear', 'linear_growth': False,
                     'max_iterative_sma': 100.0, 'fix_orientation': False,
                     'fix_ellipticity': False}
@@ -83,7 +86,6 @@ FIT_IMAGE_RENAMES = {'sma0': 'sma_start', 'minsma': 'min_sma',
                      'minit': 'miniters', 'maxit': 'maxiters',
                      'fflag': 'min_valid_fraction',
                      'maxgerr': 'max_gradient_rel_err',
-                     'sclip': 'clip_sigma', 'nclip': 'n_clip',
                      'integrmode': 'integration_mode',
                      'linear': 'linear_growth',
                      'maxrit': 'max_iterative_sma',
@@ -92,12 +94,10 @@ FIT_IMAGE_RENAMES = {'sma0': 'sma_start', 'minsma': 'min_sma',
 
 FIT_ISOPHOTE_KWARGS = {'convergence': 0.05, 'miniters': 10,
                        'maxiters': 50, 'min_valid_fraction': 0.7,
-                       'clip_sigma': 3.0, 'n_clip': 0,
                        'integration_mode': 'bilinear',
                        'linear_growth': False, 'max_iterative_sma': 100.0}
 FIT_ISOPHOTE_RENAMES = {'conver': 'convergence', 'minit': 'miniters',
                         'maxit': 'maxiters', 'fflag': 'min_valid_fraction',
-                        'sclip': 'clip_sigma', 'nclip': 'n_clip',
                         'integrmode': 'integration_mode',
                         'linear': 'linear_growth',
                         'maxrit': 'max_iterative_sma'}
@@ -170,6 +170,11 @@ class TestEllipseSample:
         _assert_attributed(lambda: EllipseSample(data, 10.0, **kwargs),
                            n_warnings=1)
 
+    @pytest.mark.parametrize('old', LEGACY_CLIP_KEYWORDS)
+    def test_removed_keyword(self, data, old):
+        _assert_attributed(lambda: EllipseSample(data, 10.0, **{old: 1}),
+                           n_warnings=1)
+
     def test_positional(self, data):
         _assert_attributed(lambda: EllipseSample(data, 10.0, 64.0, 64.0),
                            n_warnings=1)
@@ -212,6 +217,13 @@ class TestEllipse:
         _assert_attributed(lambda: ellipse.fit_image(**kwargs),
                            n_warnings=1)
 
+    @pytest.mark.parametrize('old', LEGACY_CLIP_KEYWORDS)
+    def test_fit_image_removed_keyword(self, data, old):
+        ellipse = Ellipse(data)
+        _assert_attributed(
+            lambda: ellipse.fit_image(max_sma=12.0, **{old: 1}),
+            n_warnings=1)
+
     def test_fit_image_positional(self, data):
         ellipse = Ellipse(data)
         _assert_attributed(lambda: ellipse.fit_image(10.0, 8.0, 12.0),
@@ -229,7 +241,8 @@ class TestEllipse:
         _assert_attributed(lambda: ellipse.fit_isophote(10.0, **kwargs),
                            n_warnings=1)
 
-    @pytest.mark.parametrize('old', ['maxgerr', 'going_inwards'])
+    @pytest.mark.parametrize('old', ['maxgerr', 'going_inwards',
+                                     *LEGACY_CLIP_KEYWORDS])
     def test_fit_isophote_removed_keyword(self, data, old):
         ellipse = Ellipse(data)
         _assert_attributed(lambda: ellipse.fit_isophote(10.0, **{old: 1}),

@@ -570,15 +570,19 @@ is known. Let's mask a circular region around the companion::
     >>> masked_data = np.ma.masked_array(contaminated, mask=mask)
 
 Sigma clipping rejects the points sampled along an ellipse whose
-intensities differ from the mean of the sample by more than
-``clip_sigma`` standard deviations. The ``n_clip`` keyword is the
-number of clipping iterations. The default is 0, which means that no
-sigma clipping is performed. Sigma clipping is well suited to small
-features such as stars, and their positions do not need to be known.
-Let's fit the masked image with three iterations of 3-sigma clipping::
+intensities are outliers. It is set with the ``sigma_clip`` keyword,
+which takes an `~astropy.stats.SigmaClip` object that defines the
+clipping threshold, the number of iterations, and the center and
+standard deviation functions. The default is `None`, which means that
+no sigma clipping is performed. Sigma clipping is well suited to
+small features such as stars, and their positions do not need to be
+known. Let's fit the masked image with three iterations of 3-sigma
+clipping::
 
+    >>> from astropy.stats import SigmaClip
+    >>> sigma_clip = SigmaClip(sigma=3.0, maxiters=3)
     >>> ellipse2 = Ellipse(masked_data, geometry=geometry)
-    >>> isolist2 = ellipse2.fit_image(clip_sigma=3.0, n_clip=3)
+    >>> isolist2 = ellipse2.fit_image(sigma_clip=sigma_clip)
 
 Now let's compare the two fits using the largest distance between the
 fitted centers and the galaxy center, for the isophotes with semimajor
@@ -590,7 +594,7 @@ axis lengths from 10 to 90 pixels::
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
-    [6.  0.6]
+    [6.  0.7]
     >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.0)
     True True
 
@@ -613,6 +617,7 @@ model images of the two fits (see :ref:`isophote-model-image`):
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D, Sersic2D
+    from astropy.stats import SigmaClip
     from astropy.visualization import simple_norm
     from matplotlib.patches import Circle
     from photutils.datasets import make_noise_image
@@ -639,7 +644,8 @@ model images of the two fits (see :ref:`isophote-model-image`):
     mask = np.hypot(xx - 110.0, yy - 190.0) < 25.0
     masked_data = np.ma.masked_array(contaminated, mask=mask)
     ellipse2 = Ellipse(masked_data, geometry=geometry)
-    isolist2 = ellipse2.fit_image(clip_sigma=3.0, n_clip=3)
+    isolist2 = ellipse2.fit_image(sigma_clip=SigmaClip(sigma=3.0,
+                                                       maxiters=3))
 
     residual1 = contaminated - isolist1.make_model_image(shape)
     residual2 = contaminated - isolist2.make_model_image(shape)
