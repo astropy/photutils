@@ -367,14 +367,43 @@ class TestEllipse:
         """
         ellipse = Ellipse(self.data)
 
-        # No isophotes are fit outwards from sma_start.
-        isolist = ellipse.fit_image(sma_start=10.0, max_sma=0.0)
-        assert isolist.sma[-1] == 10.0
+        # The starting sma is larger than a max_sma of zero.
+        match = 'must be between min_sma and max_sma'
+        with pytest.raises(ValueError, match=match):
+            ellipse.fit_image(sma_start=10.0, max_sma=0.0)
 
         # All isophotes are extracted in noniterative mode.
         isolist = ellipse.fit_image(sma_start=10.0, max_sma=20.0,
                                     max_iterative_sma=0.0)
         assert np.all(isolist.stop_code[isolist.sma > 0] == 4)
+
+    @pytest.mark.parametrize('kwargs', [{'min_sma': np.nan},
+                                        {'max_sma': np.nan}])
+    def test_nan_sma_limits(self, kwargs):
+        match = 'min_sma and max_sma must not be NaN'
+        with pytest.raises(ValueError, match=match):
+            Ellipse(self.data).fit_image(**kwargs)
+
+    def test_min_sma_larger_than_max_sma(self):
+        match = 'min_sma must not be larger than max_sma'
+        with pytest.raises(ValueError, match=match):
+            Ellipse(self.data).fit_image(sma_start=20.0, min_sma=30.0,
+                                         max_sma=25.0)
+
+    @pytest.mark.parametrize('kwargs', [
+        {'sma_start': 20.0, 'min_sma': 22.0},
+        {'sma_start': 20.0, 'max_sma': 18.0},
+        {'min_sma': 12.0},
+    ])
+    def test_sma_start_outside_limits(self, kwargs):
+        """
+        Test that the starting semimajor axis length, from ``sma_start``
+        or from the geometry (10 by default), must be between
+        ``min_sma`` and ``max_sma``.
+        """
+        match = 'must be between min_sma and max_sma'
+        with pytest.raises(ValueError, match=match):
+            Ellipse(self.data).fit_image(**kwargs)
 
     def test_fit_image_threads(self):
         """

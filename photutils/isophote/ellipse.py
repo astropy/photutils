@@ -326,7 +326,8 @@ class Ellipse:
             if a `~photutils.isophote.EllipseGeometry` instance was
             input to the `~photutils.isophote.Ellipse` constructor, its
             ``sma`` value will be used. Otherwise, a default value of
-            10 will be used. The starting value must be positive.
+            10 will be used. The starting value must be positive and
+            in the range from ``min_sma`` to ``max_sma`` (inclusive).
 
         min_sma : float, optional
             The minimum value for the semimajor axis length (pixels).
@@ -504,7 +505,10 @@ class Ellipse:
         ------
         ValueError
             If the starting semimajor axis length or ``step`` is not
-            positive, if ``max_center_shift`` is negative or NaN, if
+            positive, if ``min_sma`` or ``max_sma`` is NaN, if
+            ``min_sma`` is larger than ``max_sma``, if the starting
+            semimajor axis length is not between ``min_sma`` and
+            ``max_sma``, if ``max_center_shift`` is negative or NaN, if
             the ellipticity of the starting geometry is 1 or larger, or
             if ``integration_mode`` is not a valid integration mode.
 
@@ -527,6 +531,17 @@ class Ellipse:
         if not sma > 0:  # also rejects NaN
             msg = ('The starting semimajor axis length (sma_start or the '
                    'sma of the input geometry) must be positive')
+            raise ValueError(msg)
+        if np.isnan(min_sma) or (max_sma is not None and np.isnan(max_sma)):
+            msg = 'min_sma and max_sma must not be NaN'
+            raise ValueError(msg)
+        if max_sma is not None and min_sma > max_sma:
+            msg = 'min_sma must not be larger than max_sma'
+            raise ValueError(msg)
+        if sma < min_sma or (max_sma is not None and sma > max_sma):
+            msg = ('The starting semimajor axis length (sma_start or the '
+                   'sma of the input geometry) must be between min_sma '
+                   'and max_sma')
             raise ValueError(msg)
         if not step > 0:  # also rejects NaN
             msg = 'step must be positive'
