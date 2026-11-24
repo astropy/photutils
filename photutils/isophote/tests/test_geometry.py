@@ -4,7 +4,7 @@ Tests for the geometry module.
 """
 
 import copy
-import pickle
+import pickle  # nosec B403
 import warnings
 
 import astropy.units as u
@@ -578,7 +578,8 @@ class TestOrientationUnits:
 
         def clones():
             return (copy.copy(geometry), copy.deepcopy(geometry),
-                    pickle.loads(pickle.dumps(geometry)))  # noqa: S301
+                    pickle.loads(  # noqa: S301
+                        pickle.dumps(geometry)))  # nosec B301
 
         records, result = _deprecation_records(clones)
         assert records == []
@@ -612,7 +613,8 @@ def test_geometry_copy_and_pickle():
     geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.3, 0.5 * u.rad,
                                fix_center=True)
     for clone in (copy.deepcopy(geometry),
-                  pickle.loads(pickle.dumps(geometry))):  # noqa: S301
+                  pickle.loads(  # noqa: S301
+                      pickle.dumps(geometry))):  # nosec B301
         assert clone.ellipticity == 0.3
         assert clone._orientation_rad == 0.5
         assert clone.step == geometry.step

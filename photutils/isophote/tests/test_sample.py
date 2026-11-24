@@ -4,7 +4,7 @@ Tests for the sample module.
 """
 
 import copy
-import pickle
+import pickle  # nosec B403
 import warnings
 
 import astropy.units as u
@@ -468,7 +468,8 @@ def test_sample_copy_and_pickle():
     sample = EllipseSample(data, 40.0)
     sample.update()
     for clone in (copy.copy(sample), copy.deepcopy(sample),
-                  pickle.loads(pickle.dumps(sample))):  # noqa: S301
+                  pickle.loads(  # noqa: S301
+                      pickle.dumps(sample))):  # nosec B301
         assert_array_equal(clone.intensities, sample.intensities)
         assert clone.n_valid == sample.n_valid
 
@@ -557,7 +558,8 @@ class TestOrientationUnits:
 
         def clones():
             return (copy.copy(sample), copy.deepcopy(sample),
-                    pickle.loads(pickle.dumps(sample)))  # noqa: S301
+                    pickle.loads(  # noqa: S301
+                        pickle.dumps(sample)))  # nosec B301
 
         records, result = self._records(clones)
         assert records == []

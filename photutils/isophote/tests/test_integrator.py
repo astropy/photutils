@@ -415,7 +415,8 @@ def test_integrator_constant_warns_once(func):
 def test_integrator_constant_silent_uses():
     def uses():
         namespace = {}
-        exec('from photutils.isophote import *', namespace)  # noqa: S102
+        exec(  # noqa: S102
+            'from photutils.isophote import *', namespace)  # nosec B102
         dir(photutils.isophote)
         dir(integrator)
         assert not hasattr(photutils.isophote, 'nonexistent')
@@ -433,6 +434,7 @@ def test_integrator_getattr_unknown_name():
 
 def test_isophote_wildcard_import():
     namespace = {}
-    exec('from photutils.isophote import *', namespace)  # noqa: S102
+    exec(  # noqa: S102
+        'from photutils.isophote import *', namespace)  # nosec B102
     assert 'Ellipse' in namespace
     assert 'BILINEAR' not in namespace

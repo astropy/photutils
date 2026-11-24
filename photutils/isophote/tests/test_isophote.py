@@ -4,7 +4,7 @@ Tests for the isophote module.
 """
 
 import copy
-import pickle
+import pickle  # nosec B403
 import warnings
 
 import astropy.units as u
@@ -744,7 +744,8 @@ def test_isophote_list_copy_and_pickle():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image()
     for clone in (copy.deepcopy(isolist),
-                  pickle.loads(pickle.dumps(isolist))):  # noqa: S301
+                  pickle.loads(  # noqa: S301
+                      pickle.dumps(isolist))):  # nosec B301
         assert_array_equal(clone.sma, isolist.sma)
         assert_array_equal(clone.orientation, isolist.orientation)
         assert clone[3].geometry is clone[3].sample.geometry
@@ -873,7 +874,8 @@ def test_isophote_copy_and_pickle_no_warnings():
         with warnings.catch_warnings():
             warnings.simplefilter('error')
             clones = (copy.copy(iso), copy.deepcopy(iso),
-                      pickle.loads(pickle.dumps(iso)))  # noqa: S301
+                      pickle.loads(  # noqa: S301
+                          pickle.dumps(iso)))  # nosec B301
         for clone in clones:
             assert clone.intensity == iso.intensity
             assert clone.n_data == iso.n_data
@@ -975,7 +977,8 @@ def test_from_table_plain_table_and_copies():
     result = IsophoteList.from_table(tbl)
     assert_array_equal(result.intensity, isolist.intensity)
     assert_array_equal(result.sample, [None] * len(result))
-    unpickled = pickle.loads(pickle.dumps(result))  # noqa: S301
+    unpickled = pickle.loads(  # noqa: S301
+        pickle.dumps(result))  # nosec B301
     for clone in (copy.deepcopy(result), unpickled):
         assert_array_equal(clone.sma, result.sma)
         assert_array_equal(clone.intensity, result.intensity)
