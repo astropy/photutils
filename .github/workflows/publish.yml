@@ -119,8 +119,12 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/project/photutils/
-    # We upload to PyPI for all tag pushes, except tags ending in .dev
+    # We upload to PyPI for all tag pushes, except tags ending in .dev.
+    # The !cancelled() is needed because check_new_commits is skipped on
+    # tag pushes, and the implicit success() would otherwise skip this
+    # job too.
     if: |
+      !cancelled() &&
       needs.build_and_publish.result == 'success' &&
       startsWith(github.ref, 'refs/tags/') &&
       !endsWith(github.ref, '.dev') &&
