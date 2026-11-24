@@ -28,13 +28,49 @@ permissions:
   contents: read
 
 jobs:
+  check_new_commits:
+    # Skip the nightly build if main has not changed since the last
+    # successful scheduled run. If the check itself fails, the build
+    # runs anyway.
+    if: |
+      github.repository == 'astropy/photutils' &&
+      github.event_name == 'schedule'
+    name: Check for new commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+    steps:
+      - name: Compare with the last successful scheduled run
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          last_sha=$(gh run list --repo "$REPO" --workflow publish.yml \
+            --event schedule --status success --limit 1 \
+            --json headSha --jq '.[0].headSha')
+          echo "Current commit: $SHA"
+          echo "Last successful scheduled run: ${last_sha:-none}"
+          if [ "$last_sha" = "$SHA" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build_and_publish:
+    needs: [check_new_commits]
     permissions:
       contents: none
 
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@1285b95e32c783cfa40eb2ffbd6ca4cd023fb884 # v3.2.2
 
     if: |
+      !cancelled() &&
+      needs.check_new_commits.outputs.build != 'false' &&
       github.repository == 'astropy/photutils' &&
       (
         github.event_name == 'push' ||
