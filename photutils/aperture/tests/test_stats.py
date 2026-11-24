@@ -1960,7 +1960,8 @@ class TestInputDtypes:
         return segm, np.arange(1, len(positions) + 1)
 
     @pytest.mark.parametrize('mask_method', ['none', 'mask', 'correct'])
-    @pytest.mark.parametrize('segm_dtype', [np.int16, np.int32, np.intp])
+    @pytest.mark.parametrize('segm_dtype', [np.int16, np.int32,
+                                            pytest.param(np.intp, id='intp')])
     @pytest.mark.parametrize('dtype', [np.float32, np.float64])
     def test_identical_results(self, dtype, segm_dtype, mask_method):
         """
