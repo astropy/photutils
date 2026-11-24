@@ -670,8 +670,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         sum4 = np.abs(cutout_conv).sum(axis=axis)
 
         # Ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             return 2.0 * sum2 / sum4
 
     @cached_property
@@ -688,8 +687,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.peak)
                      / (self.kernel.n_pixels - 1))
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             return (self.peak - data_mean) / self.convdata_peak
 
     def _marginal_weights(self, axis):
@@ -951,8 +949,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         mask1 = (hx_numer <= 0.0) | (hx_denom <= 0.0)
 
         # Ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             # Compute fit amplitude
             hx = hx_numer / hx_denom
 
@@ -1121,8 +1118,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         detection threshold.
         """
         # Ignore RuntimeWarning if flux is <= 0
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             return -2.5 * np.log10(self.convdata_peak
                                    / self._threshold_eff_per_source)
 

@@ -466,8 +466,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         xpowers = np.stack([np.ones_like(dx), dx, dx**2], axis=-1)
         # Batched matmul: ypowers^T @ data @ xpowers per source
         moments = (np.transpose(ypowers, (0, 2, 1)) @ data @ xpowers)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
 
     @cached_property
@@ -479,8 +478,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         moments = self.moments
 
         # Ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
             x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
         return np.transpose((y_centroid, x_centroid))
@@ -569,8 +567,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         The value is 0 for a circular source and approaches 1 for a
         highly elongated source.
         """
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             return (np.sqrt(self.mu_diff**2
                             + 4.0 * self.moments_central[:, 1, 1]**2)
                     / self.mu_sum)
@@ -595,8 +592,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         The instrumental magnitudes.
         """
         # Ignore RuntimeWarning if flux is <= 0
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             flux = self.flux
             if isinstance(flux, u.Quantity):
                 flux = flux.value
