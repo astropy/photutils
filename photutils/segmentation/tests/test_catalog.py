@@ -3370,7 +3370,8 @@ class TestInputDtypes:
         return results
 
     @pytest.mark.parametrize('segm_dtype',
-                             [np.int16, np.int32, '>i4', np.intp])
+                             [np.int16, np.int32, '>i4',
+                              pytest.param(np.intp, id='intp')])
     @pytest.mark.parametrize('dtype', [np.float32, np.float64])
     def test_identical_results(self, dtype, segm_dtype):
         """
