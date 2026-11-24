@@ -74,6 +74,15 @@ New Features
     image or to measure an image with ``Ellipse.measure_isophotes``.
     [#2568]
 
+  - Added a ``sigma_clip`` keyword to ``Ellipse.fit_image``,
+    ``Ellipse.fit_isophote``, ``Ellipse.measure_isophotes``, and
+    ``EllipseSample`` that takes an ``astropy.stats.SigmaClip``
+    object, like the other Photutils tools. [#2575]
+
+  - Added ``to_aperture`` methods to ``EllipseGeometry`` and
+    ``Isophote`` that return the ellipse as an ``EllipticalAperture``,
+    which can be used to plot the ellipse. [#2575]
+
 - ``photutils.psf``
 
   - The ``extract_stars`` function now recognizes common alternative
@@ -683,39 +692,61 @@ API Changes
     ``fix_orientation``, and ``fix_ellipticity`` properties report
     which parameters are fixed. [#2568]
 
-  - The ``astep``, ``eps``, ``position_angle``, ``sclip``, and
-    ``integrmode`` keywords of ``EllipseSample`` are deprecated and
-    will be removed in version 4.0. Use ``step``, ``ellipticity``,
-    ``orientation``, ``clip_sigma``, and ``integration_mode``
-    instead. The ``sclip`` and ``integrmode`` attributes are renamed
-    the same way. The ``mean``, ``actual_points``, and ``total_points``
-    attributes are deprecated in favor of ``intensity``, ``n_valid``,
-    and ``n_total``. The ``values`` attribute is deprecated in favor
-    of the new ``angles``, ``radii``, and ``intensities`` attributes.
-    The ``fixed_parameters`` keyword of ``EllipseSample.update`` is
-    deprecated. [#2568]
+  - The ``astep``, ``eps``, ``position_angle``, and ``integrmode``
+    keywords of ``EllipseSample`` are deprecated and will be removed
+    in version 4.0. Use ``step``, ``ellipticity``, ``orientation``,
+    and ``integration_mode`` instead. The ``integrmode`` attribute is
+    renamed the same way. The ``mean``, ``actual_points``, and
+    ``total_points`` attributes are deprecated in favor of
+    ``intensity``, ``n_valid``, and ``n_total``. The ``values``
+    attribute is deprecated in favor of the new ``angles``, ``radii``,
+    and ``intensities`` attributes. The ``fixed_parameters`` keyword of
+    ``EllipseSample.update`` is deprecated. [#2568]
 
   - The keywords of ``Ellipse.fit_image``, ``Ellipse.fit_isophote``,
     and ``EllipseFitter.fit`` were renamed. The ``sma0``, ``minsma``,
     ``maxsma``, ``conver``, ``minit``, ``maxit``, ``fflag``,
-    ``maxgerr``, ``sclip``, ``integrmode``, ``linear``, ``maxrit``,
-    ``fix_pa``, and ``fix_eps`` keywords are now ``sma_start``,
-    ``min_sma``, ``max_sma``, ``convergence``, ``miniters``,
-    ``maxiters``, ``min_valid_fraction``, ``max_gradient_rel_err``,
-    ``clip_sigma``, ``integration_mode``, ``linear_growth``,
-    ``max_iterative_sma``, ``fix_orientation``, and
-    ``fix_ellipticity``. Each method accepts only the keywords it
-    already had. The ``maxgerr`` keyword is renamed only for
-    ``Ellipse.fit_image``. For ``Ellipse.fit_isophote`` and
-    ``EllipseFitter.fit``, it remains a deprecated keyword with no
-    effect. The old names are deprecated and will be removed in
-    version 4.0. [#2568]
+    ``maxgerr``, ``integrmode``, ``linear``, ``maxrit``, ``fix_pa``,
+    and ``fix_eps`` keywords are now ``sma_start``, ``min_sma``,
+    ``max_sma``, ``convergence``, ``miniters``, ``maxiters``,
+    ``min_valid_fraction``, ``max_gradient_rel_err``,
+    ``integration_mode``, ``linear_growth``, ``max_iterative_sma``,
+    ``fix_orientation``, and ``fix_ellipticity``. Each method accepts
+    only the keywords it already had. The ``maxgerr`` keyword is
+    renamed only for ``Ellipse.fit_image``. For
+    ``Ellipse.fit_isophote`` and ``EllipseFitter.fit``, it remains a
+    deprecated keyword with no effect. The old names are deprecated
+    and will be removed in version 4.0. [#2568]
 
   - ``IsophoteList.get_names`` is deprecated in favor of the new
     ``properties`` attribute. The ``'main'`` and ``'all'`` values of
     the ``columns`` keyword of ``IsophoteList.to_table`` are deprecated
     in favor of ``columns=None`` and ``columns=isolist.properties``.
     They will be removed in version 4.0. [#2568]
+
+  - The ``sclip`` and ``n_clip`` keywords of ``Ellipse.fit_image``,
+    ``Ellipse.fit_isophote``, and ``EllipseSample`` and the ``sclip``
+    and ``n_clip`` attributes of ``EllipseSample`` are deprecated and
+    will be removed in version 4.0. Use the new ``sigma_clip`` keyword
+    and attribute instead. The deprecated keywords are equivalent to
+    ``sigma_clip=SigmaClip(sigma=sclip, maxiters=n_clip,
+    cenfunc='mean', stdfunc='std')``. [#2575]
+
+  - The ``min_sma`` and ``max_sma`` limits of ``Ellipse.fit_image``
+    are now inclusive. An isophote is fit at ``min_sma`` or
+    ``max_sma`` if the semimajor axis reaches that value. Previously,
+    such an isophote was not fit. [#2575]
+
+  - ``Ellipse.fit_image`` now raises a ``ValueError`` if ``min_sma``
+    or ``max_sma`` is NaN, if ``min_sma`` is larger than ``max_sma``,
+    or if the starting semimajor axis length is not between them.
+    Previously, the starting isophote was fit even if it was outside
+    these limits. [#2575]
+
+  - ``Ellipse.fit_isophote`` and ``EllipseFitter.fit`` now return an
+    isophote with a stop code of 5, instead of -1, if no meaningful
+    gradient could be measured or the ellipse diverged. The stop code
+    of -1 is no longer used. [#2575]
 
 - ``photutils.psf``
 

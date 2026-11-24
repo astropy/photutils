@@ -144,21 +144,16 @@ class Isophote:
           parameters are fixed, and for isophotes measured with
           :meth:`~photutils.isophote.Ellipse.measure_isophotes`.
 
-        * ``5``: The fit stopped with a code of -1 (see below) inside
-          :meth:`~photutils.isophote.Ellipse.fit_image`. The isophote is
-          extracted with the geometry of a previously fitted isophote.
-          After two consecutive isophotes with this code, the outward
-          growth stops or continues in noniterative mode.
-
-        * ``-1``: No meaningful gradient could be measured, or the
+        * ``5``: No meaningful gradient could be measured, or the
           corrected ellipse diverged (its ellipticity exceeded 0.95
           or its center moved outside of the image). The isophote
-          has the best geometry found before that. This code is
-          returned by :meth:`~photutils.isophote.Ellipse.fit_isophote`.
-          :meth:`~photutils.isophote.Ellipse.fit_image` replaces such an
-          isophote with one that has the geometry of a previously fitted
-          isophote and a stop code of 5. If it is the first isophote, an
-          empty list is returned instead.
+          returned by :meth:`~photutils.isophote.Ellipse.fit_isophote`
+          has the best geometry found before that.
+          :meth:`~photutils.isophote.Ellipse.fit_image` extracts such
+          an isophote again with the geometry of a previously fitted
+          isophote. After two consecutive isophotes with this code, the
+          outward growth stops or continues in noniterative mode. If it
+          is the first isophote, an empty list is returned instead.
 
     Attributes
     ----------
@@ -812,6 +807,33 @@ class Isophote:
                    'it.')
             raise ValueError(msg)
         return self.sample.coordinates()
+
+    def to_aperture(self):
+        """
+        Return the ellipse of this isophote as an
+        `~photutils.aperture.EllipticalAperture`.
+
+        The aperture can be used to plot the ellipse with its
+        :meth:`~photutils.aperture.EllipticalAperture.plot` method.
+        Unlike the coordinates returned by
+        :meth:`~photutils.isophote.Isophote.sampled_coordinates`, the
+        aperture is the complete ellipse and does not depend on the
+        sampled data points.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.EllipticalAperture`
+            The aperture with the center, semimajor axis length,
+            ellipticity, and orientation of this isophote.
+
+        Raises
+        ------
+        ValueError
+            If the semimajor axis length is not positive, which is the
+            case for the central pixel, or the ellipticity is 1 or
+            larger.
+        """
+        return self.geometry.to_aperture()
 
     def to_table(self):
         """

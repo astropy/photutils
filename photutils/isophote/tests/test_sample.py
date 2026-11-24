@@ -11,6 +11,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import Angle
+from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.isophote.ellipse import Ellipse
@@ -23,6 +24,16 @@ from photutils.utils.exceptions import PhotutilsDeprecationWarning
 DEFAULT_FIX = np.array([False, False, False, False])
 
 DATA = make_test_image(background=100.0, i0=0.0, noise=10.0, seed=0)
+
+
+def _make_outlier_image():
+    """
+    Make a galaxy image with a bright spot on the default ellipse with
+    a semimajor axis length of 40 pixels.
+    """
+    data = make_test_image(seed=0)
+    data[254:259, 294:299] += 1.0e4
+    return data
 
 
 # The median is not so good at estimating rms.
@@ -57,8 +68,9 @@ def test_coordinates():
     assert isinstance(y, np.ndarray)
 
 
-def test_sclip():
-    sample = EllipseSample(DATA, 50.0, n_clip=3)
+def test_sigma_clip_coordinates():
+    sample = EllipseSample(DATA, 50.0,
+                           sigma_clip=SigmaClip(sigma=3.0, maxiters=3))
     sample._update(fixed_parameters=DEFAULT_FIX)
     x, y = sample.coordinates()
 
@@ -281,16 +293,46 @@ def test_partial_center(x0, y0):
     assert sample.geometry.y0 == (DATA.shape[0] / 2 if y0 is None else y0)
 
 
-def test_sclip_constant_sample():
+def test_sigma_clip_constant_sample():
     """
     Test that sigma clipping keeps a sample without any scatter.
     """
     data = np.full((100, 100), 5.0)
-    sample = EllipseSample(data, 10.0, n_clip=3,
+    sample = EllipseSample(data, 10.0, sigma_clip=SigmaClip(maxiters=3),
                            integration_mode='nearest_neighbor')
     sample.extract()
     assert sample.n_total > 50
     assert sample.n_valid == sample.n_total
+
+
+def test_sigma_clip():
+    """
+    Test that sigma clipping removes the outlying sample points from
+    the angles, radii, and intensities.
+    """
+    data = _make_outlier_image()
+    sample = EllipseSample(data, 40.0)
+    intensities = sample.extract()[2]
+    assert sample.sigma_clip is None
+    assert sample.n_valid == sample.n_total
+    assert np.max(intensities) > 5000.0
+
+    sigma_clip = SigmaClip(sigma=3.0, maxiters=3)
+    sample = EllipseSample(data, 40.0, sigma_clip=sigma_clip)
+    angles, radii, intensities = sample.extract()
+    # The sample uses a copy, which can be shared by concurrent fits.
+    assert sample.sigma_clip is not sigma_clip
+    assert sample.sigma_clip.sigma == 3.0
+    assert sample.sigma_clip.maxiters == 3
+    assert sample.n_valid < sample.n_total
+    assert len(angles) == len(radii) == len(intensities) == sample.n_valid
+    assert np.max(intensities) < 5000.0
+
+
+def test_sigma_clip_invalid():
+    match = 'sigma_clip must be a SigmaClip instance'
+    with pytest.raises(TypeError, match=match):
+        EllipseSample(DATA, 40.0, sigma_clip=3.0)
 
 
 def test_update_repeated():
@@ -478,7 +520,6 @@ def test_sample_copy_and_pickle():
                          [('astep', 'step', 0.2),
                           ('eps', 'ellipticity', 0.3),
                           ('position_angle', 'orientation', 0.5 * u.rad),
-                          ('sclip', 'clip_sigma', 2.5),
                           ('integrmode', 'integration_mode', 'mean')])
 def test_sample_deprecated_keywords(old, new, value):
     data = make_test_image(seed=0)
@@ -486,6 +527,43 @@ def test_sample_deprecated_keywords(old, new, value):
         old_sample = EllipseSample(data, 40.0, **{old: value})
     new_sample = EllipseSample(data, 40.0, **{new: value})
     assert_array_equal(old_sample.extract(), new_sample.extract())
+
+
+@pytest.mark.parametrize('kwargs', [{'sclip': 2.0, 'n_clip': 3},
+                                    {'sclip': 2.0, 'nclip': 3},
+                                    {'n_clip': 3}])
+def test_sample_deprecated_clip_keywords(kwargs):
+    """
+    Test that the deprecated sigma-clipping keywords give the same
+    sample as the equivalent ``sigma_clip``.
+    """
+    data = _make_outlier_image()
+    sigma_clip = SigmaClip(sigma=kwargs.get('sclip', 3.0), maxiters=3,
+                           cenfunc='mean', stdfunc='std')
+    new_sample = EllipseSample(data, 40.0, sigma_clip=sigma_clip)
+    match = "Use argument 'sigma_clip' instead"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        old_sample = EllipseSample(data, 40.0, **kwargs)
+    assert len(record) == len(kwargs)
+    assert_array_equal(old_sample.extract(), new_sample.extract())
+    assert old_sample.n_valid < old_sample.n_total
+
+
+def test_sample_deprecated_sclip_without_iterations():
+    """
+    Test that the deprecated ``sclip`` keyword alone does not clip,
+    because the number of clipping iterations was zero by default.
+    """
+    with pytest.warns(PhotutilsDeprecationWarning, match="'sclip'"):
+        sample = EllipseSample(DATA, 40.0, sclip=2.0)
+    assert sample.sigma_clip is None
+
+
+def test_sample_deprecated_clip_keywords_with_sigma_clip():
+    match = 'sigma_clip cannot be used with the deprecated'
+    with (pytest.warns(PhotutilsDeprecationWarning, match="'n_clip'"),
+          pytest.raises(ValueError, match=match)):
+        EllipseSample(DATA, 40.0, sigma_clip=SigmaClip(), n_clip=3)
 
 
 class TestOrientationUnits:
@@ -571,7 +649,6 @@ class TestOrientationUnits:
                          [('mean', 'intensity'),
                           ('actual_points', 'n_valid'),
                           ('total_points', 'n_total'),
-                          ('sclip', 'clip_sigma'),
                           ('integrmode', 'integration_mode')])
 def test_sample_deprecated_attributes(old, new):
     data = make_test_image(seed=0)
@@ -581,6 +658,89 @@ def test_sample_deprecated_attributes(old, new):
         assert getattr(sample, old) == getattr(sample, new)
     with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
         setattr(sample, old, getattr(sample, new))
+
+
+@pytest.mark.parametrize(('name', 'value', 'default'),
+                         [('sclip', 2.0, 3.0), ('n_clip', 3, 0),
+                          ('nclip', 3, 0)])
+def test_sample_deprecated_clip_attributes(name, value, default):
+    """
+    Test that the deprecated sigma-clipping attributes give the values
+    of the ``sigma_clip`` attribute.
+    """
+    match = f"The '{name}' attribute was deprecated.*Use 'sigma_clip'"
+    sample = EllipseSample(DATA, 40.0,
+                           sigma_clip=SigmaClip(sigma=2.0, maxiters=3))
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        assert getattr(sample, name) == value
+
+    sample = EllipseSample(DATA, 40.0)
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        assert getattr(sample, name) == default
+
+
+def test_sample_deprecated_clip_attributes_set():
+    """
+    Test that setting the deprecated sigma-clipping attributes sets the
+    ``sigma_clip`` attribute.
+    """
+    sample = EllipseSample(DATA, 40.0)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'n_clip'"):
+        sample.n_clip = 3
+    assert sample.sigma_clip.sigma == 3.0
+    assert sample.sigma_clip.maxiters == 3
+
+    with pytest.warns(PhotutilsDeprecationWarning, match="'sclip'"):
+        sample.sclip = 2.0
+    assert sample.sigma_clip.sigma == 2.0
+    assert sample.sigma_clip.maxiters == 3
+
+    with pytest.warns(PhotutilsDeprecationWarning, match="'nclip'"):
+        sample.nclip = 0
+    assert sample.sigma_clip is None
+
+
+def test_sample_deprecated_clip_attributes_set_sclip_first():
+    """
+    Test that a ``sclip`` value set without sigma clipping is used when
+    ``n_clip`` is set later.
+    """
+    sample = EllipseSample(DATA, 40.0)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'sclip'"):
+        sample.sclip = 2.5
+    assert sample.sigma_clip is None
+    with pytest.warns(PhotutilsDeprecationWarning, match="'sclip'"):
+        assert sample.sclip == 2.5
+
+    with pytest.warns(PhotutilsDeprecationWarning, match="'n_clip'"):
+        sample.n_clip = 3
+    assert sample.sigma_clip.sigma == 2.5
+    assert sample.sigma_clip.maxiters == 3
+
+
+def test_sample_deprecated_clip_attributes_keep_settings():
+    """
+    Test that setting the deprecated sigma-clipping attributes keeps the
+    other settings of the ``sigma_clip`` attribute.
+    """
+    sigma_clip = SigmaClip(sigma_lower=2.0, sigma_upper=4.0, maxiters=3,
+                           cenfunc='median', stdfunc='mad_std')
+    sample = EllipseSample(DATA, 40.0, sigma_clip=sigma_clip)
+    with pytest.warns(PhotutilsDeprecationWarning, match="'n_clip'"):
+        sample.n_clip = 5
+    assert sample.sigma_clip.maxiters == 5
+    assert sample.sigma_clip.sigma_lower == 2.0
+    assert sample.sigma_clip.sigma_upper == 4.0
+    assert sample.sigma_clip.cenfunc == 'median'
+    assert sample.sigma_clip.stdfunc == 'mad_std'
+
+    # A new sigma value replaces the lower and upper values.
+    with pytest.warns(PhotutilsDeprecationWarning, match="'sclip'"):
+        sample.sclip = 2.5
+    assert sample.sigma_clip.sigma_lower == 2.5
+    assert sample.sigma_clip.sigma_upper == 2.5
+    assert sample.sigma_clip.maxiters == 5
+    assert sample.sigma_clip.cenfunc == 'median'
 
 
 def test_sample_deprecated_update_fixed_parameters():

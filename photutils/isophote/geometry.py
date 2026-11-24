@@ -844,6 +844,49 @@ class EllipseGeometry:
         """
         return self._phi1, self._phi2
 
+    def to_aperture(self):
+        """
+        Return the ellipse as an
+        `~photutils.aperture.EllipticalAperture`.
+
+        The aperture can be used to plot the ellipse with its
+        :meth:`~photutils.aperture.EllipticalAperture.plot` method.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.EllipticalAperture`
+            The aperture with the center, semimajor axis length,
+            ellipticity, and orientation of this geometry.
+
+        Raises
+        ------
+        ValueError
+            If the semimajor axis length is not positive or the
+            ellipticity is 1 or larger.
+
+        Examples
+        --------
+        >>> import astropy.units as u
+        >>> from photutils.isophote import EllipseGeometry
+        >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20,
+        ...                            ellipticity=0.5,
+        ...                            orientation=20.0 * u.deg)
+        >>> geometry.to_aperture()
+        <EllipticalAperture([75., 75.], a=20.0, b=10.0, theta=20.0 deg)>
+        """
+        # This import is slow because it loads the aperture subpackage
+        from photutils.aperture import EllipticalAperture
+
+        if not self.sma > 0 or not self.ellipticity < 1:
+            msg = ('An aperture can be made only for an ellipse with a '
+                   'positive semimajor axis length and an ellipticity '
+                   'smaller than 1')
+            raise ValueError(msg)
+
+        return EllipticalAperture((self.x0, self.y0), self.sma,
+                                  self.sma * (1.0 - self.ellipticity),
+                                  theta=self.orientation)
+
     def to_polar(self, x, y):
         r"""
         Return the radius and polar angle in the ellipse coordinate

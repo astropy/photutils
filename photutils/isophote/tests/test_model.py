@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
+from astropy.stats import SigmaClip
 from astropy.utils.data import get_pkg_data_filename
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
@@ -104,7 +105,7 @@ def test_model_minimum_radius():
         # emit numpy RuntimeWarnings.
         isophote_list = ellipse.fit_image(sma_start=40, min_sma=0,
                                           max_sma=350.0, step=0.4,
-                                          n_clip=3)
+                                          sigma_clip=SigmaClip(maxiters=3))
 
         model = isophote_list.make_model_image(
             data.shape, fill_value=np.mean(data[0:50, 0:50]))

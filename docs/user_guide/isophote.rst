@@ -101,16 +101,16 @@ those of the galaxy::
     >>> geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
     ...                            orientation=20.0 * u.deg)
 
-Let's show this initial ellipse:
+Let's show this initial ellipse. The
+:meth:`~photutils.isophote.EllipseGeometry.to_aperture` method returns
+the ellipse as an `~photutils.aperture.EllipticalAperture`, which can
+be plotted:
 
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
-    >>> from photutils.aperture import EllipticalAperture
-    >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-    ...                           geometry.sma * (1 - geometry.ellipticity),
-    ...                           theta=geometry.orientation)
+    >>> aper = geometry.to_aperture()
     >>> norm = simple_norm(data, 'sqrt', percent=99.0)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data, origin='lower', norm=norm)
@@ -123,7 +123,6 @@ Let's show this initial ellipse:
     import numpy as np
     from astropy.modeling.models import Sersic2D
     from astropy.visualization import simple_norm
-    from photutils.aperture import EllipticalAperture
     from photutils.datasets import make_noise_image
     from photutils.isophote import EllipseGeometry
 
@@ -137,9 +136,7 @@ Let's show this initial ellipse:
 
     geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
-    aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-                              geometry.sma * (1 - geometry.ellipticity),
-                              theta=geometry.orientation)
+    aper = geometry.to_aperture()
     norm = simple_norm(data, 'sqrt', percent=99.0)
     fig, ax = plt.subplots()
     ax.imshow(data, origin='lower', norm=norm)
@@ -407,12 +404,6 @@ Each isophote has a ``stop_code`` that tells how its fit ended:
   The isophote was extracted with the geometry of a previously fitted
   isophote.
 
-* -1: No meaningful gradient could be measured or the ellipse
-  diverged. This code is returned only by
-  :meth:`~photutils.isophote.Ellipse.fit_isophote`.
-  :meth:`~photutils.isophote.Ellipse.fit_image` replaces such an
-  isophote with one that has a stop code of 5.
-
 See the `~photutils.isophote.Isophote` documentation for the complete
 descriptions.
 
@@ -576,15 +567,19 @@ is known. Let's mask a circular region around the companion::
     >>> masked_data = np.ma.masked_array(contaminated, mask=mask)
 
 Sigma clipping rejects the points sampled along an ellipse whose
-intensities differ from the mean of the sample by more than
-``clip_sigma`` standard deviations. The ``n_clip`` keyword is the
-number of clipping iterations. The default is 0, which means that no
-sigma clipping is performed. Sigma clipping is well suited to small
-features such as stars, and their positions do not need to be known.
-Let's fit the masked image with three iterations of 3-sigma clipping::
+intensities are outliers. It is set with the ``sigma_clip`` keyword,
+which takes an `~astropy.stats.SigmaClip` object that defines the
+clipping threshold, the number of iterations, and the center and
+standard deviation functions. The default is `None`, which means that
+no sigma clipping is performed. Sigma clipping is well suited to
+small features such as stars, and their positions do not need to be
+known. Let's fit the masked image with three iterations of 3-sigma
+clipping::
 
+    >>> from astropy.stats import SigmaClip
+    >>> sigma_clip = SigmaClip(sigma=3.0, maxiters=3)
     >>> ellipse2 = Ellipse(masked_data, geometry=geometry)
-    >>> isolist2 = ellipse2.fit_image(clip_sigma=3.0, n_clip=3)
+    >>> isolist2 = ellipse2.fit_image(sigma_clip=sigma_clip)
 
 Now let's compare the two fits using the largest distance between the
 fitted centers and the galaxy center, for the isophotes with semimajor
@@ -596,7 +591,7 @@ axis lengths from 10 to 90 pixels::
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
-    [6.  0.6]
+    [6.  0.7]
     >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.0)
     True True
 
@@ -619,6 +614,7 @@ model images of the two fits (see :ref:`isophote-model-image`):
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.modeling.models import Gaussian2D, Sersic2D
+    from astropy.stats import SigmaClip
     from astropy.visualization import simple_norm
     from matplotlib.patches import Circle
     from photutils.datasets import make_noise_image
@@ -645,7 +641,8 @@ model images of the two fits (see :ref:`isophote-model-image`):
     mask = np.hypot(xx - 110.0, yy - 190.0) < 25.0
     masked_data = np.ma.masked_array(contaminated, mask=mask)
     ellipse2 = Ellipse(masked_data, geometry=geometry)
-    isolist2 = ellipse2.fit_image(clip_sigma=3.0, n_clip=3)
+    isolist2 = ellipse2.fit_image(sigma_clip=SigmaClip(sigma=3.0,
+                                                       maxiters=3))
 
     residual1 = contaminated - isolist1.make_model_image(shape)
     residual2 = contaminated - isolist2.make_model_image(shape)
@@ -706,13 +703,13 @@ By default, the semimajor axis length grows and shrinks by a factor of
 (1 + ``step``), where ``step`` defaults to 0.1. With
 ``linear_growth=True``, ``step`` is instead an increment in pixels.
 The ``min_sma`` and ``max_sma`` keywords limit the range of the
-semimajor axis lengths. The outward growth stops before the
-semimajor axis length reaches ``max_sma``::
+semimajor axis lengths. Both limits are inclusive, so an isophote
+whose semimajor axis length equals a limit is included::
 
     >>> isolist_linear = ellipse.fit_image(step=5.0, linear_growth=True,
     ...                                    max_sma=60.0)
     >>> print(isolist_linear.sma)
-    [ 0.  5. 10. 15. 20. 25. 30. 35. 40. 45. 50. 55.]
+    [ 0.  5. 10. 15. 20. 25. 30. 35. 40. 45. 50. 55. 60.]
 
 If ``max_sma`` is `None` (the default), the outward growth stops when
 the relative error of the local intensity gradient exceeds

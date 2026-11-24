@@ -916,6 +916,54 @@ class TestDeprecatedRenamedArgumentList:
             assert item.filename == __file__
 
 
+class TestDeprecatedRenamedArgumentAlternative:
+    """
+    Tests for the ``alternative`` of a removed argument, which has no
+    new name.
+    """
+
+    def test_list(self):
+        @deprecated_renamed_argument(['b', 'e'], ['new', None], '1.0',
+                                     until='2.0',
+                                     alternative=[None, 'other'])
+        def _func(new, *, e=None, other=None):
+            return new, e, other
+
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
+            result = _func(b=1, e=2)
+        assert result == (1, 2, None)
+        assert len(record) == 2
+        assert str(record[0].message) == (
+            "'b' was deprecated in version 1.0 and will be removed in "
+            "version 2.0. Use argument 'new' instead.")
+        assert str(record[1].message) == (
+            "'e' was deprecated in version 1.0 and will be removed in "
+            "version 2.0. Use argument 'other' instead.")
+
+    def test_single_no_until(self):
+        @deprecated_renamed_argument('e', None, '1.0', alternative='other')
+        def _func(*, e=None, other=None):
+            return e, other
+
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
+            result = _func(e=2)
+        assert result == (2, None)
+        assert str(record[0].message) == (
+            "'e' was deprecated in version 1.0 and will be removed in "
+            "a future version. Use argument 'other' instead.")
+
+    @pytest.mark.parametrize('until', [None, '2.0'])
+    def test_renamed_argument(self, until):
+        match = "An alternative cannot be given for 'b'"
+        with pytest.raises(ValueError, match=match):
+            deprecated_renamed_argument('b', 'new', '1.0', until=until,
+                                        alternative='other')
+        with pytest.raises(ValueError, match=match):
+            deprecated_renamed_argument(['b', 'e'], ['new', None], '1.0',
+                                        until=until,
+                                        alternative=['other', None])
+
+
 def test_deprecated_positional_kwargs_stacklevel():
     def _wrapper(func):
         def wrapper(*args, **kwargs):

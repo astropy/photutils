@@ -136,7 +136,8 @@ def replace_docstring_message(obj, message, doc_message):
             target.__doc__ = doc.replace(message, doc_message, 1)
 
 
-def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
+def deprecated_renamed_argument(old_name, new_name, since, *, until=None,
+                                alternative=None):
     """
     Decorator to warn when a renamed argument is used.
 
@@ -171,11 +172,23 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
         `None`, the removal version is not mentioned in the warning
         message.
 
+    alternative : str, `None`, or list of str or `None`, optional
+        The argument to use instead of a removed argument, which is
+        one whose ``new_name`` is `None`. The warning message names
+        it. If ``old_name`` is a list, this must be `None` or a list of
+        the same length.
+
     Returns
     -------
     decorator : function
         A decorator function that can be applied to any function to warn
         about the use of a renamed argument.
+
+    Raises
+    ------
+    ValueError
+        If ``alternative`` is given for an argument that has a new
+        name.
     """
     if isinstance(old_name, (list, tuple)):
         old_names = list(old_name)
@@ -184,29 +197,35 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
             since_list = list(since)
         else:
             since_list = [since] * len(old_names)
-        if until is None:
+        if until is None and alternative is None:
             return astropy_deprecated_renamed_argument(
                 old_names, new_names, since_list,
                 warning_type=PhotutilsDeprecationWarning)
-        messages = [renamed_argument_message(old, new, version, until)
-                    for old, new, version
-                    in zip(old_names, new_names, since_list, strict=True)]
+        if alternative is None:
+            alternative = [None] * len(old_names)
+        messages = [renamed_argument_message(old, new, version, until,
+                                             alternative=alt)
+                    for old, new, version, alt
+                    in zip(old_names, new_names, since_list, alternative,
+                           strict=True)]
         return astropy_deprecated_renamed_argument(
             old_names, new_names, since_list, message=messages,
             warning_type=PhotutilsDeprecationWarning)
 
-    if until is None:
+    if until is None and alternative is None:
         return astropy_deprecated_renamed_argument(
             old_name, new_name, since,
             warning_type=PhotutilsDeprecationWarning)
 
-    message = renamed_argument_message(old_name, new_name, since, until)
+    message = renamed_argument_message(old_name, new_name, since, until,
+                                       alternative=alternative)
     return astropy_deprecated_renamed_argument(
         old_name, new_name, since, message=message,
         warning_type=PhotutilsDeprecationWarning)
 
 
-def renamed_argument_message(old_name, new_name, since, until):
+def renamed_argument_message(old_name, new_name, since, until, *,
+                             alternative=None):
     """
     Return the warning message for a renamed or removed argument.
 
@@ -221,17 +240,37 @@ def renamed_argument_message(old_name, new_name, since, until):
     since : str or int
         The version in which the argument was renamed or removed.
 
-    until : str or int
-        The version in which the old argument name will be removed.
+    until : str, int, or `None`
+        The version in which the old argument name will be removed. If
+        `None`, the removal version is not mentioned in the message.
+
+    alternative : str or `None`, optional
+        The argument to use instead of a removed argument.
 
     Returns
     -------
     message : str
         The warning message.
+
+    Raises
+    ------
+    ValueError
+        If ``alternative`` is given for an argument that has a new
+        name.
     """
-    remove_version = 'version ' + str(until)
+    if new_name is not None and alternative is not None:
+        msg = (f'An alternative cannot be given for {old_name!r}, '
+               f'which was renamed to {new_name!r}')
+        raise ValueError(msg)
+
+    if until is None:
+        remove_version = 'a future version'
+    else:
+        remove_version = 'version ' + str(until)
     message = (f"'{old_name}' was deprecated in version {since} and will "
                f'be removed in {remove_version}.')
+    if new_name is None:
+        new_name = alternative
     if new_name is not None:
         message += f" Use argument '{new_name}' instead."
     return message
