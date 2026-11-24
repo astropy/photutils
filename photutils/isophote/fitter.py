@@ -389,7 +389,7 @@ class _EllipseFitter:
                 final_sample = sample if complete else minimum_amplitude_sample
                 final_sample._update(fixed_parameters=fixed_parameters)
                 return Isophote(final_sample, i + 1, valid=True,
-                                stop_code=0 if complete else -1)
+                                stop_code=0 if complete else 5)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the

@@ -582,7 +582,7 @@ class Ellipse:
                 break
 
             # Check for failed fit.
-            if isophote.stop_code < 0 or isophote.stop_code == 1:
+            if isophote.stop_code in (1, 5):
                 # In case the fit failed right at the outset, return an
                 # empty list. This is the usual case when the user
                 # provides initial guesses that are too way off to enable
@@ -661,7 +661,7 @@ class Ellipse:
             isophote = fit(geometry, sma, miniters=miniters)
 
             # If abnormal condition, fix isophote but keep going.
-            if isophote.stop_code < 0:
+            if isophote.stop_code == 5:
                 self._fix_last_isophote(isophote_list, first_isophote)
 
             # But if the harmonic fit failed, bail out immediately.
@@ -811,7 +811,7 @@ class Ellipse:
             brightness, where the algorithm may become unstable
             and unable to recover reliable geometry information.
             If the ellipticity exceeds 0.95 or the center leaves the
-            image during the fit, the fit stops with a stop code of -1.
+            image during the fit, the fit stops with a stop code of 5.
             If `None` (default), then no maximum value is used.
 
         noniterate : bool, optional
@@ -1104,11 +1104,7 @@ class Ellipse:
         isophote.sample._update(
             fixed_parameters=isophote.sample.geometry._fix)
 
-        # We take the opportunity to change an eventual
-        # negative stop code to its positive equivalent.
-        code = 5 if isophote.stop_code < 0 else isophote.stop_code
-
         # Build new instance so it can have its attributes
         # populated from the updated sample attributes.
         isophote_list[-1] = Isophote(isophote.sample, isophote.n_iter,
-                                     isophote.valid, code)
+                                     isophote.valid, isophote.stop_code)

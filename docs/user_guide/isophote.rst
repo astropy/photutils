@@ -407,12 +407,6 @@ Each isophote has a ``stop_code`` that tells how its fit ended:
   The isophote was extracted with the geometry of a previously fitted
   isophote.
 
-* -1: No meaningful gradient could be measured or the ellipse
-  diverged. This code is returned only by
-  :meth:`~photutils.isophote.Ellipse.fit_isophote`.
-  :meth:`~photutils.isophote.Ellipse.fit_image` replaces such an
-  isophote with one that has a stop code of 5.
-
 See the `~photutils.isophote.Isophote` documentation for the complete
 descriptions.
 

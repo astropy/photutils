@@ -539,7 +539,7 @@ class TestEllipse:
         ellipse = Ellipse(OFFSET_GALAXY)
 
         match = (r'No meaningful fit was possible\. The first isophote '
-                 r'\(sma=10\) failed with stop code -1 because the ellipse '
+                 r'\(sma=10\) failed with stop code 5 because the ellipse '
                  'diverged or no meaningful intensity gradient could be '
                  'measured.*try a slightly different starting semimajor '
                  r'axis length \(sma_start\).*low signal-to-noise ratio.*'

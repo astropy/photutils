@@ -53,7 +53,7 @@ def test_zero_gradient_flat_image():
     isophote = fitter.fit()
 
     assert isophote.valid
-    assert isophote.stop_code == -1
+    assert isophote.stop_code == 5
     assert isophote.sample.gradient == 0.0
     assert isophote.intensity == 1.0
 
@@ -70,7 +70,7 @@ def test_positive_gradient():
     data = 10.0 + 0.5 * np.hypot(xx - 100, yy - 100)
     sample = EllipseSample(data, 20.0, x0=100.0, y0=100.0, ellipticity=0.2)
     isophote = _EllipseFitter(sample).fit()
-    assert isophote.stop_code == -1
+    assert isophote.stop_code == 5
     assert isophote.gradient > 0
     assert isophote.ellipticity == 0.2
     assert isophote.x0 == 100.0
@@ -98,7 +98,7 @@ def test_nonmeaningful_gradient_uses_previous(ring_radius):
             + 100.0 * np.exp(-0.5 * (radius - ring_radius)**2))
     sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, ellipticity=0.1)
     isophote = _EllipseFitter(sample).fit()
-    assert isophote.stop_code != -1
+    assert isophote.stop_code != 5
     assert isophote.n_iter > 4
     assert isophote.gradient < 0
 
@@ -115,7 +115,7 @@ def test_nonmeaningful_gradient_center_at_bound():
             + 100.0 * np.exp(-0.5 * (radius - 23.0)**2))
     sample = EllipseSample(data, 20.0, x0=101.0, y0=100.0, ellipticity=0.1)
     isophote = _EllipseFitter(sample).fit(max_center_shift=0.5)
-    assert isophote.stop_code != -1
+    assert isophote.stop_code != 5
     assert isophote.n_iter > 5
     assert isophote.gradient < 0
     assert_allclose(isophote.x0, 100.5)
@@ -250,7 +250,7 @@ def test_fitting_eps_diverged(galaxy_eps):
     data = make_test_image(eps=galaxy_eps, seed=0)
     sample = EllipseSample(data, 40.0, ellipticity=0.9)
     isophote = _EllipseFitter(sample).fit()
-    assert isophote.stop_code == -1
+    assert isophote.stop_code == 5
     assert isophote.ellipticity == 0.9
 
 
