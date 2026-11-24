@@ -670,6 +670,14 @@ the limits. To fit only inward or only outward from the starting
 isophote, set ``max_sma`` or ``min_sma`` to the starting semimajor
 axis length.
 
+`~photutils.isophote.EllipseGeometry`,
+`~photutils.isophote.EllipseSample`, and
+`~photutils.isophote.Ellipse.fit_isophote` now raise a ``ValueError``
+if the semimajor axis length is negative or not finite. A length of
+zero is still allowed and gives the central pixel. Previously,
+``fit_isophote`` returned the central pixel for a negative semimajor
+axis length, and a NaN length raised an unclear ``AttributeError``.
+
 Isophote Stop Codes
 ^^^^^^^^^^^^^^^^^^^
 

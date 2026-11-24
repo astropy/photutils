@@ -183,6 +183,19 @@ def test_invalid_image():
         EllipseSample(DATA[0], 10.0)
 
 
+@pytest.mark.parametrize('sma', [-1.0, np.nan, np.inf])
+def test_invalid_sma(sma):
+    match = 'sma must be finite and nonnegative'
+    with pytest.raises(ValueError, match=match):
+        EllipseSample(DATA, sma)
+
+    # The sma replaces the semimajor axis length of an input geometry
+    geometry = EllipseGeometry(x0=256.0, y0=256.0, sma=10.0,
+                               ellipticity=0.2, orientation=0.0 * u.rad)
+    with pytest.raises(ValueError, match=match):
+        EllipseSample(DATA, sma, geometry=geometry)
+
+
 def test_invalid_integrmode():
     match = 'integration_mode must be one of'
     with pytest.raises(ValueError, match=match):

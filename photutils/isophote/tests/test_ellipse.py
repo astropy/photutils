@@ -879,6 +879,19 @@ class TestEllipse:
         with pytest.raises(ValueError, match=match):
             ellipse.fit_isophote(20.0, step=step)
 
+    @pytest.mark.parametrize('sma', [-1.0, np.nan, np.inf])
+    @pytest.mark.parametrize('noniterate', [False, True])
+    def test_fit_isophote_invalid_sma(self, sma, noniterate):
+        """
+        Test that a negative or nonfinite semimajor axis length is
+        rejected instead of returning the central isophote or failing
+        inside the sampling code.
+        """
+        match = 'sma must be finite and nonnegative'
+        ellipse = Ellipse(self.data)
+        with pytest.raises(ValueError, match=match):
+            ellipse.fit_isophote(sma, noniterate=noniterate)
+
     def test_fixed_pa_round_galaxy(self):
         """
         Test that a fixed position angle is not rotated by 90 degrees
@@ -1073,6 +1086,21 @@ class TestMeasureIsophotes:
         match = 'must contain only Isophote or EllipseGeometry'
         with pytest.raises(TypeError, match=match):
             ellipse.measure_isophotes([self.isolist[1], 10.0])
+
+    def test_invalid_sma(self):
+        """
+        Test that a geometry with a negative semimajor axis length is
+        rejected.
+
+        The geometry rejects such a length, so it is set on the sma
+        attribute after the geometry is created.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad)
+        geometry.sma = -1.0
+        ellipse = Ellipse(self.data)
+        match = 'sma must be finite and nonnegative'
+        with pytest.raises(ValueError, match=match):
+            ellipse.measure_isophotes([geometry])
 
 
 # The values differ from the defaults enough to change the fit result.

@@ -15,7 +15,8 @@ from photutils.isophote.fitter import (DEFAULT_CONVERGENCE,
                                        DEFAULT_MAXITERS,
                                        DEFAULT_MIN_VALID_FRACTION,
                                        DEFAULT_MINITERS, _EllipseFitter)
-from photutils.isophote.geometry import EllipseGeometry, _make_fix_array
+from photutils.isophote.geometry import (EllipseGeometry, _make_fix_array,
+                                         _validate_sma)
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import (EllipseSample, _copy_sigma_clip,
                                        _legacy_sigma_clip, _validate_image)
@@ -785,7 +786,9 @@ class Ellipse:
         Parameters
         ----------
         sma : float
-            The semimajor axis length (pixels).
+            The semimajor axis length (pixels). It must be finite and
+            nonnegative. If it is zero, the isophote is the central
+            pixel.
 
         step : float, optional
             The step value that defines the sampling annulus (pixels
@@ -936,11 +939,12 @@ class Ellipse:
         Raises
         ------
         ValueError
-            If ``step`` is not positive, if ``max_center_shift`` is
-            negative or NaN, if the ellipticity of the starting geometry
-            is 1 or larger, if ``integration_mode`` is not a valid
-            integration mode, or if ``sigma_clip`` is input with a
-            deprecated sigma-clipping keyword.
+            If ``sma`` is negative or not finite, if ``step`` is not
+            positive, if ``max_center_shift`` is negative or NaN, if the
+            ellipticity of the starting geometry is 1 or larger, if
+            ``integration_mode`` is not a valid integration mode, or if
+            ``sigma_clip`` is input with a deprecated sigma-clipping
+            keyword.
 
         TypeError
             If ``sigma_clip`` is not a `~astropy.stats.SigmaClip`
@@ -953,6 +957,7 @@ class Ellipse:
             fit fails. The returned isophote is then invalid with a stop
             code of 3.
         """
+        _validate_sma(sma)
         if not step > 0:  # also rejects NaN
             msg = 'step must be positive'
             raise ValueError(msg)
@@ -1108,7 +1113,7 @@ class Ellipse:
     def _iterative(self, sma, geometry, sigma_clip, integration_mode,
                    convergence, miniters, maxiters, min_valid_fraction, *,
                    max_center_shift=None):
-        if sma <= 0.0:
+        if sma == 0.0:
             # A zero sma requires special handling.
             return _central_isophote(self.image, geometry)
 
