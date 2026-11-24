@@ -155,6 +155,13 @@ Bug Fixes
     is now combined with the input ``mask``. Previously, the star
     finders ignored it. [#2536]
 
+  - Fixed a race condition where the star finder catalog properties
+    (e.g., ``roundness`` and ``mag``) could emit a ``RuntimeWarning``
+    for a division by zero or a non-positive flux when computed from
+    multiple threads at once on Python builds with the GIL. The
+    warnings are now suppressed with ``numpy.errstate``, which is
+    thread-safe, instead of ``warnings.catch_warnings``. [#2574]
+
 - ``photutils.isophote``
 
   - Fixed the ``'bilinear'`` integration mode, which extrapolated
