@@ -1076,9 +1076,9 @@ class Ellipse:
             advice = ('Check the starting ellipse geometry, or try a '
                       'slightly different starting semimajor axis length '
                       '(sma_start). For an image with a low signal-to-noise '
-                      'ratio, see the isophote FAQ '
+                      'ratio, see the isophote user guide '
                       '(https://photutils.readthedocs.io/en/latest/'
-                      'user_guide/isophote_faq.html).')
+                      'user_guide/isophote.html#isophote-low-snr).')
 
         return ('No meaningful fit was possible. The first isophote '
                 f'(sma={isophote.sma:g}) failed with stop code '

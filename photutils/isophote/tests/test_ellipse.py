@@ -543,7 +543,7 @@ class TestEllipse:
                  'diverged or no meaningful intensity gradient could be '
                  'measured.*try a slightly different starting semimajor '
                  r'axis length \(sma_start\).*low signal-to-noise ratio.*'
-                 r'user_guide/isophote_faq\.html')
+                 r'user_guide/isophote\.html#isophote-low-snr')
         with pytest.warns(AstropyUserWarning, match=match):
             isophote_list = ellipse.fit_image()
         assert len(isophote_list) == 0
