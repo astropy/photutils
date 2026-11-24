@@ -172,7 +172,7 @@ class TestEllipse:
         else:
             last_fitted = sma[fitted][-1]
             assert np.all(stop_code[sma > last_fitted] == 4)
-            assert sma[-1] < max_sma <= sma[-1] * 1.1
+            assert sma[-1] <= max_sma < sma[-1] * 1.1
 
     @pytest.mark.parametrize('kwargs', [{'maxgerr': 0.5},
                                         {'going_inwards': True}])
@@ -764,6 +764,47 @@ class TestEllipse:
             min_sma=9.5, max_sma=12.0)
         assert_allclose(isolist.sma, [10.0, 11.0])
 
+    @pytest.mark.parametrize(('step', 'min_sma', 'max_sma', 'expected'), [
+        (1.0, 15.0, 25.0, np.arange(15.0, 26.0)),
+        (0.1, 19.5, 20.5, np.linspace(19.5, 20.5, 11)),
+        (1.0, 20.0, 20.0, [20.0]),
+    ])
+    def test_sma_limits_inclusive_linear(self, step, min_sma, max_sma,
+                                         expected):
+        """
+        Test that isophotes are fit at the ``min_sma`` and ``max_sma``
+        values when the semimajor axis grid reaches them.
+
+        A step of 0.1 reaches the limits only to within rounding
+        errors.
+        """
+        isolist = Ellipse(self.data).fit_image(
+            sma_start=20.0, min_sma=min_sma, max_sma=max_sma, step=step,
+            linear_growth=True)
+        assert_allclose(isolist.sma, expected)
+
+    def test_sma_limits_inclusive_geometric(self):
+        """
+        Test that the ``min_sma`` and ``max_sma`` limits are inclusive
+        for geometric growth, where the semimajor axis grid reaches
+        them only to within rounding errors.
+        """
+        factor = 1.1**np.arange(-3, 4)
+        for scale in (1.0 - 1.0e-13, 1.0, 1.0 + 1.0e-13):
+            isolist = Ellipse(self.data).fit_image(
+                sma_start=20.0, min_sma=20.0 * factor[0] / scale,
+                max_sma=20.0 * factor[-1] * scale, step=0.1)
+            assert_allclose(isolist.sma, 20.0 * factor)
+
+    def test_sma_limits_small_minimum(self):
+        """
+        Test that the smallest fitted semimajor axis length is 0.5
+        pixels, which is the lower limit when ``min_sma`` is smaller.
+        """
+        isolist = Ellipse(self.data).fit_image(
+            sma_start=2.0, max_sma=2.0, step=0.5, linear_growth=True)
+        assert_allclose(isolist.sma, [0.0, 0.5, 1.0, 1.5, 2.0])
+
     @pytest.mark.parametrize('step', [0.0, -0.1, np.nan])
     def test_invalid_step(self, step):
         match = 'step must be positive'
@@ -828,7 +869,7 @@ class TestEllipse:
         isolist = ellipse.fit_image(sma_start=20.0, min_sma=10.0,
                                     max_sma=40.0, step=5.0,
                                     linear_growth=np.True_)
-        assert_allclose(isolist.sma, [15.0, 20.0, 25.0, 30.0, 35.0])
+        assert_allclose(isolist.sma, np.arange(10.0, 41.0, 5.0))
         isophote = ellipse.fit_isophote(20.0, linear_growth=np.True_)
         assert isophote.sample.geometry.linear_growth is True
 

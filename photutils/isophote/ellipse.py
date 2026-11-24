@@ -24,6 +24,11 @@ from photutils.utils._deprecation import (deprecated,
 
 __all__ = ['Ellipse']
 
+# The relative tolerance of the inclusive ``min_sma`` and ``max_sma``
+# limits. It keeps a semimajor axis length that reaches a limit only
+# to within rounding errors.
+_SMA_LIMIT_RTOL = 1.0e-9
+
 
 def _central_isophote(image, geometry):
     """
@@ -325,19 +330,21 @@ class Ellipse:
 
         min_sma : float, optional
             The minimum value for the semimajor axis length (pixels).
-            The default is 0, which also adds the central pixel to the
-            returned list as an isophote with a semimajor axis length
-            of 0. Its intensity is NaN if it cannot be measured (e.g.,
-            the central pixel is masked or nonfinite). Isophotes with
-            a semimajor axis length smaller than 0.5 pixels are not
-            fitted.
+            The limit is inclusive, so an isophote is fit at ``min_sma``
+            if the semimajor axis reaches that value. The default is
+            0, which also adds the central pixel to the returned list
+            as an isophote with a semimajor axis length of 0. Its
+            intensity is NaN if it cannot be measured (e.g., the central
+            pixel is masked or nonfinite). Isophotes with a semimajor
+            axis length smaller than 0.5 pixels are not fitted.
 
         max_sma : float or `None`, optional
             The maximum value for the semimajor axis length (pixels).
-            When set to `None` (default), the algorithm will increase
-            the semimajor axis until one of several conditions will
-            cause it to stop and revert to fit ellipses with sma <
-            ``sma_start``.
+            The limit is inclusive, so an isophote is fit at ``max_sma``
+            if the semimajor axis reaches that value. When set to `None`
+            (default), the algorithm will increase the semimajor axis
+            until one of several conditions will cause it to stop and
+            revert to fit ellipses with sma < ``sma_start``.
 
         step : float, optional
             The step value used to grow/shrink the semimajor axis
@@ -432,13 +439,13 @@ class Ellipse:
             the geometric growing mode is chosen, thus the
             semimajor axis length is increased by a factor of (1.
             + ``step``), and the process is repeated until either
-            the semimajor axis value reaches the value of parameter
+            the semimajor axis value exceeds the value of parameter
             ``max_sma``, or the last fitted ellipse has more than a
             given fraction of its sampled points flagged out (see
             ``min_valid_fraction``). The process then resumes from the
             first fitted ellipse (at ``sma_start``) inwards, in steps
             of (1./(1. + ``step``)), until the semimajor axis length
-            reaches the value ``min_sma``. In case of linear growing,
+            is smaller than ``min_sma``. In case of linear growing,
             the increment or decrement value is given directly by
             ``step`` in pixels. If ``max_sma`` is set to `None`, the
             semimajor axis will grow until a low signal-to-noise
@@ -645,7 +652,8 @@ class Ellipse:
             # Update sma. If exceeded user-defined
             # maximum, bail out from this loop.
             sma = isophote.sample.geometry._update_sma(step)
-            if max_sma is not None and sma >= max_sma:
+            if (max_sma is not None
+                    and sma > max_sma * (1.0 + _SMA_LIMIT_RTOL)):
                 break
 
         # Reset sma so as to go inwards. As in the STSDAS ellipse task,
@@ -656,8 +664,8 @@ class Ellipse:
         geometry = first_isophote.sample.geometry
 
         # Now, go from initial sma inwards towards center, until the
-        # sma reaches the user-defined minimum or is too small.
-        while sma > max(min_sma, 0.5):
+        # sma is smaller than the user-defined minimum or is too small.
+        while sma >= max(min_sma, 0.5) * (1.0 - _SMA_LIMIT_RTOL):
             isophote = fit(geometry, sma, miniters=miniters)
 
             # If abnormal condition, fix isophote but keep going.

@@ -700,13 +700,13 @@ By default, the semimajor axis length grows and shrinks by a factor of
 (1 + ``step``), where ``step`` defaults to 0.1. With
 ``linear_growth=True``, ``step`` is instead an increment in pixels.
 The ``min_sma`` and ``max_sma`` keywords limit the range of the
-semimajor axis lengths. The outward growth stops before the
-semimajor axis length reaches ``max_sma``::
+semimajor axis lengths. Both limits are inclusive, so an isophote
+whose semimajor axis length equals a limit is included::
 
     >>> isolist_linear = ellipse.fit_image(step=5.0, linear_growth=True,
     ...                                    max_sma=60.0)
     >>> print(isolist_linear.sma)
-    [ 0.  5. 10. 15. 20. 25. 30. 35. 40. 45. 50. 55.]
+    [ 0.  5. 10. 15. 20. 25. 30. 35. 40. 45. 50. 55. 60.]
 
 If ``max_sma`` is `None` (the default), the outward growth stops when
 the relative error of the local intensity gradient exceeds
