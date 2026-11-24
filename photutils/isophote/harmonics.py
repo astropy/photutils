@@ -5,6 +5,8 @@ Tools for computing and fitting harmonic functions.
 
 import numpy as np
 
+from photutils.utils._deprecation import deprecated
+
 __all__ = ['first_and_second_harmonic_function',
            'fit_first_and_second_harmonics', 'fit_upper_harmonic']
 
@@ -66,6 +68,37 @@ def _linear_least_squares_fit(design, values):
     return coeffs, covariance
 
 
+def _first_and_second_harmonic_function(phi, c):
+    r"""
+    Private implementation of `first_and_second_harmonic_function`.
+    """
+    return (c[0] + c[1] * np.sin(phi) + c[2] * np.cos(phi)
+            + c[3] * np.sin(2 * phi) + c[4] * np.cos(2 * phi))
+
+
+def _fit_first_and_second_harmonics(phi, intensities):
+    r"""
+    Private implementation of `fit_first_and_second_harmonics`.
+    """
+    # The isophote fitter relies on the coefficient order (mean, A1,
+    # B1, A2, B2). See _HARMONIC_PARAMETERS in the geometry module.
+    phi = np.asarray(phi)
+    design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
+                              np.sin(2 * phi), np.cos(2 * phi)])
+    return _linear_least_squares_fit(design, intensities)
+
+
+def _fit_upper_harmonic(phi, intensities, order):
+    r"""
+    Private implementation of `fit_upper_harmonic`.
+    """
+    phi = np.asarray(phi)
+    design = np.column_stack([np.ones_like(phi), np.sin(order * phi),
+                              np.cos(order * phi)])
+    return _linear_least_squares_fit(design, intensities)
+
+
+@deprecated('3.2', until='4.0')
 def first_and_second_harmonic_function(phi, c):
     r"""
     Compute the harmonic function value used to calculate the
@@ -83,7 +116,8 @@ def first_and_second_harmonic_function(phi, c):
     phi : float or `~numpy.ndarray`
         The angle(s) (radians) along the elliptical path, measured
         counterclockwise from the end of the semimajor axis that points
-        in the direction of the position angle.
+        in the direction of the orientation.
+
     c : `~numpy.ndarray` of shape (5,)
         Array containing the five harmonic coefficients.
 
@@ -92,10 +126,10 @@ def first_and_second_harmonic_function(phi, c):
     result : float or `~numpy.ndarray`
         The function value(s) at the given input angle(s).
     """
-    return (c[0] + c[1] * np.sin(phi) + c[2] * np.cos(phi)
-            + c[3] * np.sin(2 * phi) + c[4] * np.cos(2 * phi))
+    return _first_and_second_harmonic_function(phi, c)
 
 
+@deprecated('3.2', until='4.0')
 def fit_first_and_second_harmonics(phi, intensities):
     r"""
     Fit the first and second harmonics to a set of (angle, intensity)
@@ -113,7 +147,8 @@ def fit_first_and_second_harmonics(phi, intensities):
     phi : 1D `~numpy.ndarray`
         The angle(s) (radians) along the elliptical path, measured
         counterclockwise from the end of the semimajor axis that points
-        in the direction of the position angle.
+        in the direction of the orientation.
+
     intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.
@@ -135,14 +170,10 @@ def fit_first_and_second_harmonics(phi, intensities):
     ValueError
         If there are fewer than 5 data points.
     """
-    # The isophote fitter relies on the coefficient order (mean, A1,
-    # B1, A2, B2). See _HARMONIC_PARAMETERS in the geometry module.
-    phi = np.asarray(phi)
-    design = np.column_stack([np.ones_like(phi), np.sin(phi), np.cos(phi),
-                              np.sin(2 * phi), np.cos(2 * phi)])
-    return _linear_least_squares_fit(design, intensities)
+    return _fit_first_and_second_harmonics(phi, intensities)
 
 
+@deprecated('3.2', until='4.0')
 def fit_upper_harmonic(phi, intensities, order):
     r"""
     Fit an upper harmonic function to a set of (angle, intensity) pairs.
@@ -163,10 +194,12 @@ def fit_upper_harmonic(phi, intensities, order):
     phi : 1D `~numpy.ndarray`
         The angle(s) (radians) along the elliptical path, measured
         counterclockwise from the end of the semimajor axis that points
-        in the direction of the position angle.
+        in the direction of the orientation.
+
     intensities : 1D `~numpy.ndarray`
         The intensities measured along the elliptical path, at the
         angles defined by the ``phi`` parameter.
+
     order : int
         The order of the harmonic to be fitted.
 
@@ -186,7 +219,4 @@ def fit_upper_harmonic(phi, intensities, order):
     ValueError
         If there are fewer than 3 data points.
     """
-    phi = np.asarray(phi)
-    design = np.column_stack([np.ones_like(phi), np.sin(order * phi),
-                              np.cos(order * phi)])
-    return _linear_least_squares_fit(design, intensities)
+    return _fit_upper_harmonic(phi, intensities, order)

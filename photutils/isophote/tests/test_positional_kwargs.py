@@ -4,13 +4,14 @@ Tests for deprecation warnings when optional arguments are passed
 positionally.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.model import build_ellipse_model
-from photutils.isophote.sample import CentralEllipseSample, EllipseSample
+from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -27,26 +28,26 @@ class TestEllipsePositionalKwargs:
         self.data = make_test_image(nx=128, ny=128, sma=10.0, seed=0)
 
     def test_init_positional_warns(self):
-        geometry = EllipseGeometry(x0=64, y0=64, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=64, y0=64, sma=10, ellipticity=0.2,
+                                   orientation=(np.pi / 2) * u.rad)
         match = '__init__'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             Ellipse(self.data, geometry)
 
     def test_init_keyword_no_warning(self):
-        geometry = EllipseGeometry(x0=64, y0=64, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=64, y0=64, sma=10, ellipticity=0.2,
+                                   orientation=(np.pi / 2) * u.rad)
         Ellipse(self.data, geometry=geometry)
 
     def test_fit_image_positional_warns(self):
         ellipse = Ellipse(self.data)
         match = 'fit_image'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
-            ellipse.fit_image(10.0, maxsma=15.0)
+            ellipse.fit_image(10.0, max_sma=15.0)
 
     def test_fit_image_keyword_no_warning(self):
         ellipse = Ellipse(self.data)
-        ellipse.fit_image(sma0=10.0, maxsma=15.0)
+        ellipse.fit_image(sma_start=10.0, max_sma=15.0)
 
     def test_fit_isophote_positional_warns(self):
         ellipse = Ellipse(self.data)
@@ -67,23 +68,23 @@ class TestEllipseGeometryPositionalKwargs:
     def test_init_positional_warns(self):
         match = '__init__'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
-            EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2)
+            EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0 * u.rad, 0.2)
 
     def test_init_keyword_no_warning(self):
-        EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2)
+        EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0 * u.rad, step=0.2)
 
     def test_find_center_positional_warns(self):
         data = make_test_image(seed=0)
-        geometry = EllipseGeometry(x0=256, y0=256, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=256, y0=256, sma=10, ellipticity=0.2,
+                                   orientation=(np.pi / 2) * u.rad)
         match = 'find_center'
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             geometry.find_center(data, 0.5)
 
     def test_find_center_keyword_no_warning(self):
         data = make_test_image(seed=0)
-        geometry = EllipseGeometry(x0=256, y0=256, sma=10, eps=0.2,
-                                   pa=np.pi / 2)
+        geometry = EllipseGeometry(x0=256, y0=256, sma=10, ellipticity=0.2,
+                                   orientation=(np.pi / 2) * u.rad)
         geometry.find_center(data, threshold=0.5)
 
 
@@ -98,7 +99,7 @@ def fixture_small_isolist():
     """
     data = make_test_image(nx=128, ny=128, sma=10.0, seed=0)
     ellipse = Ellipse(data)
-    isolist = ellipse.fit_image(sma0=10.0, maxsma=15.0)
+    isolist = ellipse.fit_image(sma_start=10.0, max_sma=15.0)
     return data.shape, isolist
 
 
@@ -109,13 +110,18 @@ class TestBuildEllipseModelPositionalKwargs:
 
     def test_positional_warns(self, small_isolist):
         shape, isolist = small_isolist
-        match = 'build_ellipse_model'
-        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        match = "'fill' positionally to 'build_ellipse_model'"
+        outer = "The 'build_ellipse_model' function was deprecated"
+        with (pytest.warns(PhotutilsDeprecationWarning, match=outer),
+              pytest.warns(PhotutilsDeprecationWarning, match=match)):
             build_ellipse_model(shape, isolist, 0.0)
 
-    def test_keyword_no_warning(self, small_isolist):
+    def test_keyword_no_positional_warning(self, small_isolist):
         shape, isolist = small_isolist
-        build_ellipse_model(shape, isolist, fill=0.0)
+        match = "The 'build_ellipse_model' function was deprecated"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match) as rec:
+            build_ellipse_model(shape, isolist, fill=0.0)
+        assert len(rec) == 1
 
 
 class TestEllipseSamplePositionalKwargs:
@@ -137,31 +143,43 @@ class TestEllipseSamplePositionalKwargs:
     def test_update_positional_warns(self):
         sample = EllipseSample(self.data, 40.0)
         fix = np.array([False, False, False, False])
-        match = 'update'
-        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        # The argument itself is deprecated, so passing it positionally
+        # emits only the warning for the argument.
+        match = "'fixed_parameters' was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match=match) as record:
             sample.update(fix)
+        assert len(record) == 1
 
-    def test_update_keyword_no_warning(self):
+    def test_update_keyword_warns_only_for_fixed_parameters(self):
         sample = EllipseSample(self.data, 40.0)
         fix = np.array([False, False, False, False])
-        sample.update(fixed_parameters=fix)
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match='fixed_parameters'):
+            sample.update(fixed_parameters=fix)
 
 
-class TestCentralEllipseSamplePositionalKwargs:
+class TestCentralSamplePositionalKwargs:
     """
-    Test CentralEllipseSample.update.
+    Test EllipseSample.update for the central pixel.
     """
 
     def test_update_positional_warns(self):
         data = make_test_image(seed=0)
-        sample = CentralEllipseSample(data, 0.0)
+        sample = EllipseSample(data, 0.0)
         fix = np.array([False, False, False, False])
-        match = 'update'
-        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        # The argument itself is deprecated, so passing it positionally
+        # emits only the warning for the argument.
+        match = "'fixed_parameters' was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match=match) as record:
             sample.update(fix)
+        assert len(record) == 1
 
-    def test_update_keyword_no_warning(self):
+    def test_update_keyword_warns_only_for_fixed_parameters(self):
         data = make_test_image(seed=0)
-        sample = CentralEllipseSample(data, 0.0)
+        sample = EllipseSample(data, 0.0)
         fix = np.array([False, False, False, False])
-        sample.update(fixed_parameters=fix)
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match='fixed_parameters'):
+            sample.update(fixed_parameters=fix)

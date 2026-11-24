@@ -330,7 +330,8 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'irac_ch1_flight.fits'
         hdulist.writeto(filepath)
 
-        match = 'deprecated in version 3.1 .* removed in version 4.0'
+        match = ("The 'load_irac_psf' function was deprecated in version "
+                 r'3\.1\. It will be removed in version 4\.0\.')
         with (pytest.warns(PhotutilsDeprecationWarning, match=match),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath))):
@@ -454,7 +455,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'hst_wfc3ir_f160w_simulated_starfield.fits'
         hdulist.writeto(filepath)
 
-        match = 'deprecated in version 3.1 .* removed in version 4.0'
+        match = ("The 'load_simulated_hst_star_image' function was "
+                 r'deprecated in version 3\.1\. It will be removed in '
+                 r'version 4\.0\.')
         with (pytest.warns(PhotutilsDeprecationWarning, match=match),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath))):

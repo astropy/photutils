@@ -1191,7 +1191,8 @@ class Background2D:
         return self._background_rms_mesh
 
     @property
-    @deprecated(since='3.0', alternative='n_pixels_mesh', until='4.0')
+    @deprecated(since='3.0', alternative='n_pixels_mesh', until='4.0',
+                obj_type='attribute')
     def npixels_mesh(self):
         """
         A 2D array of the number of pixels used to compute the
@@ -1208,7 +1209,8 @@ class Background2D:
         return self._n_good
 
     @property
-    @deprecated(since='3.0', alternative='n_pixels_map', until='4.0')
+    @deprecated(since='3.0', alternative='n_pixels_map', until='4.0',
+                obj_type='attribute')
     def npixels_map(self):
         """
         A 2D map of the number of pixels used to compute the statistics

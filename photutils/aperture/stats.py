@@ -809,7 +809,8 @@ class ApertureStats:
         return self._ids
 
     @property
-    @deprecated('3.1', alternative="the 'id' attribute", until='4.0')
+    @deprecated('3.1', alternative="the 'id' attribute", until='4.0',
+                obj_type='attribute')
     def ids(self):
         """
         The aperture identification number(s).
@@ -976,7 +977,7 @@ class ApertureStats:
 
     @property
     @deprecated('3.1', alternative="the 'n_positions' attribute",
-                until='4.0')
+                until='4.0', obj_type='attribute')
     def n_apertures(self):
         """
         The number of positions for the input aperture.
@@ -3235,7 +3236,7 @@ class ApertureStats:
                                          square_unit=True)
 
     @property
-    @deprecated('3.1', until='4.0')
+    @deprecated('3.1', until='4.0', obj_type='attribute')
     def inertia_tensor(self):
         """
         The inertia tensor of the source for the rotation around its

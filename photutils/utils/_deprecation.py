@@ -29,15 +29,16 @@ from photutils._future_column_names import get_future_column_names
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
-def deprecated(since, *, alternative=None, until=None):
+def deprecated(since, *, alternative=None, until=None, obj_type=None):
     """
-    Decorator to mark a function or method as deprecated.
+    Decorator to mark a function, method, or class as deprecated.
 
     This is a wrapper around `astropy.utils.decorators.deprecated` that
     allows for an optional ``until`` parameter to specify when the
-    deprecated functionality will be removed. If ``until`` is provided,
-    the warning message will include both the deprecation version and the
-    removal version.
+    deprecated functionality will be removed. The warning message names
+    the deprecated object by its qualified name (e.g.,
+    ``'EllipseGeometry.update_sma'``) and includes the deprecation
+    version, the alternative if one is given, and the removal version.
 
     Parameters
     ----------
@@ -51,28 +52,88 @@ def deprecated(since, *, alternative=None, until=None):
 
     until : str or int, optional
         The version in which the deprecated functionality will be removed.
-        If `None`, the removal version is not mentioned in the warning
-        message.
+        If `None`, the warning message says that it will be removed in a
+        future version.
+
+    obj_type : str or None, optional
+        The type of the deprecated object in the warning message, e.g.,
+        ``'attribute'`` for the getter of a property. If `None`, it is
+        ``'class'``, ``'method'``, or ``'function'``.
 
     Returns
     -------
     decorator : function
-        A decorator function that can be applied to any function or method
-        to mark it as deprecated.
+        A decorator function that can be applied to any function, method,
+        or class to mark it as deprecated.
     """
-    if until is None:
-        message = (f'This function was deprecated in version {since} and will '
-                   'be removed in a future version.')
-    else:
-        remove_version = 'version ' + str(until)
-        message = (f'This function was deprecated in version {since} and will '
-                   f'be removed in {remove_version}.')
+    remove_version = ('a future version' if until is None
+                      else f'version {until}')
+    use = '' if alternative is None else ' Use {alternative} instead.'
 
+    # The message in the docstring note does not name the object.
+    doc_message = (f'This function was deprecated in version {since} and '
+                   f'will be removed in {remove_version}.')
     if alternative is not None:
-        message += f' Use {alternative} instead.'
+        doc_message += f' Use {alternative} instead.'
 
-    return astropy_deprecated(since, message=message,
-                              warning_type=PhotutilsDeprecationWarning)
+    def decorator(obj):  # numpydoc ignore=GL08
+        func = getattr(obj, '__func__', obj)
+        # Drop the enclosing scopes of an object defined in a function.
+        name = func.__qualname__.rpartition('<locals>.')[2]
+        if obj_type is not None:
+            type_name = obj_type
+        elif isinstance(obj, type):
+            type_name = 'class'
+        elif '.' in name:
+            type_name = 'method'
+        else:
+            type_name = 'function'
+
+        # The name and the alternative are inserted by the format fields
+        # of the astropy decorator.
+        message = (f"The '{{func}}' {{obj_type}} was deprecated in version "
+                   f'{since}.{use} It will be removed in {remove_version}.')
+        result = astropy_deprecated(
+            since, message=message, name=name, alternative=alternative,
+            obj_type=type_name,
+            warning_type=PhotutilsDeprecationWarning)(obj)
+
+        message = message.format(func=name, obj_type=type_name,
+                                 alternative=alternative)
+        replace_docstring_message(result, message, doc_message)
+        return result
+
+    return decorator
+
+
+def replace_docstring_message(obj, message, doc_message):
+    """
+    Replace ``message`` with ``doc_message`` in the docstrings that
+    `astropy.utils.decorators.deprecated` changed.
+
+    Parameters
+    ----------
+    obj : object
+        The object returned by `astropy.utils.decorators.deprecated`.
+        For a class, the docstrings of its ``__init__`` and ``__new__``
+        methods are also changed.
+
+    message : str
+        The warning message.
+
+    doc_message : str
+        The message for the docstring note.
+    """
+    targets = [obj, getattr(obj, '__func__', None)]
+    if isinstance(obj, type):
+        targets.extend(obj.__dict__.get(name)
+                       for name in ('__init__', '__new__'))
+    for target in targets:
+        if target is None:
+            continue
+        doc = target.__doc__
+        if doc and message in doc:
+            target.__doc__ = doc.replace(message, doc_message, 1)
 
 
 def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
@@ -85,17 +146,25 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
     name will be removed. If ``until`` is provided, the warning message
     will include both the deprecation version and the removal version.
 
+    Several arguments can be deprecated by a single decorator by
+    passing lists for ``old_name`` and ``new_name``. The warnings are
+    then issued by a single wrapper. When that wrapper is the outermost
+    one, its warnings point at the caller of the decorated function.
+
     Parameters
     ----------
-    old_name : str
-        The old (deprecated) argument name.
+    old_name : str or list of str
+        The old (deprecated) argument name or names.
 
-    new_name : str or None
+    new_name : str, `None`, or list of str or `None`
         The new argument name that should be used instead, or `None` if
-        the argument has been removed entirely.
+        the argument has been removed entirely. If ``old_name`` is a
+        list, this must be a list of the same length.
 
-    since : str or int
-        The version in which the argument was renamed or removed.
+    since : str, int, or list of str or int
+        The version in which the argument was renamed or removed. If
+        ``old_name`` is a list, this can be a single version for all
+        of the names or a list of the same length.
 
     until : str or int, optional
         The version in which the old argument name will be removed. If
@@ -108,19 +177,180 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
         A decorator function that can be applied to any function to warn
         about the use of a renamed argument.
     """
+    if isinstance(old_name, (list, tuple)):
+        old_names = list(old_name)
+        new_names = list(new_name)
+        if isinstance(since, (list, tuple)):
+            since_list = list(since)
+        else:
+            since_list = [since] * len(old_names)
+        if until is None:
+            return astropy_deprecated_renamed_argument(
+                old_names, new_names, since_list,
+                warning_type=PhotutilsDeprecationWarning)
+        messages = [renamed_argument_message(old, new, version, until)
+                    for old, new, version
+                    in zip(old_names, new_names, since_list, strict=True)]
+        return astropy_deprecated_renamed_argument(
+            old_names, new_names, since_list, message=messages,
+            warning_type=PhotutilsDeprecationWarning)
+
     if until is None:
         return astropy_deprecated_renamed_argument(
             old_name, new_name, since,
             warning_type=PhotutilsDeprecationWarning)
 
+    message = renamed_argument_message(old_name, new_name, since, until)
+    return astropy_deprecated_renamed_argument(
+        old_name, new_name, since, message=message,
+        warning_type=PhotutilsDeprecationWarning)
+
+
+def renamed_argument_message(old_name, new_name, since, until):
+    """
+    Return the warning message for a renamed or removed argument.
+
+    Parameters
+    ----------
+    old_name : str
+        The old (deprecated) argument name.
+
+    new_name : str or `None`
+        The new argument name, or `None` if the argument was removed.
+
+    since : str or int
+        The version in which the argument was renamed or removed.
+
+    until : str or int
+        The version in which the old argument name will be removed.
+
+    Returns
+    -------
+    message : str
+        The warning message.
+    """
     remove_version = 'version ' + str(until)
     message = (f"'{old_name}' was deprecated in version {since} and will "
                f'be removed in {remove_version}.')
     if new_name is not None:
         message += f" Use argument '{new_name}' instead."
-    return astropy_deprecated_renamed_argument(
-        old_name, new_name, since, message=message,
-        warning_type=PhotutilsDeprecationWarning)
+    return message
+
+
+def _get_since(since, name):
+    """
+    Return the deprecation version of a name.
+
+    Parameters
+    ----------
+    since : str, int, dict, or `None`
+        The deprecation version, or a dictionary mapping each
+        deprecated name to its deprecation version.
+
+    name : str
+        The deprecated name.
+
+    Returns
+    -------
+    since : str, int, or `None`
+        The deprecation version of ``name``, or `None` if ``since``
+        is a dictionary that does not contain ``name``.
+    """
+    if isinstance(since, dict):
+        return since.get(name)
+    return since
+
+
+def warn_deprecated_attribute(name, new_name, *, since=None, until=None,
+                              stacklevel=2):
+    """
+    Issue a deprecation warning for a renamed attribute.
+
+    Parameters
+    ----------
+    name : str
+        The deprecated attribute name.
+
+    new_name : str
+        The new attribute name.
+
+    since : str or int, optional
+        The version in which the attribute was deprecated. If `None`,
+        the deprecation version is not mentioned in the warning
+        message.
+
+    until : str or int, optional
+        The version in which the old attribute name will be removed.
+        If `None`, the removal version is not mentioned in the warning
+        message.
+
+    stacklevel : int, optional
+        The stack level for the warning. A value of 1 points to the
+        function that calls this function, and the default of 2 points
+        to the caller of that function.
+    """
+    since_str = ''
+    if since is not None:
+        since_str = f' in version {since}'
+    if until is not None:
+        remove_str = 'version ' + str(until)
+    else:
+        remove_str = 'a future version'
+    warn_msg = (f'The {name!r} attribute was deprecated{since_str}. '
+                f'Use {new_name!r} instead. It will be removed in '
+                f'{remove_str}.')
+    warnings.warn(warn_msg, PhotutilsDeprecationWarning,
+                  stacklevel=stacklevel + 1)
+
+
+def deprecated_attribute(name, new_name, since, *, until=None):
+    """
+    Make a property for a renamed attribute.
+
+    Getting or setting the returned property issues a deprecation
+    warning and forwards to the ``new_name`` attribute. Use it, instead
+    of `deprecated_getattr`, for an attribute that users can set,
+    because an assignment to the old name would otherwise create a new
+    attribute that nothing reads.
+
+    Parameters
+    ----------
+    name : str
+        The deprecated attribute name.
+
+    new_name : str
+        The new attribute name.
+
+    since : str or int
+        The version in which the attribute was deprecated.
+
+    until : str or int, optional
+        The version in which the old attribute name will be removed.
+        If `None`, the removal version is not mentioned in the warning
+        message.
+
+    Returns
+    -------
+    result : property
+        The property to assign to the old name in the class body.
+    """
+    def getter(self):  # numpydoc ignore=GL08
+        warn_deprecated_attribute(name, new_name, since=since,
+                                  until=until, stacklevel=2)
+        return getattr(self, new_name)
+
+    def setter(self, value):  # numpydoc ignore=GL08
+        warn_deprecated_attribute(name, new_name, since=since,
+                                  until=until, stacklevel=2)
+        setattr(self, new_name, value)
+
+    doc = f"""
+    Deprecated alias of ``{new_name}``.
+
+    .. deprecated:: {since}
+        Use ``{new_name}`` instead.
+    """
+    return property(getter, setter, doc=doc)
 
 
 def deprecated_getattr(instance, name, deprecated_map, *, since=None,
@@ -146,9 +376,11 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
         A dictionary mapping old (deprecated) attribute names to their
         new attribute names.
 
-    since : str or int, optional
-        The version in which the attribute was deprecated. If `None`,
-        the deprecation version is not mentioned in the warning message.
+    since : str, int, or dict, optional
+        The version in which the attribute was deprecated, or a
+        dictionary mapping each deprecated attribute name to its
+        version. If `None`, the deprecation version is not mentioned
+        in the warning message.
 
     until : str or int, optional
         The version in which the old attribute name will be removed.
@@ -167,25 +399,16 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
     """
     if name in deprecated_map:
         new_name = deprecated_map[name]
-        since_str = ''
-        if since is not None:
-            since_str = f' in version {since}'
-        if until is not None:
-            remove_str = 'version ' + str(until)
-        else:
-            remove_str = 'a future version'
-        warn_msg = (f'The {name!r} attribute was deprecated{since_str}. '
-                    f'Use {new_name!r} instead. It will be removed in '
-                    f'{remove_str}.')
-        warnings.warn(warn_msg, PhotutilsDeprecationWarning,
-                      stacklevel=3)
+        warn_deprecated_attribute(name, new_name,
+                                  since=_get_since(since, name),
+                                  until=until, stacklevel=3)
         return getattr(instance, new_name)
 
     msg = f'{type(instance).__name__!r} object has no attribute {name!r}'
     raise AttributeError(msg)
 
 
-def deprecated_positional_kwargs(since, *, until=None):
+def deprecated_positional_kwargs(since, *, until=None, stacklevel=2):
     """
     Decorator to warn when optional arguments are passed positionally.
 
@@ -204,6 +427,12 @@ def deprecated_positional_kwargs(since, *, until=None):
         The version in which passing optional arguments positionally
         will be removed. If `None`, the removal version is not mentioned
         in the warning message.
+
+    stacklevel : int, optional
+        The stack level for the warning. The default of 2 points to
+        the caller of the decorated function. Use 3 when the decorated
+        function is wrapped by one other decorator, placed outside this
+        one, so that the warning still points to the caller.
 
     Returns
     -------
@@ -252,7 +481,7 @@ def deprecated_positional_kwargs(since, *, until=None):
                        f'Pass {pronoun} as {kwarg_noun} instead '
                        f'(e.g., {examples_str}).')
                 warnings.warn(msg, PhotutilsDeprecationWarning,
-                              stacklevel=2)
+                              stacklevel=stacklevel)
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -275,7 +504,7 @@ class DeprecatedColumnMixin:
     _deprecation_since = None
     _deprecation_until = None
 
-    def _warn_deprecated(self, name, new_name, *, stacklevel=4):
+    def _warn_deprecated(self, name, new_name, *, stacklevel=5):
         """
         Issue a deprecation warning for a column name.
 
@@ -288,11 +517,15 @@ class DeprecatedColumnMixin:
             The new column name.
 
         stacklevel : int, optional
-            The stack level for the warning. The default is 4.
+            The stack level for the warning. The default of 5 points
+            to the caller of a public table method that calls
+            ``_translate_names``, which calls ``_translate_name``,
+            which calls this method.
         """
+        since = _get_since(self._deprecation_since, name)
         since_str = ''
-        if self._deprecation_since is not None:
-            since_str = f' in version {self._deprecation_since}'
+        if since is not None:
+            since_str = f' in version {since}'
         if self._deprecation_until is not None:
             remove_str = 'version ' + str(self._deprecation_until)
         else:
@@ -306,7 +539,7 @@ class DeprecatedColumnMixin:
         warnings.warn(msg, PhotutilsDeprecationWarning,
                       stacklevel=stacklevel)
 
-    def _translate_name(self, name, *, stacklevel=4):
+    def _translate_name(self, name, *, stacklevel=5):
         """
         Translate a single name, issue a warning, and return the new
         name.
@@ -317,7 +550,8 @@ class DeprecatedColumnMixin:
             The column name to be translated.
 
         stacklevel : int, optional
-            The stack level for the warning. The default is 4.
+            The stack level for the warning. The default of 5 points
+            to the caller of the public table method.
 
         Returns
         -------
@@ -331,7 +565,7 @@ class DeprecatedColumnMixin:
             return new_name
         return name
 
-    def _translate_names(self, names, *, stacklevel=4):
+    def _translate_names(self, names, *, stacklevel=5):
         """
         Translate a single name or a list/tuple of names.
 
@@ -341,7 +575,8 @@ class DeprecatedColumnMixin:
             The column name(s) to be translated.
 
         stacklevel : int, optional
-            The stack level for the warning. The default is 4.
+            The stack level for the warning. The default of 5 points
+            to the caller of the public table method.
 
         Returns
         -------
@@ -599,10 +834,11 @@ def create_empty_deprecated_qtable(deprecation_map, *, since=None,
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
 
-    since : str or int, optional
-        The version in which the column names were deprecated. If
-        `None`, the deprecation version is not mentioned in the
-        warning message.
+    since : str, int, or dict, optional
+        The version in which the column names were deprecated, or a
+        dictionary mapping each deprecated column name to its
+        version. If `None`, the deprecation version is not mentioned
+        in the warning message.
 
     until : str or int, optional
         The version in which the old column names will be removed. If
@@ -676,10 +912,11 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
 
-    since : str or int, optional
-        The version in which the column names were deprecated. If
-        `None`, the deprecation version is not mentioned in the
-        warning message.
+    since : str, int, or dict, optional
+        The version in which the column names were deprecated, or a
+        dictionary mapping each deprecated column name to its
+        version. If `None`, the deprecation version is not mentioned
+        in the warning message.
 
     until : str or int, optional
         The version in which the old column names will be removed. If

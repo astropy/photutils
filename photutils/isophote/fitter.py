@@ -3,7 +3,6 @@
 Tools for fitting ellipses.
 """
 
-import abc
 import copy
 import math
 import warnings
@@ -11,11 +10,14 @@ import warnings
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.isophote.geometry import _HARMONIC_PARAMETERS, _make_fix_array
-from photutils.isophote.harmonics import (first_and_second_harmonic_function,
-                                          fit_first_and_second_harmonics)
-from photutils.isophote.isophote import CentralPixel, Isophote
+from photutils.isophote.geometry import (_CENTER_INDICES, _ELLIPTICITY_INDEX,
+                                         _HARMONIC_PARAMETERS,
+                                         _ORIENTATION_INDEX)
+from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
+                                          _fit_first_and_second_harmonics)
+from photutils.isophote.isophote import Isophote
 from photutils.utils._deprecation import deprecated_renamed_argument
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['EllipseFitter']
 
@@ -25,18 +27,13 @@ MAX_EPS = 0.95
 MIN_EPS = 0.05
 
 DEFAULT_CONVERGENCE = 0.05
-DEFAULT_MINIT = 10
-DEFAULT_MAXIT = 50
-DEFAULT_FFLAG = 0.7
-DEFAULT_MAXGERR = 0.5
-
-# The indices of the position angle and ellipticity in the ``fix`` array
-# of EllipseGeometry.
-_PA_INDEX = list(_HARMONIC_PARAMETERS.values()).index('pa')
-_EPS_INDEX = list(_HARMONIC_PARAMETERS.values()).index('eps')
+DEFAULT_MINITERS = 10
+DEFAULT_MAXITERS = 50
+DEFAULT_MIN_VALID_FRACTION = 0.7
+DEFAULT_MAX_GRADIENT_REL_ERR = 0.5
 
 
-class EllipseFitter:
+class _EllipseFitter:
     """
     Class to fit ellipses.
 
@@ -49,10 +46,14 @@ class EllipseFitter:
     def __init__(self, sample):
         self._sample = sample
 
-    @deprecated_renamed_argument('maxgerr', None, '3.2', until='4.0')
-    @deprecated_renamed_argument('going_inwards', None, '3.2', until='4.0')
-    def fit(self, *, conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
-            maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
+    @deprecated_renamed_argument(
+        ['maxgerr', 'going_inwards', 'conver', 'minit', 'maxit', 'fflag'],
+        [None, None, 'convergence', 'miniters', 'maxiters',
+         'min_valid_fraction'],
+        '3.2', until='4.0')
+    def fit(self, *, convergence=DEFAULT_CONVERGENCE,
+            miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
+            min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
             maxgerr=None, going_inwards=None,  # noqa: ARG002
             max_center_shift=None, reference_center=None):
         """
@@ -64,30 +65,30 @@ class EllipseFitter:
         the sample, there is nothing to fit. The isophote is then
         extracted with that geometry and its stop code is 4, or 3
         (invalid) if it has no valid data points. If the ellipticity
-        is fixed at zero, the position angle is also treated as fixed.
+        is fixed at zero, the orientation is also treated as fixed.
 
         Parameters
         ----------
-        conver : float, optional
+        convergence : float, optional
             The main convergence criterion. Iterations stop when the
             largest harmonic amplitude becomes smaller (in absolute
-            value) than ``conver`` times the harmonic fit rms times the
-            square root of the mean sector area of the sample points
-            (see the ``sector_area`` attribute of
+            value) than ``convergence`` times the harmonic fit rms
+            times the square root of the mean sector area of the sample
+            points (see the ``sector_area`` attribute of
             `~photutils.isophote.EllipseSample`). The default is 0.05.
 
-        minit : int, optional
+        miniters : int, optional
             The minimum number of iterations to perform. A minimum of
             10 (the default) iterations guarantees that, on average, 2
             iterations will be available for fitting each independent
             parameter (the four harmonic amplitudes and the intensity
             level).
 
-        maxit : int, optional
+        maxiters : int, optional
             The maximum number of iterations to perform. The default is
             50.
 
-        fflag : float, optional
+        min_valid_fraction : float, optional
             The minimum acceptable fraction of valid (nonflagged)
             data points in the sample. If the fraction of valid data
             points is smaller than this, the iterations stop and the
@@ -101,8 +102,8 @@ class EllipseFitter:
 
             .. deprecated:: 3.2
                This keyword argument is deprecated and will be removed
-               in version 4.0. The ``maxgerr`` criterion compares
-               consecutive isophotes. It is applied by
+               in version 4.0. The ``max_gradient_rel_err`` criterion
+               compares consecutive isophotes. It is applied by
                :meth:`~photutils.isophote.Ellipse.fit_image`, so it has
                no effect when fitting a single isophote.
 
@@ -149,20 +150,25 @@ class EllipseFitter:
 
         Examples
         --------
+        The `~photutils.isophote.EllipseFitter` class is deprecated. Use
+        :meth:`~photutils.isophote.Ellipse.fit_isophote` instead to fit
+        a single isophote:
+
+        >>> import astropy.units as u
         >>> import numpy as np
         >>> from astropy.modeling.models import Gaussian2D
         >>> from photutils.datasets import make_noise_image
-        >>> from photutils.isophote import (EllipseFitter, EllipseGeometry,
-        ...                                 EllipseSample)
-        >>> model = Gaussian2D(100.0, 75, 75, 20, 12, theta=np.deg2rad(40))
+        >>> from photutils.isophote import Ellipse, EllipseGeometry
+        >>> model = Gaussian2D(100.0, 75, 75, 20, 12,
+        ...                    theta=np.deg2rad(40))
         >>> y, x = np.mgrid[0:150, 0:150]
         >>> data = model(x, y) + make_noise_image((150, 150), mean=0.0,
         ...                                       stddev=2.0, seed=0)
-        >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-        ...                            pa=np.deg2rad(30))
-        >>> sample = EllipseSample(data, geometry.sma, geometry=geometry)
-        >>> fitter = EllipseFitter(sample)
-        >>> isophote = fitter.fit()
+        >>> geometry = EllipseGeometry(x0=75, y0=75, sma=20,
+        ...                            ellipticity=0.5,
+        ...                            orientation=30 * u.deg)
+        >>> ellipse = Ellipse(data, geometry=geometry)
+        >>> isophote = ellipse.fit_isophote(20)
         >>> isophote.stop_code
         0
         """
@@ -182,37 +188,39 @@ class EllipseFitter:
         # Here we keep track of the sample that caused the minimum harmonic
         # amplitude(in absolute value). This will eventually be used to
         # build the resulting Isophote in cases where iterations run to
-        # the maximum allowed (maxit), or the maximum number of flagged
-        # data points (fflag) is reached.
+        # the maximum allowed (maxiters), or the maximum number of
+        # flagged data points (min_valid_fraction) is reached.
         minimum_amplitude_value = np.inf
         minimum_amplitude_sample = None
 
         # These must be passed throughout the execution chain.
-        fixed_parameters = sample.geometry.fix
+        fixed_parameters = sample.geometry._fix
 
-        # The position angle of a circle is undefined and its correction
+        # The orientation of a circle is undefined and its correction
         # diverges, so it is not fit if the ellipticity is fixed at
         # zero.
-        if fixed_parameters[_EPS_INDEX] and sample.geometry.eps == 0.0:
+        if (fixed_parameters[_ELLIPTICITY_INDEX]
+                and sample.geometry.ellipticity == 0.0):
             fixed_parameters = np.array(fixed_parameters)
-            fixed_parameters[_PA_INDEX] = True
+            fixed_parameters[_ORIENTATION_INDEX] = True
 
         # If all the ellipse parameters are fixed, there is nothing to
         # fit. As in the STSDAS ellipse task, the isophote is extracted
         # with the input geometry, as in the noniterative mode. An
         # isophote without any valid data points is invalid.
         if np.all(fixed_parameters):
-            sample.update(fixed_parameters=fixed_parameters)
-            valid = sample.actual_points > 0
+            sample._update(fixed_parameters=fixed_parameters)
+            valid = sample.n_valid > 0
             return Isophote(sample, 0, valid=valid,
                             stop_code=4 if valid else 3)
 
         # A starting ellipse that is round or has a negative ellipticity
         # must be fixed before it is sampled, like the corrected
         # ellipses below.
-        if sample.geometry.eps <= 0.0 and not fixed_parameters[_EPS_INDEX]:
+        if (sample.geometry.ellipticity <= 0.0
+                and not fixed_parameters[_ELLIPTICITY_INDEX]):
             self._fix_round_ellipse(sample.geometry, fixed_parameters)
-            sample.values = None
+            sample._values = None
 
         # The parameters held fixed during this fit. These include the
         # center once it reaches the ``max_center_shift`` boundary. The
@@ -221,9 +229,9 @@ class EllipseFitter:
         fit_fixed = np.array(fixed_parameters, dtype=bool)
         center_at_bound = False
 
-        for i in range(maxit):
+        for i in range(maxiters):
             # Force the sample to compute its gradient and associated values.
-            sample.update(fixed_parameters=fixed_parameters)
+            sample._update(fixed_parameters=fixed_parameters)
 
             # The extract() method returns sampled values as a 2D numpy
             # array with the following structure:
@@ -242,14 +250,14 @@ class EllipseFitter:
                        f'{sample.geometry.sma}')
             else:
                 try:
-                    coeffs = fit_first_and_second_harmonics(values[0],
-                                                            values[2])[0]
+                    coeffs = _fit_first_and_second_harmonics(values[0],
+                                                             values[2])[0]
                 except Exception as exc:
                     msg = ('The harmonic fit failed at SMA '
                            f'{sample.geometry.sma}: {exc}')
             if msg is not None:
                 warnings.warn(msg, AstropyUserWarning)
-                sample.geometry.fix = fixed_parameters
+                sample.geometry._fix = fixed_parameters
                 return Isophote(sample, i + 1, valid=False, stop_code=3)
 
             # Mask out coefficients that control fixed ellipse parameters.
@@ -269,23 +277,23 @@ class EllipseFitter:
             # Check if converged. As in the STSDAS ellipse task, the
             # residual rms is scaled by the square root of the sector
             # area to account for the smoothing from area averaging.
-            model = first_and_second_harmonic_function(values[0], coeffs)
+            model = _first_and_second_harmonic_function(values[0], coeffs)
             residual = values[2] - model
 
-            if ((conver * np.sqrt(sample.sector_area) * np.std(residual))
-                    > np.abs(largest_harmonic)) and (i >= minit - 1):
+            if ((convergence * np.sqrt(sample.sector_area) * np.std(residual))
+                    > np.abs(largest_harmonic)) and (i >= miniters - 1):
                 # Got a valid solution and a minimum number of
                 # iterations has run.
-                sample.update(fixed_parameters=fixed_parameters)
+                sample._update(fixed_parameters=fixed_parameters)
                 return Isophote(sample, i + 1, valid=True, stop_code=0)
 
             # It may not have converged yet, but the sample contains too
             # many invalid data points, so return the best-fit sample
             # instead of the current one.
-            if sample.actual_points < (sample.total_points * fflag):
+            if sample.n_valid < (sample.n_total * min_valid_fraction):
                 # When too many data points were flagged, return the
                 # best-fit sample instead of the current one.
-                minimum_amplitude_sample.update(
+                minimum_amplitude_sample._update(
                     fixed_parameters=fixed_parameters)
                 return Isophote(minimum_amplitude_sample, i + 1, valid=True,
                                 stop_code=1)
@@ -315,15 +323,15 @@ class EllipseFitter:
                 # smaller) price here, by having multiple calls to the
                 # EllipseSample constructor.
                 previous_gradient = sample.gradient
-                sample = corrector.correct(sample, largest_harmonic)
+                sample = corrector(sample, largest_harmonic)
 
-                # Only the position correctors (indices 0 and 1) move
-                # the center.
-                if max_center_shift is not None and largest_harmonic_index < 2:
+                # Only the position correctors move the center.
+                if (max_center_shift is not None
+                        and largest_harmonic_index in _CENTER_INDICES):
                     sample, center_at_bound = _limit_center_shift(
                         sample, reference_center, max_center_shift)
                     if center_at_bound:
-                        fit_fixed[:2] = True
+                        fit_fixed[list(_CENTER_INDICES)] = True
 
                 # As in the STSDAS ellipse task, the gradient of this
                 # iteration is the reference that tells whether the
@@ -341,7 +349,7 @@ class EllipseFitter:
                 else:
                     self._fix_round_ellipse(sample.geometry,
                                             fixed_parameters)
-                    sample.update(fixed_parameters=fixed_parameters)
+                    sample._update(fixed_parameters=fixed_parameters)
 
             # If iterations cannot proceed, return the best-fit sample
             # instead of the current one. Holding the center at the
@@ -350,15 +358,15 @@ class EllipseFitter:
             complete = proceed and center_at_bound and fit_fixed.all()
             if complete or not proceed:
                 final_sample = sample if complete else minimum_amplitude_sample
-                final_sample.update(fixed_parameters=fixed_parameters)
+                final_sample._update(fixed_parameters=fixed_parameters)
                 return Isophote(final_sample, i + 1, valid=True,
                                 stop_code=0 if complete else -1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
         # best-fit sample instead of the current one.
-        minimum_amplitude_sample.update(fixed_parameters=fixed_parameters)
-        return Isophote(minimum_amplitude_sample, maxit, valid=True,
+        minimum_amplitude_sample._update(fixed_parameters=fixed_parameters)
+        return Isophote(minimum_amplitude_sample, maxiters, valid=True,
                         stop_code=2)
 
     @staticmethod
@@ -368,31 +376,31 @@ class EllipseFitter:
         reached zero.
 
         This must be called before the sample with this geometry is
-        extracted. A fixed ellipticity is not changed. A fixed position
-        angle is not changed either.
+        extracted. A fixed ellipticity is not changed. A fixed
+        orientation is not changed either.
         """
-        if fixed_parameters[_EPS_INDEX]:
+        if fixed_parameters[_ELLIPTICITY_INDEX]:
             return
 
         # See if eps == 0 (round isophote) was crossed. If so, fix it
         # but still proceed. An ellipse with a negative ellipticity is
         # the same as an ellipse rotated by 90 degrees with a positive
-        # ellipticity. A fixed position angle cannot be rotated, so the
+        # ellipticity. A fixed orientation cannot be rotated, so the
         # ellipse is then made nearly round below.
-        if geometry.eps < 0.0:
-            if fixed_parameters[_PA_INDEX]:
-                geometry.eps = 0.0
+        if geometry.ellipticity < 0.0:
+            if fixed_parameters[_ORIENTATION_INDEX]:
+                geometry.ellipticity = 0.0
             else:
-                geometry.eps = min(-geometry.eps, MAX_EPS)
-                if geometry.pa < PI2:
-                    geometry.pa += PI2
+                geometry.ellipticity = min(-geometry.ellipticity, MAX_EPS)
+                if geometry._orientation_rad < PI2:
+                    geometry._orientation_rad += PI2
                 else:
-                    geometry.pa -= PI2
+                    geometry._orientation_rad -= PI2
 
         # If ellipse is an exact circle, computations will diverge.
         # Make it slightly flat, but still proceed.
-        if geometry.eps == 0.0:
-            geometry.eps = MIN_EPS
+        if geometry.ellipticity == 0.0:
+            geometry.ellipticity = MIN_EPS
 
         geometry._reset_sma_dependent_attributes()
 
@@ -407,25 +415,17 @@ class EllipseFitter:
         """
         geometry = sample.geometry
         ny, nx = sample.image.shape
-        return (abs(geometry.eps) > MAX_EPS
+        return (abs(geometry.ellipticity) > MAX_EPS
                 or not 0.0 <= geometry.x0 <= nx - 1
                 or not 0.0 <= geometry.y0 <= ny - 1)
 
 
-class _ParameterCorrector(abc.ABC):
-    @abc.abstractmethod
-    def correct(self, sample, harmonic):
-        """
-        Return a new sample with the geometry parameter corrected using
-        the given harmonic amplitude.
-        """
-
-
-class _PositionCorrector(_ParameterCorrector):
-    @staticmethod
-    def finalize_correction(dx, dy, sample):
-        return sample._make_sample(x0=sample.geometry.x0 + dx,
-                                   y0=sample.geometry.y0 + dy)
+def _shift_center(sample, dx, dy):
+    """
+    Return a new sample with the center shifted by ``(dx, dy)``.
+    """
+    return sample._make_sample(x0=sample.geometry.x0 + dx,
+                               y0=sample.geometry.y0 + dy)
 
 
 def _limit_center_shift(sample, reference_center, max_shift):
@@ -462,104 +462,100 @@ def _limit_center_shift(sample, reference_center, max_shift):
         return sample, False
 
     scale = max_shift / shift - 1.0
-    sample = _PositionCorrector.finalize_correction(dx * scale, dy * scale,
-                                                    sample)
+    sample = _shift_center(sample, dx * scale, dy * scale)
     return sample, True
 
 
-class _PositionCorrector0(_PositionCorrector):
-    def correct(self, sample, harmonic):
-        aux = -harmonic * (1.0 - sample.geometry.eps) / sample.gradient
+def _correct_center_a1(sample, harmonic):
+    """
+    Return a new sample with the center corrected using the ``a1``
+    harmonic amplitude.
+    """
+    aux = -harmonic * (1.0 - sample.geometry.ellipticity) / sample.gradient
 
-        dx = -aux * math.sin(sample.geometry.pa)
-        dy = aux * math.cos(sample.geometry.pa)
+    dx = -aux * math.sin(sample.geometry._orientation_rad)
+    dy = aux * math.cos(sample.geometry._orientation_rad)
 
-        return self.finalize_correction(dx, dy, sample)
-
-
-class _PositionCorrector1(_PositionCorrector):
-    def correct(self, sample, harmonic):
-        aux = -harmonic / sample.gradient
-
-        dx = aux * math.cos(sample.geometry.pa)
-        dy = aux * math.sin(sample.geometry.pa)
-
-        return self.finalize_correction(dx, dy, sample)
+    return _shift_center(sample, dx, dy)
 
 
-class _AngleCorrector(_ParameterCorrector):
-    def correct(self, sample, harmonic):
-        eps = sample.geometry.eps
-        sma = sample.geometry.sma
-        gradient = sample.gradient
+def _correct_center_b1(sample, harmonic):
+    """
+    Return a new sample with the center corrected using the ``b1``
+    harmonic amplitude.
+    """
+    aux = -harmonic / sample.gradient
 
-        correction = (harmonic * 2.0 * (1.0 - eps) / sma / gradient
-                      / ((1.0 - eps)**2 - 1.0))
+    dx = aux * math.cos(sample.geometry._orientation_rad)
+    dy = aux * math.sin(sample.geometry._orientation_rad)
 
-        # Make the angle lie between 0 and np.pi radians.
-        new_pa = (sample.geometry.pa + correction) % np.pi
-
-        return sample._make_sample(pa=new_pa)
+    return _shift_center(sample, dx, dy)
 
 
-class _EllipticityCorrector(_ParameterCorrector):
-    def correct(self, sample, harmonic):
-        eps = sample.geometry.eps
-        sma = sample.geometry.sma
-        gradient = sample.gradient
+def _correct_orientation(sample, harmonic):
+    """
+    Return a new sample with the orientation corrected using the
+    ``a2`` harmonic amplitude.
+    """
+    eps = sample.geometry.ellipticity
+    sma = sample.geometry.sma
+    gradient = sample.gradient
 
-        correction = harmonic * 2.0 * (1.0 - eps) / sma / gradient
+    correction = (harmonic * 2.0 * (1.0 - eps) / sma / gradient
+                  / ((1.0 - eps)**2 - 1.0))
 
-        new_eps = sample.geometry.eps - correction
+    # Make the angle lie between 0 and np.pi radians.
+    new_orientation = (sample.geometry._orientation_rad + correction) % np.pi
 
-        return sample._make_sample(eps=new_eps)
+    return sample._make_sample(orientation=new_orientation)
+
+
+def _correct_ellipticity(sample, harmonic):
+    """
+    Return a new sample with the ellipticity corrected using the ``b2``
+    harmonic amplitude.
+    """
+    eps = sample.geometry.ellipticity
+    sma = sample.geometry.sma
+    gradient = sample.gradient
+
+    correction = harmonic * 2.0 * (1.0 - eps) / sma / gradient
+
+    new_eps = sample.geometry.ellipticity - correction
+
+    return sample._make_sample(ellipticity=new_eps)
 
 
 # The parameter corrector for each harmonic coefficient. The correctors
 # are listed in the order of the coefficients returned by
-# fit_first_and_second_harmonics, which is also the order of the
+# _fit_first_and_second_harmonics, which is also the order of the
 # ``fix`` array of EllipseGeometry.
 _CORRECTORS_BY_COEFFICIENT = {
-    'a1': _PositionCorrector0(),
-    'b1': _PositionCorrector1(),
-    'a2': _AngleCorrector(),
-    'b2': _EllipticityCorrector(),
+    'a1': _correct_center_a1,
+    'b1': _correct_center_b1,
+    'a2': _correct_orientation,
+    'b2': _correct_ellipticity,
 }
 _CORRECTORS = [_CORRECTORS_BY_COEFFICIENT[name]
                for name in _HARMONIC_PARAMETERS]
 
 
-class CentralEllipseFitter(EllipseFitter):
+class EllipseFitter(_EllipseFitter):
     """
-    A special Fitter class to handle the case of the central pixel in
-    the galaxy image.
+    Class to fit ellipses.
+
+    .. deprecated:: 3.2
+        This class is deprecated and will be removed in version 4.0.
+        Use `~photutils.isophote.Ellipse.fit_isophote` instead.
+
+    Parameters
+    ----------
+    sample : `~photutils.isophote.EllipseSample` instance
+        The sample data to be fitted.
     """
 
-    def fit(self, **kwargs):  # noqa: ARG002
-        """
-        Perform just a simple 1-pixel extraction at the current (x0, y0)
-        position using bilinear interpolation.
-
-        Parameters
-        ----------
-        **kwargs : dict, optional
-            Keyword arguments are ignored, but allowed to match
-            the calling signature of the parent class.
-
-        Returns
-        -------
-        result : ``CentralPixel`` instance
-            The central pixel value. For convenience, the
-            ``CentralPixel`` class inherits from the
-            `~photutils.isophote.Isophote` class, although it's not
-            really a true isophote but just a single intensity value
-            at the central position. Thus, most of its attributes are
-            hardcoded to `None` or another default value when
-            appropriate.
-        """
-        # Default values
-        fixed_parameters = _make_fix_array(fix_center=False, fix_pa=False,
-                                           fix_eps=False)
-
-        self._sample.update(fixed_parameters=fixed_parameters)
-        return CentralPixel(self._sample)
+    def __init__(self, sample):
+        msg = ('EllipseFitter was deprecated in version 3.2 and will be '
+               'removed in version 4.0. Use Ellipse.fit_isophote instead.')
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        super().__init__(sample)

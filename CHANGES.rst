@@ -36,7 +36,7 @@ New Features
     harmonic coefficients and their covariance matrices are now
     exact, which slightly changes the fitted isophotes. [#2551]
 
-  - The ellipse model kernel used by ``build_ellipse_model`` now
+  - The ellipse model kernel used to make isophote model images now
     releases the GIL, so models can be built in parallel threads.
     [#2551]
 
@@ -58,6 +58,21 @@ New Features
     ``Ellipse.fit_image`` now includes the semimajor axis length and
     the stop code of the first isophote, the reason why it failed,
     and what to check. [#2560]
+
+  - Added ``properties`` and ``default_columns`` attributes to
+    ``IsophoteList``, like those of ``SourceCatalog``.
+    ``IsophoteList.to_table`` now uses ``default_columns`` when
+    ``columns`` is `None` (the new default). [#2568]
+
+  - Added an ``IsophoteList.make_model_image`` method to make a model
+    image from the isophotes. It replaces the ``build_ellipse_model``
+    function. [#2568]
+
+  - Added an ``IsophoteList.from_table`` method to create an
+    ``IsophoteList`` from a table, the inverse of ``to_table``. The
+    isophotes have no sample, but they can be used to make a model
+    image or to measure an image with ``Ellipse.measure_isophotes``.
+    [#2568]
 
 - ``photutils.psf``
 
@@ -153,10 +168,10 @@ Bug Fixes
     about half a pixel in x and y. The last image row and column are
     now also sampled. [#2543]
 
-  - Fixed ``build_ellipse_model`` for galaxies whose position angle
-    is near 0 or 180 degrees. The fitted position angles of
-    neighboring isophotes can then jump by almost 180 degrees, and
-    the interpolated model isophotes swept through all the angles in
+  - Fixed ``IsophoteList.make_model_image`` for galaxies whose
+    orientation is near 0 or 180 degrees. The fitted orientations of
+    neighboring isophotes can then jump by almost 180 degrees, and the
+    interpolated model isophotes swept through all the angles in
     between. [#2549]
 
   - Fixed ``Ellipse.fit_image`` raising an ``IndexError`` when the
@@ -164,10 +179,11 @@ Bug Fixes
     image or a starting ellipse outside of the image. It now emits a
     warning and returns an empty ``IsophoteList``. [#2549]
 
-  - Fixed ``Ellipse.fit_image`` modifying the input
-    ``EllipseGeometry`` instance. The ``fix_center``, ``fix_pa``,
-    ``fix_eps``, and ``linear`` keywords now apply only to that call.
-    Previously, they persisted in subsequent calls. [#2549]
+  - Fixed ``Ellipse.fit_image`` modifying the input ``EllipseGeometry``
+    instance. The ``fix_center``, ``fix_orientation``,
+    ``fix_ellipticity``, and ``linear_growth`` keywords now apply only
+    to that call. Previously, they persisted in subsequent calls.
+    [#2549]
 
   - Fixed the convergence criterion of the isophote fitter, which
     scaled the harmonic fit rms by the mean sector area instead of its
@@ -175,15 +191,15 @@ Bug Fixes
     too early, especially for the ``'mean'`` and ``'median'``
     integration modes. [#2549]
 
-  - Fixed the ``maxgerr`` criterion of ``Ellipse.fit_image``. It was
-    applied to consecutive iterations of a single isophote, which
-    stopped that fit early and replaced its geometry with that of the
-    previous isophote. As documented, it now stops the semimajor axis
-    growth (or starts the noniterative mode if ``maxsma`` is set) when
-    two consecutive isophotes exceed ``maxgerr``. The fits now
-    typically extend to larger semimajor axis lengths. Also, parameter
-    corrections are no longer computed from a positive local
-    gradient. [#2549]
+  - Fixed the ``max_gradient_rel_err`` criterion of
+    ``Ellipse.fit_image``. It was applied to consecutive iterations of a
+    single isophote, which stopped that fit early and replaced its
+    geometry with that of the previous isophote. As documented, it now
+    stops the semimajor axis growth (or starts the noniterative mode if
+    ``max_sma`` is set) when two consecutive isophotes exceed
+    ``max_gradient_rel_err``. The fits now typically extend to larger
+    semimajor axis lengths. Also, parameter corrections are no longer
+    computed from a positive local gradient. [#2549]
 
   - Fixed the ellipse divergence checks of the isophote fitter. The
     ellipticity check never triggered, so ellipticity corrections
@@ -210,8 +226,8 @@ Bug Fixes
     integration modes when the inner bounding ellipse of the sectors
     has zero size. [#2549]
 
-  - Fixed ``build_ellipse_model`` setting model pixels with a value of
-    exactly zero to the ``fill`` value. Only the pixels with no
+  - Fixed ``IsophoteList.make_model_image`` setting model pixels with a
+    value of exactly zero to the ``fill_value``. Only the pixels with no
     contribution from any isophote are now filled. [#2549]
 
   - Fixed ``Ellipse.fit_image`` to start the inward fits from the
@@ -227,13 +243,13 @@ Bug Fixes
     pixel is masked. The intensity of the central pixel is now NaN.
     [#2550]
 
-  - Fixed ``build_ellipse_model`` omitting the outermost isophote from
-    the model image. [#2550]
+  - Fixed ``IsophoteList.make_model_image`` omitting the outermost
+    isophote from the model image. [#2550]
 
-  - Fixed ``build_ellipse_model`` returning NaN values over a range of
-    semimajor axis lengths when an isophote has a nonfinite intensity
-    (e.g., the central pixel of a galaxy with a masked center). Such
-    isophotes are now ignored. [#2550]
+  - Fixed ``IsophoteList.make_model_image`` returning NaN values over a
+    range of semimajor axis lengths when an isophote has a nonfinite
+    intensity (e.g., the central pixel of a galaxy with a masked
+    center). Such isophotes are now ignored. [#2550]
 
   - Fixed the errors of the higher-order harmonic amplitudes, which
     were NaN when an amplitude was exactly zero. [#2550]
@@ -248,9 +264,9 @@ Bug Fixes
     ellipse parameters are fixed by the input ``EllipseGeometry``.
     ``fit_image`` now emits a warning and returns an empty
     ``IsophoteList``, as it already did for the ``fix_center``,
-    ``fix_pa``, and ``fix_eps`` keywords. ``fit_isophote`` and
-    ``EllipseFitter.fit`` extract the isophote without fitting (stop
-    code 4). [#2552]
+    ``fix_orientation``, and ``fix_ellipticity`` keywords.
+    ``fit_isophote`` and ``EllipseFitter.fit`` extract the isophote
+    without fitting (stop code 4). [#2552]
 
   - Fixed the local radial gradient of the isophote samples, which was
     measured from a sample at a relative distance equal to the
@@ -261,13 +277,13 @@ Bug Fixes
     a sample at a 10% (or 20%) larger semimajor axis length. [#2553]
 
   - Fixed ``Ellipse.fit_image`` and ``Ellipse.fit_isophote`` ignoring
-    their ``step`` keyword (and ``fit_isophote`` its ``linear``
-    keyword) when sampling the image. The ``astep`` of the input
+    their ``step`` keyword (and ``fit_isophote`` its ``linear_growth``
+    keyword) when sampling the image. The ``step`` of the input
     ``EllipseGeometry`` was used instead. The step now defines the
-    elliptical annulus that sets the sector areas of the ``'mean'``
-    and ``'median'`` integration modes, as documented. Fits are
-    unchanged if both the ``step`` keyword and the ``astep`` of the
-    input ``EllipseGeometry`` have their default values. [#2553]
+    elliptical annulus that sets the sector areas of the ``'mean'`` and
+    ``'median'`` integration modes, as documented. Fits are unchanged if
+    both the ``step`` keyword and the ``step`` of the input
+    ``EllipseGeometry`` have their default values. [#2553]
 
   - Fixed the sampling of diverged isophotes (stop code 5) in
     ``Ellipse.fit_image``. Their geometry is replaced by that of a
@@ -295,33 +311,32 @@ Bug Fixes
   - Fixed ``EllipseSample.update`` clearing the fixed parameters of
     the sample geometry when ``fixed_parameters`` is `None`. [#2553]
 
-  - Fixed the isophote fits for a starting ellipticity of exactly
-    zero, which raised a ``ValueError`` because the position angle
-    correction of a circle diverges. The starting ellipse is now made
-    slightly flat, like the corrected ellipses. [#2553]
+  - Fixed the isophote fits for a starting ellipticity of exactly zero,
+    which raised a ``ValueError`` because the orientation correction of
+    a circle diverges. The starting ellipse is now made slightly flat,
+    like the corrected ellipses. [#2553]
 
   - Fixed the isophote fitter changing a fixed ellipticity of zero to
-    0.05. The position angle, which is undefined for a circle, is then
-    not fit. [#2553]
+    0.05. The orientation, which is undefined for a circle, is then not
+    fit. [#2553]
 
-  - Fixed the isophote fitter rotating a fixed position angle by 90
-    degrees when the ellipticity correction crosses zero. The ellipse
-    is now made nearly round instead. [#2553]
+  - Fixed the isophote fitter rotating a fixed orientation by 90 degrees
+    when the ellipticity correction crosses zero. The ellipse is now
+    made nearly round instead. [#2553]
 
-  - Fixed ``Ellipse.fit_image`` ignoring a ``linear`` value that is
-    not a Python `bool` (e.g., a NumPy boolean). [#2553]
+  - Fixed ``Ellipse.fit_image`` ignoring a ``linear_growth`` value that
+    is not a Python `bool` (e.g., a NumPy boolean). [#2553]
 
   - Fixed the sampling of the ``'mean'`` and ``'median'`` integration
     modes when the semimajor axis step is larger than twice the
-    semimajor axis length. The inner bounding ellipse of the sectors
-    was negative, which gave many narrow sectors.
-    ``EllipseGeometry.bounding_ellipses`` now returns zero for the
-    inner bounding ellipse in that case. [#2553]
+    semimajor axis length. The inner bounding ellipse of the sectors was
+    negative, which gave many narrow sectors. The inner bounding ellipse
+    is now zero in that case. [#2553]
 
   - Fixed ``Ellipse.fit_image`` fitting the first inward isophote
-    without checking its semimajor axis length. It could be smaller
-    than ``minsma``, and a linear step larger than the starting
-    semimajor axis length gave two central-pixel isophotes. [#2553]
+    without checking its semimajor axis length. It could be smaller than
+    ``min_sma``, and a linear step larger than the starting semimajor
+    axis length gave two central-pixel isophotes. [#2553]
 
   - Fixed ``Ellipse.fit_image`` returning isophotes without any valid
     data points (with a NaN intensity) when the semimajor axis grows
@@ -371,30 +386,30 @@ Bug Fixes
     reference is also accepted if its relative error is smaller than
     20%, unlike in the STSDAS task. [#2560]
 
-  - Fixed ``build_ellipse_model`` with ``high_harmonics=True``, which
-    flipped the sign of the harmonics where the interpolated local
-    gradient is positive. [#2564]
+  - Fixed ``IsophoteList.make_model_image`` with
+    ``high_harmonics=True``, which flipped the sign of the harmonics
+    where the interpolated local gradient is positive. [#2564]
 
-  - Fixed ``build_ellipse_model`` with ``high_harmonics=True``
-    returning NaN over large regions of the model if any isophote
-    has a harmonic that could not be computed. Such harmonics are now
-    treated as zero. [#2564]
+  - Fixed ``IsophoteList.make_model_image`` with ``high_harmonics=True``
+    returning NaN over large regions of the model if any isophote has a
+    harmonic that could not be computed. Such harmonics are now treated
+    as zero. [#2564]
 
   - Fixed ``EllipseFitter.fit`` modifying the geometry of its input
     sample when the starting ellipticity is zero or fixed at
     zero. [#2564]
 
-  - Fixed the ``tflux_e``, ``tflux_c``, ``npix_e``, and ``npix_c``
-    isophote attributes, which were computed with truncated pixel
-    distances for an ellipse center with integer coordinates.
-    [#2564]
+  - Fixed the ``total_flux_ellipse``, ``total_flux_circle``,
+    ``n_pixels_ellipse``, and ``n_pixels_circle`` isophote attributes,
+    which were computed with truncated pixel distances for an ellipse
+    center with integer coordinates. [#2564]
 
   - Fixed the sector areas of the ``'mean'`` and ``'median'``
-    integration modes for sectors that straddle a polar angle of 0
-    or pi, which affected the convergence criterion and the
-    ``pix_stddev`` and ``sarea`` isophote attributes. The sector
-    that extends past a polar angle of 2 pi now also includes all of
-    its pixels. [#2564]
+    integration modes for sectors that straddle a polar angle of 0 or
+    pi, which affected the convergence criterion and the
+    ``pixel_stddev`` and ``sector_area`` isophote attributes. The sector
+    that extends past a polar angle of 2 pi now also includes all of its
+    pixels. [#2564]
 
   - Fixed the deprecated ``grad_rerror`` column name of the
     ``IsophoteList.to_table`` output table, which was removed by
@@ -502,7 +517,8 @@ API Changes
   - The ``maxgerr`` and ``going_inwards`` keywords of
     ``EllipseFitter.fit`` and ``Ellipse.fit_isophote`` are deprecated
     and will be removed in version 4.0. They have no effect. The
-    ``maxgerr`` criterion is applied by ``Ellipse.fit_image``. [#2549]
+    ``max_gradient_rel_err`` criterion is applied by
+    ``Ellipse.fit_image``. [#2549]
 
   - The ``threshold`` keyword and the ``set_threshold`` method of
     ``Ellipse`` are deprecated and will be removed in version 4.0.
@@ -516,8 +532,29 @@ API Changes
   - ``Ellipse`` and ``EllipseSample`` now accept an array-like image,
     such as a nested list. [#2550]
 
-  - ``build_ellipse_model`` now raises a ``ValueError`` if the input
-    isophote list contains fewer than 4 isophotes with a finite
+  - The ``build_ellipse_model`` function is deprecated and will be
+    removed in version 4.0. Use ``IsophoteList.make_model_image``
+    instead. Its ``fill`` argument is now the keyword-only
+    ``fill_value`` argument. [#2568]
+
+  - The ``EllipseFitter`` class, the ``first_and_second_harmonic_function``,
+    ``fit_first_and_second_harmonics``, and ``fit_upper_harmonic``
+    functions, the ``Isophote.fix_geometry`` method, and the
+    comparison operators of ``Isophote`` are deprecated and will be
+    removed in version 4.0. Use ``Ellipse.fit_isophote`` instead of
+    ``EllipseFitter``, and compare the ``sma`` values instead of the
+    isophotes. The harmonic functions and ``fix_geometry`` have no
+    public replacement. The ``BILINEAR``, ``NEAREST_NEIGHBOR``,
+    ``MEAN``, ``MEDIAN``, and ``INTEGRATORS`` constants of
+    ``photutils.isophote.integrator`` are deprecated and will be
+    removed in version 4.0. Pass the integration mode as a string, such
+    as ``'bilinear'``, instead. These constants are no longer in the
+    ``__all__`` of the integrator module, so
+    ``from photutils.isophote import *`` no longer provides them.
+    [#2568]
+
+  - ``IsophoteList.make_model_image`` now raises a ``ValueError`` if the
+    input isophote list contains fewer than 4 isophotes with a finite
     intensity or is not sorted by strictly increasing semimajor axis
     length. [#2550]
 
@@ -527,10 +564,10 @@ API Changes
     ``AttributeError``. [#2550]
 
   - ``Ellipse`` and ``EllipseSample`` now raise a ``ValueError`` for an
-    invalid ``integrmode`` instead of a ``KeyError`` when the image is
-    sampled. [#2564]
+    invalid ``integration_mode`` instead of a ``KeyError`` when the
+    image is sampled. [#2564]
 
-  - The ``n_iter``, ``n_data``, ``n_flag``, and ``stop_code``
+  - The ``n_iter``, ``n_data``, ``n_flagged``, and ``stop_code``
     properties of ``IsophoteList`` now return integer arrays, and
     ``valid`` returns a boolean array. Previously, they returned float
     arrays. [#2550]
@@ -539,30 +576,131 @@ API Changes
     an ``astropy`` log warning. [#2550]
 
   - ``Ellipse.fit_image`` now raises a ``ValueError`` if the starting
-    semimajor axis length is not positive. An ``sma0`` of zero was
-    previously ignored. Also, ``maxsma`` and ``maxrit`` values of zero
-    are now used instead of being treated as `None`. [#2550]
+    semimajor axis length is not positive. An ``sma_start`` of zero was
+    previously ignored. Also, ``max_sma`` and ``max_iterative_sma``
+    values of zero are now used instead of being treated as `None`.
+    [#2550]
 
   - ``Ellipse.fit_image`` and ``Ellipse.fit_isophote`` now raise a
     ``ValueError`` if ``step`` is not positive. Previously,
     ``fit_image`` never returned. [#2553]
 
   - The ``step`` keyword of ``Ellipse.fit_image`` and
-    ``Ellipse.fit_isophote`` now replaces the ``astep`` of the input
+    ``Ellipse.fit_isophote`` now replaces the ``step`` of the input
     ``EllipseGeometry`` when sampling the image. Previously, the
-    ``astep`` value set the sampling annulus and the gradient radius,
-    so fits with a nondefault ``astep`` and the default ``step`` are
-    changed. [#2553]
+    ``step`` value set the sampling annulus and the gradient radius, so
+    fits with a nondefault geometry ``step`` and the default ``step``
+    are changed. [#2553]
 
-  - The default of the ``linear`` keyword of ``Ellipse.fit_isophote``
-    is now `None`, which uses the ``linear_growth`` attribute of the
-    starting geometry, as in ``Ellipse.fit_image``. [#2553]
+  - The default of the ``linear_growth`` keyword of
+    ``Ellipse.fit_isophote`` is now `None`, which uses the
+    ``linear_growth`` attribute of the starting geometry, as in
+    ``Ellipse.fit_image``. [#2553]
 
   - The columns of the tables returned by ``IsophoteList.to_table``
     and ``Isophote.to_table`` now always have a numerical data type.
     Values that are not defined (e.g., the gradient error of the
     central pixel) are NaN. Previously, such columns had an object
     data type with `None` values. [#2553]
+
+  - The ``tflux_e``, ``tflux_c``, ``npix_e``, and ``npix_c``
+    attributes of ``Isophote`` and ``IsophoteList`` and the
+    corresponding ``IsophoteList.to_table`` columns were renamed to
+    ``total_flux_ellipse``, ``total_flux_circle``, ``n_pixels_ellipse``,
+    and ``n_pixels_circle``. The old names are deprecated and will be
+    removed in version 4.0. [#2568]
+
+  - The ``intens``, ``int_err``, ``eps``, ``ellip_err``, ``grad``,
+    ``pix_stddev``, ``sarea``, and ``n_flag`` attributes of
+    ``Isophote`` and ``IsophoteList`` were renamed to ``intensity``,
+    ``intensity_err``, ``ellipticity``, ``ellipticity_err``,
+    ``gradient``, ``pixel_stddev``, ``sector_area``, and
+    ``n_flagged``. The ``IsophoteList.to_table`` columns now have the
+    same names as the attributes, so the ``intens_err`` column was
+    renamed to ``intensity_err``. The old names are deprecated and
+    will be removed in version 4.0. [#2568]
+
+  - The internal ``CentralEllipseSample``, ``CentralEllipseFitter``,
+    and ``CentralPixel`` classes were removed. The central pixel is
+    now a regular ``Isophote`` with ``sma`` of zero. ``Isophote`` has
+    a new ``geometry`` attribute. [#2568]
+
+  - The numeric attributes of ``Isophote`` that could not be computed
+    are now NaN instead of `None`. This applies to the gradient
+    errors, the higher-order harmonics and their errors, and the
+    values that are not defined for the central pixel. Code that
+    tests these values with ``is None`` must use ``numpy.isnan``
+    instead. [#2568]
+
+  - The ``eps``, ``pa``, ``astep``, ``fix_pa``, and ``fix_eps``
+    keywords of ``EllipseGeometry`` were renamed to ``ellipticity``,
+    ``orientation``, ``step``, ``fix_orientation``, and
+    ``fix_ellipticity``, and its ``eps``, ``pa``, and ``astep``
+    attributes were renamed to ``ellipticity``, ``orientation``, and
+    ``step``. The old names are deprecated and will be removed in
+    version 4.0. The ``orientation`` keyword and attribute of
+    ``EllipseGeometry`` and the ``orientation`` keyword of
+    ``EllipseSample`` require an angular ``Quantity`` and raise a
+    ``TypeError`` for a number without units. The deprecated ``pa``
+    and ``position_angle`` keywords and the deprecated ``pa``
+    attribute accept a number in radians. [#2568]
+
+  - Passing the orientation of ``EllipseGeometry`` as a positional
+    number without units is deprecated and will be removed in version
+    4.0. The number is interpreted as radians. Pass an angular
+    ``Quantity`` instead. [#2568]
+
+  - The ``pa`` and ``pa_err`` attributes of ``Isophote`` and
+    ``IsophoteList`` and the corresponding ``IsophoteList.to_table``
+    columns were renamed to ``orientation`` and ``orientation_err``.
+    These attributes and the ``orientation`` attribute of
+    ``EllipseGeometry`` are ``Quantity`` values in degrees, like the
+    columns. The deprecated ``pa`` and ``pa_err`` attributes, including
+    ``EllipseGeometry.pa``, still return floats in radians. They will
+    be removed in version 4.0. [#2568]
+
+  - The ``initialize_sector_geometry``, ``polar_angle_sector_limits``,
+    ``bounding_ellipses``, ``update_sma``, and ``reset_sma`` methods
+    and the ``sector_angular_width``, ``initial_polar_angle``,
+    ``initial_polar_radius``, and ``fix`` attributes of
+    ``EllipseGeometry`` are deprecated and will be removed in version
+    4.0. They were internal to the fitter. The ``fix_center``,
+    ``fix_orientation``, and ``fix_ellipticity`` properties report
+    which parameters are fixed. [#2568]
+
+  - The ``astep``, ``eps``, ``position_angle``, ``sclip``, and
+    ``integrmode`` keywords of ``EllipseSample`` are deprecated and
+    will be removed in version 4.0. Use ``step``, ``ellipticity``,
+    ``orientation``, ``clip_sigma``, and ``integration_mode``
+    instead. The ``sclip`` and ``integrmode`` attributes are renamed
+    the same way. The ``mean``, ``actual_points``, and ``total_points``
+    attributes are deprecated in favor of ``intensity``, ``n_valid``,
+    and ``n_total``. The ``values`` attribute is deprecated in favor
+    of the new ``angles``, ``radii``, and ``intensities`` attributes.
+    The ``fixed_parameters`` keyword of ``EllipseSample.update`` is
+    deprecated. [#2568]
+
+  - The keywords of ``Ellipse.fit_image``, ``Ellipse.fit_isophote``,
+    and ``EllipseFitter.fit`` were renamed. The ``sma0``, ``minsma``,
+    ``maxsma``, ``conver``, ``minit``, ``maxit``, ``fflag``,
+    ``maxgerr``, ``sclip``, ``integrmode``, ``linear``, ``maxrit``,
+    ``fix_pa``, and ``fix_eps`` keywords are now ``sma_start``,
+    ``min_sma``, ``max_sma``, ``convergence``, ``miniters``,
+    ``maxiters``, ``min_valid_fraction``, ``max_gradient_rel_err``,
+    ``clip_sigma``, ``integration_mode``, ``linear_growth``,
+    ``max_iterative_sma``, ``fix_orientation``, and
+    ``fix_ellipticity``. Each method accepts only the keywords it
+    already had. The ``maxgerr`` keyword is renamed only for
+    ``Ellipse.fit_image``. For ``Ellipse.fit_isophote`` and
+    ``EllipseFitter.fit``, it remains a deprecated keyword with no
+    effect. The old names are deprecated and will be removed in
+    version 4.0. [#2568]
+
+  - ``IsophoteList.get_names`` is deprecated in favor of the new
+    ``properties`` attribute. The ``'main'`` and ``'all'`` values of
+    the ``columns`` keyword of ``IsophoteList.to_table`` are deprecated
+    in favor of ``columns=None`` and ``columns=isolist.properties``.
+    They will be removed in version 4.0. [#2568]
 
 - ``photutils.psf``
 

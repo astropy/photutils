@@ -4249,7 +4249,7 @@ class SourceCatalog:
         return np.array(perimeter) * u.pix
 
     @property
-    @deprecated('3.1', until='4.0')
+    @deprecated('3.1', until='4.0', obj_type='attribute')
     def inertia_tensor(self):
         """
         The inertia tensor of the source for the rotation around its

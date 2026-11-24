@@ -17,7 +17,8 @@ from photutils.utils._deprecation import (DeprecatedColumnQTable,
                                           DeprecatedColumnTable,
                                           create_deprecated_table_from_data,
                                           create_empty_deprecated_qtable,
-                                          deprecated, deprecated_getattr,
+                                          deprecated, deprecated_attribute,
+                                          deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -375,6 +376,23 @@ class TestDeprecatedColumn:
             col = table['old']
         assert np.all(col == [1, 2, 3])
 
+    def test_since_per_column(self):
+        """
+        Test the message when "since" maps each column name to its
+        version.
+        """
+        since = {'old': '3.0', 'old_b': '3.2'}
+        table = create_empty_deprecated_qtable(DEPRECATION_MAP,
+                                               since=since)
+        table['new'] = [1, 2, 3]
+        table['new_b'] = [4, 5, 6]
+        match = "'old' was deprecated in version 3.0"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            _ = table['old']
+        match = "'old_b' was deprecated in version 3.2"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            _ = table['old_b']
+
     def test_slice_preserves_deprecation(self, raw_data):
         """
         Test that slicing preserves deprecation behavior.
@@ -401,6 +419,53 @@ class TestDeprecatedColumn:
         groups = table.group_by(key_table)
         assert len(groups.groups) == 3
         assert len(recwarn) == 0
+
+
+# Each operation uses a deprecated column name once, through one public
+# entry point, so the warning must point at the lambda line here.
+COLUMN_OPERATIONS = {
+    'getitem': lambda tbl: tbl['old'],
+    'getitem_list': lambda tbl: tbl[['old', 'stable']],
+    'getitem_tuple': lambda tbl: tbl[('old', 'stable')],
+    'setitem': lambda tbl: tbl.__setitem__('old', [0, 0, 0]),
+    'delitem': lambda tbl: tbl.__delitem__('old'),
+    'contains': lambda tbl: 'old' in tbl,
+    'keep_columns': lambda tbl: tbl.keep_columns('old'),
+    'keep_columns_list': lambda tbl: tbl.keep_columns(['old', 'stable']),
+    'remove_column': lambda tbl: tbl.remove_column('old'),
+    'remove_columns': lambda tbl: tbl.remove_columns('old'),
+    'remove_columns_list': lambda tbl: tbl.remove_columns(['old',
+                                                           'stable']),
+    'rename_column': lambda tbl: tbl.rename_column('old', 'other'),
+    'rename_columns': lambda tbl: tbl.rename_columns(['old'], ['other']),
+    'replace_column': lambda tbl: tbl.replace_column('old', [0, 0, 0]),
+    'add_index': lambda tbl: tbl.add_index('old'),
+    'add_index_list': lambda tbl: tbl.add_index(['old', 'stable']),
+    'remove_indices': lambda tbl: tbl.remove_indices('old'),
+    'sort': lambda tbl: tbl.sort('old'),
+    'sort_list': lambda tbl: tbl.sort(['old', 'stable']),
+    'group_by': lambda tbl: tbl.group_by('old'),
+    'group_by_list': lambda tbl: tbl.group_by(['old', 'stable']),
+}
+
+
+@pytest.mark.parametrize('use_qtable', [False, True])
+@pytest.mark.parametrize('operation', list(COLUMN_OPERATIONS))
+def test_deprecated_column_warning_points_at_caller(raw_data, use_qtable,
+                                                    operation):
+    """
+    Test that each public entry point of the deprecated-column tables
+    attributes its single warning to the caller line.
+    """
+    table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP,
+                                              use_qtable=use_qtable)
+    if operation == 'remove_indices':
+        table.add_index('new')
+    match = "The column name 'old' was deprecated"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
+        COLUMN_OPERATIONS[operation](table)
+    assert len(record) == 1
+    assert record[0].filename == __file__
 
 
 class TestFutureColumnNames:
@@ -783,6 +848,93 @@ def test_deprecated_renamed_argument_always_warns():
         _example_func2(1, b=5)
 
 
+@deprecated_renamed_argument(['b', 'd', 'e'], ['new', 'new_d', None],
+                             ['1.0', '1.5', '1.5'], until='2.0')
+@deprecated_positional_kwargs('1.0', until='2.0', stacklevel=3)
+def _example_func_list(a, new, new_d=1, e=None, *, c=20):  # noqa: ARG001
+    """
+    Example function for testing a list of renamed arguments combined
+    with the deprecated_positional_kwargs decorator.
+    """
+    return a + new + new_d + c
+
+
+class TestDeprecatedRenamedArgumentList:
+    """
+    Tests for deprecated_renamed_argument with lists of names.
+    """
+
+    def test_new_names_no_warning(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            result = _example_func_list(1, new=5, new_d=2, c=3)
+        assert result == 11
+
+    @pytest.mark.parametrize(('kwargs', 'old', 'since', 'advice'),
+                             [({'b': 5}, 'b', '1.0',
+                               " Use argument 'new' instead."),
+                              ({'new': 5, 'd': 2}, 'd', '1.5',
+                               " Use argument 'new_d' instead."),
+                              ({'new': 5, 'e': 2}, 'e', '1.5', '')])
+    def test_old_name_message(self, kwargs, old, since, advice):
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
+            _example_func_list(1, **kwargs)
+        expected = (f"'{old}' was deprecated in version {since} and will "
+                    f'be removed in version 2.0.{advice}')
+        assert str(record[0].message) == expected
+
+    def test_old_name_value(self):
+        with pytest.warns(PhotutilsDeprecationWarning):
+            result = _example_func_list(1, b=5, d=2)
+        assert result == 28
+
+    def test_both_names_raises(self):
+        match = 'cannot specify both "b" and "new"'
+        with (pytest.warns(PhotutilsDeprecationWarning),
+              pytest.raises(TypeError, match=match)):
+            _example_func_list(1, b=5, new=5)
+
+    def test_single_since(self):
+        @deprecated_renamed_argument(['b', 'd'], ['new', 'new_d'], '1.0')
+        def _func(new, *, new_d=1):
+            return new + new_d
+
+        with pytest.warns(PhotutilsDeprecationWarning,
+                          match='version 1.0') as record:
+            result = _func(b=1, d=2)
+        assert result == 3
+        assert len(record) == 2
+        assert 'future version' in str(record[0].message)
+
+    def test_warnings_point_at_caller(self):
+        with warnings.catch_warnings(record=True) as record:
+            warnings.simplefilter('always')
+            _example_func_list(1, 2, 3, e=4)
+        assert len(record) == 2
+        assert 'positionally' in str(record[1].message)
+        for item in record:
+            assert item.filename == __file__
+
+
+def test_deprecated_positional_kwargs_stacklevel():
+    def _wrapper(func):
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+
+    @_wrapper
+    @deprecated_positional_kwargs('1.0', stacklevel=3)
+    def _func(a, b=10):
+        return a + b
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter('always')
+        result = _func(1, 2)
+    assert result == 3
+    assert len(record) == 1
+    assert record[0].filename == __file__
+
+
 class TestColumnDeprecationUntil:
     """
     Tests for the ``until`` parameter in column deprecation.
@@ -1045,6 +1197,21 @@ class TestDeprecatedGetattr:
         # since was not given, so "deprecated in version" should not appear
         assert 'deprecated in version' not in msg
 
+    def test_message_with_since_per_name(self):
+        """
+        Test the message when "since" maps each name to its version.
+        """
+        obj = _ExampleObj()
+        dep_map = {'x': 'y', 'z': 'y'}
+        obj.y = 99
+        since = {'x': '2.0', 'z': '2.1'}
+        match = "'x' attribute was deprecated in version 2.0"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            deprecated_getattr(obj, 'x', dep_map, since=since)
+        match = "'z' attribute was deprecated in version 2.1"
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
+            deprecated_getattr(obj, 'z', dep_map, since=since)
+
 
 @deprecated('1.0', until='2.0')
 def _example_func4(a, b=10, c=20):
@@ -1079,3 +1246,118 @@ def test_deprecated():
     msg = str(record[0].message)
     assert 'version 1.0' in msg
     assert 'a future version' in msg
+
+
+class TestDeprecatedNames:
+    """
+    Test that the warning of the @deprecated decorator names the
+    deprecated function, method, or class.
+    """
+
+    @staticmethod
+    def _check(func, message):
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
+            func()
+        assert len(record) == 1
+        assert str(record[0].message) == message
+        assert record[0].filename == __file__
+
+    @pytest.mark.parametrize('alternative', [None, 'new_function'])
+    def test_function(self, alternative):
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        def old_function():
+            """
+            Old function.
+            """
+            return 1
+
+        use = '' if alternative is None else ' Use new_function instead.'
+        message = ("The 'old_function' function was deprecated in version "
+                   f'3.2.{use} It will be removed in version 4.0.')
+        self._check(old_function, message)
+
+    @pytest.mark.parametrize('alternative', [None, 'Example.new_method'])
+    def test_method(self, alternative):
+        class Example:
+            @deprecated('3.2', alternative=alternative, until='4.0')
+            def old_method(self):
+                """
+                Old method.
+                """
+                return 1
+
+        use = ('' if alternative is None
+               else ' Use Example.new_method instead.')
+        message = ("The 'Example.old_method' method was deprecated in "
+                   f'version 3.2.{use} It will be removed in version 4.0.')
+        self._check(Example().old_method, message)
+
+    @pytest.mark.parametrize('alternative', [None, 'NewClass'])
+    def test_class(self, alternative):
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        class OldClass:
+            """
+            Old class.
+            """
+
+        use = '' if alternative is None else ' Use NewClass instead.'
+        message = ("The 'OldClass' class was deprecated in version 3.2."
+                   f'{use} It will be removed in version 4.0.')
+        self._check(OldClass, message)
+
+    def test_property(self):
+        class Example:
+            @property
+            @deprecated('3.2', alternative="the 'new' attribute",
+                        until='4.0', obj_type='attribute')
+            def old(self):
+                """
+                Old attribute.
+                """
+                return 1
+
+        message = ("The 'Example.old' attribute was deprecated in version "
+                   "3.2. Use the 'new' attribute instead. It will be "
+                   'removed in version 4.0.')
+        self._check(lambda: Example().old, message)
+
+    def test_no_until(self):
+        message = ("The '_example_func5' function was deprecated in "
+                   'version 1.0. It will be removed in a future version.')
+        self._check(lambda: _example_func5(1, 2, 3), message)
+
+    @pytest.mark.parametrize('alternative', [None, 'new_function'])
+    def test_docstring_note(self, alternative):
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        def old_function():
+            """
+            Old function.
+            """
+
+        @deprecated('3.2', alternative=alternative, until='4.0')
+        class OldClass:
+            """
+            Old class.
+            """
+
+        use = '' if alternative is None else ' Use new_function instead.'
+        note = ('.. deprecated:: 3.2\n    This function was deprecated in '
+                f'version 3.2 and will be removed in version 4.0.{use}\n')
+        assert note in old_function.__doc__
+        assert note in OldClass.__doc__
+        assert "'old_function'" not in old_function.__doc__
+        assert "'OldClass'" not in OldClass.__doc__
+
+
+def test_deprecated_attribute():
+    class Thing:
+        new = 1
+        old = deprecated_attribute('old', 'new', '3.2', until='4.0')
+
+    thing = Thing()
+    match = "'old' attribute was deprecated in version 3.2"
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        assert thing.old == 1
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
+        thing.old = 5
+    assert thing.new == 5

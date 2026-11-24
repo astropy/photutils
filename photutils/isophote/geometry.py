@@ -3,31 +3,50 @@
 Tools for storing parameters for the geometry of an ellipse.
 """
 
+import inspect
 import math
+import warnings
+from functools import wraps
 
+import astropy.units as u
 import numpy as np
 from astropy import log
 
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated, deprecated_attribute,
+                                          deprecated_positional_kwargs,
+                                          deprecated_renamed_argument,
+                                          renamed_argument_message,
+                                          warn_deprecated_attribute)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['EllipseGeometry']
 
 
 # The first and second harmonic coefficients of the isophote fit, in
-# the order returned by fit_first_and_second_harmonics after the mean,
+# the order returned by _fit_first_and_second_harmonics after the mean,
 # and the ellipse parameter that each one corrects. The ``fix`` array of
-# EllipseGeometry and the parameter correctors of EllipseFitter follow
-# this order.
-_HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center', 'a2': 'pa',
-                        'b2': 'eps'}
+# EllipseGeometry and the parameter correctors of the isophote fitter
+# follow this order.
+_HARMONIC_PARAMETERS = {'a1': 'center', 'b1': 'center',
+                        'a2': 'orientation', 'b2': 'ellipticity'}
 
 
-def _make_fix_array(*, fix_center, fix_pa, fix_eps):
+# The indices of the center, orientation, and ellipticity flags in the
+# ``fix`` array.
+_CENTER_INDICES = tuple(index for index, name
+                        in enumerate(_HARMONIC_PARAMETERS.values())
+                        if name == 'center')
+_ORIENTATION_INDEX = list(_HARMONIC_PARAMETERS.values()).index('orientation')
+_ELLIPTICITY_INDEX = list(_HARMONIC_PARAMETERS.values()).index('ellipticity')
+
+
+def _make_fix_array(*, fix_center, fix_orientation, fix_ellipticity):
     """
     Make the array of fixed-parameter flags, in the order of the
     harmonic coefficients that correct the parameters.
     """
-    fixed = {'center': fix_center, 'pa': fix_pa, 'eps': fix_eps}
+    fixed = {'center': fix_center, 'orientation': fix_orientation,
+             'ellipticity': fix_ellipticity}
     return np.array([fixed[name] for name in _HARMONIC_PARAMETERS.values()])
 
 
@@ -72,6 +91,130 @@ def _eccentric_anomaly(phi, eps):
     return phi + (anomaly - phi + math.pi) % (2.0 * math.pi) - math.pi
 
 
+def _validate_orientation(value):
+    """
+    Raise a `TypeError` if an orientation is not a
+    `~astropy.units.Quantity`.
+    """
+    if not isinstance(value, u.Quantity):
+        msg = ('orientation must be an angular Quantity, e.g., '
+               '30 * u.deg')
+        raise TypeError(msg)
+
+
+# Remove in 4.0
+def _legacy_orientation_rad(value):
+    """
+    Return an orientation in radians.
+
+    The orientation is an angular `~astropy.units.Quantity` or a number
+    in radians.
+    """
+    if isinstance(value, u.Quantity):
+        return value.to_value(u.rad)
+    return value
+
+
+# Remove in 4.0
+def _orientation_argument(old_name, *, warn_number):
+    """
+    Make a decorator that handles the ``orientation`` argument of a
+    constructor.
+
+    A number without units is accepted as radians only from the
+    deprecated ``old_name`` keyword or as a positional argument, with a
+    deprecation warning for the positional argument if ``warn_number``
+    is `True`. A number given with the ``orientation`` keyword raises a
+    `TypeError`.
+
+    The ``old_name`` keyword is renamed here, rather than by the
+    renamed-argument decorator, because that decorator passes it on
+    as the ``orientation`` keyword, which can then no longer be told
+    apart from a number given with the ``orientation`` keyword. This
+    decorator must be placed inside both the renamed-argument and the
+    positional-argument decorators so that its warnings point to the
+    caller.
+    """
+    rename_msg = renamed_argument_message(old_name, 'orientation', '3.2',
+                                          '4.0')
+    number_msg = ('Passing the orientation as a number without units was '
+                  'deprecated in version 3.2 and will be removed in '
+                  'version 4.0. The number is interpreted as radians. Pass '
+                  'an angular Quantity instead, e.g., value * u.rad.')
+
+    def decorator(func):
+        position = list(inspect.signature(func).parameters).index(
+            'orientation')
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if old_name in kwargs:
+                warnings.warn(rename_msg, PhotutilsDeprecationWarning,
+                              stacklevel=4)
+                if 'orientation' in kwargs or len(args) > position:
+                    msg = (f'cannot specify both "{old_name}" and '
+                           '"orientation".')
+                    raise TypeError(msg)
+                kwargs['orientation'] = kwargs.pop(old_name)
+            elif 'orientation' in kwargs:
+                _validate_orientation(kwargs['orientation'])
+            elif (warn_number and len(args) > position
+                  and not isinstance(args[position], u.Quantity)):
+                warnings.warn(number_msg, PhotutilsDeprecationWarning,
+                              stacklevel=4)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+# Remove in 4.0
+def _warn_deprecated_fix():
+    msg = ("The 'fix' attribute was deprecated in version 3.2. Use "
+           "'fix_center', 'fix_orientation', and 'fix_ellipticity' "
+           'instead. It will be removed in version 4.0.')
+    warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+
+
+# Remove in 4.0
+def _deprecated_internal_attribute(name, description):
+    """
+    Make a property for a deprecated attribute that is internal to the
+    fitter and has no replacement.
+
+    Getting or setting the property issues a deprecation warning and
+    forwards to the private attribute with the same name.
+    """
+    private_name = f'_{name}'
+    msg = (f'The {name!r} attribute was deprecated in version 3.2. It is '
+           'internal to the fitter and has no replacement. It will be '
+           'removed in version 4.0.')
+
+    def getter(self):
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        # The private attribute is not defined when sma is zero.
+        try:
+            return getattr(self, private_name)
+        except AttributeError:
+            error_msg = (f'{type(self).__name__!r} object has no attribute '
+                         f'{name!r}')
+            raise AttributeError(error_msg) from None
+
+    def setter(self, value):
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
+        setattr(self, private_name, value)
+
+    doc = f"""
+    {description}
+
+    .. deprecated:: 3.2
+        This attribute is internal to the fitter and has no
+        replacement.
+    """
+    return property(getter, setter, doc=doc)
+
+
 class EllipseGeometry:
     r"""
     Container class to store parameters for the geometry of an ellipse.
@@ -93,9 +236,11 @@ class EllipseGeometry:
     ----------
     x0, y0 : float
         The center pixel coordinate of the ellipse.
+
     sma : float
         The semimajor axis of the ellipse in pixels.
-    eps : float
+
+    ellipticity : float
         The ellipticity of the ellipse. The ellipticity is defined as
 
         .. math::
@@ -104,15 +249,36 @@ class EllipseGeometry:
 
         where a and b are the lengths of the semimajor and semiminor
         axes, respectively. The ellipticity must be less than 1.
-    pa : float
-        The position angle (in radians) of the semimajor axis in
-        relation to the positive x-axis of the image array (rotating
-        towards the positive y-axis). The fitted position angles are in
-        the range :math:`0 \leq PA < \pi`. When the ellipses are such
-        that position angles are near either extreme of the range, noise
-        can make the solution jump back and forth between successive
-        isophotes, by amounts close to 180 degrees.
-    astep : float, optional
+
+        .. deprecated:: 3.2
+            The ``eps`` keyword is deprecated. Use ``ellipticity``
+            instead.
+
+    orientation : `~astropy.units.Quantity`
+        The orientation of the semimajor axis as an angular
+        `~astropy.units.Quantity` (e.g., ``30 * u.deg`` or an
+        `~astropy.coordinates.Angle`), measured counterclockwise from
+        the positive x axis of the image array. The ``orientation``
+        attribute is a `~astropy.units.Quantity` in degrees. The fitted
+        orientations are in the range of 0 to 180 degrees. When the
+        orientations are near either end of the range, noise can make
+        the solution jump back and forth between successive isophotes,
+        by amounts close to 180 degrees.
+
+        .. deprecated:: 3.2
+            The ``pa`` keyword is deprecated. Use ``orientation``
+            instead. A number without units is accepted as radians
+            with the ``pa`` keyword.
+
+        .. deprecated:: 3.2
+            Passing the orientation as the fifth positional argument
+            as a number without units is deprecated. The number is
+            interpreted as radians. Pass an angular
+            `~astropy.units.Quantity` instead (e.g., ``value * u.rad``).
+            A number without units given with the ``orientation``
+            keyword raises a `TypeError`.
+
+    step : float, optional
         The step value for growing/shrinking the semimajor axis. It can
         be expressed either in pixels (when ``linear_growth=True``) or
         as a relative value (when ``linear_growth=False``). The default
@@ -120,39 +286,159 @@ class EllipseGeometry:
         `~photutils.isophote.Ellipse`, this value is replaced by the
         ``step`` keyword of its ``fit_image`` and ``fit_isophote``
         methods.
+
+        .. deprecated:: 3.2
+            The ``astep`` keyword is deprecated. Use ``step`` instead.
+
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
         `False`. When the geometry is input to
         `~photutils.isophote.Ellipse`, this value is used unless the
-        ``linear`` keyword of its ``fit_image`` and ``fit_isophote``
-        methods is set.
+        ``linear_growth`` keyword of its ``fit_image`` and
+        ``fit_isophote`` methods is set.
+
     fix_center : bool, optional
         Keep center of ellipse fixed during fit? The default is
         `False`.
-    fix_pa : bool, optional
-        Keep position angle of semimajor axis of ellipse fixed during fit?
-        The default is `False`.
-    fix_eps : bool, optional
+
+    fix_orientation : bool, optional
+        Keep the orientation of the semimajor axis of the ellipse fixed
+        during the fit? The default is `False`.
+
+        .. deprecated:: 3.2
+            The ``fix_pa`` keyword is deprecated. Use
+            ``fix_orientation`` instead.
+
+    fix_ellipticity : bool, optional
         Keep ellipticity of ellipse fixed during fit? The default is
         `False`.
+
+        .. deprecated:: 3.2
+            The ``fix_eps`` keyword is deprecated. Use
+            ``fix_ellipticity`` instead.
+
+    Attributes
+    ----------
+    x0, y0 : float
+        The center pixel coordinate of the ellipse.
+
+    sma : float
+        The semimajor axis of the ellipse in pixels.
+
+    ellipticity : float
+        The ellipticity of the ellipse.
+
+    eps : float
+        .. deprecated:: 3.2
+            Use ``ellipticity`` instead.
+
+    orientation : `~astropy.units.Quantity`
+        The orientation of the semimajor axis in degrees, measured
+        counterclockwise from the positive x axis of the image array.
+        It must be set with an angular `~astropy.units.Quantity`.
+
+    pa : float
+        .. deprecated:: 3.2
+            Use ``orientation`` instead. It is a float in radians.
+
+    step : float
+        The step value for growing/shrinking the semimajor axis.
+
+    astep : float
+        .. deprecated:: 3.2
+            Use ``step`` instead.
+
+    linear_growth : bool
+        The semimajor axis growing/shrinking mode.
+
+    fix_center : bool
+        Whether the center is kept fixed during the fit.
+
+    fix_orientation : bool
+        Whether the orientation is kept fixed during the fit.
+
+    fix_ellipticity : bool
+        Whether the ellipticity is kept fixed during the fit.
+
+    fix : 1D `~numpy.ndarray`
+        .. deprecated:: 3.2
+            Use ``fix_center``, ``fix_orientation``, and
+            ``fix_ellipticity`` instead.
+
+    sector_angular_width : float
+        .. deprecated:: 3.2
+            This attribute was internal to the fitter and has no
+            replacement.
+
+    initial_polar_angle : float
+        .. deprecated:: 3.2
+            This attribute was internal to the fitter and has no
+            replacement.
+
+    initial_polar_radius : float
+        .. deprecated:: 3.2
+            This attribute was internal to the fitter and has no
+            replacement.
+
+    Raises
+    ------
+    TypeError
+        If ``orientation`` is given with the ``orientation`` keyword as
+        a number without units, or if a number without units is
+        assigned to the ``orientation`` attribute.
     """
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def __init__(self, x0, y0, sma, eps, pa, astep=0.1, linear_growth=False,
-                 fix_center=False, fix_pa=False, fix_eps=False):
+    @deprecated_renamed_argument(
+        ['eps', 'astep', 'fix_pa', 'fix_eps'],
+        ['ellipticity', 'step', 'fix_orientation', 'fix_ellipticity'],
+        '3.2', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
+    @_orientation_argument('pa', warn_number=True)
+    def __init__(self, x0, y0, sma, ellipticity, orientation, step=0.1,
+                 linear_growth=False, fix_center=False,
+                 fix_orientation=False, fix_ellipticity=False):
+        self._initialize(x0, y0, sma, ellipticity,
+                         _legacy_orientation_rad(orientation), step=step,
+                         linear_growth=linear_growth, fix_center=fix_center,
+                         fix_orientation=fix_orientation,
+                         fix_ellipticity=fix_ellipticity)
+
+    @classmethod
+    def _from_radians(cls, x0, y0, sma, ellipticity, orientation,
+                      **kwargs):
+        """
+        Make a geometry with the orientation given as a number in
+        radians.
+
+        This is the constructor for the internal code. It issues no
+        warning and does not convert the orientation.
+        """
+        geometry = cls.__new__(cls)
+        geometry._initialize(x0, y0, sma, ellipticity, orientation,
+                             **kwargs)
+        return geometry
+
+    def _initialize(self, x0, y0, sma, ellipticity, orientation, *,
+                    step=0.1, linear_growth=False, fix_center=False,
+                    fix_orientation=False, fix_ellipticity=False):
+        """
+        Set the attributes of a new geometry, with the orientation in
+        radians.
+        """
         self.x0 = x0
         self.y0 = y0
         self.sma = sma
-        self.eps = eps
-        self.pa = pa
+        self.ellipticity = ellipticity
+        self._orientation_rad = orientation
 
-        self.astep = astep
+        self.step = step
         self.linear_growth = linear_growth
 
         # Fixed parameters are flagged in here, in the order of the
         # harmonic coefficients that correct them.
-        self.fix = _make_fix_array(fix_center=fix_center, fix_pa=fix_pa,
-                                   fix_eps=fix_eps)
+        self._fix = _make_fix_array(fix_center=fix_center,
+                                    fix_orientation=fix_orientation,
+                                    fix_ellipticity=fix_ellipticity)
 
         # Limits for sector angular width
         self._phi_min = 0.05
@@ -160,26 +446,119 @@ class EllipseGeometry:
 
         self._reset_sma_dependent_attributes()
 
+    @property
+    def orientation(self):
+        """
+        The orientation of the semimajor axis as an angular
+        `~astropy.units.Quantity` in degrees.
+
+        The angle is measured counterclockwise from the positive x axis
+        of the image array. It must be set with an angular
+        `~astropy.units.Quantity`.
+        """
+        return np.rad2deg(self._orientation_rad) << u.deg
+
+    @orientation.setter
+    def orientation(self, value):  # numpydoc ignore=GL08
+        # The internal code uses the orientation as a float in radians.
+        _validate_orientation(value)
+        self._orientation_rad = value.to_value(u.rad)
+
+    @property
+    def fix_center(self):
+        """
+        Whether the center is kept fixed during the fit.
+        """
+        return all(self._fix[index] for index in _CENTER_INDICES)
+
+    @property
+    def fix_orientation(self):
+        """
+        Whether the orientation is kept fixed during the fit.
+        """
+        return bool(self._fix[_ORIENTATION_INDEX])
+
+    @property
+    def fix_ellipticity(self):
+        """
+        Whether the ellipticity is kept fixed during the fit.
+        """
+        return bool(self._fix[_ELLIPTICITY_INDEX])
+
+    # Remove in 4.0
+    @property
+    def fix(self):
+        """
+        The array of fixed-parameter flags for the center (the first
+        two elements), the orientation, and the ellipticity.
+
+        .. deprecated:: 3.2
+            Use ``fix_center``, ``fix_orientation``, and
+            ``fix_ellipticity`` instead.
+        """
+        _warn_deprecated_fix()
+        return self._fix
+
+    @fix.setter
+    def fix(self, value):  # numpydoc ignore=GL08
+        _warn_deprecated_fix()
+        self._fix = value
+
+    # Remove in 4.0
+    sector_angular_width = _deprecated_internal_attribute(
+        'sector_angular_width',
+        'The angular width (radians) of the integration sectors.')
+    initial_polar_angle = _deprecated_internal_attribute(
+        'initial_polar_angle',
+        'The polar angle (radians) of the first sample point.')
+    initial_polar_radius = _deprecated_internal_attribute(
+        'initial_polar_radius',
+        'The radius (pixels) of the ellipse at the initial polar angle.')
+
+    # Remove in 4.0
+    eps = deprecated_attribute('eps', 'ellipticity', '3.2', until='4.0')
+    astep = deprecated_attribute('astep', 'step', '3.2', until='4.0')
+
+    # Remove in 4.0
+    @property
+    def pa(self):
+        """
+        The orientation of the semimajor axis as a float in radians.
+
+        .. deprecated:: 3.2
+            Use ``orientation`` instead.
+        """
+        warn_deprecated_attribute('pa', 'orientation', since='3.2',
+                                  until='4.0')
+        return self._orientation_rad
+
+    @pa.setter
+    def pa(self, value):  # numpydoc ignore=GL08
+        warn_deprecated_attribute('pa', 'orientation', since='3.2',
+                                  until='4.0')
+        self._orientation_rad = _legacy_orientation_rad(value)
+
     def _reset_sma_dependent_attributes(self):
         """
         Reset attributes derived from the current semimajor axis length.
         """
         # Variables used in the calculation of the sector angular width
-        sma1, sma2 = self.bounding_ellipses()
+        sma1, sma2 = self._bounding_ellipses()
         inner_sma = min((sma2 - sma1), 3.0)
         self._area_factor = (sma2 - sma1) * inner_sma
 
-        for attr in ('sector_angular_width', 'initial_polar_angle',
-                     'initial_polar_radius'):
+        for attr in ('_sector_angular_width', '_initial_polar_angle',
+                     '_initial_polar_radius'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
         # The sma can eventually be zero.
         if self.sma > 0.0:
-            self.sector_angular_width = max(min((inner_sma / self.sma),
-                                                self._phi_max), self._phi_min)
-            self.initial_polar_angle = self.sector_angular_width / 2.0
-            self.initial_polar_radius = self.radius(self.initial_polar_angle)
+            self._sector_angular_width = max(
+                min((inner_sma / self.sma), self._phi_max), self._phi_min)
+            self._initial_polar_angle = self._sector_angular_width / 2.0
+            self._initial_polar_radius = self.radius(
+                self._initial_polar_angle)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def find_center(self, image, threshold=0.1, verbose=True):
@@ -337,25 +716,27 @@ class EllipseGeometry:
         radius : float or `~numpy.ndarray`
             The polar radius (pixels).
         """
-        return (self.sma * (1.0 - self.eps)
-                / np.sqrt(((1.0 - self.eps) * np.cos(angle))**2
+        return (self.sma * (1.0 - self.ellipticity)
+                / np.sqrt(((1.0 - self.ellipticity) * np.cos(angle))**2
                           + (np.sin(angle))**2))
 
-    def initialize_sector_geometry(self, phi):
+    def _initialize_sector_geometry(self, phi):
         """
         Initialize geometry attributes associated with an elliptical
         sector at the given polar angle ``phi``.
 
         The sector spans the angular width stored in the
-        ``sector_angular_width`` attribute, centered on ``phi``. This
+        ``_sector_angular_width`` attribute, centered on ``phi``. This
         method computes:
 
         * the four vertices that define the elliptical sector on the
           pixel array
+
         * the sector area (saved in the ``sector_area`` attribute)
+
         * the angular width of the next sector, computed from this
           sector's radii so that the sectors have roughly constant area
-          (saved in the ``sector_angular_width`` attribute)
+          (saved in the ``_sector_angular_width`` attribute)
 
         Parameters
         ----------
@@ -369,18 +750,18 @@ class EllipseGeometry:
         """
         # These polar radii bound the region between the inner
         # and outer ellipses that define the sector.
-        sma1, sma2 = self.bounding_ellipses()
-        eps_ = 1.0 - self.eps
+        sma1, sma2 = self._bounding_ellipses()
+        eps_ = 1.0 - self.ellipticity
 
         # Polar vector at one side of the elliptical sector
-        self._phi1 = phi - self.sector_angular_width / 2.0
+        self._phi1 = phi - self._sector_angular_width / 2.0
         r1 = (sma1 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
         r2 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi1))**2
                                       + (math.sin(self._phi1))**2))
 
         # Polar vector at the other side of the elliptical sector
-        self._phi2 = phi + self.sector_angular_width / 2.0
+        self._phi2 = phi + self._sector_angular_width / 2.0
         r3 = (sma2 * eps_ / math.sqrt((eps_ * math.cos(self._phi2))**2
                                       + (math.sin(self._phi2))**2))
 
@@ -389,8 +770,9 @@ class EllipseGeometry:
 
         # Sector area. The two bounding ellipses have the same
         # eccentric anomalies at the sector limits.
-        delta_anomaly = (_eccentric_anomaly(self._phi2, self.eps)
-                         - _eccentric_anomaly(self._phi1, self.eps))
+        delta_anomaly = (
+            _eccentric_anomaly(self._phi2, self.ellipticity)
+            - _eccentric_anomaly(self._phi1, self.ellipticity))
         self.sector_area = (eps_ * (sma2**2 - sma1**2) / 2.0
                             * delta_anomaly)
 
@@ -398,9 +780,9 @@ class EllipseGeometry:
         # come out with roughly constant area along the ellipse. The
         # width tends to infinity as the inner radius tends to zero.
         if r4 == 0:
-            self.sector_angular_width = self._phi_max
+            self._sector_angular_width = self._phi_max
         else:
-            self.sector_angular_width = max(
+            self._sector_angular_width = max(
                 min((self._area_factor / (r3 - r4) / r4), self._phi_max),
                 self._phi_min)
 
@@ -409,23 +791,25 @@ class EllipseGeometry:
         vertex_y = np.zeros(shape=4, dtype=float)
 
         # Vertices are labeled in counterclockwise sequence.
-        vertex_x[0:2] = np.array([r1, r2]) * math.cos(self._phi1 + self.pa)
-        vertex_x[2:4] = np.array([r4, r3]) * math.cos(self._phi2 + self.pa)
-        vertex_y[0:2] = np.array([r1, r2]) * math.sin(self._phi1 + self.pa)
-        vertex_y[2:4] = np.array([r4, r3]) * math.sin(self._phi2 + self.pa)
+        angle1 = self._phi1 + self._orientation_rad
+        angle2 = self._phi2 + self._orientation_rad
+        vertex_x[0:2] = np.array([r1, r2]) * math.cos(angle1)
+        vertex_x[2:4] = np.array([r4, r3]) * math.cos(angle2)
+        vertex_y[0:2] = np.array([r1, r2]) * math.sin(angle1)
+        vertex_y[2:4] = np.array([r4, r3]) * math.sin(angle2)
         vertex_x += self.x0
         vertex_y += self.y0
 
         return vertex_x, vertex_y
 
-    def bounding_ellipses(self):
+    def _bounding_ellipses(self):
         """
         Compute the semimajor axis lengths of the two ellipses that
         bound the annulus where integrations take place.
 
         The two lengths are ``sma`` minus and plus half of the annulus
-        width, which is ``astep`` pixels if ``linear_growth`` is `True`
-        or ``sma * astep`` pixels otherwise.
+        width, which is ``step`` pixels if ``linear_growth`` is `True`
+        or ``sma * step`` pixels otherwise.
 
         Returns
         -------
@@ -435,24 +819,22 @@ class EllipseGeometry:
             never negative.
         """
         if self.linear_growth:
-            a1 = self.sma - self.astep / 2.0
-            a2 = self.sma + self.astep / 2.0
+            a1 = self.sma - self.step / 2.0
+            a2 = self.sma + self.step / 2.0
         else:
-            a1 = self.sma * (1.0 - self.astep / 2.0)
-            a2 = self.sma * (1.0 + self.astep / 2.0)
+            a1 = self.sma * (1.0 - self.step / 2.0)
+            a2 = self.sma * (1.0 + self.step / 2.0)
 
         # The annulus extends to the center if the step is larger than
         # twice the semimajor axis length.
         return max(a1, 0.0), a2
 
-    def polar_angle_sector_limits(self):
+    def _polar_angle_sector_limits(self):
         """
         Return the two polar angles that bound the sector.
 
         The two bounding polar angles become available only after
-        calling the
-        :meth:`~photutils.isophote.EllipseGeometry.initialize_sector_geometry`
-        method.
+        calling the ``_initialize_sector_geometry`` method.
 
         Returns
         -------
@@ -468,17 +850,17 @@ class EllipseGeometry:
         system given (x, y) pixel image coordinates.
 
         This method takes care of the different definitions for
-        position angle (PA) and polar angle (:math:`\phi`):
+        orientation (:math:`\theta`) and polar angle (:math:`\phi`):
 
         .. math::
 
-            -2 \pi < PA < 2 \pi
+            -2 \pi < \theta < 2 \pi
 
             0 \leq \phi < 2 \pi
 
         Note that radius can be anything. The solution is not tied to
         the semimajor axis length, but to the center position and
-        position angle.
+        orientation.
 
         Parameters
         ----------
@@ -526,10 +908,10 @@ class EllipseGeometry:
         elif x1 < 0.0 and y1 < 0.0:
             angle = np.pi + angle
 
-        pa1 = self.pa
-        if self.pa < 0.0:
-            pa1 = self.pa + 2 * np.pi
-        angle = angle - pa1
+        orientation = self._orientation_rad
+        if orientation < 0.0:
+            orientation += 2 * np.pi
+        angle = angle - orientation
         if angle < 0.0:
             angle = angle + 2 * np.pi
 
@@ -556,15 +938,15 @@ class EllipseGeometry:
         idx = (x1 < 0.0) & (y1 < 0.0)
         angle[idx] = np.pi + angle[idx]
 
-        pa1 = self.pa
-        if self.pa < 0.0:
-            pa1 = self.pa + 2 * np.pi
-        angle = angle - pa1
+        orientation = self._orientation_rad
+        if orientation < 0.0:
+            orientation += 2 * np.pi
+        angle = angle - orientation
         angle[angle < 0] += 2 * np.pi
 
         return radius, angle
 
-    def update_sma(self, step):
+    def _update_sma(self, step):
         """
         Calculate an updated value for the semimajor axis, given the
         current value and the step value.
@@ -592,7 +974,7 @@ class EllipseGeometry:
             sma = self.sma * (1.0 + step)
         return sma
 
-    def reset_sma(self, step):
+    def _reset_sma(self, step):
         """
         Compute the semimajor axis length and the step value that
         reverse the direction of growth, from outwards to inwards.
@@ -612,8 +994,7 @@ class EllipseGeometry:
             The new semimajor axis length and the new step value to
             initiate the shrinking of the semimajor axis length. This is
             the step value that should be used when calling the
-            :meth:`~photutils.isophote.EllipseGeometry.update_sma`
-            method.
+            ``_update_sma`` method.
         """
         if self.linear_growth:
             sma = self.sma - step
@@ -624,3 +1005,84 @@ class EllipseGeometry:
             step = aux - 1.0
 
         return sma, step
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def initialize_sector_geometry(self, phi):
+        """
+        Initialize the geometry of an elliptical sector.
+
+        Parameters
+        ----------
+        phi : float
+            The polar angle (radians) where the sector is located.
+
+        Returns
+        -------
+        x, y : 1D `~numpy.ndarray`
+            The x and y coordinates of each vertex as 1D arrays.
+        """
+        return self._initialize_sector_geometry(phi)
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def polar_angle_sector_limits(self):
+        """
+        Return the two polar angles that bound the sector.
+
+        Returns
+        -------
+        phi1, phi2 : float
+            The smaller and larger values of polar angle.
+        """
+        return self._polar_angle_sector_limits()
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def bounding_ellipses(self):
+        """
+        Compute the semimajor axis lengths of the annulus bounds.
+
+        Returns
+        -------
+        sma1, sma2 : float
+            The smaller and larger semimajor axis lengths.
+        """
+        return self._bounding_ellipses()
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def update_sma(self, step):
+        """
+        Calculate an updated value for the semimajor axis.
+
+        Parameters
+        ----------
+        step : float
+            The step value.
+
+        Returns
+        -------
+        sma : float
+            The new semimajor axis length.
+        """
+        return self._update_sma(step)
+
+    # Remove in 4.0
+    @deprecated('3.2', until='4.0')
+    def reset_sma(self, step):
+        """
+        Compute the semimajor axis length and step that reverse the
+        direction of growth.
+
+        Parameters
+        ----------
+        step : float
+            The current step value.
+
+        Returns
+        -------
+        sma, new_step : float
+            The new semimajor axis length and the new step value.
+        """
+        return self._reset_sma(step)

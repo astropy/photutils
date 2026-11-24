@@ -16,9 +16,12 @@ in the algorithms themselves, and not caused by noise. The quantities
 compared this way are:
 
 * mean intensity: less than 1% diff. for sma > 3 pixels, 5% otherwise
+
 * ellipticity: less than 1% diff. for sma > 3 pixels, 20% otherwise
+
 * position angle: less than 1 deg. diff. for sma > 3 pixels, 20 deg.
   otherwise
+
 * X and Y position: less than 0.2 pixel diff.
 
 For the M51 image we have mostly good agreement with the SPP code
@@ -53,6 +56,7 @@ reference for the regression.
 import math
 import os.path as op
 
+import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
@@ -60,7 +64,6 @@ from astropy.table import Table
 
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
-from photutils.isophote.integrator import BILINEAR
 
 
 @pytest.mark.parametrize('name', ['synth_highsnr'])
@@ -72,7 +75,7 @@ def test_regression(name):
     at synth_table_mean.txt to compare results visually with
     synth_table_mean.fits.
     """
-    integrmode = BILINEAR
+    integrmode = 'bilinear'
     verbose = False
     filename = f'{name}_table.fits'
     path = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
@@ -112,17 +115,17 @@ def test_regression(name):
 
         # Data from Isophote
         sma_i = iso.sample.geometry.sma
-        intens_i = iso.intens
-        int_err_i = iso.int_err or 0.0
-        pix_stddev_i = iso.pix_stddev or 0.0
+        intens_i = iso.intensity
+        int_err_i = iso.intensity_err or 0.0
+        pix_stddev_i = iso.pixel_stddev or 0.0
         rms_i = iso.rms or 0.0
-        ellip_i = iso.sample.geometry.eps or 0.0
-        pa_i = iso.sample.geometry.pa or 0.0
+        ellip_i = iso.sample.geometry.ellipticity or 0.0
+        pa_i = iso.sample.geometry.orientation.to_value(u.rad)
         x0_i = iso.sample.geometry.x0
         y0_i = iso.sample.geometry.y0
         rerr_i = (iso.sample.gradient_rel_err or 0.0)
         ndata_i = iso.n_data
-        nflag_i = iso.n_flag
+        nflag_i = iso.n_flagged
         niter_i = iso.n_iter
         stop_i = iso.stop_code
 
@@ -183,7 +186,7 @@ def test_regression(name):
             tniter.extend((niter_i, niter_t, niter_d))
             tstop.extend((stop_i, stop_t, stop_d))
 
-        if name == 'synth_highsnr' and integrmode == BILINEAR:
+        if name == 'synth_highsnr' and integrmode == 'bilinear':
             assert abs(x0_d) <= 0.21
             assert abs(y0_d) <= 0.21
 
@@ -272,12 +275,13 @@ def test_regression_summary(name, min_extra, max_extra, noisy):
     ref = {colname: np.asarray(table[colname][mask], dtype=float)
            for colname in ('INTENS', 'ELLIP', 'PA', 'X0', 'Y0')}
 
-    intens_diff = isolist.intens[index] / ref['INTENS'] - 1.0
-    eps_diff = isolist.eps[index] - ref['ELLIP']
+    intens_diff = isolist.intensity[index] / ref['INTENS'] - 1.0
+    eps_diff = isolist.ellipticity[index] - ref['ELLIP']
     # The SPP position angle is measured from the y axis. The
     # difference is wrapped into the range [-90, 90) degrees.
     pa_ref = ref['PA'] + 90.0
-    pa_diff = (np.rad2deg(isolist.pa[index]) - pa_ref + 90.0) % 180.0 - 90.0
+    pa_diff = ((isolist.orientation[index].to_value(u.deg) - pa_ref + 90.0)
+               % 180.0 - 90.0)
     center_diff = np.hypot(isolist.x0[index] + 1 - ref['X0'],
                            isolist.y0[index] + 1 - ref['Y0'])
 

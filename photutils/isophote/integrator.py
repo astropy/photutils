@@ -4,17 +4,17 @@ Tools for integrating over pixels.
 """
 
 import abc
+import sys
+import warnings
 
 import numpy as np
 
-__all__ = ['BILINEAR', 'INTEGRATORS', 'MEAN', 'MEDIAN', 'NEAREST_NEIGHBOR']
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
-
-# Integration modes
-NEAREST_NEIGHBOR = 'nearest_neighbor'
-BILINEAR = 'bilinear'
-MEAN = 'mean'
-MEDIAN = 'median'
+# The integration mode constants were deprecated in version 3.2. They
+# are not in ``__all__`` so that the wildcard import in the subpackage
+# does not warn. See ``__getattr__`` below.
+__all__ = []
 
 
 class _Integrator(abc.ABC):
@@ -177,7 +177,7 @@ class _NearestNeighborIntegrator(_PixelIntegrator):
         # Get image coordinates of the (radius, phi) points. Pixel
         # centers are at integer coordinates, so the nearest pixel is
         # found by rounding.
-        angle = phis + self._geometry.pa
+        angle = phis + self._geometry._orientation_rad
         x = np.floor(radii * np.cos(angle) + self._geometry.x0 + 0.5)
         y = np.floor(radii * np.sin(angle) + self._geometry.y0 + 0.5)
 
@@ -208,7 +208,7 @@ class _BiLinearIntegrator(_PixelIntegrator):
         ny, nx = self._data.shape
 
         # Get image coordinates of the (radius, phi) points.
-        angle = phis + self._geometry.pa
+        angle = phis + self._geometry._orientation_rad
         x = radii * np.cos(angle) + self._geometry.x0
         y = radii * np.sin(angle) + self._geometry.y0
 
@@ -260,22 +260,22 @@ class _AreaIntegrator(_Integrator):
 
         # Build auxiliary bilinear integrator to be used when
         # sector areas contain a too small number of valid pixels.
-        self._bilinear_integrator = INTEGRATORS[BILINEAR](image, geometry,
-                                                          angles, radii,
-                                                          intensities)
+        self._bilinear_integrator = _INTEGRATORS['bilinear'](image, geometry,
+                                                             angles, radii,
+                                                             intensities)
 
     def integrate(self, radius, phi):
         self._phi = phi
 
         # Get image coordinates of the four vertices of the elliptical sector.
-        vertex_x, vertex_y = self._geometry.initialize_sector_geometry(phi)
+        vertex_x, vertex_y = self._geometry._initialize_sector_geometry(phi)
 
         self._sector_area = self._geometry.sector_area
 
         # Step in polar angle to be used by caller next time
         # when updating the current polar angle `phi` to point
         # to the next sector.
-        self._phistep = self._geometry.sector_angular_width
+        self._phistep = self._geometry._sector_angular_width
 
         # Define rectangular image area that encompasses the elliptical
         # sector. We have to account for rounding of pixel indices.
@@ -285,7 +285,7 @@ class _AreaIntegrator(_Integrator):
         j2 = int(max(vertex_y)) + 1
 
         # Polar angle limits for this sector
-        phi1, phi2 = self._geometry.polar_angle_sector_limits()
+        phi1, phi2 = self._geometry._polar_angle_sector_limits()
 
         # Ignore data point if the elliptical sector lies
         # partially, or totally, outside image boundaries.
@@ -299,9 +299,10 @@ class _AreaIntegrator(_Integrator):
             dx = np.arange(i1, i2) - geometry.x0
             dy = (np.arange(j1, j2) - geometry.y0)[:, np.newaxis]
             rp = np.hypot(dx, dy)
-            phip = np.mod(np.arctan2(dy, dx) - geometry.pa, 2.0 * np.pi)
-            sma1, sma2 = geometry.bounding_ellipses()
-            eps_ = 1.0 - geometry.eps
+            phip = np.mod(np.arctan2(dy, dx) - geometry._orientation_rad,
+                          2.0 * np.pi)
+            sma1, sma2 = geometry._bounding_ellipses()
+            eps_ = 1.0 - geometry.ellipticity
             aux = eps_ / np.sqrt((eps_ * np.cos(phip))**2
                                  + np.sin(phip)**2)
             # A sector can extend past a polar angle of 2 pi, so the
@@ -338,8 +339,8 @@ class _AreaIntegrator(_Integrator):
         result : float
             The polar angle step.
         """
-        _, phi2 = self._geometry.polar_angle_sector_limits()
-        return self._geometry.sector_angular_width / 2.0 + phi2 - self._phi
+        _, phi2 = self._geometry._polar_angle_sector_limits()
+        return self._geometry._sector_angular_width / 2.0 + phi2 - self._phi
 
     def get_sector_area(self):
         return self._sector_area
@@ -378,9 +379,101 @@ class _MedianIntegrator(_AreaIntegrator):
 
 
 # Specific integrator subclasses can be instantiated from here.
-INTEGRATORS = {
-    NEAREST_NEIGHBOR: _NearestNeighborIntegrator,
-    BILINEAR: _BiLinearIntegrator,
-    MEAN: _MeanIntegrator,
-    MEDIAN: _MedianIntegrator,
+_INTEGRATORS = {
+    'nearest_neighbor': _NearestNeighborIntegrator,
+    'bilinear': _BiLinearIntegrator,
+    'mean': _MeanIntegrator,
+    'median': _MedianIntegrator,
 }
+
+# The deprecated public constants and the strings or objects that
+# replace them.
+_DEPRECATED_CONSTANTS = {
+    'BILINEAR': 'bilinear',
+    'NEAREST_NEIGHBOR': 'nearest_neighbor',
+    'MEAN': 'mean',
+    'MEDIAN': 'median',
+    'INTEGRATORS': _INTEGRATORS,
+}
+
+
+def _get_deprecated_constant(name, module_name, *, warn=True):
+    """
+    Return a deprecated module-level constant and warn.
+
+    This function must be called directly from a module ``__getattr__``
+    so that the warning points to the line that used the constant.
+
+    Parameters
+    ----------
+    name : str
+        The name of the constant.
+
+    module_name : str
+        The name of the module that was searched, used in the error
+        message.
+
+    warn : bool, optional
+        Whether to issue the deprecation warning.
+
+    Returns
+    -------
+    value : str or dict
+        The value of the constant.
+
+    Raises
+    ------
+    AttributeError
+        If ``name`` is not a deprecated constant.
+    """
+    if name not in _DEPRECATED_CONSTANTS:
+        msg = f'module {module_name!r} has no attribute {name!r}'
+        raise AttributeError(msg)
+
+    value = _DEPRECATED_CONSTANTS[name]
+    if not warn:
+        return value
+
+    if name == 'INTEGRATORS':
+        advice = ('Pass the integration mode as a string, such as '
+                  "'bilinear', 'nearest_neighbor', 'mean', or 'median'.")
+    else:
+        advice = f'Use the string {value!r} instead.'
+    msg = (f'{name} was deprecated in version 3.2 and will be removed in '
+           f'version 4.0. {advice}')
+    warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=3)
+    return value
+
+
+def _is_fromlist_probe():
+    """
+    Return whether the module ``__getattr__`` that calls this function
+    was called by the probe of the import system for a ``from package
+    import name`` statement.
+
+    For a package, the import system checks the name with `hasattr`
+    in ``importlib._bootstrap._handle_fromlist`` before it reads the
+    attribute. This check relies on that CPython implementation
+    detail. If it does not detect the probe, a deprecated name warns
+    twice instead of once.
+
+    Returns
+    -------
+    result : bool
+        Whether the caller of the module ``__getattr__`` is the import
+        system probe.
+    """
+    # Frame 1 is the module __getattr__ and frame 2 is its caller.
+    get_frame = getattr(sys, '_getframe', None)
+    if get_frame is None:
+        return False
+    try:
+        code = get_frame(2).f_code
+    except ValueError:  # the call stack is not deep enough
+        return False
+    return (code.co_name == '_handle_fromlist'
+            and 'importlib' in code.co_filename)
+
+
+def __getattr__(name):
+    return _get_deprecated_constant(name, __name__)

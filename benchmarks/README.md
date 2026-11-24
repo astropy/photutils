@@ -161,8 +161,8 @@ galaxy image:
   mode (a mode whose fit raises an error is reported as failed)
 - elliptical sample extraction (`EllipseSample.extract`) for each
   integration mode at several semimajor axis lengths
-- model-image reconstruction with `build_ellipse_model`, with and
-  without the high-order harmonics
+- model-image reconstruction with `IsophoteList.make_model_image`, with
+  and without the high-order harmonics
 - the scaling of the private `build_ellipse_model_c` Cython kernel
   with image size
 

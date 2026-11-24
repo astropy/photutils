@@ -18,7 +18,7 @@ from photutils.datasets import make_noise_image
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
-from photutils.isophote.isophote import CentralPixel, Isophote, IsophoteList
+from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -48,7 +48,7 @@ def _assert_fflag_stop(isolist, *, fflag=0.7):
     Assert that the outward growth stopped because more than a fraction
     1 - fflag of the sample points of the last isophote were flagged.
     """
-    flagged = isolist.n_flag / (isolist.n_flag + isolist.n_data)
+    flagged = isolist.n_flagged / (isolist.n_flagged + isolist.n_data)
     assert isolist[-1].stop_code == 1
     assert flagged[-1] > 1.0 - fflag
     assert flagged[-2] <= 1.0 - fflag
@@ -57,9 +57,9 @@ def _assert_fflag_stop(isolist, *, fflag=0.7):
 def _assert_same_geometry(isophote1, isophote2):
     """
     Assert that two isophotes have the same center, ellipticity, and
-    position angle.
+    orientation.
     """
-    for name in ('x0', 'y0', 'eps', 'pa'):
+    for name in ('x0', 'y0', 'ellipticity', 'orientation'):
         assert getattr(isophote1, name) == getattr(isophote2, name)
 
 
@@ -76,7 +76,7 @@ class TestEllipse:
         data = hdu[0].data
         hdu.close()
 
-        geometry = EllipseGeometry(252, 253, 10.0, 0.2, np.pi / 2)
+        geometry = EllipseGeometry(252, 253, 10.0, 0.2, (np.pi / 2) * u.rad)
         geometry.find_center(data)
         assert geometry.x0 == 257.0
         assert geometry.y0 == 258.0
@@ -90,7 +90,7 @@ class TestEllipse:
         assert isinstance(isophote_list[0], Isophote)
 
         # Verify that the list is properly sorted in semimajor axis length.
-        assert isophote_list[-1] > isophote_list[0]
+        assert isophote_list[-1].sma > isophote_list[0].sma
 
         # The fit should stop when too many sample points fall outside
         # the image frame.
@@ -99,13 +99,13 @@ class TestEllipse:
 
     def test_linear(self):
         ellipse = Ellipse(self.data)
-        # The maxsma keyword limits the runtime. The linear spacing checks
+        # The max_sma keyword limits the runtime. The linear spacing checks
         # below do not depend on the outer extent of the fit.
-        isophote_list = ellipse.fit_image(linear=True, step=2.0,
-                                          maxsma=80.0)
+        isophote_list = ellipse.fit_image(linear_growth=True, step=2.0,
+                                          max_sma=80.0)
 
         # Verify that the list is properly sorted in semimajor axis length.
-        assert isophote_list[-1] > isophote_list[0]
+        assert isophote_list[-1].sma > isophote_list[0].sma
 
         # Difference in sma between successive isophotes must be constant.
         step = isophote_list[-1].sma - isophote_list[-2].sma
@@ -121,57 +121,58 @@ class TestEllipse:
         Test that the fix_XXX and linear parameters of fit_image apply
         only to that call and do not modify the input geometry.
         """
-        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA)
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data, geometry=geometry)
-        isolist = ellipse.fit_image(maxsma=30.0, step=2.0, linear=True,
+        isolist = ellipse.fit_image(max_sma=30.0, step=2.0, linear_growth=True,
                                     fix_center=True)
         assert np.all(isolist.x0 == 256.0)
         assert np.all(isolist.y0 == 256.0)
         assert_allclose(np.diff(isolist.sma[-3:]), 2.0)
 
-        assert not np.any(geometry.fix)
+        assert not np.any(geometry._fix)
         assert not geometry.linear_growth
 
         # A second call without these parameters fits the center and
         # uses geometric growth.
-        isolist = ellipse.fit_image(maxsma=30.0)
+        isolist = ellipse.fit_image(max_sma=30.0)
         x0 = isolist.x0[isolist.sma > 0]
         assert np.any(x0 != 256.0)
         assert_allclose(isolist.sma[-1] / isolist.sma[-2], 1.1)
 
-    @pytest.mark.parametrize('maxsma', [None, 200.0])
-    def test_maxgerr(self, maxsma):
+    @pytest.mark.parametrize('max_sma', [None, 200.0])
+    def test_max_gradient_rel_err(self, max_sma):
         """
-        Test that the maxgerr criterion is triggered when two
-        consecutive isophotes exceed it while the semimajor axis grows
-        outwards.
+        Test that the max_gradient_rel_err criterion is triggered when
+        two consecutive isophotes exceed it while the semimajor axis
+        grows outwards.
 
-        Without ``maxsma``, the semimajor axis growth then stops.
-        With ``maxsma``, the remaining isophotes up to ``maxsma`` are
+        Without ``max_sma``, the semimajor axis growth then stops.
+        With ``max_sma``, the remaining isophotes up to ``max_sma`` are
         extracted in noniterative mode (stop code 4).
         """
         data = make_test_image(noise=5.0, seed=0)
-        maxgerr = 0.05
-        isolist = Ellipse(data).fit_image(minsma=8.0, maxsma=maxsma,
-                                          maxgerr=maxgerr)
+        max_gradient_rel_err = 0.05
+        isolist = Ellipse(data).fit_image(
+            min_sma=8.0, max_sma=max_sma,
+            max_gradient_rel_err=max_gradient_rel_err)
         sma = isolist.sma
         stop_code = isolist.stop_code
         fitted = (sma >= 10.0) & (stop_code != 4)
-        exceeded = isolist.gradient_rel_err[fitted] > maxgerr
+        exceeded = isolist.gradient_rel_err[fitted] > max_gradient_rel_err
         assert np.all(exceeded[-2:])
         assert not np.any(exceeded[:-2] & exceeded[1:-1])
 
-        # The isophotes that exceed maxgerr are fitted instead of
+        # The isophotes that exceed the limit are fitted instead of
         # being stopped and replaced by the geometry of the previous
         # isophote (stop code 5).
         assert np.all(stop_code[fitted][-2:] != 5)
 
-        if maxsma is None:
+        if max_sma is None:
             assert not np.any(stop_code == 4)
         else:
             last_fitted = sma[fitted][-1]
             assert np.all(stop_code[sma > last_fitted] == 4)
-            assert sma[-1] < maxsma <= sma[-1] * 1.1
+            assert sma[-1] < max_sma <= sma[-1] * 1.1
 
     @pytest.mark.parametrize('kwargs', [{'maxgerr': 0.5},
                                         {'going_inwards': True}])
@@ -191,11 +192,11 @@ class TestEllipse:
         sample must be extracted from the flipped geometry.
         """
         data = make_test_image(eps=0.0, noise=1.0, seed=0)
-        isolist = Ellipse(data).fit_image(maxsma=60.0)
+        isolist = Ellipse(data).fit_image(max_sma=60.0)
         for isophote in isolist:
             if isophote.sma == 0:
                 continue
-            angles, radii, _ = isophote.sample.values
+            angles, radii = isophote.sample.angles, isophote.sample.radii
             assert_allclose(radii, isophote.sample.geometry.radius(angles),
                             rtol=1e-10)
 
@@ -204,9 +205,9 @@ class TestEllipse:
         Test that the first inward isophote starts from the geometry of
         the first fitted isophote instead of the last (outermost) one.
         """
-        geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA)
+        geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data, geometry=geometry)
-        isolist = ellipse.fit_image(maxsma=40.0)
+        isolist = ellipse.fit_image(max_sma=40.0)
 
         first = isolist.get_closest(10.0)
         assert first.sma == 10.0
@@ -216,22 +217,22 @@ class TestEllipse:
         assert isophote.sma == expected.sma
         assert isophote.x0 == expected.x0
         assert isophote.y0 == expected.y0
-        assert isophote.eps == expected.eps
-        assert isophote.pa == expected.pa
+        assert isophote.ellipticity == expected.ellipticity
+        assert isophote.orientation == expected.orientation
 
-    def test_first_isophote_minit(self):
+    def test_first_isophote_miniters(self):
         """
         Test that only the first isophote runs twice the minimum number
         of iterations.
         """
-        minit = 10
-        isolist = Ellipse(self.data).fit_image(minit=minit, maxsma=20.0)
+        miniters = 10
+        isolist = Ellipse(self.data).fit_image(miniters=miniters, max_sma=20.0)
         first = isolist.get_closest(10.0)
         assert first.sma == 10.0
-        assert first.n_iter >= 2 * minit
+        assert first.n_iter >= 2 * miniters
         outer = isolist.sma > first.sma
-        assert np.all(isolist.n_iter[outer] >= minit)
-        assert np.all(isolist.n_iter[outer] < 2 * minit)
+        assert np.all(isolist.n_iter[outer] >= miniters)
+        assert np.all(isolist.n_iter[outer] < 2 * miniters)
 
     def test_failed_outward_isophote_geometry(self):
         """
@@ -246,7 +247,7 @@ class TestEllipse:
         ring_radius = np.hypot(xx - 100, yy - 100)
         data = (1000.0 * np.exp(-galaxy_radius / 10.0)
                 + 100.0 * np.exp(-0.125 * (ring_radius - 40.0)**2))
-        geometry = EllipseGeometry(100.0, 100.0, 10.0, 0.2, 0.0)
+        geometry = EllipseGeometry(100.0, 100.0, 10.0, 0.2, 0.0 * u.rad)
         isolist = Ellipse(data, geometry=geometry).fit_image()
 
         # The outward growth stops after two consecutive failed fits.
@@ -254,14 +255,14 @@ class TestEllipse:
         _assert_same_geometry(isolist[-2], isolist[-3])
         _assert_same_geometry(isolist[-1], isolist[-2])
         first = isolist.get_closest(10.0)
-        assert isolist[-3].eps != first.eps
+        assert isolist[-3].ellipticity != first.ellipticity
 
     def test_failed_inward_isophote_geometry(self):
         """
         Test that the isophotes whose inward fits failed are extracted
         with the geometry of the first fitted isophote.
         """
-        isolist = Ellipse(self.data).fit_image(maxsma=20.0)
+        isolist = Ellipse(self.data).fit_image(max_sma=20.0)
         first = isolist.get_closest(10.0)
         failed = [isophote for isophote in isolist
                   if isophote.stop_code == 5]
@@ -274,15 +275,15 @@ class TestEllipse:
         # is not the same.
         neighbor = isolist.get_closest(10.0 / 1.1)
         assert neighbor.stop_code == 0
-        assert neighbor.eps != first.eps
+        assert neighbor.ellipticity != first.ellipticity
 
     def test_threshold_deprecated(self):
-        geometry = EllipseGeometry(250.0, 260.0, 10.0, 0.2, PA)
+        geometry = EllipseGeometry(250.0, 260.0, 10.0, 0.2, PA * u.rad)
         match = "'threshold' was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ellipse = Ellipse(self.data, geometry=geometry, threshold=0.1)
 
-        match = 'Use EllipseGeometry.find_center instead'
+        match = "The 'Ellipse.set_threshold' method was deprecated"
         with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ellipse.set_threshold(0.1)
 
@@ -295,7 +296,7 @@ class TestEllipse:
         Test that nonfinite values are excluded from the fits, like
         masked pixels.
         """
-        isolist = Ellipse(self.data).fit_image(maxsma=60.0)
+        isolist = Ellipse(self.data).fit_image(max_sma=60.0)
 
         data = self.data.copy()
         data[256, 294:296] = np.nan  # on the sma ~38 isophote
@@ -303,15 +304,15 @@ class TestEllipse:
         match = 'Input image contains nonfinite'
         with pytest.warns(AstropyUserWarning, match=match):
             ellipse = Ellipse(data)
-        isolist_nan = ellipse.fit_image(maxsma=60.0)
+        isolist_nan = ellipse.fit_image(max_sma=60.0)
         assert_allclose(isolist_nan.sma, isolist.sma)
-        assert_allclose(isolist_nan.intens, isolist.intens, rtol=1e-4)
-        assert np.all(np.isfinite(isolist_nan.tflux_e[1:]))
-        assert np.all(np.isfinite(isolist_nan.tflux_c[1:]))
+        assert_allclose(isolist_nan.intensity, isolist.intensity, rtol=1e-4)
+        assert np.all(np.isfinite(isolist_nan.total_flux_ellipse[1:]))
+        assert np.all(np.isfinite(isolist_nan.total_flux_circle[1:]))
 
         masked = np.ma.masked_invalid(data)
-        isolist_masked = Ellipse(masked).fit_image(maxsma=60.0)
-        assert_allclose(isolist_masked.intens, isolist_nan.intens)
+        isolist_masked = Ellipse(masked).fit_image(max_sma=60.0)
+        assert_allclose(isolist_masked.intensity, isolist_nan.intensity)
 
     def test_nonfinite_center(self):
         """
@@ -327,11 +328,11 @@ class TestEllipse:
             ellipse = Ellipse(data)
         match = 'Too small sample to warrant a fit'
         with pytest.warns(AstropyUserWarning, match=match):
-            isolist = ellipse.fit_image(maxsma=20.0)
+            isolist = ellipse.fit_image(max_sma=20.0)
         assert isolist[0].sma == 0
-        assert np.isnan(isolist[0].intens)
+        assert np.isnan(isolist[0].intensity)
         assert isolist[0].n_data == 0
-        assert np.all(np.isfinite(isolist.intens[1:]))
+        assert np.all(np.isfinite(isolist.intensity[1:]))
 
     def test_invalid_image(self):
         match = 'image must not be a Quantity array'
@@ -346,32 +347,33 @@ class TestEllipse:
         data = make_test_image(nx=100, ny=100, seed=0)
         isophote = Ellipse(data).fit_isophote(20.0)
         isophote_from_list = Ellipse(data.tolist()).fit_isophote(20.0)
-        assert isophote_from_list.intens == isophote.intens
-        assert isophote_from_list.eps == isophote.eps
+        assert isophote_from_list.intensity == isophote.intensity
+        assert isophote_from_list.ellipticity == isophote.ellipticity
 
-    @pytest.mark.parametrize(('sma0', 'geometry_sma'),
+    @pytest.mark.parametrize(('sma_start', 'geometry_sma'),
                              [(0.0, 10.0), (-1.0, 10.0), (np.nan, 10.0),
                               (None, 0.0)])
-    def test_invalid_sma0(self, sma0, geometry_sma):
-        geometry = EllipseGeometry(256.0, 256.0, geometry_sma, 0.2, PA)
+    def test_invalid_sma_start(self, sma_start, geometry_sma):
+        geometry = EllipseGeometry(256.0, 256.0, geometry_sma, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data, geometry=geometry)
         match = 'The starting semimajor axis length'
         with pytest.raises(ValueError, match=match):
-            ellipse.fit_image(sma0=sma0)
+            ellipse.fit_image(sma_start=sma_start)
 
-    def test_zero_maxsma_maxrit(self):
+    def test_zero_max_sma_max_iterative_sma(self):
         """
-        Test that zero values of maxsma and maxrit are used instead of
-        being treated as None.
+        Test that zero values of max_sma and max_iterative_sma are used
+        instead of being treated as None.
         """
         ellipse = Ellipse(self.data)
 
-        # No isophotes are fit outwards from sma0.
-        isolist = ellipse.fit_image(sma0=10.0, maxsma=0.0)
+        # No isophotes are fit outwards from sma_start.
+        isolist = ellipse.fit_image(sma_start=10.0, max_sma=0.0)
         assert isolist.sma[-1] == 10.0
 
         # All isophotes are extracted in noniterative mode.
-        isolist = ellipse.fit_image(sma0=10.0, maxsma=20.0, maxrit=0.0)
+        isolist = ellipse.fit_image(sma_start=10.0, max_sma=20.0,
+                                    max_iterative_sma=0.0)
         assert np.all(isolist.stop_code[isolist.sma > 0] == 4)
 
     def test_fit_image_threads(self):
@@ -380,45 +382,48 @@ class TestEllipse:
         instance, with different parameters, give the same results as
         serial calls.
         """
-        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA)
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data, geometry=geometry)
         kwargs_list = [{}, {'fix_center': True},
-                       {'fix_pa': True, 'linear': True, 'step': 5.0},
-                       {'fix_eps': True}]
-        expected = [ellipse.fit_image(maxsma=40.0, **kwargs)
+                       {'fix_orientation': True, 'linear_growth': True,
+                        'step': 5.0},
+                       {'fix_ellipticity': True}]
+        expected = [ellipse.fit_image(max_sma=40.0, **kwargs)
                     for kwargs in kwargs_list]
 
         n_repeats = 2
         with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(ellipse.fit_image, maxsma=40.0,
+            futures = [executor.submit(ellipse.fit_image, max_sma=40.0,
                                        **kwargs)
                        for kwargs in kwargs_list * n_repeats]
             results = [future.result() for future in futures]
 
         for idx, result in enumerate(results):
             isolist = expected[idx % len(kwargs_list)]
-            for name in ('sma', 'intens', 'x0', 'y0', 'eps', 'pa'):
+            for name in ('sma', 'intensity', 'x0', 'y0', 'ellipticity',
+                         'orientation'):
                 assert_array_equal(getattr(result, name),
                                    getattr(isolist, name))
-        assert not np.any(geometry.fix)
+        assert not np.any(geometry._fix)
         assert not geometry.linear_growth
 
     @pytest.mark.parametrize(('kwargs', 'fixed_names'),
                              [({'fix_center': True}, ('x0', 'y0')),
-                              ({'fix_pa': True}, ('pa',)),
-                              ({'fix_eps': True}, ('eps',)),
-                              ({'fix_center': True, 'fix_eps': True},
-                               ('x0', 'y0', 'eps'))])
+                              ({'fix_orientation': True}, ('orientation',)),
+                              ({'fix_ellipticity': True}, ('ellipticity',)),
+                              ({'fix_center': True, 'fix_ellipticity': True},
+                               ('x0', 'y0', 'ellipticity'))])
     def test_fixed_parameters(self, kwargs, fixed_names):
         """
         Test that the fixed parameters keep their initial values and
         that the other parameters are fitted.
         """
-        geometry = EllipseGeometry(256.5, 255.5, 20.0, 0.25, PA + 0.1)
+        geometry = EllipseGeometry(256.5, 255.5, 20.0, 0.25,
+                                   (PA + 0.1) * u.rad)
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
-            maxsma=40.0, **kwargs)
+            max_sma=40.0, **kwargs)
         sma_positive = isolist.sma > 0
-        for name in ('x0', 'y0', 'eps', 'pa'):
+        for name in ('x0', 'y0', 'ellipticity', 'orientation'):
             values = getattr(isolist, name)[sma_positive]
             if name in fixed_names:
                 assert np.all(values == getattr(geometry, name))
@@ -427,9 +432,12 @@ class TestEllipse:
 
     @pytest.mark.parametrize('use_geometry', [False, True])
     def test_everything_fixed(self, use_geometry):
-        kwargs = {'fix_center': True, 'fix_pa': True, 'fix_eps': True}
+        kwargs = {'fix_center': True, 'fix_orientation': True,
+                  'fix_ellipticity': True}
         if use_geometry:
-            geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA, **kwargs)
+            geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad,
+                                       fix_center=True, fix_orientation=True,
+                                       fix_ellipticity=True)
             ellipse = Ellipse(self.data, geometry=geometry)
             kwargs = {}
         else:
@@ -448,19 +456,21 @@ class TestEllipse:
         ellipse = Ellipse(self.data)
         sarea = {}
         for step in (0.1, 0.3):
-            isolist = ellipse.fit_image(sma0=20.0, maxsma=40.0, minsma=15.0,
-                                        step=step, integrmode='mean')
-            assert np.all([iso.sample.geometry.astep == step
+            isolist = ellipse.fit_image(sma_start=20.0, max_sma=40.0,
+                                        min_sma=15.0, step=step,
+                                        integration_mode='mean')
+            assert np.all([iso.sample.geometry.step == step
                            for iso in isolist])
-            sarea[step] = isolist.get_closest(20.0).sarea
+            sarea[step] = isolist.get_closest(20.0).sector_area
             isophote = ellipse.fit_isophote(20.0, step=step,
-                                            integrmode='mean')
-            assert isophote.sample.geometry.astep == step
+                                            integration_mode='mean')
+            assert isophote.sample.geometry.step == step
         assert sarea[0.3] > 2 * sarea[0.1]
 
-        isolist = ellipse.fit_image(sma0=20.0, maxsma=40.0, minsma=15.0,
-                                    step=5.0, linear=True)
-        assert np.all([iso.sample.geometry.astep == 5.0 for iso in isolist])
+        isolist = ellipse.fit_image(sma_start=20.0, max_sma=40.0,
+                                    min_sma=15.0, step=5.0,
+                                    linear_growth=True)
+        assert np.all([iso.sample.geometry.step == 5.0 for iso in isolist])
 
     def test_sampled_on_ellipse(self):
         """
@@ -471,7 +481,7 @@ class TestEllipse:
         isophote_list = Ellipse(self.data).fit_image()
         assert np.any(isophote_list.stop_code == 5)
         for iso in isophote_list[1:]:
-            angles, radii, _ = iso.sample.values
+            angles, radii = iso.sample.angles, iso.sample.radii
             assert_allclose(radii, iso.sample.geometry.radius(angles))
 
     def test_masked_outer_isophote(self):
@@ -488,11 +498,11 @@ class TestEllipse:
         yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
         radius = np.hypot(xx - 256, yy - 256)
         data = np.ma.masked_array(data, mask=(radius > 31) & (radius < 40))
-        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.05, 0.1)
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.05, 0.1 * u.rad)
         ellipse = Ellipse(data, geometry=geometry)
         match = 'Too small sample to warrant a fit'
         with pytest.warns(AstropyUserWarning, match=match):
-            isolist = ellipse.fit_image(step=0.3, maxsma=80.0)
+            isolist = ellipse.fit_image(step=0.3, max_sma=80.0)
         assert_allclose(isolist.sma[-1], 26.0)
 
     def test_fit_one_ellipse(self):
@@ -514,10 +524,10 @@ class TestEllipse:
         the integrator with "ValueError: cannot convert float NaN to
         integer".
         """
-        g = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0)
+        g = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0 * u.rad)
         ellipse = Ellipse(self.data, geometry=g)
-        isophote_list = ellipse.fit_image(integrmode='nearest_neighbor',
-                                          maxsma=30.0)
+        isophote_list = ellipse.fit_image(integration_mode='nearest_neighbor',
+                                          max_sma=30.0)
 
         assert isinstance(isophote_list, IsophoteList)
         assert len(isophote_list) > 1
@@ -532,7 +542,7 @@ class TestEllipse:
                  r'\(sma=10\) failed with stop code -1 because the ellipse '
                  'diverged or no meaningful intensity gradient could be '
                  'measured.*try a slightly different starting semimajor '
-                 r'axis length \(sma0\).*low signal-to-noise ratio.*'
+                 r'axis length \(sma_start\).*low signal-to-noise ratio.*'
                  r'user_guide/isophote_faq\.html')
         with pytest.warns(AstropyUserWarning, match=match):
             isophote_list = ellipse.fit_image()
@@ -545,11 +555,12 @@ class TestEllipse:
 
         A large part of the starting ellipse is outside of the image.
         """
-        geometry = EllipseGeometry(10.0, 256.0, 50.0, 0.2, PA)
+        geometry = EllipseGeometry(10.0, 256.0, 50.0, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data, geometry=geometry)
         match = (r'No meaningful fit was possible\. The first isophote '
                  r'\(sma=50\) failed with stop code 1 because the fraction '
-                 r'of valid data points is smaller than fflag \(0\.7\)')
+                 r'of valid data points is smaller than '
+                 r'min_valid_fraction \(0\.7\)')
         with pytest.warns(AstropyUserWarning, match=match):
             isophote_list = ellipse.fit_image()
         assert len(isophote_list) == 0
@@ -565,7 +576,7 @@ class TestEllipse:
             geometry = None
         else:
             data = self.data
-            geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
+            geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA * u.rad)
         ellipse = Ellipse(data, geometry=geometry)
         match1 = 'Too small sample to warrant a fit'
         match2 = (r'No meaningful fit was possible\. The first isophote '
@@ -582,18 +593,19 @@ class TestEllipse:
         Test the warning emitted when the first isophote is extracted
         without being fit and has no valid data points.
         """
-        geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA)
+        geometry = EllipseGeometry(256.0, 256.0, 2000.0, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data, geometry=geometry)
         match = (r'The first isophote \(sma=2000\) failed with stop code 3 '
                  'because it has too few valid data points')
         with pytest.warns(AstropyUserWarning, match=match):
-            isophote_list = ellipse.fit_image(maxrit=10.0)
+            isophote_list = ellipse.fit_image(max_iterative_sma=10.0)
         assert len(isophote_list) == 0
 
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the offset
         # galaxy image.
-        g = EllipseGeometry(POS + 5, POS + 5, 10.0, eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS + 5, POS + 5, 10.0, ellipticity=0.2,
+                            orientation=PA * u.rad, step=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote_list = ellipse.fit_image()
 
@@ -609,12 +621,14 @@ class TestEllipse:
         companion = Gaussian2D(50.0, 330, 290, 8.0, 8.0)(xx, yy)
         data = self.data + companion
 
-        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        g = EllipseGeometry(256, 256, 20.0, ellipticity=0.2,
+                            orientation=PA * u.rad)
         isolist = Ellipse(data, geometry=g).fit_image()
         shift = np.hypot(isolist.x0 - 256, isolist.y0 - 256)
         assert np.max(shift) > 5.0
 
-        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        g = EllipseGeometry(256, 256, 20.0, ellipticity=0.2,
+                            orientation=PA * u.rad)
         isolist_bound = Ellipse(data, geometry=g).fit_image(
             max_center_shift=1.0)
         shift = np.hypot(isolist_bound.x0 - 256, isolist_bound.y0 - 256)
@@ -630,15 +644,17 @@ class TestEllipse:
 
         # Ellipticity is still fitted with the center on the bound, so
         # it follows a fit with a fixed center.
-        g = EllipseGeometry(256, 256, 20.0, eps=0.2, pa=PA)
+        g = EllipseGeometry(256, 256, 20.0, ellipticity=0.2,
+                            orientation=PA * u.rad)
         isolist_fixed = Ellipse(data, geometry=g).fit_image(fix_center=True)
-        assert_allclose(isolist_bound.eps[at_bound],
-                        isolist_fixed.eps[at_bound], atol=0.01)
+        assert_allclose(isolist_bound.ellipticity[at_bound],
+                        isolist_fixed.ellipticity[at_bound], atol=0.01)
 
     def test_max_center_shift_fit_isophote(self):
         x0 = POS + 5
         y0 = POS + 5
-        g = EllipseGeometry(x0, y0, 40.0, eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(x0, y0, 40.0, ellipticity=0.2,
+                            orientation=PA * u.rad, step=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
         isophote = ellipse.fit_isophote(40.0, max_center_shift=2.0)
 
@@ -648,11 +664,12 @@ class TestEllipse:
     def test_offcenter_go_beyond_frame(self):
         # Same as before, but now force the fit to go beyond the image
         # frame limits.
-        g = EllipseGeometry(POS + 5, POS + 5, 10.0, eps=0.2, pa=PA, astep=0.1)
+        g = EllipseGeometry(POS + 5, POS + 5, 10.0, ellipticity=0.2,
+                            orientation=PA * u.rad, step=0.1)
         ellipse = Ellipse(OFFSET_GALAXY, geometry=g)
-        isophote_list = ellipse.fit_image(maxsma=400.0)
+        isophote_list = ellipse.fit_image(max_sma=400.0)
 
-        # The fit should go to maxsma, but with fixed geometry
+        # The fit should go to max_sma, but with fixed geometry
         # (noniterative mode) after too many sample points fall outside
         # the image frame.
         sma = isophote_list.sma
@@ -666,7 +683,7 @@ class TestEllipse:
         # Check that no zero-valued intensities were left behind in the
         # sample arrays when sampling outside the image.
         for iso in isophote_list:
-            assert not np.any(iso.sample.values[2] == 0)
+            assert not np.any(iso.sample.intensities == 0)
 
     def test_ellipse_shape(self):
         """
@@ -690,10 +707,10 @@ class TestEllipse:
         mask = (isolist.sma > 2) & (isolist.sma < 40)
         assert_allclose(isolist.x0[mask], nx / 2.0, atol=1.0)
         assert_allclose(isolist.y0[mask], ny / 2.0, atol=1.0)
-        assert_allclose(np.median(isolist.eps[mask]), 1.0 - 12 / 20,
+        assert_allclose(np.median(isolist.ellipticity[mask]), 1.0 - 12 / 20,
                         atol=0.02)
-        assert_allclose(np.median(isolist.pa[mask]), np.deg2rad(40.0),
-                        atol=np.deg2rad(2.0))
+        assert_allclose(np.median(isolist.orientation[mask]), 40.0 * u.deg,
+                        atol=2.0 * u.deg)
         _assert_sma_grid(isolist)
 
     def test_round_starting_ellipse(self):
@@ -701,26 +718,27 @@ class TestEllipse:
         Test a starting ellipse with an ellipticity of exactly zero,
         for which the position angle correction diverges.
         """
-        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.0, 0.0)
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.0, 0.0 * u.rad)
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
-            maxsma=40.0)
+            max_sma=40.0)
         mask = isolist.sma > 5
         assert np.count_nonzero(mask) > 10
-        assert_allclose(isolist.eps[mask], 0.2, atol=0.01)
-        assert_allclose(isolist.pa[mask], PA, atol=0.02)
+        assert_allclose(isolist.ellipticity[mask], 0.2, atol=0.01)
+        assert_allclose(isolist.orientation[mask].to_value(u.rad), PA,
+                        atol=0.02)
 
     def test_fixed_round_ellipse(self):
         """
         Test that a fixed ellipticity of zero is not changed.
         """
-        geometry = EllipseGeometry(256.5, 255.5, 20.0, 0.0, 0.3,
-                                   fix_eps=True)
+        geometry = EllipseGeometry(256.5, 255.5, 20.0, 0.0, 0.3 * u.rad,
+                                   fix_ellipticity=True)
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
-            maxsma=40.0)
+            max_sma=40.0)
         assert len(isolist) > 10
-        assert np.all(isolist.eps == 0.0)
+        assert np.all(isolist.ellipticity == 0.0)
         mask = isolist.sma > 5
-        assert np.all(isolist.pa[mask] == 0.3)
+        assert np.all(isolist.orientation[mask] == 0.3 * u.rad)
         assert_allclose(isolist.x0[mask], 256.0, atol=0.1)
         assert_allclose(isolist.y0[mask], 256.0, atol=0.1)
 
@@ -730,9 +748,9 @@ class TestEllipse:
         axis length is below the minimum.
         """
         # A linear step larger than the starting sma
-        geometry = EllipseGeometry(256.0, 256.0, 3.0, 0.2, PA)
+        geometry = EllipseGeometry(256.0, 256.0, 3.0, 0.2, PA * u.rad)
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
-            step=5.0, linear=True, maxsma=15.0)
+            step=5.0, linear_growth=True, max_sma=15.0)
         assert_allclose(isolist.sma, [0.0, 3.0, 8.0, 13.0])
 
         # The central pixel is at the center of the innermost fitted
@@ -741,9 +759,9 @@ class TestEllipse:
         assert isolist[0].y0 == isolist[1].y0
         assert isolist[0].x0 != isolist[-1].x0
 
-        geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA)
+        geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, PA * u.rad)
         isolist = Ellipse(self.data, geometry=geometry).fit_image(
-            minsma=9.5, maxsma=12.0)
+            min_sma=9.5, max_sma=12.0)
         assert_allclose(isolist.sma, [10.0, 11.0])
 
     @pytest.mark.parametrize('step', [0.0, -0.1, np.nan])
@@ -762,25 +780,25 @@ class TestEllipse:
         """
         data = make_test_image(eps=0.0, noise=1.0, seed=0)
         pa = 0.3
-        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.05, pa,
-                                   fix_pa=True)
-        isolist = Ellipse(data, geometry=geometry).fit_image(maxsma=60.0)
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.05, pa * u.rad,
+                                   fix_orientation=True)
+        isolist = Ellipse(data, geometry=geometry).fit_image(max_sma=60.0)
         mask = isolist.sma > 0
         assert np.count_nonzero(mask) > 40
-        assert np.all(isolist.pa[mask] == pa)
-        assert np.all(isolist.eps[mask] > 0)
-        assert np.median(isolist.eps[isolist.sma > 5]) < 0.06
+        assert np.all(isolist.orientation[mask] == pa * u.rad)
+        assert np.all(isolist.ellipticity[mask] > 0)
+        assert np.median(isolist.ellipticity[isolist.sma > 5]) < 0.06
 
-    def test_maxsma_outside_image(self):
+    def test_max_sma_outside_image(self):
         """
         Test that the outward growth in noniterative mode stops at an
         isophote that lies entirely outside of the image.
         """
         data = make_test_image(nx=200, ny=200, pa=PA, noise=1.0, seed=0)
-        isolist = Ellipse(data).fit_image(maxsma=400.0)
+        isolist = Ellipse(data).fit_image(max_sma=400.0)
         assert isolist[-1].stop_code == 4
         assert np.all(isolist.n_data > 0)
-        assert np.all(np.isfinite(isolist.intens))
+        assert np.all(np.isfinite(isolist.intensity))
         assert 150 < isolist.sma[-1] < 220
 
     def test_fit_isophote_linear(self):
@@ -788,18 +806,18 @@ class TestEllipse:
         Test that fit_isophote uses the linear_growth attribute of the
         geometry unless the linear keyword is set.
         """
-        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA,
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad,
                                    linear_growth=True)
         ellipse = Ellipse(self.data, geometry=geometry)
         isophote = ellipse.fit_isophote(20.0, step=2.0)
         assert isophote.sample.geometry.linear_growth
-        assert isophote.sample.geometry.astep == 2.0
+        assert isophote.sample.geometry.step == 2.0
 
-        isophote = ellipse.fit_isophote(20.0, linear=False)
+        isophote = ellipse.fit_isophote(20.0, linear_growth=False)
         assert not isophote.sample.geometry.linear_growth
 
         assert geometry.linear_growth
-        assert geometry.astep == 0.1
+        assert geometry.step == 0.1
 
     def test_linear_numpy_bool(self):
         """
@@ -807,10 +825,11 @@ class TestEllipse:
         for the linear keyword.
         """
         ellipse = Ellipse(self.data)
-        isolist = ellipse.fit_image(sma0=20.0, minsma=10.0, maxsma=40.0,
-                                    step=5.0, linear=np.True_)
+        isolist = ellipse.fit_image(sma_start=20.0, min_sma=10.0,
+                                    max_sma=40.0, step=5.0,
+                                    linear_growth=np.True_)
         assert_allclose(isolist.sma, [15.0, 20.0, 25.0, 30.0, 35.0])
-        isophote = ellipse.fit_isophote(20.0, linear=np.True_)
+        isophote = ellipse.fit_isophote(20.0, linear_growth=np.True_)
         assert isophote.sample.geometry.linear_growth is True
 
 
@@ -829,7 +848,7 @@ class TestMeasureIsophotes:
 
         assert isinstance(isolist, IsophoteList)
         assert len(isolist) == len(self.isolist)
-        for name in ('sma', 'x0', 'y0', 'eps', 'pa'):
+        for name in ('sma', 'x0', 'y0', 'ellipticity', 'orientation'):
             assert_allclose(getattr(isolist, name),
                             getattr(self.isolist, name))
         assert_equal(isolist.n_iter, 0)
@@ -837,10 +856,10 @@ class TestMeasureIsophotes:
         # The diverged isophotes (stop_code 5), whose geometry is
         # replaced by that of a neighbor, are included.
         assert np.any(self.isolist.stop_code == 5)
-        assert_allclose(isolist.intens, self.isolist.intens)
+        assert_allclose(isolist.intensity, self.isolist.intensity)
 
-        # The central pixel is a CentralPixel with stop_code 0.
-        assert isinstance(isolist[0], CentralPixel)
+        # The central pixel is a plain Isophote with stop_code 0.
+        assert type(isolist[0]) is Isophote
         assert isolist[0].sma == 0.0
         assert_equal(isolist.stop_code[1:], 4)
 
@@ -851,18 +870,19 @@ class TestMeasureIsophotes:
         """
         isolist1 = Ellipse(self.data).measure_isophotes(self.isolist)
         isolist2 = Ellipse(2.0 * self.data).measure_isophotes(self.isolist)
-        assert_allclose(isolist2.intens, 2.0 * isolist1.intens)
-        assert_allclose(isolist2.eps, self.isolist.eps)
-        assert_allclose(isolist2.pa, self.isolist.pa)
+        assert_allclose(isolist2.intensity, 2.0 * isolist1.intensity)
+        assert_allclose(isolist2.ellipticity, self.isolist.ellipticity)
+        assert_allclose(isolist2.orientation, self.isolist.orientation)
 
     def test_input_unchanged(self):
         """
         Test that the input isophotes and geometries are not modified.
         """
-        names = ('sma', 'x0', 'y0', 'eps', 'pa', 'intens')
+        names = ('sma', 'x0', 'y0', 'ellipticity', 'orientation',
+                 'intensity')
         values = {name: getattr(self.isolist, name).copy()
                   for name in names}
-        fixed = [iso.sample.geometry.fix.copy() for iso in self.isolist]
+        fixed = [iso.sample.geometry._fix.copy() for iso in self.isolist]
         ellipse = Ellipse(2.0 * self.data)
         isolist = ellipse.measure_isophotes(self.isolist)
 
@@ -870,7 +890,7 @@ class TestMeasureIsophotes:
             assert_equal(getattr(self.isolist, name), values[name])
         for iso, iso_ref, fix in zip(isolist, self.isolist, fixed,
                                      strict=True):
-            assert_equal(iso_ref.sample.geometry.fix, fix)
+            assert_equal(iso_ref.sample.geometry._fix, fix)
             assert iso.sample.geometry is not iso_ref.sample.geometry
 
     def test_geometries(self):
@@ -884,7 +904,8 @@ class TestMeasureIsophotes:
         isolist2 = ellipse.measure_isophotes(geometries[::-1])
 
         assert len(isolist2) == len(isolist1)
-        for name in ('sma', 'x0', 'y0', 'eps', 'pa', 'intens'):
+        for name in ('sma', 'x0', 'y0', 'ellipticity', 'orientation',
+                     'intensity'):
             assert_allclose(getattr(isolist2, name),
                             getattr(isolist1, name))
 
@@ -893,7 +914,7 @@ class TestMeasureIsophotes:
         Test user-defined geometries, including mixed Isophote and
         EllipseGeometry inputs.
         """
-        geometries = [EllipseGeometry(256.0, 256.0, sma, 0.2, PA)
+        geometries = [EllipseGeometry(256.0, 256.0, sma, 0.2, PA * u.rad)
                       for sma in (0.0, 10.0, 20.0)]
         ellipse = Ellipse(self.data)
         isolist = ellipse.measure_isophotes([self.isolist[-1],
@@ -901,11 +922,11 @@ class TestMeasureIsophotes:
 
         assert len(isolist) == 4
         assert_allclose(isolist.sma[:3], [0.0, 10.0, 20.0])
-        assert_allclose(isolist.eps[1:3], 0.2)
-        assert_allclose(isolist.pa[1:3], PA)
+        assert_allclose(isolist.ellipticity[1:3], 0.2)
+        assert_allclose(isolist.orientation[1:3].to_value(u.rad), PA)
         assert_allclose(isolist.x0[:3], 256.0)
         assert isolist[-1].sma == self.isolist[-1].sma
-        assert np.all(np.diff(isolist.intens) < 0)
+        assert np.all(np.diff(isolist.intensity) < 0)
 
     def test_measure_options(self):
         """
@@ -913,11 +934,11 @@ class TestMeasureIsophotes:
         """
         ellipse = Ellipse(self.data)
         isolist = ellipse.measure_isophotes(self.isolist[1:5],
-                                            integrmode='median', sclip=2.5,
-                                            n_clip=3)
+                                            integration_mode='median',
+                                            clip_sigma=2.5, n_clip=3)
         for iso in isolist:
-            assert iso.sample.integrmode == 'median'
-            assert iso.sample.sclip == 2.5
+            assert iso.sample.integration_mode == 'median'
+            assert iso.sample.clip_sigma == 2.5
             assert iso.sample.n_clip == 3
 
     def test_outside_image(self):
@@ -925,12 +946,12 @@ class TestMeasureIsophotes:
         Test that an ellipse entirely outside the image is kept with a
         NaN intensity.
         """
-        geometry = EllipseGeometry(-500.0, -500.0, 20.0, 0.2, PA)
+        geometry = EllipseGeometry(-500.0, -500.0, 20.0, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data)
         isolist = ellipse.measure_isophotes([geometry])
 
         assert len(isolist) == 1
-        assert np.isnan(isolist[0].intens)
+        assert np.isnan(isolist[0].intensity)
         assert isolist[0].n_data == 0
         assert isolist[0].stop_code == 3
 
@@ -945,3 +966,121 @@ class TestMeasureIsophotes:
         match = 'must contain only Isophote or EllipseGeometry'
         with pytest.raises(TypeError, match=match):
             ellipse.measure_isophotes([self.isolist[1], 10.0])
+
+
+# The values differ from the defaults enough to change the fit result.
+FIT_IMAGE_RENAMES = [
+    ('sma0', 'sma_start', 20.0), ('minsma', 'min_sma', 5.0),
+    ('maxsma', 'max_sma', 60.0), ('conver', 'convergence', 0.1),
+    ('minit', 'miniters', 5), ('maxit', 'maxiters', 5),
+    ('fflag', 'min_valid_fraction', 0.5),
+    ('maxgerr', 'max_gradient_rel_err', 0.001),
+    ('sclip', 'clip_sigma', 2.5),
+    ('integrmode', 'integration_mode', 'mean'),
+    ('linear', 'linear_growth', True),
+    ('maxrit', 'max_iterative_sma', 50.0),
+    ('fix_pa', 'fix_orientation', True),
+    ('fix_eps', 'fix_ellipticity', True),
+]
+
+FIT_ISOPHOTE_RENAMES = [
+    ('conver', 'convergence', 0.01), ('minit', 'miniters', 5),
+    ('maxit', 'maxiters', 5), ('fflag', 'min_valid_fraction', 0.5),
+    ('sclip', 'clip_sigma', 2.5),
+    ('integrmode', 'integration_mode', 'mean'),
+    ('linear', 'linear_growth', True),
+    ('maxrit', 'max_iterative_sma', 20.0),
+]
+
+
+def _isophote_list_values(isolist):
+    """
+    Return the values that tell whether two isophote lists differ.
+    """
+    return [isolist.sma, isolist.intensity, isolist.ellipticity,
+            isolist.orientation.value, isolist.x0, isolist.y0,
+            isolist.n_iter, isolist.stop_code]
+
+
+def _isophote_lists_equal(isolist1, isolist2):
+    return len(isolist1) == len(isolist2) and all(
+        np.array_equal(values1, values2, equal_nan=True)
+        for values1, values2 in zip(_isophote_list_values(isolist1),
+                                    _isophote_list_values(isolist2),
+                                    strict=True))
+
+
+def _isophotes_equal(isophote1, isophote2):
+    """
+    Return whether two isophotes have the same values.
+    """
+    values1, values2 = (
+        np.array([isophote.sma, isophote.intensity, isophote.ellipticity,
+                  isophote.orientation.value, isophote.x0, isophote.y0,
+                  isophote.n_iter, isophote.stop_code])
+        for isophote in (isophote1, isophote2))
+    return np.array_equal(values1, values2, equal_nan=True)
+
+
+@pytest.mark.parametrize(('old', 'new', 'value'), FIT_IMAGE_RENAMES)
+def test_fit_image_renamed_keywords(old, new, value):
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    # A linear step of 0.1 pixels would fit thousands of isophotes.
+    # The sigma-clip value has an effect only with clipping iterations.
+    extra = {'linear_growth': {'step': 5.0},
+             'clip_sigma': {'n_clip': 3}}.get(new, {})
+    expected = ellipse.fit_image(**{new: value}, **extra)
+    # The value must change the result, so that a shim that dropped
+    # the keyword would fail.
+    assert not _isophote_lists_equal(expected, ellipse.fit_image(**extra))
+    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
+        result = ellipse.fit_image(**{old: value}, **extra)
+    assert _isophote_lists_equal(result, expected)
+    with (pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"),
+          pytest.raises(TypeError)):
+        ellipse.fit_image(**{old: value, new: value}, **extra)
+
+
+@pytest.mark.parametrize(('old', 'new', 'value'), FIT_ISOPHOTE_RENAMES)
+def test_fit_isophote_renamed_keywords(old, new, value):
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    # The sigma-clip value has an effect only with clipping iterations,
+    # and the minimum valid fraction only when data points are flagged.
+    extra = {'clip_sigma': {'n_clip': 3},
+             'min_valid_fraction': {'n_clip': 1,
+                                    'clip_sigma': 1.0}}.get(new, {})
+    expected = ellipse.fit_isophote(40.0, **{new: value}, **extra)
+    # The value must change the result, so that a shim that dropped
+    # the keyword would fail.
+    default = ellipse.fit_isophote(40.0, **extra)
+    assert not _isophotes_equal(expected, default)
+    with pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"):
+        result = ellipse.fit_isophote(40.0, **{old: value}, **extra)
+    assert _isophotes_equal(result, expected)
+    with (pytest.warns(PhotutilsDeprecationWarning, match=f"'{old}'"),
+          pytest.raises(TypeError)):
+        ellipse.fit_isophote(40.0, **{old: value, new: value}, **extra)
+
+
+def test_fit_image_positional_order_unchanged():
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    expected = ellipse.fit_image(sma_start=20.0, min_sma=5.0,
+                                 max_sma=60.0)
+    with pytest.warns(PhotutilsDeprecationWarning, match='positional'):
+        result = ellipse.fit_image(20.0, 5.0, 60.0)
+    assert_array_equal(result.sma, expected.sma)
+
+
+def test_measure_isophotes_keywords_have_no_shim():
+    data = make_test_image(seed=0)
+    ellipse = Ellipse(data)
+    isolist = ellipse.fit_image()
+    for old in ('sclip', 'integrmode'):
+        with pytest.raises(TypeError):
+            ellipse.measure_isophotes(isolist, **{old: 3.0})
+    result = ellipse.measure_isophotes(isolist, clip_sigma=3.0,
+                                       integration_mode='mean')
+    assert len(result) == len(isolist)
