@@ -389,10 +389,12 @@ def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     ----------
     epsfs : list of `photutils.psf.ImagePSF`
         A list of ImagePSF models representing the individual PSFs.
+
     grid_xypos : list, optional
         A list of fiducial points (x_0, y_0) for each PSF. If not
         provided, the x_0 and y_0 of each input ePSF will be considered
         the fiducial point for that PSF. Default is None.
+
     meta : dict, optional
         Additional metadata for the GriddedPSFModel. Note that, if
         they exist in the supplied ``meta``, any values under the keys

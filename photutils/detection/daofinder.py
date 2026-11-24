@@ -437,19 +437,28 @@ class DAOStarFinder(StarFinderBase):
             found. The table contains the following parameters:
 
             * ``id``: unique object identification number.
+
             * ``x_centroid, y_centroid``: object centroid.
+
             * ``sharpness``: object sharpness.
+
             * ``roundness1``: object roundness based on symmetry.
+
             * ``roundness2``: object roundness based on marginal Gaussian
               fits.
+
             * ``n_pixels``: the total number of pixels in the Gaussian
               kernel array.
+
             * ``peak``: the value of the input data at the central
               pixel of the object.
+
             * ``flux``: the object instrumental flux calculated as the
               sum of data values within the kernel footprint.
+
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
+
             * ``daofind_mag``: the "mag" parameter returned by the DAOFIND
               algorithm. It is a measure of the intensity ratio of the
               amplitude of the best fitting Gaussian function at the
@@ -774,22 +783,29 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             quantities:
 
             * ``wt_sum``: the sum of the 1D weighting function.
+
             * ``kern_sum``: the sum of the 1D kernel distribution
               weighted by the 1D weighting function.
+
             * ``kern2_sum``: the sum of the square of the 1D kernel
               distribution weighted by the 1D weighting function.
+
             * ``kern_sum_1d``: the 1D kernel distribution (the kernel
               weighted by the 2D weighting function and summed over
               the perpendicular axis).
+
             * ``dkern_dx``: the derivative of the 1D kernel
               distribution (the 1D kernel distribution multiplied by
               the pixel offsets from the center).
+
             * ``dkern_dx_sum``: the sum of the derivative of the 1D
               kernel distribution weighted by the 1D weighting
               function.
+
             * ``dkern_dx2_sum``: the sum of the square of the
               derivative of the 1D kernel distribution weighted by the
               1D weighting function.
+
             * ``kern_dkern_dx_sum``: the sum of the product of the 1D
               kernel distribution and its derivative, weighted by the
               1D weighting function.
@@ -852,12 +868,15 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
             * ``data_sum``: the sum of the 1D data distribution
               weighted by the 1D weighting function.
+
             * ``data_kern_sum``: the sum of the 1D data distribution
               weighted by the 1D kernel distribution and the 1D
               weighting function.
+
             * ``data_dkern_dx_sum``: the sum of the 1D data
               distribution weighted by the derivative of the 1D kernel
               distribution and the 1D weighting function.
+
             * ``data_dx_sum``: the sum of the 1D data distribution
               weighted by the pixel offsets and the 1D weighting
               function.

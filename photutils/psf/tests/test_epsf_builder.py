@@ -1447,6 +1447,7 @@ class TestEPSFBuilder:
         oversampling factors.
 
         The ePSF shape should be:
+
         - star_size * oversampling for each dimension
         - Then ensure odd dimensions (add 1 if even)
         """
@@ -1952,6 +1953,7 @@ class TestEPSFBuilder:
         Test _process_iteration marks stars excluded after iter > 3.
 
         This test covers both types of fit failures:
+
         1. Fitting region extends beyond cutout (status=1)
         2. Fit did not converge due to invalid ierr (status=2)
         """

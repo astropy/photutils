@@ -991,6 +991,7 @@ def _validate_nddata_list(data):
     ------
     TypeError
         If any element is not an NDData object.
+
     ValueError
         If any NDData object does not have 2D data.
     """
@@ -1591,12 +1592,14 @@ def _prepare_uncertainty_info(data):
     -------
     info : dict
         A dictionary with keys:
+
         - 'type' : str
-            One of 'none', 'weights', or 'uncertainty'.
+          One of 'none', 'weights', or 'uncertainty'.
+
         - 'array' : `~numpy.ndarray` (only if type='weights' or
-            type='uncertainty')
-            The weight array (type='weights') or the standard
-            deviation array (type='uncertainty') from the input data.
+          type='uncertainty')
+          The weight array (type='weights') or the standard
+          deviation array (type='uncertainty') from the input data.
     """
     if data.uncertainty is None:
         return {'type': 'none'}

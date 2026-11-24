@@ -588,6 +588,7 @@ def sample_groups():
     Fixture providing sample source grouping data for tests.
 
     Creates a simple dataset with 3 groups:
+
     - Group 1: 3 sources at (0, 0), (0.1, 0.1), (0.2, 0.0)
     - Group 2: 2 sources at (10, 10), (10.1, 10.1)
     - Group 3: 1 isolated source at (20, 20)
@@ -596,6 +597,7 @@ def sample_groups():
     -------
     dict
         Dictionary containing:
+
         - 'x': x coordinates array
         - 'y': y coordinates array
         - 'groups_array': group IDs array

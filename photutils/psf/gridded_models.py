@@ -358,6 +358,7 @@ class GriddedPSFModel(Fittable2DModel):
         ------
         TypeError
             If the input data is not an NDData instance.
+
         ValueError
             If the input data is not a 3D numpy ndarray, contains NaNs
             or infs, has 2 or 3 ePSFs, has an x- or y-axis shorter than
@@ -478,6 +479,7 @@ class GriddedPSFModel(Fittable2DModel):
         -------
         data : 3D `~numpy.ndarray`
             The 3D array of ePSFs.
+
         grid_xypos : array of (x, y) pairs
             The (x, y) positions of the ePSFs, sorted first by y and
             then by x.

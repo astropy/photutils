@@ -412,20 +412,29 @@ class IRAFStarFinder(StarFinderBase):
             found. The table contains the following parameters:
 
             * ``id``: unique object identification number.
+
             * ``x_centroid, y_centroid``: object centroid.
+
             * ``fwhm``: object FWHM.
+
             * ``sharpness``: object sharpness.
+
             * ``roundness``: object roundness.
+
             * ``orientation``: the angle between the x-axis and the
               major axis of the source, measured counterclockwise, in
               the range (-90, 90] degrees.
+
             * ``n_pixels``: the total number of (positive) unmasked
               pixels.
+
             * ``peak``: the peak sky-subtracted pixel value of the
               object within the kernel footprint.
+
             * ``flux``: the object instrumental flux calculated as the
               sum of the positive sky-subtracted data values within the
               kernel footprint.
+
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
         """

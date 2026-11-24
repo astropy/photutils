@@ -1153,6 +1153,7 @@ def test_local_bkg_nonfinite(test_data):
     Test that nonfinite local background values are handled correctly.
 
     When local_bkg is NaN or inf, the code should:
+
     1. Report the actual local_bkg value in the output table
     2. Not subtract it from the data before fitting
     3. Set a flag indicating nonfinite local background
@@ -1255,6 +1256,7 @@ def test_local_bkg_nonfinite_measured(test_data):
 
     When the LocalBackground estimator returns NaN (e.g., due to a fully
     masked region), the code should:
+
     1. Report the NaN local_bkg value in the output table
     2. Not subtract it from the data before fitting
     3. Set a flag (bit 2048) indicating nonfinite local background

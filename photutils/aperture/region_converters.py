@@ -76,30 +76,43 @@ def region_to_aperture(region):
 
     * `~regions.CirclePixelRegion` |rarr|
       `~photutils.aperture.CircularAperture`
+
     * `~regions.CircleSkyRegion` |rarr|
       `~photutils.aperture.SkyCircularAperture`
+
     * `~regions.EllipsePixelRegion` |rarr|
       `~photutils.aperture.EllipticalAperture`
+
     * `~regions.EllipseSkyRegion` |rarr|
       `~photutils.aperture.SkyEllipticalAperture`
+
     * `~regions.RectanglePixelRegion` |rarr|
       `~photutils.aperture.RectangularAperture`
+
     * `~regions.RectangleSkyRegion` |rarr|
       `~photutils.aperture.SkyRectangularAperture`
+
     * `~regions.CircleAnnulusPixelRegion` |rarr|
       `~photutils.aperture.CircularAnnulus`
+
     * `~regions.CircleAnnulusSkyRegion` |rarr|
       `~photutils.aperture.SkyCircularAnnulus`
+
     * `~regions.EllipseAnnulusPixelRegion` |rarr|
       `~photutils.aperture.EllipticalAnnulus`
+
     * `~regions.EllipseAnnulusSkyRegion` |rarr|
       `~photutils.aperture.SkyEllipticalAnnulus`
+
     * `~regions.RectangleAnnulusPixelRegion` |rarr|
       `~photutils.aperture.RectangularAnnulus`
+
     * `~regions.RectangleAnnulusSkyRegion` |rarr|
       `~photutils.aperture.SkyRectangularAnnulus`
+
     * `~regions.PolygonPixelRegion` |rarr|
       `~photutils.aperture.PolygonAperture`
+
     * `~regions.PolygonSkyRegion` |rarr|
       `~photutils.aperture.SkyPolygonAperture`
 
@@ -257,30 +270,43 @@ def aperture_to_region(aperture):
 
     * `~photutils.aperture.CircularAperture` |rarr|
       `~regions.CirclePixelRegion`
+
     * `~photutils.aperture.SkyCircularAperture` |rarr|
       `~regions.CircleSkyRegion`
+
     * `~photutils.aperture.EllipticalAperture` |rarr|
       `~regions.EllipsePixelRegion`
+
     * `~photutils.aperture.SkyEllipticalAperture` |rarr|
       `~regions.EllipseSkyRegion`
+
     * `~photutils.aperture.RectangularAperture` |rarr|
       `~regions.RectanglePixelRegion`
+
     * `~photutils.aperture.SkyRectangularAperture` |rarr|
       `~regions.RectangleSkyRegion`
+
     * `~photutils.aperture.CircularAnnulus` |rarr|
       `~regions.CircleAnnulusPixelRegion`
+
     * `~photutils.aperture.SkyCircularAnnulus` |rarr|
       `~regions.CircleAnnulusSkyRegion`
+
     * `~photutils.aperture.EllipticalAnnulus` |rarr|
       `~regions.EllipseAnnulusPixelRegion`
+
     * `~photutils.aperture.SkyEllipticalAnnulus` |rarr|
       `~regions.EllipseAnnulusSkyRegion`
+
     * `~photutils.aperture.RectangularAnnulus` |rarr|
       `~regions.RectangleAnnulusPixelRegion`
+
     * `~photutils.aperture.SkyRectangularAnnulus` |rarr|
       `~regions.RectangleAnnulusSkyRegion`
+
     * `~photutils.aperture.PolygonAperture` |rarr|
       `~regions.PolygonPixelRegion`
+
     * `~photutils.aperture.SkyPolygonAperture` |rarr|
       `~regions.PolygonSkyRegion`
 

@@ -208,16 +208,23 @@ class StarFinder(StarFinderBase):
             A table of found sources with the following parameters:
 
             * ``id``: unique source identification number.
+
             * ``x_centroid, y_centroid``: source centroid.
+
             * ``fwhm``: source FWHM.
+
             * ``roundness``: source roundness.
+
             * ``orientation``: the angle between the x-axis and the
               major axis of the source, measured counterclockwise, in
               the range (-90, 90] degrees.
+
             * ``max_value``: the maximum pixel value in the source.
+
             * ``flux``: the source instrumental flux calculated as the
               sum of the nonnegative data values within a cutout with
               the shape of the kernel.
+
             * ``mag``: the source instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
 

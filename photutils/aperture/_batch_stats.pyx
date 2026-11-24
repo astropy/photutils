@@ -597,28 +597,37 @@ def batch_aperture_gather(const real_t[:, ::1] data,
 
         * ``FLAG_COL_N_PIXELS``: the number of nonzero-fraction pixels
           inside the data
+
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked
+
         * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels
           excluded as nonfinite data (by ``mask_nonfinite`` or by mask
           bit 2) that are not input-masked. Nonfinite values gathered
           when ``mask_nonfinite`` is zero are not counted
+
         * ``FLAG_COL_NONFINITE_ERROR``: always zero (this function does
           not read error values)
+
         * ``FLAG_COL_SEG``: the number of those unmasked pixels that
           lie on a neighboring source (for method 3, on any labeled
           source) and were excluded or corrected by the segmentation
           masking. Background pixels excluded by method 2 are not
           counted
+
         * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
           that could not be corrected by the segmentation masking
+
         * ``FLAG_COL_VALID``: the number of gathered pixels, equal to
           ``counts`` (unmasked, not excluded by the segmentation
           masking, and finite when ``mask_nonfinite`` is nonzero)
+
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
+
         * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
           that lie on a neighboring source
+
         * ``FLAG_COL_UNCORRECTED_MASKED``: the number of those masked
           pixels whose mirror pixel was also unavailable
 
