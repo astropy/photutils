@@ -278,7 +278,10 @@ def test_model_harmonics():
     model_image = isolist.make_model_image(data.shape, high_harmonics=True)
     residual = data - model_image
 
-    mask = model_image > 0
+    # The orientation of the innermost isophotes, within about 2 pixels
+    # of the center, is poorly defined and depends on rounding, so the
+    # central pixels are excluded.
+    mask = (model_image > 0) & (np.hypot(xx, yy) > 3)
     assert np.std(residual[mask]) < 0.4
 
 
