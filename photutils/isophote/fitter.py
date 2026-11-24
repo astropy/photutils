@@ -229,6 +229,11 @@ class _EllipseFitter:
         fit_fixed = np.array(fixed_parameters, dtype=bool)
         center_at_bound = False
 
+        # The index and the value of the largest harmonic of the
+        # previous iteration.
+        previous_harmonic_index = None
+        previous_harmonic = 0.0
+
         for i in range(maxiters):
             # Force the sample to compute its gradient and associated values.
             sample._update(fixed_parameters=fixed_parameters)
@@ -311,6 +316,30 @@ class _EllipseFitter:
             if proceed:
                 # Pick appropriate corrector code.
                 corrector = _CORRECTORS[largest_harmonic_index]
+                harmonic = largest_harmonic
+
+                # A correction that reverses the correction that the
+                # previous iteration made to the same parameter is
+                # halved. A correction reverses when its harmonic
+                # changes sign. Such a correction overshot the
+                # solution, and a correction that overshoots by a
+                # factor of about two oscillates between two values
+                # without converging. The orientation correction is
+                # inversely proportional to the ellipticity of the
+                # current ellipse, so it overshoots by that factor if
+                # the ellipticity is about half of the galaxy
+                # ellipticity. The ellipticity harmonic is small at the
+                # two orientations, so the ellipticity would never be
+                # corrected. The center and ellipticity corrections
+                # oscillate in the same way across the solution when
+                # the noise makes the harmonic change abruptly with the
+                # parameter. The STSDAS ellipse task does not damp the
+                # corrections.
+                if (largest_harmonic_index == previous_harmonic_index
+                        and harmonic * previous_harmonic < 0.0):
+                    harmonic = 0.5 * harmonic
+                previous_harmonic_index = largest_harmonic_index
+                previous_harmonic = largest_harmonic
 
                 # Generate a new EllipseSample instance with corrected
                 # parameter. Note that this instance is still devoid of
@@ -323,7 +352,7 @@ class _EllipseFitter:
                 # smaller) price here, by having multiple calls to the
                 # EllipseSample constructor.
                 previous_gradient = sample.gradient
-                sample = corrector(sample, largest_harmonic)
+                sample = corrector(sample, harmonic)
 
                 # Only the position correctors move the center.
                 if (max_center_shift is not None
