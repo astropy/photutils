@@ -13,7 +13,7 @@ from astropy.stats import SigmaClip
 from photutils.isophote._polar_path import compute_polar_path
 from photutils.isophote.geometry import (EllipseGeometry,
                                          _legacy_orientation_rad,
-                                         _orientation_argument)
+                                         _orientation_argument, _validate_sma)
 from photutils.isophote.integrator import _INTEGRATORS
 from photutils.utils._deprecation import (deprecated_attribute,
                                           deprecated_getattr,
@@ -245,7 +245,8 @@ class EllipseSample:
         are excluded from the sample.
 
     sma : float
-        The semimajor axis length in pixels.
+        The semimajor axis length in pixels. It must be finite and
+        nonnegative.
 
     x0, y0 : float, optional
         The (x, y) coordinate of the ellipse center. The coordinates
@@ -451,8 +452,9 @@ class EllipseSample:
         `~astropy.stats.SigmaClip` instance.
 
     ValueError
-        If ``image`` is not a 2D array or ``integration_mode`` is not a
-        valid integration mode.
+        If ``image`` is not a 2D array, if ``sma`` is negative or not
+        finite, or if ``integration_mode`` is not a valid integration
+        mode.
     """
 
     @deprecated_renamed_argument(
@@ -502,6 +504,7 @@ class EllipseSample:
         radians.
         """
         image = _validate_image(image)
+        _validate_sma(sma)
         if integration_mode not in _INTEGRATORS:
             msg = ('integration_mode must be one of '
                    f'{sorted(_INTEGRATORS)}')

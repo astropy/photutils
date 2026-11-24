@@ -739,3 +739,11 @@ def test_to_aperture_invalid(sma, ellipticity):
     match = 'positive semimajor axis length and an ellipticity smaller'
     with pytest.raises(ValueError, match=match):
         geometry.to_aperture()
+
+
+@pytest.mark.parametrize('sma', [-1.0, np.nan, np.inf])
+def test_invalid_sma(sma):
+    match = 'sma must be finite and nonnegative'
+    with pytest.raises(ValueError, match=match):
+        EllipseGeometry(x0=75.0, y0=60.0, sma=sma, ellipticity=0.2,
+                        orientation=30.0 * u.deg)

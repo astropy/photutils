@@ -102,6 +102,16 @@ def _validate_orientation(value):
         raise TypeError(msg)
 
 
+def _validate_sma(sma):
+    """
+    Raise a `ValueError` if a semimajor axis length is negative or not
+    finite.
+    """
+    if not 0 <= sma < np.inf:  # also rejects NaN
+        msg = f'sma must be finite and nonnegative, got {sma}'
+        raise ValueError(msg)
+
+
 # Remove in 4.0
 def _legacy_orientation_rad(value):
     """
@@ -238,7 +248,8 @@ class EllipseGeometry:
         The center pixel coordinate of the ellipse.
 
     sma : float
-        The semimajor axis of the ellipse in pixels.
+        The semimajor axis of the ellipse in pixels. It must be finite
+        and nonnegative.
 
     ellipticity : float
         The ellipticity of the ellipse. The ellipticity is defined as
@@ -386,6 +397,9 @@ class EllipseGeometry:
         If ``orientation`` is given with the ``orientation`` keyword as
         a number without units, or if a number without units is
         assigned to the ``orientation`` attribute.
+
+    ValueError
+        If ``sma`` is negative or not finite.
     """
 
     @deprecated_renamed_argument(
@@ -425,6 +439,7 @@ class EllipseGeometry:
         Set the attributes of a new geometry, with the orientation in
         radians.
         """
+        _validate_sma(sma)
         self.x0 = x0
         self.y0 = y0
         self.sma = sma

@@ -753,6 +753,12 @@ API Changes
     had no measured values, so accessing them raised an
     ``AttributeError``. [#2576]
 
+  - ``EllipseGeometry``, ``EllipseSample``, and
+    ``Ellipse.fit_isophote`` now raise a ``ValueError`` for a negative
+    or nonfinite semimajor axis length. Previously, ``fit_isophote``
+    returned the central pixel isophote for a negative length, and a NaN
+    length raised an unclear ``AttributeError``. [#2576]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the
