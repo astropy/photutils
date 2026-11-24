@@ -748,6 +748,11 @@ API Changes
     gradient could be measured or the ellipse diverged. The stop code
     of -1 is no longer used. [#2575]
 
+  - ``Isophote`` now raises a ``ValueError`` for a sample with a
+    negative or NaN semimajor axis length. Such an isophote previously
+    had no measured values, so accessing them raised an
+    ``AttributeError``. [#2576]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

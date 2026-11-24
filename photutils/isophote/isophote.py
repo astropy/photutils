@@ -326,6 +326,11 @@ class Isophote:
         The errors associated with the ``a3``, ``b3``, ``a4``, and
         ``b4`` attributes. They are NaN if they could not be
         computed.
+
+    Raises
+    ------
+    ValueError
+        If the semimajor axis length of the sample is negative or NaN.
     """
 
     def __init__(self, sample, n_iter, valid, stop_code):
@@ -335,8 +340,6 @@ class Isophote:
         self.stop_code = stop_code
         self.geometry = sample.geometry
 
-        # An isophote with a negative or NaN semimajor axis length has
-        # no measured values.
         sma = sample.geometry.sma
         if sma == 0:
             self._set_central_values(sample)
@@ -344,6 +347,9 @@ class Isophote:
             self._set_empty_values(sample)
         elif sma > 0:
             self._set_measured_values(sample)
+        else:
+            msg = f'The sma of the sample must be nonnegative, got {sma}'
+            raise ValueError(msg)
 
     def _set_measured_values(self, sample):
         self.intensity = sample.intensity

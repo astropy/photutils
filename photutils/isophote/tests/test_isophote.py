@@ -131,6 +131,20 @@ class TestIsophote:
         assert iso.n_iter == 20
 
 
+@pytest.mark.parametrize('sma', [-1.0, np.nan])
+def test_isophote_invalid_sma(sma):
+    """
+    Test that an isophote cannot be created from a sample with a
+    negative or NaN semimajor axis length.
+    """
+    data = make_test_image(seed=0)
+    geometry = EllipseGeometry(256.0, 256.0, sma, 0.2, 0.0 * u.rad)
+    sample = EllipseSample(data, sma, geometry=geometry)
+    match = 'sma of the sample must be nonnegative'
+    with pytest.raises(ValueError, match=match):
+        Isophote(sample, 0, valid=False, stop_code=3)
+
+
 @pytest.mark.filterwarnings('ignore::photutils.utils.exceptions.'
                             'PhotutilsDeprecationWarning')
 def test_isophote_comparisons():
