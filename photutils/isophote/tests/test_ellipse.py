@@ -984,7 +984,7 @@ FIT_IMAGE_RENAMES = [
 ]
 
 FIT_ISOPHOTE_RENAMES = [
-    ('conver', 'convergence', 0.01), ('minit', 'miniters', 5),
+    ('conver', 'convergence', 0.001), ('minit', 'miniters', 5),
     ('maxit', 'maxiters', 5), ('fflag', 'min_valid_fraction', 0.5),
     ('sclip', 'clip_sigma', 2.5),
     ('integrmode', 'integration_mode', 'mean'),
@@ -1084,3 +1084,20 @@ def test_measure_isophotes_keywords_have_no_shim():
     result = ellipse.measure_isophotes(isolist, clip_sigma=3.0,
                                        integration_mode='mean')
     assert len(result) == len(isolist)
+
+
+def test_fit_image_default_geometry_flattened_galaxy():
+    """
+    Test the default geometry for a galaxy that is twice as flattened.
+
+    The default ellipticity of 0.2 is half of the galaxy ellipticity,
+    so the orientation correction of the first isophote overshoots.
+    """
+    orientation = 40.0
+    data = make_test_image(eps=0.4, pa=np.deg2rad(orientation), seed=0)
+    isolist = Ellipse(data).fit_image()
+    idx = (isolist.sma > 10.0) & (isolist.sma < 100.0)
+    assert np.all(isolist.stop_code[idx] == 0)
+    assert_allclose(isolist.ellipticity[idx], 0.4, atol=0.01)
+    assert_allclose(isolist.orientation[idx].to_value(u.deg), orientation,
+                    atol=0.5)

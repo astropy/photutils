@@ -416,6 +416,14 @@ Bug Fixes
     mistake in version 3.1.0. It works again (with a deprecation
     warning) until version 4.0. [#2564]
 
+  - Fixed the isophote fitter oscillating between two orientations,
+    without correcting the ellipticity, when the starting ellipticity
+    is about half of the galaxy ellipticity (e.g., the default
+    ``Ellipse`` geometry for galaxies with an ellipticity near 0.4).
+    A correction that reverses the previous correction of the same
+    parameter is now halved, so fewer isophotes end at the maximum
+    number of iterations. [#2571]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,

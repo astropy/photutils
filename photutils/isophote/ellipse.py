@@ -119,8 +119,12 @@ class Ellipse:
     algorithm picks up the largest amplitude among the four, estimates
     the local gradient, and computes the corresponding increment in the
     associated ellipse parameter. That parameter is updated, and the
-    image is resampled. This process is repeated until any one of the
-    following criteria is met:
+    image is resampled. A correction that reverses the correction
+    that the previous iteration made to the same parameter is
+    halved, because such a correction overshot the solution (the
+    STSDAS ``ellipse`` task does not damp the corrections). This
+    process is repeated until any one of the following criteria is
+    met:
 
     1. the largest harmonic amplitude is less than a given fraction of
        the rms residual of the intensity data around the harmonic fit,

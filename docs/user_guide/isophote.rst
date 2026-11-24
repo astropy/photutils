@@ -178,18 +178,18 @@ the isophote values as a table::
            sma              intensity      ... n_iter stop_code
                                            ...
     ------------------ ------------------- ... ------ ---------
-                   0.0  392.48758849279517 ...      0         0
-    0.5346972612827552   268.2307594317041 ...     14         0
-    0.5881669874110307  257.93087422324777 ...     10         0
-    0.6469836861521338  247.13865766087417 ...     10         0
-    0.7116820547673471  235.60867454024628 ...     10         0
+                   0.0  392.40301224101654 ...      0         0
+    0.5346972612827552   268.1139667720631 ...     12         0
+    0.5881669874110307   257.9801240600906 ...     10         0
+    0.6469836861521338   247.1382421405329 ...     10         0
+    0.7116820547673471  235.60801120562272 ...     10         0
                    ...                 ... ...    ...       ...
-    111.19834626984479  0.3001491098553055 ...     50         2
-    122.31818089682928 0.19406535096049538 ...     12         0
-     134.5499989865122 0.09571824540441994 ...     22         0
-    148.00499888516345 0.11318072729707639 ...     50         0
-     162.8054987736798 0.05465160382491108 ...      3         1
-    Length = 62 rows
+    101.08940569985889   0.471315621312272 ...     11         0
+    111.19834626984479 0.34975067092535855 ...     50         2
+    122.31818089682928 0.24770671633116675 ...     50         2
+     134.5499989865122 0.14359798296916512 ...     19         0
+    148.00499888516345 0.09284879194643825 ...     15         1
+    Length = 61 rows
 
 Let's plot the ellipticity, orientation, and the center x and y
 position as a function of the semimajor axis length:
@@ -303,8 +303,8 @@ from the image center. The fit with the default geometry emits a
     >>> len(isolist_default)
     0
 
-A poor initial ellipticity or orientation can also prevent the fits
-from converging, even for an image with a high signal-to-noise ratio.
+A poor initial ellipticity or orientation can occasionally prevent
+the fits from converging (see :ref:`isophote-geometry-corrections`).
 If most of the isophotes have a stop code of 2 (see
 :ref:`isophote-results`), run the fit again with a different initial
 ellipticity or orientation. For images with a low signal-to-noise
@@ -596,7 +596,7 @@ axis lengths from 10 to 90 pixels::
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
-    [6.  0.7]
+    [6.  0.6]
     >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.0)
     True True
 
@@ -605,7 +605,7 @@ by up to 6 pixels, the ellipticity reaches 0.53, and the fit stops at
 a semimajor axis length of about 92 pixels. Over this range of
 semimajor axis lengths, the mask and sigma clipping keep the centers
 within 1 pixel of the galaxy center and the ellipticity between 0.39
-and 0.42. The mask alone is not enough for this image, because the
+and 0.41. The mask alone is not enough for this image, because the
 star still disturbs the fit. Sigma clipping alone removes most of the
 distortion and keeps the centers within 2 pixels. The mask removes
 the rest.
@@ -1180,6 +1180,16 @@ major axis, and :math:`I'` is the derivative of the intensity along
 the major axis direction evaluated at a semimajor axis length of
 :math:`a_0`. The center corrections are then rotated by the
 orientation to give the corrections along the image x and y axes.
+
+The orientation correction is roughly inversely proportional to the
+ellipticity of the current ellipse. If that ellipticity is about half
+of the galaxy ellipticity, the correction overshoots by a factor of
+about two, and the orientation would oscillate between two values
+without the ellipticity ever being corrected. Therefore, a correction
+that reverses the correction that the previous iteration made to the
+same parameter is halved. This also keeps the center and ellipticity
+corrections of noisy isophotes from oscillating across the solution.
+The STSDAS ``ellipse`` task does not damp the corrections.
 
 .. _isophote-gradient:
 

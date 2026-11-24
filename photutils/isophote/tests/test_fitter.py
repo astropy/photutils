@@ -469,6 +469,74 @@ def test_fitting_round_start():
                     atol=0.05)
 
 
+@pytest.mark.parametrize('offset', [15.0, 20.0, 30.0, 45.0, 60.0])
+def test_fitting_orientation_overshoot(offset):
+    """
+    Test a starting ellipse whose orientation correction overshoots.
+
+    The orientation correction is inversely proportional to the
+    ellipticity of the trial ellipse. If that ellipticity is about
+    half of the galaxy ellipticity, the correction is about twice as
+    large as needed. Without damping, the orientation oscillates
+    between two values on either side of the solution, where the
+    ellipticity harmonic is small, so the ellipticity is never
+    corrected.
+    """
+    orientation = 40.0
+    data = make_test_image(eps=0.4, pa=np.deg2rad(orientation), seed=0)
+    sample = EllipseSample(data, 40.0, ellipticity=0.2,
+                           orientation=(orientation - offset) * u.deg)
+    isophote = _EllipseFitter(sample).fit()
+    assert isophote.stop_code == 0
+    assert_allclose(isophote.ellipticity, 0.4, atol=0.01)
+    assert_allclose(isophote.orientation.to_value(u.deg), orientation,
+                    atol=0.5)
+
+
+@pytest.mark.parametrize('index', [0, 1, 2, 3])
+def test_fitting_reversed_correction_damped(monkeypatch, index):
+    """
+    Test that a correction that reverses the previous correction of
+    the same ellipse parameter is halved.
+
+    The harmonic fit is replaced by one where a single harmonic
+    alternates in sign with amplitudes of 1, -0.9, and 0.8. The
+    amplitudes decrease, so the fit returns the last sampled ellipse.
+    The second correction is -0.9 times the first one, or -0.45 times
+    if it is halved.
+    """
+    def make_fit_harmonics():
+        amplitudes = iter([1.0, -0.9, 0.8])
+
+        def fit_harmonics(angles, intensities):  # noqa: ARG001
+            coeffs = np.zeros(5)
+            coeffs[0] = np.mean(intensities)
+            coeffs[index + 1] = next(amplitudes)
+            return (coeffs,)
+
+        return fit_harmonics
+
+    def fit_parameters(maxiters):
+        monkeypatch.setattr('photutils.isophote.fitter.'
+                            '_fit_first_and_second_harmonics',
+                            make_fit_harmonics())
+        sample = EllipseSample(DATA, 40.0)
+        isophote = _EllipseFitter(sample).fit(convergence=0.0,
+                                              maxiters=maxiters)
+        geometry = isophote.sample.geometry
+        return np.array([geometry.x0, geometry.y0,
+                         geometry.orientation.to_value(u.rad),
+                         geometry.ellipticity])
+
+    start = fit_parameters(1)
+    one_correction = fit_parameters(2) - start
+    two_corrections = fit_parameters(3) - start
+    assert np.any(one_correction != 0.0)
+    ratio = ((one_correction @ two_corrections)
+             / (one_correction @ one_correction))
+    assert_allclose(ratio, 0.55, atol=0.02)
+
+
 @pytest.mark.parametrize('fix_center', [False, True])
 def test_fixed_round_ellipse(fix_center):
     """

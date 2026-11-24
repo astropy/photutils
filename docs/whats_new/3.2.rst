@@ -59,9 +59,22 @@ convergence criterion, the ``max_gradient_rel_err`` stopping
 criterion, the radius where the local intensity gradient is measured,
 and the starting geometry of the inward fits. Because of these
 fixes, the fitted isophotes differ slightly from those of previous
-versions. The fits of noisy images typically need a few more
-iterations and extend to larger semimajor axis lengths. See the
-:ref:`changelog` for the complete list of fixes.
+versions. The fits of noisy images typically extend to larger
+semimajor axis lengths. See the :ref:`changelog` for the complete
+list of fixes.
+
+The fits are also less sensitive to the starting ellipse. Previously,
+a starting ellipticity of about half of the galaxy ellipticity,
+combined with a starting orientation that was off by more than about
+15 degrees, made the fitted orientation oscillate between two values
+without ever converging. This included the default geometry of
+`~photutils.isophote.Ellipse` for galaxies with an ellipticity near
+0.4. A correction that reverses the correction that the previous
+iteration made to the same ellipse parameter is now halved. This
+also keeps the center and ellipticity corrections of noisy isophotes
+from oscillating across the solution, so fewer isophotes end at the
+maximum number of iterations (stop code 2) and the fits need fewer
+iterations.
 
 The first isophote of a low surface brightness galaxy now fails much
 less often, because the local gradient of the previous iteration is
