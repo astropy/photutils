@@ -101,16 +101,16 @@ those of the galaxy::
     >>> geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
     ...                            orientation=20.0 * u.deg)
 
-Let's show this initial ellipse:
+Let's show this initial ellipse. The
+:meth:`~photutils.isophote.EllipseGeometry.to_aperture` method returns
+the ellipse as an `~photutils.aperture.EllipticalAperture`, which can
+be plotted:
 
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
-    >>> from photutils.aperture import EllipticalAperture
-    >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-    ...                           geometry.sma * (1 - geometry.ellipticity),
-    ...                           theta=geometry.orientation)
+    >>> aper = geometry.to_aperture()
     >>> norm = simple_norm(data, 'sqrt', percent=99.0)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data, origin='lower', norm=norm)
@@ -123,7 +123,6 @@ Let's show this initial ellipse:
     import numpy as np
     from astropy.modeling.models import Sersic2D
     from astropy.visualization import simple_norm
-    from photutils.aperture import EllipticalAperture
     from photutils.datasets import make_noise_image
     from photutils.isophote import EllipseGeometry
 
@@ -137,9 +136,7 @@ Let's show this initial ellipse:
 
     geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
-    aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-                              geometry.sma * (1 - geometry.ellipticity),
-                              theta=geometry.orientation)
+    aper = geometry.to_aperture()
     norm = simple_norm(data, 'sqrt', percent=99.0)
     fig, ax = plt.subplots()
     ax.imshow(data, origin='lower', norm=norm)
