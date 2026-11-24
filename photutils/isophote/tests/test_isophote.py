@@ -15,6 +15,7 @@ from astropy.table import MaskedColumn, QTable, Table
 from astropy.utils.masked import Masked
 from numpy.testing import assert_allclose, assert_array_equal, assert_equal
 
+from photutils.aperture import EllipticalAperture
 from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse, _central_isophote
 from photutils.isophote.fitter import _EllipseFitter
@@ -443,6 +444,26 @@ class TestIsophoteList:
         assert cenpix.y0 == cenpix.sample.geometry.y0
         assert cenpix.ellipticity == 0.0
         assert cenpix.orientation == 0.0 * u.deg
+
+    def test_to_aperture(self):
+        """
+        Test that the aperture of an isophote is the ellipse of its
+        geometry, and that the central pixel has no aperture.
+        """
+        isophote = self.isolist_sma10[-1]
+        aperture = isophote.to_aperture()
+        assert isinstance(aperture, EllipticalAperture)
+        assert_allclose(aperture.positions, (isophote.x0, isophote.y0))
+        assert aperture.a == isophote.sma
+        assert aperture.b == isophote.sma * (1.0 - isophote.ellipticity)
+        assert_allclose(aperture.theta.to_value(u.deg),
+                        isophote.orientation.to_value(u.deg))
+
+        geometry = EllipseGeometry(257.0, 258.0, 10.0, 0.2, 0.3 * u.rad)
+        cenpix = _central_isophote(self.data, geometry)
+        match = 'positive semimajor axis length'
+        with pytest.raises(ValueError, match=match):
+            cenpix.to_aperture()
 
     def test_extend(self):
         # The extend method shouldn't return anything, and should modify

@@ -808,6 +808,33 @@ class Isophote:
             raise ValueError(msg)
         return self.sample.coordinates()
 
+    def to_aperture(self):
+        """
+        Return the ellipse of this isophote as an
+        `~photutils.aperture.EllipticalAperture`.
+
+        The aperture can be used to plot the ellipse with its
+        :meth:`~photutils.aperture.EllipticalAperture.plot` method.
+        Unlike the coordinates returned by
+        :meth:`~photutils.isophote.Isophote.sampled_coordinates`, the
+        aperture is the complete ellipse and does not depend on the
+        sampled data points.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.EllipticalAperture`
+            The aperture with the center, semimajor axis length,
+            ellipticity, and orientation of this isophote.
+
+        Raises
+        ------
+        ValueError
+            If the semimajor axis length is not positive, which is the
+            case for the central pixel, or the ellipticity is 1 or
+            larger.
+        """
+        return self.geometry.to_aperture()
+
     def to_table(self):
         """
         Return the default isophote parameters as an astropy

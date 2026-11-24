@@ -16,6 +16,7 @@ from astropy.modeling.models import Gaussian2D
 from numpy.testing import assert_allclose, assert_array_equal
 from scipy.integrate import quad
 
+from photutils.aperture import EllipticalAperture
 from photutils.datasets import make_noise_image
 from photutils.isophote.geometry import IN_MASK, OUT_MASK, EllipseGeometry
 from photutils.isophote.tests.make_test_data import make_test_image
@@ -717,3 +718,24 @@ def test_geometry_fix_flags():
     assert geometry.fix_ellipticity is True
     geometry._fix = np.array([True, False, False, False])
     assert geometry.fix_center is False
+
+
+def test_to_aperture():
+    geometry = EllipseGeometry(x0=75.0, y0=60.0, sma=20.0, ellipticity=0.25,
+                               orientation=30.0 * u.deg)
+    aperture = geometry.to_aperture()
+    assert isinstance(aperture, EllipticalAperture)
+    assert_allclose(aperture.positions, (75.0, 60.0))
+    assert aperture.a == 20.0
+    assert aperture.b == 15.0
+    assert_allclose(aperture.theta.to_value(u.deg), 30.0)
+
+
+@pytest.mark.parametrize(('sma', 'ellipticity'), [(0.0, 0.2), (20.0, 1.0)])
+def test_to_aperture_invalid(sma, ellipticity):
+    geometry = EllipseGeometry(x0=75.0, y0=60.0, sma=sma,
+                               ellipticity=ellipticity,
+                               orientation=30.0 * u.deg)
+    match = 'positive semimajor axis length and an ellipticity smaller'
+    with pytest.raises(ValueError, match=match):
+        geometry.to_aperture()
