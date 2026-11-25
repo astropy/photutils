@@ -833,6 +833,11 @@ API Changes
     instead of 0. Its gradient and higher-order harmonic amplitudes
     are still 0, which model images need. [#2577]
 
+  - ``IsophoteList.make_model_image`` now sets the pixel nearest to
+    the center to the intensity of the central pixel isophote
+    (``sma=0``), as in the STSDAS ``bmodel`` task, instead of the
+    value interpolated from the smallest ellipses. [#2577]
+
   - An isophote extracted without fitting now has a stop code of 1,
     instead of 4, if fewer than ``min_valid_fraction`` of its data
     points are valid, except in ``Ellipse.measure_isophotes``. Without

@@ -1197,7 +1197,10 @@ class IsophoteList:
         ``sma_interval``. Each interpolated ellipse is traced on the
         output image and its intensity is distributed over the
         overlapping pixels with bilinear weights. The pixel values are
-        then normalized by the accumulated weights.
+        then normalized by the accumulated weights. If the list
+        includes the central pixel isophote (``sma=0``), the pixel
+        nearest to its center is set to its intensity, as in the STSDAS
+        ``bmodel`` task.
 
         Parameters
         ----------

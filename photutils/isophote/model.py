@@ -146,6 +146,17 @@ def _make_model_image(isolist, shape, *, fill_value, high_harmonics,
     # Fill value
     result[empty] = fill_value
 
+    # As in the STSDAS bmodel task, the pixel nearest to the center is
+    # set to the intensity of the central pixel isophote (sma=0). The
+    # interpolation over the small ellipses around the center smooths
+    # out a peaked center.
+    central = isolist[0]
+    if central.sma == 0:
+        xc = int(np.floor(central.x0 + 0.5))
+        yc = int(np.floor(central.y0 + 0.5))
+        if 0 <= yc < shape[0] and 0 <= xc < shape[1]:
+            result[yc, xc] = central.intensity
+
     return result
 
 

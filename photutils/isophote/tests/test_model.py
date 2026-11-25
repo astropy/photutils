@@ -132,6 +132,26 @@ def test_make_model_image_matches_function():
         assert_array_equal(model, old)
 
 
+def test_make_model_image_central_pixel():
+    """
+    Test that the model pixel nearest to the center has the intensity of
+    the central pixel isophote (sma=0), as in the STSDAS bmodel task.
+    """
+    data = make_test_image(noise=1.0, seed=0)
+    geometry = EllipseGeometry(256.4, 255.7, 20.0, 0.2, 0.0 * u.deg)
+    isolist = Ellipse(data, geometry=geometry).fit_image(max_sma=40.0)
+    central = isolist[0]
+    assert central.sma == 0
+    model = isolist.make_model_image(data.shape)
+    yc = int(np.floor(central.y0 + 0.5))
+    xc = int(np.floor(central.x0 + 0.5))
+    assert model[yc, xc] == central.intensity
+
+    # Without the central pixel isophote, the model is interpolated.
+    model = isolist[1:].make_model_image(data.shape)
+    assert model[yc, xc] != central.intensity
+
+
 def test_make_model_image_keyword_only():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image(max_sma=20.0)
