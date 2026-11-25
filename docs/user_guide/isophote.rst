@@ -597,6 +597,11 @@ axis lengths from 10 to 90 pixels::
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
     [5.6 1.5]
+
+..
+    The printed values above are not tested because they depend on
+    rounding in the noisy fits. This hidden check tests the text below.
+
     >>> print(max_shifts[0] > 5.0, max_shifts[1] < 2.0)
     True True
 
