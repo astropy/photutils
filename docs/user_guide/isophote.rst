@@ -671,7 +671,14 @@ image, masked, nonfinite, or rejected by sigma clipping. If the
 fraction of valid points of an isophote is smaller than the
 ``min_valid_fraction`` keyword (the default is 0.7), its fit stops
 with a stop code of 1. A smaller value lets the fit continue through
-isophotes that cross large masked regions.
+isophotes that cross large masked regions, or that extend past the
+edge of the image.
+
+The ``fflag`` parameter of the STSDAS ``ellipse`` task is instead the
+largest acceptable fraction of flagged points. The equivalent value
+here is ``min_valid_fraction = 1 - fflag``. The STSDAS default of
+``fflag = 0.5`` corresponds to ``min_valid_fraction=0.5``, which
+accepts more flagged points than the default used here.
 
 Tests with artificial images showed that cosmic rays and defective
 pixels are removed very effectively by combining sigma clipping with
