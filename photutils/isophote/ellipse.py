@@ -32,6 +32,16 @@ __all__ = ['Ellipse']
 _SMA_LIMIT_RTOL = 1.0e-9
 
 
+def _validate_step(step):
+    """
+    Raise a ValueError if the step is not positive.
+    """
+    if not step > 0:  # also rejects NaN
+        msg = ('The step (the step keyword or the step of the input '
+               'geometry) must be positive')
+        raise ValueError(msg)
+
+
 def _central_isophote(image, geometry):
     """
     Make the isophote of the central pixel.
@@ -273,7 +283,7 @@ class Ellipse:
         ['3.2'] * 15 + ['3.0'], until='4.0',
         alternative=[None] * 13 + ['sigma_clip'] * 3)
     @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
-    def fit_image(self, sma_start=None, min_sma=0.0, max_sma=None, step=0.1,
+    def fit_image(self, sma_start=None, min_sma=0.0, max_sma=None, step=None,
                   convergence=DEFAULT_CONVERGENCE,
                   miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
                   min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
@@ -302,10 +312,10 @@ class Ellipse:
         parameters of the `~photutils.isophote.EllipseGeometry`
         instance used by this class. If none of them is set, the
         fixed parameters of that instance are used. Likewise, the
-        ``linear_growth`` parameter overrides the ``linear_growth``
-        attribute of that instance. These overrides apply only to this
-        call. The `~photutils.isophote.EllipseGeometry` instance is not
-        modified.
+        ``step`` and ``linear_growth`` parameters, if set, override the
+        ``step`` and ``linear_growth`` attributes of that instance.
+        These overrides apply only to this call. The
+        `~photutils.isophote.EllipseGeometry` instance is not modified.
 
         If the center, orientation, and ellipticity are all fixed,
         by these parameters or by the
@@ -352,17 +362,17 @@ class Ellipse:
             until one of several conditions will cause it to stop and
             revert to fit ellipses with sma < ``sma_start``.
 
-        step : float, optional
+        step : float or `None`, optional
             The step value used to grow/shrink the semimajor axis
             length (pixels if ``linear_growth=True``, or a relative
             value if ``linear_growth=False``). See the ``linear_growth``
             parameter. It also defines the elliptical annulus used by
             the sampling algorithm, which sets the areas of the
             elliptical sectors for the area integration modes (see the
-            ``integration_mode`` parameter). It replaces the ``step``
-            attribute of the `~photutils.isophote.EllipseGeometry`
-            instance used by this class. The step must be positive. The
-            default is 0.1.
+            ``integration_mode`` parameter). The step must be positive.
+            If `None` (default), the ``step`` attribute of the
+            `~photutils.isophote.EllipseGeometry` instance used by this
+            class is used (0.1 for the default geometry).
 
         convergence : float, optional
             The main convergence criterion. Iterations stop when the
@@ -528,7 +538,7 @@ class Ellipse:
         Raises
         ------
         ValueError
-            If the starting semimajor axis length or ``step`` is not
+            If the starting semimajor axis length or the step is not
             positive, if ``min_sma`` or ``max_sma`` is NaN, if
             ``min_sma`` is larger than ``max_sma``, if the starting
             semimajor axis length is not between ``min_sma`` and
@@ -576,9 +586,9 @@ class Ellipse:
                    'sma of the input geometry) must be between min_sma '
                    'and max_sma')
             raise ValueError(msg)
-        if not step > 0:  # also rejects NaN
-            msg = 'step must be positive'
-            raise ValueError(msg)
+        if step is None:
+            step = self._geometry.step
+        _validate_step(step)
 
         # Override the geometry parameters set in this call on a copy
         # so that they do not persist in the input geometry instance.
@@ -756,7 +766,7 @@ class Ellipse:
         ['3.2'] * 11 + ['3.0'], until='4.0',
         alternative=[None] * 9 + ['sigma_clip'] * 3)
     @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
-    def fit_isophote(self, sma, step=0.1, convergence=DEFAULT_CONVERGENCE,
+    def fit_isophote(self, sma, step=None, convergence=DEFAULT_CONVERGENCE,
                      miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
                      min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
                      maxgerr=None,  # noqa: ARG002
@@ -774,10 +784,9 @@ class Ellipse:
         semimajor axis length. Instead, they define the elliptical
         annulus used by the sampling algorithm, which sets the areas of
         the elliptical sectors for the area integration modes (see the
-        ``integration_mode`` parameter). The ``step`` parameter sets
-        the ``step`` attribute of the starting geometry. The
-        ``linear_growth`` parameter, if set, sets its ``linear_growth``
-        attribute.
+        ``integration_mode`` parameter). The ``step`` and
+        ``linear_growth`` parameters, if set, set the ``step`` and
+        ``linear_growth`` attributes of the starting geometry.
 
         If the center, orientation, and ellipticity are all fixed
         by the `~photutils.isophote.EllipseGeometry` instance, there
@@ -791,11 +800,12 @@ class Ellipse:
             nonnegative. If it is zero, the isophote is the central
             pixel.
 
-        step : float, optional
+        step : float or `None`, optional
             The step value that defines the sampling annulus (pixels
             if linear growth is used, otherwise a relative value). See
             the ``linear_growth`` parameter. The step must be positive.
-            The default is 0.1.
+            If `None` (default), the ``step`` attribute of the starting
+            geometry is used.
 
         convergence : float, optional
             The main convergence criterion. Iterations stop when the
@@ -940,7 +950,7 @@ class Ellipse:
         Raises
         ------
         ValueError
-            If ``sma`` is negative or not finite, if ``step`` is not
+            If ``sma`` is negative or not finite, if the step is not
             positive, if ``max_center_shift`` is negative or NaN, if the
             ellipticity of the starting geometry is 1 or larger, if
             ``integration_mode`` is not a valid integration mode, or if
@@ -959,9 +969,6 @@ class Ellipse:
             code of 3.
         """
         _validate_sma(sma)
-        if not step > 0:  # also rejects NaN
-            msg = 'step must be positive'
-            raise ValueError(msg)
         sigma_clip = _legacy_sigma_clip(sigma_clip, sclip=sclip,
                                         n_clip=n_clip, nclip=nclip)
 
@@ -974,7 +981,9 @@ class Ellipse:
         # The step and linear values define the sampling annulus. They
         # are set on a copy so that the input geometry is not modified.
         geometry = copy.deepcopy(geometry)
-        geometry.step = step
+        if step is not None:
+            geometry.step = step
+        _validate_step(geometry.step)
         if linear_growth is not None:
             geometry.linear_growth = bool(linear_growth)
 

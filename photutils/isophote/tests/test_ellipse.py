@@ -142,6 +142,25 @@ class TestEllipse:
         assert np.any(x0 != 256.0)
         assert_allclose(isolist.sma[-1] / isolist.sma[-2], 1.1)
 
+    def test_geometry_step(self):
+        """
+        Test that fit_image and fit_isophote use the step of the input
+        geometry unless the step keyword is set.
+        """
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad,
+                                   step=3.0, linear_growth=True)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        isolist = ellipse.fit_image(max_sma=30.0)
+        assert_allclose(np.diff(isolist.sma[-3:]), 3.0)
+        isophote = ellipse.fit_isophote(20.0)
+        assert isophote.sample.geometry.step == 3.0
+
+        isolist = ellipse.fit_image(max_sma=30.0, step=2.0)
+        assert_allclose(np.diff(isolist.sma[-3:]), 2.0)
+        isophote = ellipse.fit_isophote(20.0, step=2.0)
+        assert isophote.sample.geometry.step == 2.0
+        assert geometry.step == 3.0
+
     @pytest.mark.parametrize('max_sma', [None, 200.0])
     def test_max_gradient_rel_err(self, max_sma):
         """
@@ -884,12 +903,20 @@ class TestEllipse:
 
     @pytest.mark.parametrize('step', [0.0, -0.1, np.nan])
     def test_invalid_step(self, step):
-        match = 'step must be positive'
+        match = 'must be positive'
         ellipse = Ellipse(self.data)
         with pytest.raises(ValueError, match=match):
             ellipse.fit_image(step=step)
         with pytest.raises(ValueError, match=match):
             ellipse.fit_isophote(20.0, step=step)
+
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad,
+                                   step=step)
+        ellipse = Ellipse(self.data, geometry=geometry)
+        with pytest.raises(ValueError, match=match):
+            ellipse.fit_image()
+        with pytest.raises(ValueError, match=match):
+            ellipse.fit_isophote(20.0)
 
     @pytest.mark.parametrize('sma', [-1.0, np.nan, np.inf])
     @pytest.mark.parametrize('noniterate', [False, True])

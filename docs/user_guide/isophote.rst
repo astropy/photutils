@@ -700,9 +700,11 @@ clearly defined shape. It should not be at the center of the galaxy
 or at its faint outskirts.
 
 By default, the semimajor axis length grows and shrinks by a factor of
-(1 + ``step``), where ``step`` defaults to 0.1. With
-``linear_growth=True``, ``step`` is instead an increment in pixels.
-The ``min_sma`` and ``max_sma`` keywords limit the range of the
+(1 + ``step``). With ``linear_growth=True``, ``step`` is instead an
+increment in pixels. If these keywords are not set, the ``step`` and
+``linear_growth`` attributes of the input
+`~photutils.isophote.EllipseGeometry` are used, which are 0.1 and
+`False` by default. The ``min_sma`` and ``max_sma`` keywords limit the range of the
 semimajor axis lengths. Both limits are inclusive, so an isophote
 whose semimajor axis length equals a limit is included::
 

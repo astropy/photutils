@@ -763,6 +763,12 @@ API Changes
     ``geometry`` is input, now has an orientation of 0 degrees
     instead of 90 degrees. [#2577]
 
+  - The ``step`` keyword of ``Ellipse.fit_image`` and
+    ``Ellipse.fit_isophote`` now defaults to `None`, which uses the
+    ``step`` of the input ``EllipseGeometry``, like the
+    ``linear_growth`` keyword. Previously, the default of 0.1 always
+    replaced the ``step`` of the geometry. [#2577]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the
