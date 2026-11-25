@@ -482,11 +482,13 @@ Bug Fixes
 
   - Fixed the sampling of the isophotes, which continued past a polar
     angle of 2 pi and sampled the start of the elliptical path twice.
-    The ``'bilinear'`` and ``'nearest_neighbor'`` paths now start on
-    the semimajor axis and end before 2 pi, so that they cover the full
-    ellipse once. The ``'mean'`` and ``'median'`` sectors end at 2 pi,
-    as in the STSDAS ``ellipse`` task. This changes the fitted
-    isophotes slightly. [#2577, #2578]
+    The ``'bilinear'`` and ``'nearest_neighbor'`` paths now end one
+    revolution after their start, so that they cover the full ellipse
+    once. They start at the same polar angle as in the STSDAS
+    ``ellipse`` task, which ends them at 2 pi and leaves out a small
+    arc. The ``'mean'`` and ``'median'`` sectors end at 2 pi, as in
+    the STSDAS task. This changes the fitted isophotes slightly.
+    [#2577, #2578]
 
   - The ``rms``, ``intensity_err``, ``pixel_stddev``, and
     ``gradient_err`` isophote values now use the sample standard

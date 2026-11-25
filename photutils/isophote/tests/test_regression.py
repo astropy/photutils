@@ -287,19 +287,13 @@ def test_regression_summary(name, min_extra, max_extra, noisy):
 
     # The limits are for the relative intensity, the ellipticity, the
     # position angle in degrees, and the center in pixels.
-    diffs = (np.abs(intens_diff), np.abs(eps_diff), np.abs(pa_diff),
-             center_diff)
     if noisy:
-        for diff, limit in zip(diffs, (0.005, 0.01, 1.0, 0.1), strict=True):
-            assert np.median(diff) < limit
+        statistic = np.median
+        limits = (0.005, 0.01, 1.0, 0.1)
     else:
-        # The 'bilinear' sampling path starts on the semimajor axis,
-        # while the SPP code starts it at half of a sector width. The
-        # innermost isophotes cover only a few pixels, so sampling
-        # different points changes them more than the others.
-        inner = table_sma[mask] < 10.0
-        for diff, limit, inner_limit in zip(diffs, (0.001, 0.001, 0.2, 0.01),
-                                            (0.005, 0.003, 1.0, 0.02),
-                                            strict=True):
-            assert np.max(diff[~inner]) < limit
-            assert np.max(diff[inner]) < inner_limit
+        statistic = np.max
+        limits = (0.001, 0.001, 0.2, 0.01)
+    assert statistic(np.abs(intens_diff)) < limits[0]
+    assert statistic(np.abs(eps_diff)) < limits[1]
+    assert statistic(np.abs(pa_diff)) < limits[2]
+    assert statistic(center_diff) < limits[3]

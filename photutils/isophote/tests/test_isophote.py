@@ -98,11 +98,11 @@ class TestIsophote:
         assert orientation <= (0.62 + 0.05)
 
         # Fitted values
-        assert_allclose(iso.intensity, 685.1, atol=0.1)
-        assert_allclose(iso.rms, 83.37, atol=0.01)
+        assert_allclose(iso.intensity, 686.0, atol=0.1)
+        assert_allclose(iso.rms, 83.31, atol=0.01)
         assert_allclose(iso.intensity_err, 7.64, atol=0.01)
-        assert_allclose(iso.pixel_stddev, 117.9, atol=0.1)
-        assert_allclose(iso.gradient, -35.38, atol=0.1)
+        assert_allclose(iso.pixel_stddev, 117.8, atol=0.1)
+        assert_allclose(iso.gradient, -35.28, atol=0.1)
 
         # Integrals
         assert iso.total_flux_ellipse <= 1.20e6

@@ -768,14 +768,14 @@ class EllipseSample:
             # The pixel integrators step along the path by about one
             # pixel (an angle step of 1 / radius, but at most 0.5
             # radians), so the path can be computed first and then
-            # sampled at once. The path starts on the semimajor axis
-            # and ends before a polar angle of 2 pi, so that it covers
-            # the full ellipse once. The STSDAS ellipse task starts it
-            # at half of a sector width, as for the area integrators,
-            # which leaves out a small arc next to the semimajor axis.
+            # sampled at once. As in the STSDAS ellipse task, the path
+            # starts at half of a sector width. It ends one revolution
+            # later (exclusive), so that it covers the full ellipse
+            # once. The STSDAS task ends it at 2 pi, which leaves out a
+            # small arc next to the semimajor axis.
             phis, path_radii = compute_polar_path(
-                0.0, self.geometry.radius(0.0), np.pi * 2.0,
-                self.geometry.sma, self.geometry.ellipticity)
+                phi, radius, phi + np.pi * 2.0, self.geometry.sma,
+                self.geometry.ellipticity)
             angles, radii, intensities = integrator.integrate_path(
                 path_radii, phis)
             sector_areas.append(integrator.get_sector_area())

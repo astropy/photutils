@@ -69,8 +69,8 @@ class TestUnmasked(TestData):
         s, sample = self.make_sample(sma=10.0)
 
         # Intensities
-        assert_allclose(np.mean(s[2]), 1045.8, atol=0.1)
-        assert_allclose(np.std(s[2]), 143.5, atol=0.1)
+        assert_allclose(np.mean(s[2]), 1045.4, atol=0.1)
+        assert_allclose(np.std(s[2]), 143.0, atol=0.1)
         # Radii
         assert_allclose(np.max(s[1]), 10.0, atol=0.1)
         assert_allclose(np.min(s[1]), 8.0, atol=0.1)
@@ -83,7 +83,7 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 225
         # Intensities
-        assert_allclose(np.mean(s[2]), 200.6, atol=0.1)
+        assert_allclose(np.mean(s[2]), 200.7, atol=0.1)
         assert_allclose(np.std(s[2]), 21.6, atol=0.1)
         # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
@@ -112,8 +112,8 @@ class TestUnmasked(TestData):
 
         assert len(s[0]) == 29
         # Intensities
-        assert_allclose(np.mean(s[2]), 2340.8, atol=0.1)
-        assert_allclose(np.std(s[2]), 284.6, atol=0.1)
+        assert_allclose(np.mean(s[2]), 2339.0, atol=0.1)
+        assert_allclose(np.std(s[2]), 284.7, atol=0.1)
         # Radii
         assert_allclose(np.max(s[1]), 5.0, atol=0.01)
         assert_allclose(np.min(s[1]), 4.0, atol=0.01)
@@ -143,16 +143,16 @@ class TestMasked(TestData):
     def test_bilinear(self):
         s, sample = self.make_sample(masked=True, integrmode='bilinear')
 
-        assert len(s[0]) == 163
+        assert len(s[0]) == 157
         # Intensities
-        assert_allclose(np.mean(s[2]), 201.30, atol=0.01)
-        assert_allclose(np.std(s[2]), 24.89, atol=0.01)
+        assert_allclose(np.mean(s[2]), 201.52, atol=0.01)
+        assert_allclose(np.std(s[2]), 25.21, atol=0.01)
         # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
         assert sample.n_total == 225
-        assert sample.n_valid == 163
+        assert sample.n_valid == 157
 
     def test_mean(self):
         s, sample = self.make_sample(masked=True, integrmode='mean')

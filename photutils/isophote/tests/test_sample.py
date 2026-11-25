@@ -95,16 +95,17 @@ def test_path_full_circle(integration_mode):
     Test that the sampling path of the pixel integration modes covers
     the full ellipse once.
 
-    The path starts on the semimajor axis and ends before a polar
-    angle of 2 pi, so that no part of the ellipse is sampled twice or
-    left out.
+    The path starts at half of a sector width, as in the STSDAS ellipse
+    task, and ends one revolution later, so that no part of the ellipse
+    is sampled twice or left out.
     """
     sample = EllipseSample(DATA, 100.0, integration_mode=integration_mode)
     angles, radii, _ = sample.extract()
-    assert angles[0] == 0.0
+    assert angles[0] == sample.geometry._initial_polar_angle
     assert np.all(np.diff(angles) > 0)
     last_step = min(1.0 / radii[-1], 0.5)
-    assert angles[-1] < 2.0 * np.pi <= angles[-1] + last_step
+    phi_max = angles[0] + 2.0 * np.pi
+    assert angles[-1] < phi_max <= angles[-1] + last_step
 
 
 def test_path_samples_once():
@@ -556,11 +557,11 @@ def test_sampling_path(sma):
     sample = EllipseSample(data, sma, ellipticity=0.3)
     angles, radii, _ = sample.extract()
     assert sample.n_valid == sample.n_total
-    assert angles[0] == 0.0
+    assert angles[0] == sample.geometry._initial_polar_angle
     assert_allclose(radii, sample.geometry.radius(angles))
     steps = np.minimum(1.0 / radii, 0.5)
     assert_allclose(np.diff(angles), steps[:-1])
-    phi_max = 2.0 * np.pi
+    phi_max = angles[0] + 2.0 * np.pi
     assert angles[-1] < phi_max <= angles[-1] + steps[-1]
 
 

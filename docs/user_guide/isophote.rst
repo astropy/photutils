@@ -177,17 +177,17 @@ the isophote values as a table::
            sma              intensity       ... n_iter stop_code
                                             ...
     ------------------ -------------------- ... ------ ---------
-                   0.0    392.6095189027451 ...      0         0
-    0.5346972612827552    268.0174184605056 ...     50         2
-    0.5881669874110307    257.7453887357617 ...     10         0
-    0.6469836861521338    246.9607872120616 ...     10         0
+                   0.0   392.40301224101654 ...      0         0
+    0.5346972612827552    268.1139667720631 ...     12         0
+    0.5881669874110307    257.9801240600906 ...     10         0
+    0.6469836861521338    247.1382421405329 ...     10         0
                    ...                  ... ...    ...       ...
-    122.31818089682928   0.1751635221761607 ...     10         0
-     134.5499989865122  0.07995100769839476 ...     10         0
-    148.00499888516345  0.09859839364570763 ...     23         0
-     162.8054987736798   0.0521224279273517 ...      1         5
-     179.0860486510478 0.051711734842313985 ...      2         1
-    Length = 63 rows
+    111.19834626984479  0.35398580550238423 ...     16         0
+    122.31818089682928  0.25174837704885095 ...     10         0
+     134.5499989865122  0.18514376415595932 ...     10         0
+    148.00499888516345  0.10696806162863258 ...     19         0
+     162.8054987736798 0.044716996571235665 ...     13         1
+    Length = 62 rows
 
 Let's plot the ellipticity, orientation, and the center x and y
 position as a function of the semimajor axis length:
@@ -596,19 +596,20 @@ axis lengths from 10 to 90 pixels::
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
-    [6.  0.7]
-    >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.5)
+    [5.6 1.5]
+    >>> print(max_shifts[0] > 5.0, max_shifts[1] < 2.0)
     True True
 
 Without rejection, the star and the companion pull the fitted centers
-by up to 6 pixels, the ellipticity reaches 0.53, and the fit stops at
+by up to 6 pixels, the ellipticity reaches 0.54, and the fit stops at
 a semimajor axis length of about 101 pixels. Over this range of
 semimajor axis lengths, the mask and sigma clipping keep the centers
-within about 1 pixel of the galaxy center and the ellipticity between
-0.39 and 0.41. The mask alone is not enough for this image, because the
-star still disturbs the fit. Sigma clipping alone removes most of the
-distortion and keeps the centers within about 2 pixels. The mask removes
-the rest.
+within about 1.5 pixels of the galaxy center (about twice the center
+error of the faint outer isophotes) and the ellipticity between 0.39
+and 0.41. The mask alone is not enough for this image, because the
+star still disturbs the fit. Sigma clipping alone also removes most of
+the distortion, because it works well for small features such as
+stars.
 
 Let's plot the image with the masked region, and the residuals of the
 model images of the two fits (see :ref:`isophote-model-image`):
