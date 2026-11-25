@@ -197,12 +197,13 @@ Bug Fixes
   - Fixed the sampling of the isophotes. The ``'bilinear'`` mode
     extrapolated the values before the first pixel center, and the
     ``'nearest_neighbor'`` mode sampled the wrong pixel for half of
-    the points, which offset the fitted centers by about half a pixel.
-    Both sampled the start of the elliptical path twice and now cover
-    the full ellipse once. The ``'mean'`` and ``'median'`` modes now
-    have the correct sector areas near polar angles of 0 and pi, all
-    the pixels of the last sector, and the correct sectors for a step
-    larger than twice the semimajor axis length. The ``step`` and
+    the points, which offset the fitted centers by about half a pixel,
+    and skipped the last image row and column. Both modes sampled the
+    start of the elliptical path twice and now cover the full ellipse
+    once. The ``'mean'`` and ``'median'`` modes now have the correct
+    sector areas near polar angles of 0 and pi, all the pixels of the
+    last sector, and the correct sectors for a step larger than twice
+    the semimajor axis length. The ``step`` and
     ``linear_growth`` keywords of ``Ellipse.fit_image`` and
     ``Ellipse.fit_isophote`` now define the sampling annulus, and a
     diverged isophote is now sampled along its reported ellipse.
@@ -246,8 +247,10 @@ Bug Fixes
     ``fit_isophote`` extracts the isophote without fitting), a
     ``ZeroDivisionError`` in the ``'mean'`` and ``'median'`` modes, a
     ``MaskError`` in ``EllipseGeometry.find_center`` near the image
-    edges, and an infinite loop for an ellipticity larger than 1, which
-    now raises a ``ValueError``. [#2549, #2550, #2551, #2552]
+    edges, and an infinite loop for an ellipticity larger than 1.
+    Sampling or fitting an ellipse with an ellipticity of 1 or larger
+    or a nonfinite center now raises a ``ValueError``. [#2549, #2550,
+    #2551, #2552]
 
   - Fixed several issues in ``IsophoteList.make_model_image``: the
     model isophotes swept through all angles for galaxies with an
