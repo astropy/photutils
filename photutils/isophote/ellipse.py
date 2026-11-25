@@ -498,16 +498,16 @@ class Ellipse:
             (default), then no maximum value is used.
 
         fix_center : bool, optional
-            Whether to keep the ellipse center fixed during fitting. The
-            default is False.
+            Whether to keep the center of the ellipse fixed during the
+            fit. The default is `False`.
 
         fix_orientation : bool, optional
-            Whether to keep the orientation of semimajor axis of ellipse
-            fixed during fit. The default is False.
+            Whether to keep the orientation of the semimajor axis of the
+            ellipse fixed during the fit. The default is `False`.
 
         fix_ellipticity : bool, optional
             Whether to keep the ellipticity of the ellipse fixed during
-            fit. The default is False.
+            the fit. The default is `False`.
 
         max_center_shift : float or `None`, optional
             The maximum distance (in pixels) that the center of
