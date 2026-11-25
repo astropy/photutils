@@ -119,11 +119,15 @@ class Isophote:
         * ``0``: Normal.
 
         * ``1``: Fewer than the prespecified fraction of the extracted
-          data points are valid. When
+          data points are valid. This also applies to an isophote
+          extracted without fitting (``n_iter=0``), except for those
+          measured with
+          :meth:`~photutils.isophote.Ellipse.measure_isophotes`. When
           :meth:`~photutils.isophote.Ellipse.fit_image` grows outward,
           such an isophote is extracted again with the geometry of the
-          previous isophote. If it is the first isophote, an empty list
-          is returned instead.
+          previous isophote, and the outward growth stops (or continues
+          in noniterative mode up to ``max_sma``, if it is set). If it
+          is the first isophote, an empty list is returned instead.
 
         * ``2``: Exceeded maximum number of iterations.
 
@@ -192,7 +196,8 @@ class Isophote:
 
     ellipticity_err : float
         The ellipticity error. It is NaN if the geometry was not fitted
-        (stop code 4) or the error could not be computed.
+        (stop code 4, or stop code 1 with ``n_iter=0``) or the error
+        could not be computed.
 
     ellip_err : float
         .. deprecated:: 3.2
@@ -209,7 +214,8 @@ class Isophote:
 
     orientation_err : `~astropy.units.Quantity`
         The orientation error in degrees. It is NaN if the geometry was
-        not fitted (stop code 4) or the error could not be computed.
+        not fitted (stop code 4, or stop code 1 with ``n_iter=0``) or
+        the error could not be computed.
 
     pa_err : float
         .. deprecated:: 3.2
@@ -218,13 +224,13 @@ class Isophote:
 
     x0_err : float
         The error associated with the center x coordinate. It is NaN if
-        the geometry was not fitted (stop code 4) or the error could not
-        be computed.
+        the geometry was not fitted (stop code 4, or stop code 1 with
+        ``n_iter=0``) or the error could not be computed.
 
     y0_err : float
         The error associated with the center y coordinate. It is NaN if
-        the geometry was not fitted (stop code 4) or the error could not
-        be computed.
+        the geometry was not fitted (stop code 4, or stop code 1 with
+        ``n_iter=0``) or the error could not be computed.
 
     pixel_stddev : float
         The estimate of pixel standard deviation (rms * sqrt(average
@@ -723,11 +729,11 @@ class Isophote:
         matrix of the four harmonic coefficients for harmonics n=1 and
         n=2.
 
-        The errors are NaN if the geometry was not fitted (stop code
-        4), as in the STSDAS ellipse task, or if they cannot be
-        computed. The residual intensities of the first and second
-        harmonic fit are returned for the upper harmonic fits, or
-        `None` if that fit could not be done.
+        The errors are NaN if the geometry was not fitted (stop code 4,
+        or stop code 1 without iterations), as in the STSDAS ellipse
+        task, or if they cannot be computed. The residual intensities
+        of the first and second harmonic fit are returned for the upper
+        harmonic fits, or `None` if that fit could not be done.
         """
         self.x0_err = self.y0_err = self._orientation_err_rad = np.nan
         self.ellipticity_err = np.nan
@@ -746,7 +752,8 @@ class Isophote:
 
             # The errors of a geometry that was not fitted are not
             # measured.
-            if self.stop_code == 4:
+            if self.stop_code == 4 or (self.stop_code == 1
+                                       and self.n_iter == 0):
                 return residual
 
             var_residual = np.std(residual, ddof=len(coeffs)) ** 2

@@ -279,6 +279,16 @@ class _EllipseFitter:
                 minimum_amplitude_value = abs(largest_harmonic)
                 minimum_amplitude_sample = sample
 
+            # The sample contains too many invalid data points, so
+            # return the best-fit sample instead of the current one. As
+            # in the STSDAS ellipse task, this applies even if the fit
+            # has converged.
+            if sample.n_valid < (sample.n_total * min_valid_fraction):
+                minimum_amplitude_sample._update(
+                    fixed_parameters=fixed_parameters)
+                return Isophote(minimum_amplitude_sample, i + 1, valid=True,
+                                stop_code=1)
+
             # Check if converged. As in the STSDAS ellipse task, the
             # residual rms is scaled by the square root of the sector
             # area to account for the smoothing from area averaging.
@@ -291,17 +301,6 @@ class _EllipseFitter:
                 # iterations has run.
                 sample._update(fixed_parameters=fixed_parameters)
                 return Isophote(sample, i + 1, valid=True, stop_code=0)
-
-            # It may not have converged yet, but the sample contains too
-            # many invalid data points, so return the best-fit sample
-            # instead of the current one.
-            if sample.n_valid < (sample.n_total * min_valid_fraction):
-                # When too many data points were flagged, return the
-                # best-fit sample instead of the current one.
-                minimum_amplitude_sample._update(
-                    fixed_parameters=fixed_parameters)
-                return Isophote(minimum_amplitude_sample, i + 1, valid=True,
-                                stop_code=1)
 
             # The parameter correctors divide by the sample's local
             # gradient, which must be negative (the intensity decreases

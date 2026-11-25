@@ -453,6 +453,15 @@ Bug Fixes
     ``b4`` errors, especially for an ellipse that is offset from the
     galaxy. [#2577]
 
+  - Fixed ``Ellipse.fit_image`` continuing to grow outward when the
+    second isophote had too many flagged data points (stop code 1).
+    [#2577]
+
+  - Fixed the isophote fitter returning a stop code of 0 for a fit
+    that converged in the same iteration in which too many of its data
+    points were flagged. It now returns a stop code of 1, as in the
+    STSDAS ``ellipse`` task. [#2577]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -784,9 +793,16 @@ API Changes
 
   - The ``x0_err``, ``y0_err``, ``ellipticity_err``, and
     ``orientation_err`` attributes of an ``Isophote`` are now NaN if
-    its geometry was not fitted (stop code 4), as in the STSDAS
-    ``ellipse`` task, or if they could not be computed. Previously,
-    they were computed from the fixed geometry, or set to 0. [#2577]
+    its geometry was not fitted (stop code 4, or stop code 1 with
+    ``n_iter=0``), as in the STSDAS ``ellipse`` task, or if they could
+    not be computed. Previously, they were computed from the fixed
+    geometry, or set to 0. [#2577]
+
+  - An isophote extracted without fitting now has a stop code of 1,
+    instead of 4, if fewer than ``min_valid_fraction`` of its data
+    points are valid, except in ``Ellipse.measure_isophotes``. Without
+    ``max_sma``, ``Ellipse.fit_image`` stops growing outward at such
+    an isophote. [#2577]
 
 - ``photutils.psf``
 

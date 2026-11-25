@@ -667,13 +667,13 @@ class Ellipse:
                 # `isophote` instance in this context may no longer be OK.
                 isophote = isophote_list[-1]
 
-                # If two consecutive isophotes failed to fit,
-                # shut off iterative mode. Or, bail out and
-                # change to go inwards.
-                if (len(isophote_list) > 2
-                    and ((isophote.stop_code == 5
-                          and isophote_list[-2].stop_code == 5)
-                         or isophote.stop_code == 1)):
+                # If too many data points were flagged, or if two
+                # consecutive isophotes failed to fit, shut off
+                # iterative mode. Or, bail out and change to go inwards.
+                too_many_flagged = isophote.stop_code == 1
+                failed_twice = (isophote.stop_code == 5
+                                and isophote_list[-2].stop_code == 5)
+                if too_many_flagged or failed_twice:
                     if max_sma is not None and max_sma > isophote.sma:
                         # If a maximum sma value was provided by
                         # user, and the current sma is smaller than
@@ -1019,6 +1019,14 @@ class Ellipse:
                           and sma > max_iterative_sma):
             isophote = self._non_iterative(sma, geometry, sigma_clip,
                                            integration_mode)
+
+            # As in the STSDAS ellipse task, an isophote extracted
+            # without fitting also has a stop code of 1 if too many of
+            # its data points were flagged.
+            sample = isophote.sample
+            if (isophote.stop_code == 4
+                    and sample.n_valid < sample.n_total * min_valid_fraction):
+                isophote = Isophote(sample, 0, valid=True, stop_code=1)
         else:
             isophote = self._iterative(sma, geometry, sigma_clip,
                                        integration_mode, convergence,

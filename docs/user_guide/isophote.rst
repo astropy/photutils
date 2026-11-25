@@ -1289,8 +1289,8 @@ This is empirical and difficult to justify in terms of any theoretical
 error analysis, but it produces sensible error estimators in practice.
 The geometry was not fitted for an isophote with a stop code of 4
 (e.g., beyond ``max_iterative_sma`` or from
-:meth:`~photutils.isophote.Ellipse.measure_isophotes`), so its
-geometry errors are NaN.
+:meth:`~photutils.isophote.Ellipse.measure_isophotes`), or with a stop
+code of 1 and no iterations, so its geometry errors are NaN.
 
 Flux Accuracy
 ^^^^^^^^^^^^^

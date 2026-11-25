@@ -279,6 +279,58 @@ class TestEllipse:
         first = isolist.get_closest(10.0)
         assert isolist[-3].ellipticity != first.ellipticity
 
+    def test_too_many_flagged_second_isophote(self):
+        """
+        Test that the outward growth stops at the first isophote with
+        too many flagged data points (stop code 1), including the second
+        isophote.
+        """
+        data = make_test_image(nx=200, ny=200, x0=12.0, y0=100.0,
+                               noise=0.5, seed=0)
+        geometry = EllipseGeometry(12.0, 100.0, 20.0, 0.2, 0.0 * u.deg)
+        isolist = Ellipse(data, geometry=geometry).fit_image(min_sma=20.0)
+        assert_allclose(isolist.sma, [20.0, 22.0])
+        assert_array_equal(isolist.stop_code, [0, 1])
+
+    def test_too_many_flagged_noniterative(self):
+        """
+        Test that the outward growth in noniterative mode stops at the
+        first isophote with too many flagged data points (stop code 1)
+        if ``max_sma`` is not set.
+        """
+        data = make_test_image(nx=100, ny=100, x0=50.0, y0=50.0,
+                               noise=0.2, seed=0)
+        geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.2, 0.0 * u.deg)
+        ellipse = Ellipse(data, geometry=geometry)
+        isolist = ellipse.fit_image(max_iterative_sma=12.0)
+        valid_fraction = isolist.n_data / (isolist.n_data
+                                           + isolist.n_flagged)
+        assert isolist[-1].stop_code == 1
+        assert isolist[-1].n_iter == 0
+        assert valid_fraction[-1] < 0.7
+        assert np.all(valid_fraction[:-1] >= 0.7)
+        assert np.all(isolist.stop_code[:-1] != 1)
+        assert np.isnan(isolist[-1].ellipticity_err)
+
+        # Measuring along a fixed ellipse is not affected.
+        measured = ellipse.measure_isophotes([isolist[-1]])
+        assert measured[0].stop_code == 4
+
+    def test_too_many_flagged_converged(self):
+        """
+        Test that an isophote with too many flagged data points has a
+        stop code of 1 even if its fit converged in the same iteration.
+        """
+        data = make_test_image(noise=1.0, seed=0)
+        xx = np.arange(data.shape[1])[np.newaxis, :]
+        mask = np.broadcast_to(np.abs(xx - 256) > 20, data.shape)
+        geometry = EllipseGeometry(256.0, 256.0, 40.0, 0.2, 0.0 * u.deg)
+        ellipse = Ellipse(np.ma.masked_array(data, mask=mask),
+                          geometry=geometry)
+        isophote = ellipse.fit_isophote(40.0, miniters=1, convergence=10.0)
+        assert isophote.n_data < 0.7 * (isophote.n_data + isophote.n_flagged)
+        assert isophote.stop_code == 1
+
     def test_failed_inward_isophote_geometry(self):
         """
         Test that the isophotes whose inward fits failed are extracted
@@ -756,12 +808,14 @@ class TestEllipse:
 
         # The fit should go to max_sma, but with fixed geometry
         # (noniterative mode) after too many sample points fall outside
-        # the image frame.
+        # the image frame. The isophotes with too many flagged points
+        # have a stop code of 1, also in noniterative mode.
         sma = isophote_list.sma
         stop_code = isophote_list.stop_code
         assert sma[-1] < 400.0 <= sma[-1] * 1.1
         idx = np.nonzero(stop_code == 1)[0][0]
-        assert np.all(stop_code[idx + 1:] == 4)
+        assert np.all(stop_code[idx + 1:] == 1)
+        assert np.all(isophote_list.n_iter[idx + 1:] == 0)
         assert np.all(stop_code[:idx + 1] != 4)
         _assert_sma_grid(isophote_list)
 
@@ -951,10 +1005,13 @@ class TestEllipse:
         """
         Test that the outward growth in noniterative mode stops at an
         isophote that lies entirely outside of the image.
+
+        The isophotes extracted beyond the image have too many flagged
+        data points (stop code 1).
         """
         data = make_test_image(nx=200, ny=200, pa=PA, noise=1.0, seed=0)
         isolist = Ellipse(data).fit_image(max_sma=400.0)
-        assert isolist[-1].stop_code == 4
+        assert isolist[-1].stop_code == 1
         assert np.all(isolist.n_data > 0)
         assert np.all(np.isfinite(isolist.intensity))
         assert 150 < isolist.sma[-1] < 220
