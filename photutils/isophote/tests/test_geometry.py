@@ -352,6 +352,19 @@ def test_find_center_noise():
     assert 'below the threshold' in log_list[0].msg
 
 
+def test_find_center_no_valid_data():
+    """
+    Test that the positions whose circular samples have no valid data
+    points are skipped, so that the center is not changed for an image
+    without valid data.
+    """
+    data = np.full((101, 101), np.nan)
+    geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1 * u.rad)
+    geometry.find_center(data, verbose=False)
+    assert geometry.x0 == 52.0
+    assert geometry.y0 == 48.0
+
+
 def test_find_center_flipped():
     """
     Test that find_center has no preferred direction.

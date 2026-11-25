@@ -152,6 +152,19 @@ def test_make_model_image_central_pixel():
     assert model[yc, xc] != central.intensity
 
 
+def test_make_model_image_central_pixel_outside():
+    """
+    Test a model image whose shape does not contain the center of the
+    central pixel isophote.
+    """
+    data = make_test_image(seed=0)
+    geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0 * u.deg)
+    isolist = Ellipse(data, geometry=geometry).fit_image(max_sma=40.0)
+    assert isolist[0].sma == 0
+    model = isolist.make_model_image((100, 100), fill_value=-1.0)
+    assert np.all(model == -1.0)
+
+
 def test_make_model_image_keyword_only():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image(max_sma=20.0)

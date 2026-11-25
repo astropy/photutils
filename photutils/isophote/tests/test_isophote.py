@@ -1103,6 +1103,39 @@ def test_from_table_round_trip():
     assert result.sample == [None] * len(result)
 
 
+def test_from_table_equivalent_units():
+    """
+    Test that from_table converts a column whose unit is equivalent to
+    the required unit.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_sma=30.0)
+    tbl = isolist.to_table(columns=isolist.properties)
+    tbl['ellipticity'] = 100.0 * np.asarray(tbl['ellipticity']) * u.percent
+    result = IsophoteList.from_table(tbl)
+    assert_allclose(result.ellipticity, isolist.ellipticity, rtol=1e-14)
+
+
+def test_upper_harmonic_fit_failure(monkeypatch):
+    """
+    Test that the upper harmonics and their errors are NaN if their fit
+    fails, while the geometry errors are still measured.
+    """
+    def fail(*args, **kwargs):  # noqa: ARG001
+        msg = 'Singular matrix'
+        raise np.linalg.LinAlgError(msg)
+
+    monkeypatch.setattr('photutils.isophote.isophote._fit_upper_harmonic',
+                        fail)
+    sample = EllipseSample(make_test_image(seed=0), 40.0)
+    sample._update(fixed_parameters=DEFAULT_FIX)
+    isophote = Isophote(sample, 1, valid=True, stop_code=0)
+    for name in ('a3', 'b3', 'a4', 'b4', 'a3_err', 'b3_err', 'a4_err',
+                 'b4_err'):
+        assert np.isnan(getattr(isophote, name))
+    assert np.isfinite(isophote.x0_err)
+
+
 def test_from_table_plain_table_and_copies():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image()

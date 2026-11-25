@@ -3,6 +3,7 @@
 Tests for the integrator module.
 """
 
+import sys
 import warnings
 
 import astropy.units as u
@@ -423,6 +424,31 @@ def test_integrator_constant_silent_uses():
         assert not hasattr(integrator, 'nonexistent')
 
     assert _record_deprecation_warnings(uses) == []
+
+
+def _no_frame_inspection(monkeypatch):
+    monkeypatch.delattr(sys, '_getframe')
+
+
+def _shallow_call_stack(monkeypatch):
+    def get_frame(depth=0):  # noqa: ARG001
+        msg = 'call stack is not deep enough'
+        raise ValueError(msg)
+
+    monkeypatch.setattr(sys, '_getframe', get_frame)
+
+
+@pytest.mark.parametrize('patch', [_no_frame_inspection,
+                                   _shallow_call_stack])
+def test_integrator_constant_without_import_probe(monkeypatch, patch):
+    """
+    Test that a deprecated constant still warns if the caller cannot be
+    inspected, e.g., on a Python implementation without
+    ``sys._getframe``.
+    """
+    patch(monkeypatch)
+    with pytest.warns(PhotutilsDeprecationWarning, match='MEAN'):
+        assert photutils.isophote.MEAN == 'mean'
 
 
 def test_integrator_getattr_unknown_name():
