@@ -810,7 +810,9 @@ API Changes
 
   - The default ``EllipseGeometry`` of ``Ellipse``, used when no
     ``geometry`` is input, now has an orientation of 0 degrees
-    instead of 90 degrees. [#2577]
+    instead of 90 degrees. Its center is now the center of the image,
+    ``((nx - 1) / 2, (ny - 1) / 2)``, instead of ``(nx / 2, ny / 2)``,
+    which was half a pixel away. [#2577]
 
   - The ``step`` keyword of ``Ellipse.fit_image`` and
     ``Ellipse.fit_isophote`` now defaults to `None`, which uses the

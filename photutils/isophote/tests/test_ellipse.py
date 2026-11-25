@@ -863,8 +863,8 @@ class TestEllipse:
         """
         data = np.ones((50, 80))
         isophote = Ellipse(data).fit_isophote(10.0, noniterate=True)
-        assert isophote.x0 == 40.0
-        assert isophote.y0 == 25.0
+        assert isophote.x0 == 39.5
+        assert isophote.y0 == 24.5
         assert isophote.ellipticity == 0.2
         assert isophote.orientation == 0.0 * u.deg
 
@@ -1305,7 +1305,8 @@ def test_fit_image_renamed_keywords(old, new, value):
 @pytest.mark.parametrize(('old', 'new', 'value'), FIT_ISOPHOTE_RENAMES)
 def test_fit_isophote_renamed_keywords(old, new, value):
     data = make_test_image(seed=0)
-    ellipse = Ellipse(data)
+    geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, 0.0 * u.deg)
+    ellipse = Ellipse(data, geometry=geometry)
     # The minimum valid fraction has an effect only when data points
     # are flagged.
     sigma_clip = SigmaClip(sigma=1.0, maxiters=1, cenfunc='mean',

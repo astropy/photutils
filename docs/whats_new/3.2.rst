@@ -65,7 +65,8 @@ list of fixes.
 
 The default geometry of `~photutils.isophote.Ellipse`, used when no
 ``geometry`` is input, now has an orientation of 0 degrees (the
-semimajor axis along the x axis) instead of 90 degrees. The ``step``
+semimajor axis along the x axis) instead of 90 degrees, and its
+center is the center of the image instead of half a pixel away. The ``step``
 keyword of :meth:`~photutils.isophote.Ellipse.fit_image` and
 :meth:`~photutils.isophote.Ellipse.fit_isophote` now defaults to the
 ``step`` of the input `~photutils.isophote.EllipseGeometry`, like the
