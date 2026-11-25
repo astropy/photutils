@@ -230,56 +230,6 @@ initial ellipse or the fitted isophotes on an image::
 See :doc:`../user_guide/isophote` for an example.
 
 
-Semimajor Axis Limits
----------------------
-
-The ``min_sma`` and ``max_sma`` limits of
-`~photutils.isophote.Ellipse.fit_image` are now inclusive, as in
-the STSDAS ``ellipse`` task. An isophote is fit at ``min_sma`` or
-``max_sma`` if the semimajor axis reaches that value. Previously, such
-an isophote was not fit. For example, a linear step of 5 pixels from
-a starting semimajor axis length of 20 pixels with ``min_sma=10`` and
-``max_sma=40`` now gives isophotes from 10 to 40 pixels instead of from
-15 to 35 pixels.
-
-`~photutils.isophote.Ellipse.fit_image` now raises a ``ValueError``
-if ``min_sma`` or ``max_sma`` is NaN, if ``min_sma`` is larger than
-``max_sma``, or if the starting semimajor axis length (``sma_start`` or
-the ``sma`` of the input geometry) is not between them. Previously, the
-starting isophote was fit even if it was outside the limits. To fit only
-inward or only outward from the starting isophote, set ``max_sma`` or
-``min_sma`` to the starting semimajor axis length.
-
-`~photutils.isophote.EllipseGeometry`,
-`~photutils.isophote.EllipseSample`, and
-`~photutils.isophote.Ellipse.fit_isophote` now raise a ``ValueError`` if
-the semimajor axis length is negative or not finite. A length of zero is
-still allowed and gives the central pixel. Previously, ``fit_isophote``
-returned the central pixel for a negative semimajor axis length, and a
-NaN length raised an unclear ``AttributeError``.
-
-
-Stop Codes
-----------
-
-`~photutils.isophote.Ellipse.fit_isophote` now returns an isophote
-with a stop code of 5, instead of -1, if no meaningful gradient could
-be measured or the ellipse diverged. This is the stop code that
-`~photutils.isophote.Ellipse.fit_image` already reported for such an
-isophote, so the two codes had the same meaning. The stop code of -1 is
-no longer used. Code that tests for it changes from::
-
-    # Old
-    if isophote.stop_code < 0:
-        ...
-
-to::
-
-    # New
-    if isophote.stop_code == 5:
-        ...
-
-
 Central Pixel Classes
 ---------------------
 
@@ -723,4 +673,52 @@ data type. Code that tests these values with ``is None`` must use
 
     # New
     if np.isnan(isophote.a3):
+        ...
+
+Isophote Semimajor Axis Limits
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``min_sma`` and ``max_sma`` limits of
+`~photutils.isophote.Ellipse.fit_image` are now inclusive, as in
+the STSDAS ``ellipse`` task. An isophote is fit at ``min_sma`` or
+``max_sma`` if the semimajor axis reaches that value. Previously, such
+an isophote was not fit. For example, a linear step of 5 pixels from
+a starting semimajor axis length of 20 pixels with ``min_sma=10`` and
+``max_sma=40`` now gives isophotes from 10 to 40 pixels instead of from
+15 to 35 pixels.
+
+`~photutils.isophote.Ellipse.fit_image` now raises a ``ValueError``
+if ``min_sma`` or ``max_sma`` is NaN, if ``min_sma`` is larger than
+``max_sma``, or if the starting semimajor axis length (``sma_start`` or
+the ``sma`` of the input geometry) is not between them. Previously, the
+starting isophote was fit even if it was outside the limits. To fit only
+inward or only outward from the starting isophote, set ``max_sma`` or
+``min_sma`` to the starting semimajor axis length.
+
+`~photutils.isophote.EllipseGeometry`,
+`~photutils.isophote.EllipseSample`, and
+`~photutils.isophote.Ellipse.fit_isophote` now raise a ``ValueError`` if
+the semimajor axis length is negative or not finite. A length of zero is
+still allowed and gives the central pixel. Previously, ``fit_isophote``
+returned the central pixel for a negative semimajor axis length, and a
+NaN length raised an unclear ``AttributeError``.
+
+Isophote Stop Codes
+^^^^^^^^^^^^^^^^^^^
+
+`~photutils.isophote.Ellipse.fit_isophote` now returns an isophote
+with a stop code of 5, instead of -1, if no meaningful gradient could
+be measured or the ellipse diverged. This is the stop code that
+`~photutils.isophote.Ellipse.fit_image` already reported for such an
+isophote, so the two codes had the same meaning. The stop code of -1 is
+no longer used. Code that tests for it changes from::
+
+    # Old
+    if isophote.stop_code < 0:
+        ...
+
+to::
+
+    # New
+    if isophote.stop_code == 5:
         ...
