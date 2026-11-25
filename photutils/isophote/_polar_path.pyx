@@ -38,7 +38,7 @@ cdef Py_ssize_t walk_path(
     cdef Py_ssize_t n = 0
     cdef double step, next_phi, cos2, sin2
 
-    while phi <= phi_max:
+    while phi < phi_max:
         if store:
             phis[n] = phi
             radii[n] = radius
@@ -51,13 +51,14 @@ cdef Py_ssize_t walk_path(
 
         # The angle step is about one pixel along the path, but at most
         # 0.5 radians. Stop if the path cannot advance (a nonpositive or
-        # NaN radius, or a radius so large that the step does not change
-        # the angle).
+        # NaN radius) or if the step is below the resolution of the
+        # angles at the end of the path (a radius so large that the path
+        # could not be completed).
         step = 1.0 / radius
         if step > 0.5:
             step = 0.5
         next_phi = phi + step
-        if not (next_phi > phi):
+        if not (next_phi > phi and phi_max + step > phi_max):
             break
 
         # The squares are computed in separate statements so that a
@@ -98,7 +99,8 @@ def compute_polar_path(
         The polar radius (pixels) of the first point.
 
     phi_max : float
-        The maximum polar angle (radians) of the path.
+        The polar angle (radians) where the path ends. The path
+        includes only angles smaller than this value.
 
     sma : float
         The semimajor axis length (pixels) of the ellipse.

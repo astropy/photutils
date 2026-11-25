@@ -118,11 +118,11 @@ class TestFitEllipseSamples:
         harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
-        assert_allclose(np.mean(y0), 200.019, atol=0.001)
-        assert_allclose(np.mean(a1), -0.000138, atol=0.001)
-        assert_allclose(np.mean(b1), 0.000254, atol=0.001)
-        assert_allclose(np.mean(a2), -5.658e-05, atol=0.001)
-        assert_allclose(np.mean(b2), -0.00911, atol=0.001)
+        assert_allclose(np.mean(y0), 200.022, atol=0.001)
+        assert_allclose(np.mean(a1), 0.000315, atol=0.001)
+        assert_allclose(np.mean(b1), -2.4e-05, atol=0.001)
+        assert_allclose(np.mean(a2), 0.00039, atol=0.001)
+        assert_allclose(np.mean(b2), -0.00634, atol=0.001)
 
         # Check that harmonics subtract nicely.
         model = _first_and_second_harmonic_function(
@@ -140,11 +140,11 @@ class TestFitEllipseSamples:
         harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
-        assert_allclose(np.mean(y0), 188.677, atol=0.001)
-        assert_allclose(np.mean(a1), 0.000283, atol=0.001)
-        assert_allclose(np.mean(b1), -0.0121, atol=0.001)
-        assert_allclose(np.mean(a2), -0.00091, atol=0.001)
-        assert_allclose(np.mean(b2), 10.134, atol=0.001)
+        assert_allclose(np.mean(y0), 188.687, atol=0.001)
+        assert_allclose(np.mean(a1), -0.00025, atol=0.001)
+        assert_allclose(np.mean(b1), 0.00713, atol=0.001)
+        assert_allclose(np.mean(a2), -0.00075, atol=0.001)
+        assert_allclose(np.mean(b2), 10.157, atol=0.001)
 
     def test_fit_ellipsesample_3(self):
         # Initial guess for center is offset.
@@ -154,11 +154,11 @@ class TestFitEllipseSamples:
         harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
-        assert_allclose(np.mean(y0), 152.857, atol=0.001)
-        assert_allclose(np.mean(a1), 55.348, atol=0.001)
-        assert_allclose(np.mean(b1), 33.508, atol=0.001)
-        assert_allclose(np.mean(a2), 33.056, atol=0.001)
-        assert_allclose(np.mean(b2), -13.890, atol=0.001)
+        assert_allclose(np.mean(y0), 152.660, atol=0.001)
+        assert_allclose(np.mean(a1), 55.340, atol=0.001)
+        assert_allclose(np.mean(b1), 33.096, atol=0.001)
+        assert_allclose(np.mean(a2), 33.048, atol=0.001)
+        assert_allclose(np.mean(b2), -14.296, atol=0.001)
 
     def test_fit_ellipsesample_4(self):
         sample = EllipseSample(self.data2, 40.0, ellipticity=0.4)
@@ -167,11 +167,11 @@ class TestFitEllipseSamples:
         harmonics = _fit_first_and_second_harmonics(s[0], s[2])
         y0, a1, b1, a2, b2 = harmonics[0]
 
-        assert_allclose(np.mean(y0), 245.136, atol=0.001)
-        assert_allclose(np.mean(a1), 0.000203, atol=0.001)
-        assert_allclose(np.mean(b1), 0.0191, atol=0.001)
-        assert_allclose(np.mean(a2), 28.788, atol=0.001)
-        assert_allclose(np.mean(b2), -63.108, atol=0.001)
+        assert_allclose(np.mean(y0), 245.135, atol=0.001)
+        assert_allclose(np.mean(a1), -0.00415, atol=0.001)
+        assert_allclose(np.mean(b1), -0.0139, atol=0.001)
+        assert_allclose(np.mean(a2), 28.793, atol=0.001)
+        assert_allclose(np.mean(b2), -63.154, atol=0.001)
 
     def test_fit_upper_harmonics(self):
         data = make_test_image(noise=1.0e-10, seed=0)
@@ -179,15 +179,15 @@ class TestFitEllipseSamples:
         fitter = _EllipseFitter(sample)
         iso = fitter.fit(maxiters=400)
 
-        assert_allclose(iso.a3, 8.81e-7, atol=1.0e-8)
-        assert_allclose(iso.b3, 8.51e-7, atol=1.0e-8)
-        assert_allclose(iso.a4, 4.51e-6, atol=1.0e-8)
-        assert_allclose(iso.b4, -4.57e-5, atol=1.0e-7)
+        assert_allclose(iso.a3, -1.985e-6, atol=1.0e-8)
+        assert_allclose(iso.b3, 2.26e-8, atol=1.0e-8)
+        assert_allclose(iso.a4, -4.036e-6, atol=1.0e-8)
+        assert_allclose(iso.b4, -9.59e-6, atol=1.0e-7)
 
-        assert_allclose(iso.a3_err, 8.067e-6, atol=1.0e-7)
-        assert_allclose(iso.b3_err, 8.104e-6, atol=1.0e-7)
-        assert_allclose(iso.a4_err, 7.454e-6, atol=1.0e-7)
-        assert_allclose(iso.b4_err, 7.491e-6, atol=1.0e-7)
+        assert_allclose(iso.a3_err, 8.110e-6, atol=1.0e-7)
+        assert_allclose(iso.b3_err, 8.075e-6, atol=1.0e-7)
+        assert_allclose(iso.a4_err, 8.078e-6, atol=1.0e-7)
+        assert_allclose(iso.b4_err, 8.046e-6, atol=1.0e-7)
 
 
 def test_upper_harmonics_sign():

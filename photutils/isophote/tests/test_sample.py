@@ -89,13 +89,31 @@ def test_area_integration_annulus_width(integration_mode, sma, step,
         assert_array_equal(values, bilinear_values)
 
 
-@pytest.mark.parametrize('integration_mode', ['bilinear', 'mean'])
-def test_path_samples_once(integration_mode):
+@pytest.mark.parametrize('integration_mode', ['bilinear', 'nearest_neighbor'])
+def test_path_full_circle(integration_mode):
     """
-    Test that the elliptical path is sampled once, without sampling the
-    start of the path again past a polar angle of 2 pi.
+    Test that the sampling path of the pixel integration modes covers
+    the full ellipse once.
+
+    The path starts on the semimajor axis and ends before a polar
+    angle of 2 pi, so that no part of the ellipse is sampled twice or
+    left out.
     """
     sample = EllipseSample(DATA, 100.0, integration_mode=integration_mode)
+    angles, radii, _ = sample.extract()
+    assert angles[0] == 0.0
+    assert np.all(np.diff(angles) > 0)
+    last_step = min(1.0 / radii[-1], 0.5)
+    assert angles[-1] < 2.0 * np.pi <= angles[-1] + last_step
+
+
+def test_path_samples_once():
+    """
+    Test that the sectors of the area integration modes end at a polar
+    angle of 2 pi, as in the STSDAS ellipse task, without sampling the
+    start of the path again.
+    """
+    sample = EllipseSample(DATA, 100.0, integration_mode='mean')
     angles = sample.extract()[0]
     assert np.all(angles >= 0)
     assert np.all(angles < 2.0 * np.pi)
@@ -447,7 +465,7 @@ def test_update_repeated():
                          [('rising', 0.0, None),
                           ('shallow', 0.0, -1.478),
                           ('shallow', 1.0, None),
-                          ('similar', 1.0, -10.79)])
+                          ('similar', 1.0, -10.93)])
 def test_meaningful_gradient(profile, modulation, expected):
     """
     Test which measured gradients are meaningful with respect to the
@@ -538,12 +556,12 @@ def test_sampling_path(sma):
     sample = EllipseSample(data, sma, ellipticity=0.3)
     angles, radii, _ = sample.extract()
     assert sample.n_valid == sample.n_total
-    assert angles[0] == sample.geometry._initial_polar_angle
+    assert angles[0] == 0.0
     assert_allclose(radii, sample.geometry.radius(angles))
     steps = np.minimum(1.0 / radii, 0.5)
     assert_allclose(np.diff(angles), steps[:-1])
     phi_max = 2.0 * np.pi
-    assert angles[-1] <= phi_max < angles[-1] + steps[-1]
+    assert angles[-1] < phi_max <= angles[-1] + steps[-1]
 
 
 def test_sample_sma_zero():

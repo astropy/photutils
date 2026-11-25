@@ -173,21 +173,21 @@ The :meth:`~photutils.isophote.IsophoteList.to_table` method returns
 the isophote values as a table::
 
     >>> iso_table = isolist.to_table()
-    >>> iso_table.pprint(max_width=80)
-           sma              intensity         intensity_err     ... n_iter stop_code
-                                                                ...
-    ------------------ ------------------- -------------------- ... ------ ---------
-                   0.0  392.40301224103547                  nan ...      0         0
-    0.5346972612827552   268.1139667720711   1.7620110601202565 ...     12         0
-    0.5881669874110307  257.98012406008917   1.7636298083677573 ...     10         0
-    0.6469836861521338  247.13824214053332   1.6479761837696134 ...     10         0
-                   ...                 ...                  ... ...    ...       ...
-    101.08940569985889  0.4622304207494331 0.014425761794151138 ...     14         0
-    111.19834626984479 0.29106071850491716 0.014957824453899921 ...     10         0
-    122.31818089682928 0.19270314093489685 0.013246400242050546 ...     26         0
-     134.5499989865122 0.17506574466746572  0.01419926263384718 ...     17         0
-    148.00499888516345 0.08092386426151292  0.01183057896855629 ...     12         0
-    Length = 61 rows
+    >>> iso_table.pprint(max_lines=14, max_width=80)
+           sma              intensity       ... n_iter stop_code
+                                            ...
+    ------------------ -------------------- ... ------ ---------
+                   0.0    392.6095189027451 ...      0         0
+    0.5346972612827552    268.0174184605056 ...     50         2
+    0.5881669874110307    257.7453887357617 ...     10         0
+    0.6469836861521338    246.9607872120616 ...     10         0
+                   ...                  ... ...    ...       ...
+    122.31818089682928   0.1751635221761607 ...     10         0
+     134.5499989865122  0.07995100769839476 ...     10         0
+    148.00499888516345  0.09859839364570763 ...     23         0
+     162.8054987736798   0.0521224279273517 ...      1         5
+     179.0860486510478 0.051711734842313985 ...      2         1
+    Length = 63 rows
 
 Let's plot the ellipticity, orientation, and the center x and y
 position as a function of the semimajor axis length:
@@ -506,7 +506,8 @@ intensities should show no systematic variation with the angle:
     for sma in (10, 20, 40, 80):
         isophote = isolist.get_closest(sma)
         x, y = isophote.sampled_coordinates()
-        line, = ax1.plot(x, y)
+        # Repeat the first point to close the curve
+        line, = ax1.plot(np.append(x, x[0]), np.append(y, y[0]))
         sample = isophote.sample
         ax2.plot(np.rad2deg(sample.angles),
                  sample.intensities / isophote.intensity, '.',
@@ -595,18 +596,18 @@ axis lengths from 10 to 90 pixels::
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
-    [6.1 1.2]
+    [6.  0.7]
     >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.5)
     True True
 
 Without rejection, the star and the companion pull the fitted centers
-by up to 6 pixels, the ellipticity reaches 0.55, and the fit stops at
-a semimajor axis length of about 92 pixels. Over this range of
+by up to 6 pixels, the ellipticity reaches 0.53, and the fit stops at
+a semimajor axis length of about 101 pixels. Over this range of
 semimajor axis lengths, the mask and sigma clipping keep the centers
 within about 1 pixel of the galaxy center and the ellipticity between
 0.39 and 0.41. The mask alone is not enough for this image, because the
 star still disturbs the fit. Sigma clipping alone removes most of the
-distortion and keeps the centers within 2 pixels. The mask removes
+distortion and keeps the centers within about 2 pixels. The mask removes
 the rest.
 
 Let's plot the image with the masked region, and the residuals of the
