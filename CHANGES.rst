@@ -462,6 +462,12 @@ Bug Fixes
     points were flagged. It now returns a stop code of 1, as in the
     STSDAS ``ellipse`` task. [#2577]
 
+  - Fixed the sampling of the isophotes, which continued past a polar
+    angle of 2 pi and sampled the start of the elliptical path twice.
+    As in the STSDAS ``ellipse`` task, the path now ends at 2 pi. This
+    changes the fitted isophotes slightly, and brings them closer to
+    the STSDAS results. [#2577]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,

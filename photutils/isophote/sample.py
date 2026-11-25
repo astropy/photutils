@@ -668,7 +668,7 @@ class EllipseSample:
         self._values = s
         return s
 
-    def _extract(self, *, phi_min=0.05):
+    def _extract(self):
         if self.geometry.sma == 0:
             return self._extract_center()
 
@@ -718,10 +718,11 @@ class EllipseSample:
                 integrator = _INTEGRATORS[self.integration_mode](
                     self.image, self.geometry, angles, radii, intensities)
 
-        # Walk along elliptical path, integrating at specified places
-        # defined by polar vector. Need to go a bit beyond full circle
-        # to ensure full coverage.
-        phi_max = np.pi * 2.0 + phi_min
+        # Walk once along the elliptical path, integrating at specified
+        # places defined by polar vector. As in the STSDAS ellipse task,
+        # the walk ends at a polar angle of 2 pi, so that the start of
+        # the path is not sampled again.
+        phi_max = np.pi * 2.0
         if integrator.is_area():
             while phi <= phi_max:
                 # Do the integration at phi-radius position, and append

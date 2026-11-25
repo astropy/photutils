@@ -59,6 +59,19 @@ def test_scatter(integrmode, amin, amax):
     assert iso.pixel_stddev > amin
 
 
+@pytest.mark.parametrize('integration_mode', ['bilinear', 'mean'])
+def test_path_samples_once(integration_mode):
+    """
+    Test that the elliptical path is sampled once, without sampling the
+    start of the path again past a polar angle of 2 pi.
+    """
+    sample = EllipseSample(DATA, 100.0, integration_mode=integration_mode)
+    angles = sample.extract()[0]
+    assert np.all(angles >= 0)
+    assert np.all(angles < 2.0 * np.pi)
+    assert np.all(np.diff(angles) > 0)
+
+
 def test_coordinates():
     sample = EllipseSample(DATA, 50.0)
     sample._update(fixed_parameters=DEFAULT_FIX)
@@ -377,7 +390,7 @@ def test_update_repeated():
                          [('rising', 0.0, None),
                           ('shallow', 0.0, -1.478),
                           ('shallow', 1.0, None),
-                          ('similar', 1.0, -10.92)])
+                          ('similar', 1.0, -10.79)])
 def test_meaningful_gradient(profile, modulation, expected):
     """
     Test which measured gradients are meaningful with respect to the
@@ -472,7 +485,7 @@ def test_sampling_path(sma):
     assert_allclose(radii, sample.geometry.radius(angles))
     steps = np.minimum(1.0 / radii, 0.5)
     assert_allclose(np.diff(angles), steps[:-1])
-    phi_max = 2.0 * np.pi + 0.05
+    phi_max = 2.0 * np.pi
     assert angles[-1] <= phi_max < angles[-1] + steps[-1]
 
 
