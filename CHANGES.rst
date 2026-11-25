@@ -457,6 +457,11 @@ Bug Fixes
     second isophote had too many flagged data points (stop code 1).
     [#2577]
 
+  - Fixed ``Ellipse.fit_image`` ending the inward fits at the first
+    isophote that could not be fit (stop code 3), e.g., inside a masked
+    ring, which dropped all of the smaller isophotes. As in the STSDAS
+    ``ellipse`` task, such an isophote is now skipped. [#2577]
+
   - Fixed the isophote fitter returning a stop code of 0 for a fit
     that converged in the same iteration in which too many of its data
     points were flagged. It now returns a stop code of 1, as in the

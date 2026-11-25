@@ -736,11 +736,13 @@ class Ellipse:
             if isophote.stop_code == 5:
                 self._fix_last_isophote(isophote_list, previous_isophote)
 
-            # But if the harmonic fit failed, bail out immediately.
-            # This usually happens at very small radii when the number
-            # of data points is too small.
+            # An isophote whose harmonic fit failed or that has too few
+            # valid data points (e.g., inside a masked region) is not
+            # stored. As in the STSDAS ellipse task, it is skipped and
+            # the next isophote starts from the last stored geometry.
             if isophote.stop_code == 3:
-                break
+                sma = isophote.sample.geometry._update_sma(step)
+                continue
 
             # Reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.

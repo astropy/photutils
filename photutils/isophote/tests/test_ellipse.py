@@ -337,6 +337,29 @@ class TestEllipse:
         assert isophote.n_data < 0.7 * (isophote.n_data + isophote.n_flagged)
         assert isophote.stop_code == 1
 
+    def test_inward_isophote_without_valid_data(self):
+        """
+        Test that an inward isophote that cannot be fit (stop code 3)
+        is skipped and the inward fits continue, as in the STSDAS
+        ellipse task.
+
+        The isophotes inside a masked elliptical ring are fitted.
+        """
+        data = make_test_image(noise=1.0, seed=0)
+        yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+        radius = np.hypot(xx - 256.0, (yy - 256.0) / 0.8)
+        mask = (radius > 6.5) & (radius < 9.5)
+        geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0 * u.deg)
+        ellipse = Ellipse(np.ma.masked_array(data, mask=mask),
+                          geometry=geometry)
+        match = 'Too small sample to warrant a fit'
+        with pytest.warns(AstropyUserWarning, match=match):
+            isolist = ellipse.fit_image(max_sma=25.0)
+
+        inner = (isolist.sma > 2.0) & (isolist.sma < 5.0)
+        assert np.count_nonzero(inner) > 5
+        assert np.all(isolist.stop_code[inner] == 0)
+
     def test_failed_inward_isophote_geometry(self):
         """
         Test that the isophotes whose inward fits failed are extracted
