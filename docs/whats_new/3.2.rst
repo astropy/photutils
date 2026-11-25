@@ -45,8 +45,11 @@ new `~photutils.background.make_morans_i_map` function.
 See :ref:`morans_i_mask` for more details.
 
 
+Isophote Improvements
+=====================
+
 Isophote Fitting Improvements
-=============================
+-----------------------------
 
 The elliptical isophote fits of `~photutils.isophote.Ellipse` are now
 about 5 times faster, and about 70 times faster for masked images with
@@ -96,7 +99,7 @@ images with a low signal-to-noise ratio.
 
 
 Isophote Measurements on Fixed Ellipses
-=======================================
+---------------------------------------
 
 The new :meth:`~photutils.isophote.Ellipse.measure_isophotes` method
 measures an image along a given set of ellipses without fitting them,
@@ -118,7 +121,7 @@ details.
 
 
 Limiting the Isophote Center Shift
-==================================
+----------------------------------
 
 :meth:`~photutils.isophote.Ellipse.fit_image` and
 :meth:`~photutils.isophote.Ellipse.fit_isophote` have a
@@ -147,7 +150,7 @@ more details.
 
 
 Isophote Tables and Model Images
-================================
+--------------------------------
 
 The new :meth:`~photutils.isophote.IsophoteList.from_table` method
 creates an `~photutils.isophote.IsophoteList` from a table. It is
@@ -184,7 +187,7 @@ details.
 
 
 Isophote Sigma Clipping
-=======================
+-----------------------
 
 :meth:`~photutils.isophote.Ellipse.fit_image`,
 :meth:`~photutils.isophote.Ellipse.fit_isophote`, and
@@ -209,7 +212,7 @@ The default is `None`, which means no sigma clipping, as before. The
 
 
 Apertures From Isophote Ellipses
-================================
+--------------------------------
 
 `~photutils.isophote.EllipseGeometry` and `~photutils.isophote.Isophote`
 have a new ``to_aperture`` method that returns the ellipse as an
