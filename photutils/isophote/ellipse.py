@@ -295,7 +295,8 @@ class Ellipse:
         isophote at each sma. The entire set of isophotes is returned in
         an `~photutils.isophote.IsophoteList` instance.
 
-        Note that the fix_XXX parameters act in unison. If any of them
+        Note that the ``fix_center``, ``fix_orientation``, and
+        ``fix_ellipticity`` parameters act in unison. If any of them
         is set to `True` in this call, the others assume their default
         (False) values, and together they override the fixed
         parameters of the `~photutils.isophote.EllipseGeometry`
@@ -307,7 +308,7 @@ class Ellipse:
         modified.
 
         If the center, orientation, and ellipticity are all fixed,
-        by the fix_XXX parameters or by the
+        by these parameters or by the
         `~photutils.isophote.EllipseGeometry` instance, there is
         nothing to fit. A warning is emitted and an empty
         `~photutils.isophote.IsophoteList` is returned.

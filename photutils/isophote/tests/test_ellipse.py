@@ -120,8 +120,9 @@ class TestEllipse:
 
     def test_fit_image_geometry_unchanged(self):
         """
-        Test that the fix_XXX and linear parameters of fit_image apply
-        only to that call and do not modify the input geometry.
+        Test that the fix_center, fix_orientation, fix_ellipticity,
+        and linear_growth parameters of fit_image apply only to that
+        call and do not modify the input geometry.
         """
         geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, PA * u.rad)
         ellipse = Ellipse(self.data, geometry=geometry)
