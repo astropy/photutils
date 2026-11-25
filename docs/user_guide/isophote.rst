@@ -37,11 +37,12 @@ The shape of an ellipse is described by its ellipticity, defined as
     \epsilon = 1 - \frac{b}{a}
 
 where :math:`a` and :math:`b` are the semimajor and semiminor axis
-lengths. The ellipticity is used instead of the eccentricity because
-it relates better to the visual flattening of an ellipse. A slightly
-flattened circle is easily seen to have an ellipticity of about 0.1.
-The same ellipse has an eccentricity of 0.44, which is not obvious
-from visual inspection. The two quantities are related by
+lengths. The ellipticity (:math:`\epsilon`) is used instead of the
+eccentricity (:math:`e`) because it relates better to the visual
+flattening of an ellipse. A slightly flattened circle is easily seen to
+have an ellipticity of about 0.1. The same ellipse has an eccentricity
+of 0.44, which is not obvious from visual inspection. The two quantities
+are related by
 
 .. math::
 
@@ -114,7 +115,7 @@ be plotted:
     >>> norm = simple_norm(data, 'sqrt', percent=99.0)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data, origin='lower', norm=norm)
-    >>> aper.plot(color='white')
+    >>> aper.plot(color='red')
 
 .. plot::
 
@@ -140,7 +141,7 @@ be plotted:
     norm = simple_norm(data, 'sqrt', percent=99.0)
     fig, ax = plt.subplots()
     ax.imshow(data, origin='lower', norm=norm)
-    aper.plot(color='white')
+    aper.plot(color='red')
 
 Next, we create an instance of the `~photutils.isophote.Ellipse`
 class, inputting the image and the initial ellipse geometry::
@@ -171,21 +172,21 @@ pixels. They match the values of the simulated galaxy::
 The :meth:`~photutils.isophote.IsophoteList.to_table` method returns
 the isophote values as a table::
 
-    >>> print(isolist.to_table())  # doctest: +SKIP
-           sma              intensity      ... n_iter stop_code
-                                           ...
-    ------------------ ------------------- ... ------ ---------
-                   0.0  392.40301224103547 ...      0         0
-    0.5346972612827552   268.1139667720711 ...     12         0
-    0.5881669874110307  257.98012406008917 ...     10         0
-    0.6469836861521338  247.13824214053332 ...     10         0
-    0.7116820547673471  235.60801120562274 ...     10         0
-                   ...                 ... ...    ...       ...
-    101.08940569985889  0.4622304207494331 ...     14         0
-    111.19834626984479 0.29106071850491716 ...     10         0
-    122.31818089682928 0.19270314093489685 ...     26         0
-     134.5499989865122 0.17506574466746572 ...     17         0
-    148.00499888516345 0.08092386426151292 ...     12         0
+    >>> iso_table = isolist.to_table()
+    >>> iso_table.pprint(max_width=80)
+           sma              intensity         intensity_err     ... n_iter stop_code
+                                                                ...
+    ------------------ ------------------- -------------------- ... ------ ---------
+                   0.0  392.40301224103547                  nan ...      0         0
+    0.5346972612827552   268.1139667720711   1.7620110601202565 ...     12         0
+    0.5881669874110307  257.98012406008917   1.7636298083677573 ...     10         0
+    0.6469836861521338  247.13824214053332   1.6479761837696134 ...     10         0
+                   ...                 ...                  ... ...    ...       ...
+    101.08940569985889  0.4622304207494331 0.014425761794151138 ...     14         0
+    111.19834626984479 0.29106071850491716 0.014957824453899921 ...     10         0
+    122.31818089682928 0.19270314093489685 0.013246400242050546 ...     26         0
+     134.5499989865122 0.17506574466746572  0.01419926263384718 ...     17         0
+    148.00499888516345 0.08092386426151292  0.01183057896855629 ...     12         0
     Length = 61 rows
 
 Let's plot the ellipticity, orientation, and the center x and y
@@ -214,7 +215,7 @@ position as a function of the semimajor axis length:
     isolist = ellipse.fit_image()
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2,
-                                                 figsize=(8, 8))
+                                                 figsize=(10, 8))
     fig.subplots_adjust(hspace=0.35, wspace=0.35)
 
     ax1.errorbar(isolist.sma, isolist.ellipticity,
@@ -447,10 +448,11 @@ invalid row, if a ``sma`` value is negative, if an ``ellipticity``
 value is not in the range from 0 up to (but not including) 1, or if a
 required geometry value is not finite.
 
-The loaded isophotes have no sample, so ``loaded.sample`` holds `None`
-for each isophote. They can still be used to make a model image with
-:meth:`~photutils.isophote.IsophoteList.make_model_image`. To measure
-an image along them, pass the list to
+The loaded isophotes have no sample, so ``loaded.sample`` holds
+`None` for each isophote. They can still be used to make a
+model image with :class:`~photutils.isophote.IsophoteList`'s
+:meth:`~photutils.isophote.IsophoteList.make_model_image`.
+To measure an image along them, pass the list to
 :meth:`~photutils.isophote.Ellipse.measure_isophotes`::
 
     >>> measured = ellipse.measure_isophotes(loaded)
@@ -929,7 +931,7 @@ original galaxy for comparison:
     isolist = Ellipse(data, geometry=geometry).fit_image()
     isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
 
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8),
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 8),
                              sharex=True, sharey=True)
     fig.subplots_adjust(hspace=0.15, wspace=0.1)
     for ax, name in zip(axes.ravel(), ('a3', 'b3', 'a4', 'b4')):
