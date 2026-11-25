@@ -475,7 +475,7 @@ returns the image coordinates of the sampled points.
 Let's plot a few isophotes over the image, along with their sampled
 intensities as a function of the angle. Each set of intensities is
 divided by the mean intensity of its isophote. For a good fit, the
-intensities show no systematic variation with the angle:
+intensities should show no systematic variation with the angle:
 
 .. plot::
 
