@@ -119,14 +119,15 @@ class Ellipse:
     ellipticity, and orientation. Using these values, the image
     is sampled along an elliptical path, producing a 1D
     function that describes the dependence of intensity (pixel value)
-    with angle (E). The function is stored as a set of 1D numpy arrays.
-    The harmonic content of this function is analyzed by least-squares
-    fitting to the function:
+    with the polar angle (:math:`\\phi`), measured counterclockwise from
+    the semimajor axis. The function is stored as a set of 1D numpy
+    arrays. The harmonic content of this function is analyzed by
+    least-squares fitting to the function:
 
     .. math::
 
-        y  =  y0 + (A1 * \\sin(E)) + (B1 * \\cos(E)) + (A2 * \\sin(2 * E))
-              + (B2 * \\cos(2 * E))
+        y  =  y0 + (A1 * \\sin(\\phi)) + (B1 * \\cos(\\phi))
+              + (A2 * \\sin(2 * \\phi)) + (B2 * \\cos(2 * \\phi))
 
     Each one of the harmonic amplitudes (A1, B1, A2, and B2) is related
     to a specific ellipse geometric parameter in the sense that it

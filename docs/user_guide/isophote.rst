@@ -869,11 +869,11 @@ ellipse of an isophote is fitted, the third and fourth harmonics of
 its sampled intensities are measured. As in the STSDAS ``ellipse``
 task, each harmonic is fit to the residual intensities after the
 first and second harmonics, and then the third harmonic, are
-subtracted. The ``a3`` and ``b3`` attributes
-are the amplitudes of the :math:`\sin(3E)` and :math:`\cos(3E)` terms,
-and ``a4`` and ``b4`` are the amplitudes of the :math:`\sin(4E)` and
-:math:`\cos(4E)` terms, where :math:`E` is the angle from the
-semimajor axis. The amplitudes are divided by the semimajor axis
+subtracted. The ``a3`` and ``b3`` attributes are the amplitudes of
+the :math:`\sin(3\phi)` and :math:`\cos(3\phi)` terms, and ``a4`` and
+``b4`` are the amplitudes of the :math:`\sin(4\phi)` and
+:math:`\cos(4\phi)` terms, where :math:`\phi` is the polar angle
+measured counterclockwise from the semimajor axis. The amplitudes are divided by the semimajor axis
 length and by the absolute value of the local radial intensity
 gradient, so they can be compared with each other and between
 isophotes. Their errors are in the ``a3_err``, ``b3_err``,
@@ -1183,9 +1183,12 @@ where :math:`{\delta}_{X0}` and :math:`{\delta}_{Y0}` are the center
 corrections along the major and minor axes of the ellipse,
 respectively, :math:`\epsilon` is the ellipticity, :math:`\Theta` is
 the orientation, :math:`A_i` and :math:`B_i` are the coefficients
-of :math:`\sin(iE)` and :math:`\cos(iE)` in the harmonic fit to the
-sampled intensities as a function of the angle :math:`E` from the
-major axis, and :math:`I'` is the derivative of the intensity along
+of :math:`\sin(i\phi)` and :math:`\cos(i\phi)` in the harmonic fit
+to the sampled intensities as a function of the polar angle
+:math:`\phi` measured from the major axis (Jedrzejewski 1987 writes
+these terms with the eccentric anomaly :math:`E`, but this
+implementation and the STSDAS ``ellipse`` task use the polar angle),
+and :math:`I'` is the derivative of the intensity along
 the major axis direction evaluated at a semimajor axis length of
 :math:`a_0`. The center corrections are then rotated by the
 orientation to give the corrections along the image x and y axes.
