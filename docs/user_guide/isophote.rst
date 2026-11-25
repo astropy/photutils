@@ -887,10 +887,10 @@ subtracted. The ``a3`` and ``b3`` attributes are the amplitudes of
 the :math:`\sin(3\phi)` and :math:`\cos(3\phi)` terms, and ``a4`` and
 ``b4`` are the amplitudes of the :math:`\sin(4\phi)` and
 :math:`\cos(4\phi)` terms, where :math:`\phi` is the polar angle
-measured counterclockwise from the semimajor axis. The amplitudes are divided by the semimajor axis
-length and by the absolute value of the local radial intensity
-gradient, so they can be compared with each other and between
-isophotes. Their errors are in the ``a3_err``, ``b3_err``,
+measured counterclockwise from the semimajor axis. The amplitudes are
+divided by the semimajor axis length and by the absolute value of the
+local radial intensity gradient, so they can be compared with each
+other and between isophotes. Their errors are in the ``a3_err``, ``b3_err``,
 ``a4_err``, and ``b4_err`` attributes.
 
 The ``b4`` amplitude is the most used. It is positive for disky
@@ -906,6 +906,54 @@ galaxy and fit the image::
     >>> idx = (isolist_disky.sma > 15) & (isolist_disky.sma < 50)
     >>> print(np.round(np.median(isolist_disky.b4[idx]), 2))
     0.03
+
+Let's plot a few fitted ellipses over both galaxies, along with the
+actual isophotes of the images (contours at the intensities of the
+ellipses). The isophotes of the disky galaxy (dashed contours) are
+pointed along the major axis, while the fitted ellipses are not:
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import Gaussian2D, Sersic2D
+    from astropy.visualization import simple_norm
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
+                      x_stddev=30.0, y_stddev=4.0,
+                      theta=np.deg2rad(40.0))
+    disky = data + disk(xx, yy)
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    isolist = Ellipse(data, geometry=geometry).fit_image()
+    isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
+
+    fig, axes = plt.subplots(ncols=2, figsize=(10, 5))
+    for ax, image, iso_list, title in ((axes[0], data, isolist, 'Original'),
+                                       (axes[1], disky, isolist_disky,
+                                        'Disky')):
+        norm = simple_norm(image, 'sqrt', percent=99.5)
+        ax.imshow(image, origin='lower', norm=norm, cmap='Greys_r')
+        for sma, color in ((20, 'C0'), (30, 'C1'), (45, 'C2')):
+            isophote = iso_list.get_closest(sma)
+            isophote.to_aperture().plot(ax=ax, color=color, linewidth=1.5)
+            ax.contour(image, levels=[isophote.intensity], colors='white',
+                       linewidths=1, linestyles='dashed')
+        ax.set_xlim(90, 230)
+        ax.set_ylim(70, 210)
+        ax.set_title(title)
 
 Let's plot the four amplitudes of the disky galaxy, and those of the
 original galaxy for comparison:
