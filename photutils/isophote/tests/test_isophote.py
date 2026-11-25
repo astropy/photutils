@@ -843,7 +843,7 @@ def test_renamed_result_attributes(old, new):
         old_values = getattr(isolist, old)
     assert_array_equal(old_values, getattr(isolist, new))
     with pytest.warns(PhotutilsDeprecationWarning, match=match):
-        assert getattr(isolist[5], old) == getattr(isolist[5], new)
+        assert_equal(getattr(isolist[5], old), getattr(isolist[5], new))
 
 
 def test_to_table_columns_equal_attributes():
@@ -1007,7 +1007,7 @@ def test_isophote_copy_and_pickle_no_warnings():
         for clone in clones:
             assert clone.intensity == iso.intensity
             assert clone.n_data == iso.n_data
-            assert clone.orientation_err == iso.orientation_err
+            assert_equal(clone.orientation_err, iso.orientation_err)
 
 
 def test_to_table_default_columns():

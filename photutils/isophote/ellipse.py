@@ -1218,5 +1218,10 @@ class Ellipse:
 
         # Build new instance so it can have its attributes
         # populated from the updated sample attributes.
-        isophote_list[-1] = Isophote(isophote.sample, isophote.n_iter,
-                                     isophote.valid, isophote.stop_code)
+        isophote = Isophote(isophote.sample, isophote.n_iter,
+                            isophote.valid, isophote.stop_code)
+
+        # The geometry was copied, not fitted, so its errors are not
+        # measured.
+        isophote._clear_geometry_errors()
+        isophote_list[-1] = isophote

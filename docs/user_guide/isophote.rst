@@ -1290,10 +1290,11 @@ ellipse center, ellipticity, and orientation are computed by those
 formulae, but replacing the least-squares amplitudes by their errors.
 This is empirical and difficult to justify in terms of any theoretical
 error analysis, but it produces sensible error estimators in practice.
-The geometry was not fitted for an isophote with a stop code of 4
-(e.g., beyond ``max_iterative_sma`` or from
-:meth:`~photutils.isophote.Ellipse.measure_isophotes`), or with a stop
-code of 1 and no iterations, so its geometry errors are NaN.
+The geometry errors are NaN for an isophote whose geometry was not
+fitted, e.g., with a stop code of 4 (beyond ``max_iterative_sma`` or
+from :meth:`~photutils.isophote.Ellipse.measure_isophotes`), or a
+failed isophote that was extracted again with the geometry of another
+isophote.
 
 Flux Accuracy
 ^^^^^^^^^^^^^

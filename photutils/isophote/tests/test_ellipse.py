@@ -292,6 +292,12 @@ class TestEllipse:
         assert_allclose(isolist.sma, [20.0, 22.0])
         assert_array_equal(isolist.stop_code, [0, 1])
 
+        # The failed isophote was extracted with the geometry of the
+        # first one, so its geometry errors are not measured.
+        assert np.isfinite(isolist[0].x0_err)
+        assert np.isnan(isolist[1].x0_err)
+        assert np.isnan(isolist[1].ellipticity_err)
+
     def test_too_many_flagged_noniterative(self):
         """
         Test that the outward growth in noniterative mode stops at the
@@ -344,6 +350,10 @@ class TestEllipse:
         for idx in failed:
             assert isolist[idx].sma < first.sma
             _assert_same_geometry(isolist[idx], isolist[idx + 1])
+
+            # The copied geometry was not fitted.
+            assert np.isnan(isolist[idx].x0_err)
+            assert np.isnan(isolist[idx].orientation_err)
 
         # At least one failed isophote is next to a fitted isophote
         # whose geometry differs from the first isophote.

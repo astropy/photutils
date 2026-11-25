@@ -806,9 +806,10 @@ API Changes
 
   - The ``x0_err``, ``y0_err``, ``ellipticity_err``, and
     ``orientation_err`` attributes of an ``Isophote`` are now NaN if
-    its geometry was not fitted (stop code 4, or stop code 1 with
-    ``n_iter=0``), as in the STSDAS ``ellipse`` task, or if they could
-    not be computed. Previously, they were computed from the fixed
+    its geometry was not fitted, as in the STSDAS ``ellipse`` task, or
+    if they could not be computed. This includes the isophotes with a
+    stop code of 4 and the failed isophotes that ``Ellipse.fit_image``
+    extracts again with the geometry of another isophote. Previously, they were computed from the fixed
     geometry, or set to 0. [#2577]
 
   - An isophote extracted without fitting now has a stop code of 1,
