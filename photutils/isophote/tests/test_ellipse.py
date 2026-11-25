@@ -1308,9 +1308,11 @@ def test_fit_isophote_renamed_keywords(old, new, value):
     geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, 0.0 * u.deg)
     ellipse = Ellipse(data, geometry=geometry)
     # The minimum valid fraction has an effect only when data points
-    # are flagged. Linear growth with the default step makes the
-    # sampling annulus too narrow for the 'mean' mode, which then falls
-    # back to the 'bilinear' mode.
+    # are flagged. Linear growth with the default step narrows the
+    # sampling annulus. In the 'bilinear' mode, this only shifts the
+    # starting angle of the path slightly. The 'mean' mode falls back to
+    # the 'bilinear' mode for the narrow annulus, which changes the
+    # result clearly.
     sigma_clip = SigmaClip(sigma=1.0, maxiters=1, cenfunc='mean',
                            stdfunc='std')
     extra = {'min_valid_fraction': {'sigma_clip': sigma_clip},
