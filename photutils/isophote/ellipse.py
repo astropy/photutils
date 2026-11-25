@@ -32,6 +32,16 @@ __all__ = ['Ellipse']
 _SMA_LIMIT_RTOL = 1.0e-9
 
 
+def _validate_step(step):
+    """
+    Raise a ValueError if the step is not positive.
+    """
+    if not step > 0:  # also rejects NaN
+        msg = ('The step (the step keyword or the step of the input '
+               'geometry) must be positive')
+        raise ValueError(msg)
+
+
 def _central_isophote(image, geometry):
     """
     Make the isophote of the central pixel.
@@ -71,9 +81,10 @@ class Ellipse:
         ellipse to be fitted. If `None`, a default
         `~photutils.isophote.EllipseGeometry` instance is created
         with a semimajor axis length of 10 pixels, an ellipticity of
-        0.2, and an orientation of 90 degrees. Its center is at
-        ``x0 = nx / 2`` and ``y0 = ny / 2``, where ``ny`` and ``nx``
-        are the image dimensions.
+        0.2, and an orientation of 0 degrees. Its center is the
+        center of the image, ``x0 = (nx - 1) / 2`` and
+        ``y0 = (ny - 1) / 2``, where ``ny`` and ``nx`` are the image
+        dimensions.
 
     threshold : float, optional
         This keyword has no effect.
@@ -109,14 +120,15 @@ class Ellipse:
     ellipticity, and orientation. Using these values, the image
     is sampled along an elliptical path, producing a 1D
     function that describes the dependence of intensity (pixel value)
-    with angle (E). The function is stored as a set of 1D numpy arrays.
-    The harmonic content of this function is analyzed by least-squares
-    fitting to the function:
+    with the polar angle (:math:`\\phi`), measured counterclockwise from
+    the semimajor axis. The function is stored as a set of 1D numpy
+    arrays. The harmonic content of this function is analyzed by
+    least-squares fitting to the function:
 
     .. math::
 
-        y  =  y0 + (A1 * \\sin(E)) + (B1 * \\cos(E)) + (A2 * \\sin(2 * E))
-              + (B2 * \\cos(2 * E))
+        y  =  y0 + (A1 * \\sin(\\phi)) + (B1 * \\cos(\\phi))
+              + (A2 * \\sin(2 * \\phi)) + (B2 * \\cos(2 * \\phi))
 
     Each one of the harmonic amplitudes (A1, B1, A2, and B2) is related
     to a specific ellipse geometric parameter in the sense that it
@@ -174,9 +186,11 @@ class Ellipse:
     from the rms scatter of intensity data along the fitted
     ellipse. Ellipse geometry errors are obtained from the errors
     in the coefficients of the first and second simultaneous
-    harmonic fit. Third and fourth harmonic amplitudes and their
-    errors are obtained from a separate fit of each harmonic to the
-    sampled intensities. The amplitude errors are combined in
+    harmonic fit. They are NaN for an isophote whose geometry was not
+    fitted. Third and fourth harmonic amplitudes and their errors are
+    obtained from a fit of each harmonic to the residual intensities
+    after the lower harmonics are subtracted, as in the STSDAS
+    ``ellipse`` task. The amplitude errors are combined in
     quadrature with the relative error of the local gradient. For
     more details, see the error analysis in `Busko (1996, ASPC 101, 139)
     <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_.
@@ -238,10 +252,10 @@ class Ellipse:
         if geometry is not None:
             self._geometry = geometry
         else:
-            _x0 = image.shape[1] / 2
-            _y0 = image.shape[0] / 2
+            _x0 = (image.shape[1] - 1) / 2
+            _y0 = (image.shape[0] - 1) / 2
             self._geometry = EllipseGeometry._from_radians(
-                _x0, _y0, 10.0, 0.2, np.pi / 2)
+                _x0, _y0, 10.0, 0.2, 0.0)
 
     @deprecated('3.2', alternative='EllipseGeometry.find_center',
                 until='4.0')
@@ -273,7 +287,7 @@ class Ellipse:
         ['3.2'] * 15 + ['3.0'], until='4.0',
         alternative=[None] * 13 + ['sigma_clip'] * 3)
     @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
-    def fit_image(self, sma_start=None, min_sma=0.0, max_sma=None, step=0.1,
+    def fit_image(self, sma_start=None, min_sma=0.0, max_sma=None, step=None,
                   convergence=DEFAULT_CONVERGENCE,
                   miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
                   min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
@@ -283,10 +297,10 @@ class Ellipse:
                   fix_center=False, fix_orientation=False,
                   fix_ellipticity=False, *, max_center_shift=None,
                   sigma_clip=None, nclip=None):
-        # This parameter list is quite large and should in principle be
-        # simplified by redistributing these controls to somewhere else.
-        # We keep this design though because it better mimics the flat
-        # architecture used in the original STSDAS task `ellipse`.
+        # The fit controls are flat keyword arguments, each with a
+        # default, so a typical call sets only a few of them. The
+        # STSDAS ellipse task groups the same controls into its
+        # geompar, controlpar, and samplepar parameter sets.
         """
         Fit multiple isophotes to the image array.
 
@@ -295,19 +309,20 @@ class Ellipse:
         isophote at each sma. The entire set of isophotes is returned in
         an `~photutils.isophote.IsophoteList` instance.
 
-        Note that the fix_XXX parameters act in unison. If any of them
+        Note that the ``fix_center``, ``fix_orientation``, and
+        ``fix_ellipticity`` parameters act in unison. If any of them
         is set to `True` in this call, the others assume their default
         (False) values, and together they override the fixed
         parameters of the `~photutils.isophote.EllipseGeometry`
         instance used by this class. If none of them is set, the
         fixed parameters of that instance are used. Likewise, the
-        ``linear_growth`` parameter overrides the ``linear_growth``
-        attribute of that instance. These overrides apply only to this
-        call. The `~photutils.isophote.EllipseGeometry` instance is not
-        modified.
+        ``step`` and ``linear_growth`` parameters, if set, override the
+        ``step`` and ``linear_growth`` attributes of that instance.
+        These overrides apply only to this call. The
+        `~photutils.isophote.EllipseGeometry` instance is not modified.
 
         If the center, orientation, and ellipticity are all fixed,
-        by the fix_XXX parameters or by the
+        by these parameters or by the
         `~photutils.isophote.EllipseGeometry` instance, there is
         nothing to fit. A warning is emitted and an empty
         `~photutils.isophote.IsophoteList` is returned.
@@ -351,17 +366,17 @@ class Ellipse:
             until one of several conditions will cause it to stop and
             revert to fit ellipses with sma < ``sma_start``.
 
-        step : float, optional
+        step : float or `None`, optional
             The step value used to grow/shrink the semimajor axis
             length (pixels if ``linear_growth=True``, or a relative
             value if ``linear_growth=False``). See the ``linear_growth``
             parameter. It also defines the elliptical annulus used by
             the sampling algorithm, which sets the areas of the
             elliptical sectors for the area integration modes (see the
-            ``integration_mode`` parameter). It replaces the ``step``
-            attribute of the `~photutils.isophote.EllipseGeometry`
-            instance used by this class. The step must be positive. The
-            default is 0.1.
+            ``integration_mode`` parameter). The step must be positive.
+            If `None` (default), the ``step`` attribute of the
+            `~photutils.isophote.EllipseGeometry` instance used by this
+            class is used (0.1 for the default geometry).
 
         convergence : float, optional
             The main convergence criterion. Iterations stop when the
@@ -441,9 +456,11 @@ class Ellipse:
         integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
                 'median'}, optional
             The integration mode. The 'mean' and 'median' modes
-            integrate over elliptical sectors and fall back to
-            'bilinear' for sectors smaller than 1 pixel. The default is
-            'bilinear'.
+            integrate over elliptical sectors. As in the STSDAS
+            ``ellipse`` task, they fall back to 'bilinear' if the
+            sampling annulus is narrower than 2 pixels (below a
+            semimajor axis length of 20 pixels with the default
+            ``step``). The default is 'bilinear'.
 
         linear_growth : bool or `None`, optional
             The semimajor axis growing/shrinking mode. If `False`,
@@ -527,7 +544,7 @@ class Ellipse:
         Raises
         ------
         ValueError
-            If the starting semimajor axis length or ``step`` is not
+            If the starting semimajor axis length or the step is not
             positive, if ``min_sma`` or ``max_sma`` is NaN, if
             ``min_sma`` is larger than ``max_sma``, if the starting
             semimajor axis length is not between ``min_sma`` and
@@ -575,9 +592,9 @@ class Ellipse:
                    'sma of the input geometry) must be between min_sma '
                    'and max_sma')
             raise ValueError(msg)
-        if not step > 0:  # also rejects NaN
-            msg = 'step must be positive'
-            raise ValueError(msg)
+        if step is None:
+            step = self._geometry.step
+        _validate_step(step)
 
         # Override the geometry parameters set in this call on a copy
         # so that they do not persist in the input geometry instance.
@@ -654,13 +671,13 @@ class Ellipse:
                 # `isophote` instance in this context may no longer be OK.
                 isophote = isophote_list[-1]
 
-                # If two consecutive isophotes failed to fit,
-                # shut off iterative mode. Or, bail out and
-                # change to go inwards.
-                if (len(isophote_list) > 2
-                    and ((isophote.stop_code == 5
-                          and isophote_list[-2].stop_code == 5)
-                         or isophote.stop_code == 1)):
+                # If too many data points were flagged, or if two
+                # consecutive isophotes failed to fit, shut off
+                # iterative mode. Or, bail out and change to go inwards.
+                too_many_flagged = isophote.stop_code == 1
+                failed_twice = (isophote.stop_code == 5
+                                and isophote_list[-2].stop_code == 5)
+                if too_many_flagged or failed_twice:
                     if max_sma is not None and max_sma > isophote.sma:
                         # If a maximum sma value was provided by
                         # user, and the current sma is smaller than
@@ -709,25 +726,31 @@ class Ellipse:
         first_isophote = isophote_list[0]
         sma, step = first_isophote.sample.geometry._reset_sma(step)
         geometry = first_isophote.sample.geometry
+        previous_isophote = first_isophote
 
         # Now, go from initial sma inwards towards center, until the
         # sma is smaller than the user-defined minimum or is too small.
         while sma >= max(min_sma, 0.5) * (1.0 - _SMA_LIMIT_RTOL):
             isophote = fit(geometry, sma, miniters=miniters)
 
-            # If abnormal condition, fix isophote but keep going.
+            # If abnormal condition, fix isophote but keep going. The
+            # failed isophote takes the geometry of the adjacent
+            # isophote with the next larger sma.
             if isophote.stop_code == 5:
-                self._fix_last_isophote(isophote_list, first_isophote)
+                self._fix_last_isophote(isophote_list, previous_isophote)
 
-            # But if the harmonic fit failed, bail out immediately.
-            # This usually happens at very small radii when the number
-            # of data points is too small.
+            # An isophote whose harmonic fit failed or that has too few
+            # valid data points (e.g., inside a masked region) is not
+            # stored. As in the STSDAS ellipse task, it is skipped and
+            # the next isophote starts from the last stored geometry.
             if isophote.stop_code == 3:
-                break
+                sma = isophote.sample.geometry._update_sma(step)
+                continue
 
             # Reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
+            previous_isophote = isophote
             geometry = isophote.sample.geometry
 
             # Figure out the next sma.
@@ -755,7 +778,7 @@ class Ellipse:
         ['3.2'] * 11 + ['3.0'], until='4.0',
         alternative=[None] * 9 + ['sigma_clip'] * 3)
     @deprecated_positional_kwargs(since='3.0', until='4.0', stacklevel=3)
-    def fit_isophote(self, sma, step=0.1, convergence=DEFAULT_CONVERGENCE,
+    def fit_isophote(self, sma, step=None, convergence=DEFAULT_CONVERGENCE,
                      miniters=DEFAULT_MINITERS, maxiters=DEFAULT_MAXITERS,
                      min_valid_fraction=DEFAULT_MIN_VALID_FRACTION,
                      maxgerr=None,  # noqa: ARG002
@@ -773,10 +796,9 @@ class Ellipse:
         semimajor axis length. Instead, they define the elliptical
         annulus used by the sampling algorithm, which sets the areas of
         the elliptical sectors for the area integration modes (see the
-        ``integration_mode`` parameter). The ``step`` parameter sets
-        the ``step`` attribute of the starting geometry. The
-        ``linear_growth`` parameter, if set, sets its ``linear_growth``
-        attribute.
+        ``integration_mode`` parameter). The ``step`` and
+        ``linear_growth`` parameters, if set, set the ``step`` and
+        ``linear_growth`` attributes of the starting geometry.
 
         If the center, orientation, and ellipticity are all fixed
         by the `~photutils.isophote.EllipseGeometry` instance, there
@@ -790,11 +812,12 @@ class Ellipse:
             nonnegative. If it is zero, the isophote is the central
             pixel.
 
-        step : float, optional
+        step : float or `None`, optional
             The step value that defines the sampling annulus (pixels
             if linear growth is used, otherwise a relative value). See
             the ``linear_growth`` parameter. The step must be positive.
-            The default is 0.1.
+            If `None` (default), the ``step`` attribute of the starting
+            geometry is used.
 
         convergence : float, optional
             The main convergence criterion. Iterations stop when the
@@ -854,9 +877,11 @@ class Ellipse:
         integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
                 'median'}, optional
             The integration mode. The 'mean' and 'median' modes
-            integrate over elliptical sectors and fall back to
-            'bilinear' for sectors smaller than 1 pixel. The default is
-            'bilinear'.
+            integrate over elliptical sectors. As in the STSDAS
+            ``ellipse`` task, they fall back to 'bilinear' if the
+            sampling annulus is narrower than 2 pixels (below a
+            semimajor axis length of 20 pixels with the default
+            ``step``). The default is 'bilinear'.
 
         linear_growth : bool or `None`, optional
             The semimajor axis growing/shrinking mode. When fitting
@@ -939,7 +964,7 @@ class Ellipse:
         Raises
         ------
         ValueError
-            If ``sma`` is negative or not finite, if ``step`` is not
+            If ``sma`` is negative or not finite, if the step is not
             positive, if ``max_center_shift`` is negative or NaN, if the
             ellipticity of the starting geometry is 1 or larger, if
             ``integration_mode`` is not a valid integration mode, or if
@@ -958,9 +983,6 @@ class Ellipse:
             code of 3.
         """
         _validate_sma(sma)
-        if not step > 0:  # also rejects NaN
-            msg = 'step must be positive'
-            raise ValueError(msg)
         sigma_clip = _legacy_sigma_clip(sigma_clip, sclip=sclip,
                                         n_clip=n_clip, nclip=nclip)
 
@@ -973,7 +995,9 @@ class Ellipse:
         # The step and linear values define the sampling annulus. They
         # are set on a copy so that the input geometry is not modified.
         geometry = copy.deepcopy(geometry)
-        geometry.step = step
+        if step is not None:
+            geometry.step = step
+        _validate_step(geometry.step)
         if linear_growth is not None:
             geometry.linear_growth = bool(linear_growth)
 
@@ -1003,6 +1027,14 @@ class Ellipse:
                           and sma > max_iterative_sma):
             isophote = self._non_iterative(sma, geometry, sigma_clip,
                                            integration_mode)
+
+            # As in the STSDAS ellipse task, an isophote extracted
+            # without fitting also has a stop code of 1 if too many of
+            # its data points were flagged.
+            sample = isophote.sample
+            if (isophote.stop_code == 4
+                    and sample.n_valid < sample.n_total * min_valid_fraction):
+                isophote = Isophote(sample, 0, valid=True, stop_code=1)
         else:
             isophote = self._iterative(sma, geometry, sigma_clip,
                                        integration_mode, convergence,
@@ -1055,20 +1087,22 @@ class Ellipse:
         integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
                 'median'}, optional
             The integration mode. The 'mean' and 'median' modes
-            integrate over elliptical sectors and fall back to
-            'bilinear' for sectors smaller than 1 pixel. The default is
-            'bilinear'.
+            integrate over elliptical sectors. As in the STSDAS
+            ``ellipse`` task, they fall back to 'bilinear' if the
+            sampling annulus is narrower than 2 pixels (below a
+            semimajor axis length of 20 pixels with the default
+            ``step``). The default is 'bilinear'.
 
         Returns
         -------
         result : `~photutils.isophote.IsophoteList` instance
             The measured isophotes, sorted by semimajor axis length.
             There is one isophote for each input ellipse, each with
-            ``n_iter=0`` and ``stop_code=4``. An ellipse with a
-            semimajor axis length of zero gives the intensity at its
-            center, with ``stop_code=0``. An ellipse with no valid
-            sampled points (e.g., one that lies entirely outside the
-            image) has a NaN intensity and ``stop_code=3``.
+            ``n_iter=0``, ``stop_code=4``, and NaN geometry errors.
+            An ellipse with a semimajor axis length of zero gives the
+            intensity at its center, with ``stop_code=0``. An ellipse
+            with no valid sampled points (e.g., one that lies entirely
+            outside the image) has a NaN intensity and ``stop_code=3``.
 
         Raises
         ------
@@ -1193,5 +1227,10 @@ class Ellipse:
 
         # Build new instance so it can have its attributes
         # populated from the updated sample attributes.
-        isophote_list[-1] = Isophote(isophote.sample, isophote.n_iter,
-                                     isophote.valid, isophote.stop_code)
+        isophote = Isophote(isophote.sample, isophote.n_iter,
+                            isophote.valid, isophote.stop_code)
+
+        # The geometry was copied, not fitted, so its errors are not
+        # measured.
+        isophote._clear_geometry_errors()
+        isophote_list[-1] = isophote

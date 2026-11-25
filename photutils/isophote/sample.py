@@ -42,6 +42,18 @@ _GRADIENT_RADIUS_RETRY = 0.2
 _MAX_GRADIENT_REL_ERR = 0.2
 
 
+def _sample_std(values):
+    """
+    Return the sample standard deviation (``ddof=1``) of the values.
+
+    As in the STSDAS ellipse task, it is NaN if there are fewer than two
+    values.
+    """
+    if len(values) < 2:
+        return np.nan
+    return np.std(values, ddof=1)
+
+
 def _copy_sigma_clip(sigma_clip):
     """
     Validate the input sigma clipping and return a copy of it.
@@ -307,8 +319,10 @@ class EllipseSample:
     integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
             'median'}, optional
         The integration mode. The 'mean' and 'median' modes integrate
-        over elliptical sectors and fall back to 'bilinear' for sectors
-        smaller than 1 pixel. The default is 'bilinear'.
+        over elliptical sectors. As in the STSDAS ``ellipse`` task, they
+        fall back to 'bilinear' if the sampling annulus is narrower
+        than 2 pixels (below a semimajor axis length of 20 pixels with
+        the default ``step``). The default is 'bilinear'.
 
         .. deprecated:: 3.2
             The ``integrmode`` keyword is deprecated. Use
@@ -668,7 +682,7 @@ class EllipseSample:
         self._values = s
         return s
 
-    def _extract(self, *, phi_min=0.05):
+    def _extract(self):
         if self.geometry.sma == 0:
             return self._extract_center()
 
@@ -696,32 +710,22 @@ class EllipseSample:
         radius = self.geometry._initial_polar_radius
         phi = self.geometry._initial_polar_angle
 
-        # In case of an area integrator, ask the integrator to deliver
-        # a hint of how much area the sectors will have. In case of too
-        # small areas, tests showed that the area integrators (mean,
-        # median) won't perform properly. In that case, we override the
-        # caller's selection and use the bilinear integrator regardless.
+        # As in the STSDAS ellipse task, the area integrators (mean,
+        # median) are used only if the sampling annulus is at least 2
+        # pixels wide, i.e., the next isophote is at least 2 pixels
+        # away. The sectors of a narrower annulus contain too few
+        # pixels, so the bilinear integrator is used instead.
         if integrator.is_area():
-            integrator.integrate(radius, phi)
-            area = integrator.get_sector_area()
-            # This integration that just took place messes up with the
-            # storage arrays and the constructors. We have to build a
-            # new integrator instance from scratch, even if it is the
-            # same kind as originally selected by the caller.
-            angles = []
-            radii = []
-            intensities = []
-            if area < 1.0:
+            sma1, sma2 = self.geometry._bounding_ellipses()
+            if sma2 - sma1 < 2.0:
                 integrator = _INTEGRATORS['bilinear'](
                     self.image, self.geometry, angles, radii, intensities)
-            else:
-                integrator = _INTEGRATORS[self.integration_mode](
-                    self.image, self.geometry, angles, radii, intensities)
 
-        # Walk along elliptical path, integrating at specified places
-        # defined by polar vector. Need to go a bit beyond full circle
-        # to ensure full coverage.
-        phi_max = np.pi * 2.0 + phi_min
+        # Walk once along the elliptical path, integrating at specified
+        # places defined by polar vector. As in the STSDAS ellipse task,
+        # the walk ends at a polar angle of 2 pi, so that the start of
+        # the path is not sampled again.
+        phi_max = np.pi * 2.0
         if integrator.is_area():
             while phi <= phi_max:
                 # Do the integration at phi-radius position, and append
@@ -1006,8 +1010,8 @@ class EllipseSample:
         gradient = (mean_g - self.intensity) / self.geometry.sma / radius
 
         s = self.extract()
-        sigma = np.std(s[2])
-        sigma_g = np.std(sg[2])
+        sigma = _sample_std(s[2])
+        sigma_g = _sample_std(sg[2])
 
         gradient_err = (np.sqrt(sigma**2 / len(s[2])
                                 + sigma_g**2 / len(sg[2]))

@@ -50,30 +50,9 @@ def _make_fix_array(*, fix_center, fix_orientation, fix_ellipticity):
     return np.array([fixed[name] for name in _HARMONIC_PARAMETERS.values()])
 
 
-def _make_centerer_masks():
-    """
-    Make the masks of the object centerer.
-
-    The masks are centered on the central pixel of a 17x17 pixel box.
-    As in a masked array, a value of `False` marks the pixels that are
-    used. The inner mask selects a disk with a radius of 3.5 pixels and
-    the outer mask selects a ring with radii from 7.5 to 8.5 pixels.
-
-    Returns
-    -------
-    in_mask, out_mask : 2D bool `~numpy.ndarray`
-        The inner and outer masks.
-    """
-    half_size = 8
-    y, x = np.mgrid[-half_size:half_size + 1, -half_size:half_size + 1]
-    radius = np.hypot(x, y)
-    in_mask = radius > 3.5
-    out_mask = (radius < 7.5) | (radius >= 8.5)
-
-    return in_mask, out_mask
-
-
-IN_MASK, OUT_MASK = _make_centerer_masks()
+# The radii of the two circular samples of the object centerer, as in
+# the STSDAS ellipse task.
+_CENTERER_RADII = (4.0, 8.0)
 
 
 def _eccentric_anomaly(phi, eps):
@@ -576,7 +555,7 @@ class EllipseGeometry:
                 self._initial_polar_angle)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def find_center(self, image, threshold=0.1, verbose=True):
+    def find_center(self, image, threshold=1.0, verbose=True):
         """
         Find the center of a galaxy.
 
@@ -599,7 +578,8 @@ class EllipseGeometry:
 
         threshold : float, optional
             The centerer threshold. To turn off the centerer, set this
-            to `numpy.inf`. The default is 0.1.
+            to `numpy.inf`. The default is 1.0, as in the STSDAS
+            ``ellipse`` task.
 
         verbose : bool, optional
             Whether to log object centering information at the INFO
@@ -619,16 +599,18 @@ class EllipseGeometry:
         Otherwise, the (x, y) coordinates are not changed, including
         coordinates that are `None` or outside of the image.
 
-        At each position, the figure of merit is the difference between
-        the mean of the pixels within 3.5 pixels and the mean of the
-        pixels in a ring with radii from 7.5 to 8.5 pixels, divided by
-        the quadrature sum of their standard deviations. The position
-        with the largest figure of merit is accepted if that value
-        exceeds ``threshold``. The new center is a whole-pixel position.
+        As in the STSDAS ``ellipse`` task, the image is sampled with
+        bilinear interpolation along two concentric circles, with radii
+        of 4 and 8 pixels, at each position. The figure of merit is the
+        difference between the mean intensities along the inner and
+        outer circles, divided by the quadrature sum of their sample
+        standard deviations. The position with the largest figure of
+        merit is accepted if that value exceeds ``threshold``. The new
+        center is a whole-pixel position.
 
         Only the window positions inside the image are scanned. Near
-        the image edges, only the pixels inside the image are used to
-        compute the figure of merit.
+        the image edges, only the sampled points inside the image are
+        used to compute the figure of merit.
 
         In some cases the object centerer algorithm may fail even though
         there is enough signal-to-noise to start a fit (e.g., objects
@@ -640,7 +622,10 @@ class EllipseGeometry:
         `numpy.inf`.
         """
         self.centerer_threshold = threshold
-        half_size = len(IN_MASK) // 2
+
+        # The sample module imports this module, so it is imported here
+        # to avoid a circular import.
+        from photutils.isophote.sample import EllipseSample, _sample_std
 
         # Check if center coordinates point to somewhere inside the frame.
         # If not, set them to frame center.
@@ -664,45 +649,38 @@ class EllipseGeometry:
                         min(int(_y0 + window_half_size), shape[0] - 1) + 1)
         for i in i_range:
             for j in j_range:
+                # The mean and standard deviation of the bilinear
+                # samples along two concentric circles. Points that
+                # are outside the image or near masked or nonfinite
+                # pixels are not sampled.
+                means = []
+                stds = []
+                for radius in _CENTERER_RADII:
+                    sample = EllipseSample._from_radians(
+                        image, radius, x0=float(i), y0=float(j),
+                        ellipticity=0.0, orientation=0.0)
+                    intensities = sample.extract()[2]
+                    if len(intensities) == 0:
+                        break
+                    means.append(np.mean(intensities))
+                    stds.append(np.nan_to_num(_sample_std(intensities)))
+                else:
+                    stddev = np.hypot(*stds)
 
-                # Clip the box at the image edges. The masks are clipped
-                # by the same amount so that they stay aligned with the
-                # image pixels.
-                i1 = i - half_size
-                j1 = j - half_size
-                i1_clip = max(i1, 0)
-                j1_clip = max(j1, 0)
-                i2_clip = min(i + half_size + 1, shape[1])
-                j2_clip = min(j + half_size + 1, shape[0])
-                window = np.ma.masked_invalid(
-                    image[j1_clip:j2_clip, i1_clip:i2_clip])
-                mask_slices = (slice(j1_clip - j1, j2_clip - j1),
-                               slice(i1_clip - i1, i2_clip - i1))
-
-                # Averages in inner and outer regions.
-                inner = np.ma.masked_array(window, mask=IN_MASK[mask_slices])
-                outer = np.ma.masked_array(window,
-                                           mask=OUT_MASK[mask_slices])
-                inner_avg = np.ma.mean(inner)
-                outer_avg = np.ma.mean(outer)
-
-                # Standard deviation and figure of merit
-                inner_std = np.std(inner)
-                outer_std = np.std(outer)
-                stddev = np.sqrt(inner_std**2 + outer_std**2)
-
-                # As in the STSDAS ellipse task, a position without any
-                # scatter (e.g., in a flat image), where the figure of
-                # merit is not defined, is skipped.
-                if not stddev > 0:
-                    continue
-
-                fom = (inner_avg - outer_avg) / stddev
-
-                if fom > max_fom:
-                    max_fom = fom
-                    max_i = i
-                    max_j = j
+                    # As in the STSDAS ellipse task, a position without
+                    # any scatter (e.g., in a flat image), where the
+                    # figure of merit is not defined, is skipped. A
+                    # scatter at the level of rounding errors of the
+                    # bilinear interpolation counts as no scatter.
+                    tolerance = 8 * np.finfo(float).eps * max(
+                        abs(means[0]), abs(means[1]))
+                    if not stddev > tolerance:
+                        continue
+                    fom = (means[0] - means[1]) / stddev
+                    if fom > max_fom:
+                        max_fom = fom
+                        max_i = i
+                        max_j = j
 
         # Figure of merit > threshold: update geometry with new coordinates.
         if max_fom > threshold:

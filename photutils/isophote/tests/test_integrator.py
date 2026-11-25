@@ -3,6 +3,7 @@
 Tests for the integrator module.
 """
 
+import sys
 import warnings
 
 import astropy.units as u
@@ -52,44 +53,44 @@ class TestUnmasked(TestData):
     def test_bilinear(self):
         s, sample = self.make_sample()
 
-        assert len(s[0]) == 225
+        assert len(s[0]) == 223
         # Intensities
-        assert_allclose(np.mean(s[2]), 200.76, atol=0.01)
+        assert_allclose(np.mean(s[2]), 200.96, atol=0.01)
         assert_allclose(np.std(s[2]), 21.55, atol=0.01)
         # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.n_total == 225
-        assert sample.n_valid == 225
+        assert sample.n_total == 223
+        assert sample.n_valid == 223
 
     def test_bilinear_small(self):
         # Small radius forces subpixel sampling.
         s, sample = self.make_sample(sma=10.0)
 
         # Intensities
-        assert_allclose(np.mean(s[2]), 1045.4, atol=0.1)
-        assert_allclose(np.std(s[2]), 143.0, atol=0.1)
+        assert_allclose(np.mean(s[2]), 1047.9, atol=0.1)
+        assert_allclose(np.std(s[2]), 143.1, atol=0.1)
         # Radii
         assert_allclose(np.max(s[1]), 10.0, atol=0.1)
         assert_allclose(np.min(s[1]), 8.0, atol=0.1)
 
-        assert sample.n_total == 57
-        assert sample.n_valid == 57
+        assert sample.n_total == 56
+        assert sample.n_valid == 56
 
     def test_nearest_neighbor(self):
         s, sample = self.make_sample(integrmode='nearest_neighbor')
 
-        assert len(s[0]) == 225
+        assert len(s[0]) == 223
         # Intensities
-        assert_allclose(np.mean(s[2]), 200.7, atol=0.1)
+        assert_allclose(np.mean(s[2]), 200.9, atol=0.1)
         assert_allclose(np.std(s[2]), 21.6, atol=0.1)
         # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.n_total == 225
-        assert sample.n_valid == 225
+        assert sample.n_total == 223
+        assert sample.n_valid == 223
 
     def test_mean(self):
         s, sample = self.make_sample(integrmode='mean')
@@ -109,17 +110,17 @@ class TestUnmasked(TestData):
     def test_mean_small(self):
         s, sample = self.make_sample(sma=5.0, integrmode='mean')
 
-        assert len(s[0]) == 29
+        assert len(s[0]) == 28
         # Intensities
-        assert_allclose(np.mean(s[2]), 2339.0, atol=0.1)
+        assert_allclose(np.mean(s[2]), 2349.0, atol=0.1)
         assert_allclose(np.std(s[2]), 284.7, atol=0.1)
         # Radii
         assert_allclose(np.max(s[1]), 5.0, atol=0.01)
         assert_allclose(np.min(s[1]), 4.0, atol=0.01)
 
         assert_allclose(sample.sector_area, 2.0, atol=0.1)
-        assert sample.n_total == 29
-        assert sample.n_valid == 29
+        assert sample.n_total == 28
+        assert sample.n_valid == 28
 
     def test_median(self):
         s, sample = self.make_sample(integrmode='median')
@@ -142,16 +143,16 @@ class TestMasked(TestData):
     def test_bilinear(self):
         s, sample = self.make_sample(masked=True, integrmode='bilinear')
 
-        assert len(s[0]) == 157
+        assert len(s[0]) == 155
         # Intensities
-        assert_allclose(np.mean(s[2]), 201.52, atol=0.01)
-        assert_allclose(np.std(s[2]), 25.21, atol=0.01)
+        assert_allclose(np.mean(s[2]), 201.81, atol=0.01)
+        assert_allclose(np.std(s[2]), 25.25, atol=0.01)
         # Radii
         assert_allclose(np.max(s[1]), 40.0, atol=0.01)
         assert_allclose(np.min(s[1]), 32.0, atol=0.01)
 
-        assert sample.n_total == 225
-        assert sample.n_valid == 157
+        assert sample.n_total == 223
+        assert sample.n_valid == 155
 
     def test_mean(self):
         s, sample = self.make_sample(masked=True, integrmode='mean')
@@ -423,6 +424,31 @@ def test_integrator_constant_silent_uses():
         assert not hasattr(integrator, 'nonexistent')
 
     assert _record_deprecation_warnings(uses) == []
+
+
+def _no_frame_inspection(monkeypatch):
+    monkeypatch.delattr(sys, '_getframe')
+
+
+def _shallow_call_stack(monkeypatch):
+    def get_frame(depth=0):  # noqa: ARG001
+        msg = 'call stack is not deep enough'
+        raise ValueError(msg)
+
+    monkeypatch.setattr(sys, '_getframe', get_frame)
+
+
+@pytest.mark.parametrize('patch', [_no_frame_inspection,
+                                   _shallow_call_stack])
+def test_integrator_constant_without_import_probe(monkeypatch, patch):
+    """
+    Test that a deprecated constant still warns if the caller cannot be
+    inspected, e.g., on a Python implementation without
+    ``sys._getframe``.
+    """
+    patch(monkeypatch)
+    with pytest.warns(PhotutilsDeprecationWarning, match='MEAN'):
+        assert photutils.isophote.MEAN == 'mean'
 
 
 def test_integrator_getattr_unknown_name():

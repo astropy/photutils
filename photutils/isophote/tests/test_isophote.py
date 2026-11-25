@@ -98,11 +98,11 @@ class TestIsophote:
         assert orientation <= (0.62 + 0.05)
 
         # Fitted values
-        assert_allclose(iso.intensity, 686.0, atol=0.1)
-        assert_allclose(iso.rms, 82.96, atol=0.01)
-        assert_allclose(iso.intensity_err, 7.61, atol=0.01)
-        assert_allclose(iso.pixel_stddev, 117.3, atol=0.1)
-        assert_allclose(iso.gradient, -35.28, atol=0.1)
+        assert_allclose(iso.intensity, 684.6, atol=0.1)
+        assert_allclose(iso.rms, 83.85, atol=0.01)
+        assert_allclose(iso.intensity_err, 7.72, atol=0.01)
+        assert_allclose(iso.pixel_stddev, 118.6, atol=0.1)
+        assert_allclose(iso.gradient, -35.58, atol=0.1)
 
         # Integrals
         assert iso.total_flux_ellipse <= 1.20e6
@@ -630,6 +630,51 @@ class TestIsophoteList:
         assert_equal(tbl2['gradient_rel_err'], isolist.gradient_rel_err)
 
 
+def test_sample_standard_deviations():
+    """
+    Test that the rms and the errors derived from it use the sample
+    standard deviation (ddof=1), as in the STSDAS ellipse task.
+    """
+    data = make_test_image(noise=1.0, seed=0)
+    sample = EllipseSample(data, 40.0)
+    sample.update()
+    isophote = Isophote(sample, 1, valid=True, stop_code=0)
+
+    intensities = sample.extract()[2]
+    rms = np.std(intensities, ddof=1)
+    assert_allclose(isophote.rms, rms)
+    assert_allclose(isophote.intensity_err, rms / np.sqrt(len(intensities)))
+    assert_allclose(isophote.pixel_stddev, rms * np.sqrt(sample.sector_area))
+
+    # The first gradient sample is taken at a 10% larger semimajor axis
+    # length.
+    outer = EllipseSample(data, 44.0).extract()[2]
+    gradient_err = (np.sqrt(rms**2 / len(intensities)
+                            + np.std(outer, ddof=1)**2 / len(outer))
+                    / 40.0 / 0.1)
+    assert_allclose(isophote.gradient_err, gradient_err)
+
+
+def test_single_point_standard_deviation():
+    """
+    Test that the rms of an isophote with a single valid data point is
+    NaN, without warnings.
+    """
+    data = make_test_image(seed=0)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    angle = np.arctan2(yy - 256, xx - 256)
+    mask = ~((angle > 0.0) & (angle < 0.13))
+    sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        sample._update(fixed_parameters=DEFAULT_FIX)
+        isophote = Isophote(sample, 1, valid=False, stop_code=3)
+    assert isophote.n_data == 1
+    assert np.isnan(isophote.rms)
+    assert np.isnan(isophote.intensity_err)
+    assert np.isnan(isophote.pixel_stddev)
+
+
 @pytest.mark.parametrize(('width', 'n_data'),
                          [(0.22, 3), (0.3, 4), (0.33, 5), (0.4, 6)])
 def test_isophote_few_points_warnings(width, n_data):
@@ -652,18 +697,69 @@ def test_isophote_few_points_warnings(width, n_data):
     assert len(record) == 0
     assert isophote.n_data == n_data
 
-    # The third and fourth harmonic fits have 3 coefficients and the
-    # first and second harmonic fit has 5.
-    assert np.isnan(isophote.a3) == (n_data <= 3)
-    assert (isophote.x0_err == 0.0) == (n_data <= 5)
+    # The first and second harmonic fit has 5 coefficients. The third
+    # and fourth harmonics are fit to its residuals.
+    assert np.isnan(isophote.a3) == (n_data <= 5)
+    assert np.isnan(isophote.x0_err) == (n_data <= 5)
 
 
-@pytest.mark.parametrize(('width', 'has_deviations'),
-                         [(0.22, False), (0.3, True)])
-def test_isophote_few_points(width, has_deviations):
+def test_upper_harmonics_fit_to_residuals():
+    """
+    Test that the upper harmonics are fit to the residuals of the lower
+    harmonic fits.
+
+    An ellipse whose center is offset from the galaxy center has a
+    large first harmonic. It must not inflate the upper harmonic
+    errors, which it did by a factor of about 600 when they were fit
+    to the sampled intensities.
+    """
+    data = make_test_image(noise=1.0e-6, seed=0)
+    errors = []
+    for dx in (0.0, 3.0):
+        geometry = EllipseGeometry(256.0 + dx, 256.0, 40.0, 0.2,
+                                   0.0 * u.deg)
+        isophote = Ellipse(data, geometry=geometry).fit_isophote(
+            40.0, noniterate=True)
+        errors.append([isophote.a3_err, isophote.b3_err, isophote.a4_err,
+                       isophote.b4_err])
+    errors = np.array(errors)
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors[1] < 100 * errors[0])
+
+
+def test_unfitted_geometry_errors():
+    """
+    Test that the geometry errors are NaN for isophotes whose geometry
+    was not fitted (stop code 4), while the other errors are measured.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_iterative_sma=20.0, max_sma=40.0)
+    fitted = (isolist.stop_code == 0) & (isolist.sma > 0)
+    unfitted = isolist.stop_code == 4
+    assert np.any(fitted)
+    assert np.any(unfitted)
+
+    for name in ('x0_err', 'y0_err', 'ellipticity_err', 'orientation_err'):
+        values = getattr(isolist, name)
+        assert np.all(np.isfinite(values[fitted]))
+        assert np.all(np.isnan(values[unfitted]))
+    for name in ('intensity_err', 'a3_err', 'b4_err'):
+        assert np.all(np.isfinite(getattr(isolist, name)[unfitted]))
+
+    measured = Ellipse(data).measure_isophotes(
+        [iso for iso in isolist if iso.stop_code == 0 and iso.sma > 0])
+    assert np.all(measured.stop_code == 4)
+    assert np.all(np.isnan(measured.ellipticity_err))
+
+
+@pytest.mark.parametrize('width', [0.22, 0.3])
+def test_isophote_few_points(width):
     """
     Test an isophote with too few data points to estimate the residual
-    variance of the harmonic fits.
+    variance of the first and second harmonic fit.
+
+    The geometry errors and the upper harmonics, which are fit to the
+    residuals of that fit, are NaN.
     """
     data = make_test_image(seed=0)
     yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
@@ -673,16 +769,10 @@ def test_isophote_few_points(width, has_deviations):
     sample._update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 1, valid=False, stop_code=3)
     assert 0 < isophote.n_data <= 5
-    assert isophote.x0_err == 0.0
-    assert isophote.ellipticity_err == 0.0
-    if has_deviations:
-        assert isophote.n_data > 3
-        assert np.isfinite(isophote.a3)
-        assert np.isfinite(isophote.a3_err)
-    else:
-        assert isophote.n_data <= 3
-        assert np.isnan(isophote.a3)
-        assert np.isnan(isophote.a4_err)
+    assert np.isnan(isophote.x0_err)
+    assert np.isnan(isophote.ellipticity_err)
+    assert np.isnan(isophote.a3)
+    assert np.isnan(isophote.a4_err)
 
 
 def test_to_table_dtypes():
@@ -722,7 +812,12 @@ def test_central_isophote_is_plain_isophote():
     assert iso.geometry.orientation == 0.0 * u.deg
     assert iso.gradient == 0.0
     assert iso.a3 == 0.0
-    assert iso.x0_err == 0.0
+
+    # The errors are not defined for a single pixel.
+    for name in ('intensity_err', 'x0_err', 'y0_err', 'ellipticity_err',
+                 'orientation_err', 'a3_err', 'b3_err', 'a4_err',
+                 'b4_err'):
+        assert np.isnan(getattr(iso, name))
 
 
 def test_isophote_list_properties_match_definitions():
@@ -753,7 +848,7 @@ def test_renamed_result_attributes(old, new):
         old_values = getattr(isolist, old)
     assert_array_equal(old_values, getattr(isolist, new))
     with pytest.warns(PhotutilsDeprecationWarning, match=match):
-        assert getattr(isolist[5], old) == getattr(isolist[5], new)
+        assert_equal(getattr(isolist[5], old), getattr(isolist[5], new))
 
 
 def test_to_table_columns_equal_attributes():
@@ -917,7 +1012,7 @@ def test_isophote_copy_and_pickle_no_warnings():
         for clone in clones:
             assert clone.intensity == iso.intensity
             assert clone.n_data == iso.n_data
-            assert clone.orientation_err == iso.orientation_err
+            assert_equal(clone.orientation_err, iso.orientation_err)
 
 
 def test_to_table_default_columns():
@@ -1006,6 +1101,39 @@ def test_from_table_round_trip():
         else:
             assert_array_equal(value, expected)
     assert result.sample == [None] * len(result)
+
+
+def test_from_table_equivalent_units():
+    """
+    Test that from_table converts a column whose unit is equivalent to
+    the required unit.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_sma=30.0)
+    tbl = isolist.to_table(columns=isolist.properties)
+    tbl['ellipticity'] = 100.0 * np.asarray(tbl['ellipticity']) * u.percent
+    result = IsophoteList.from_table(tbl)
+    assert_allclose(result.ellipticity, isolist.ellipticity, rtol=1e-14)
+
+
+def test_upper_harmonic_fit_failure(monkeypatch):
+    """
+    Test that the upper harmonics and their errors are NaN if their fit
+    fails, while the geometry errors are still measured.
+    """
+    def fail(*args, **kwargs):  # noqa: ARG001
+        msg = 'Singular matrix'
+        raise np.linalg.LinAlgError(msg)
+
+    monkeypatch.setattr('photutils.isophote.isophote._fit_upper_harmonic',
+                        fail)
+    sample = EllipseSample(make_test_image(seed=0), 40.0)
+    sample._update(fixed_parameters=DEFAULT_FIX)
+    isophote = Isophote(sample, 1, valid=True, stop_code=0)
+    for name in ('a3', 'b3', 'a4', 'b4', 'a3_err', 'b3_err', 'a4_err',
+                 'b4_err'):
+        assert np.isnan(getattr(isophote, name))
+    assert np.isfinite(isophote.x0_err)
 
 
 def test_from_table_plain_table_and_copies():

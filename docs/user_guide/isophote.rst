@@ -175,17 +175,17 @@ the isophote values as a table::
            sma              intensity      ... n_iter stop_code
                                            ...
     ------------------ ------------------- ... ------ ---------
-                   0.0  392.40301224101654 ...      0         0
-    0.5346972612827552   268.1139667720631 ...     12         0
-    0.5881669874110307   257.9801240600906 ...     10         0
-    0.6469836861521338   247.1382421405329 ...     10         0
-    0.7116820547673471  235.60801120562272 ...     10         0
+                   0.0  392.40301224103547 ...      0         0
+    0.5346972612827552   268.1139667720711 ...     12         0
+    0.5881669874110307  257.98012406008917 ...     10         0
+    0.6469836861521338  247.13824214053332 ...     10         0
+    0.7116820547673471  235.60801120562274 ...     10         0
                    ...                 ... ...    ...       ...
-    101.08940569985889   0.471315621312272 ...     11         0
-    111.19834626984479 0.34975067092535855 ...     50         2
-    122.31818089682928 0.24770671633116675 ...     50         2
-     134.5499989865122 0.14359798296916512 ...     19         0
-    148.00499888516345 0.09284879194643825 ...     15         1
+    101.08940569985889  0.4622304207494331 ...     14         0
+    111.19834626984479 0.29106071850491716 ...     10         0
+    122.31818089682928 0.19270314093489685 ...     26         0
+     134.5499989865122 0.17506574466746572 ...     17         0
+    148.00499888516345 0.08092386426151292 ...     12         0
     Length = 61 rows
 
 Let's plot the ellipticity, orientation, and the center x and y
@@ -289,7 +289,7 @@ accurate, as shown above.
 If no geometry is input, `~photutils.isophote.Ellipse` uses a default
 `~photutils.isophote.EllipseGeometry` at the center of the image, with
 a semimajor axis length of 10 pixels, an ellipticity of 0.2, and an
-orientation of 90 degrees. This works only for a galaxy that is close
+orientation of 0 degrees. This works only for a galaxy that is close
 to the center of the image. The galaxy in this example is 14 pixels
 from the image center. The fit with the default geometry emits a
 "No meaningful fit was possible" warning and returns an empty list:
@@ -323,10 +323,10 @@ center is about 7 pixels from the galaxy center::
     160.0 140.0
 
 The object centerer scans an 11x11 pixel window centered on the
-input coordinates. At each position, it extracts two concentric,
-roughly circular samples, an inner disk with a radius of about 3.5
-pixels and an outer ring with a radius of about 8 pixels. It then
-computes a signal-to-noise-like criterion from the mean intensities
+input coordinates. As in the STSDAS ``ellipse`` task, at each position
+it samples the image with bilinear interpolation along two concentric
+circles, with radii of 4 and 8 pixels. It then computes a
+signal-to-noise-like criterion from the mean intensities
 (:math:`f_1` and :math:`f_2`) and the standard deviations
 (:math:`\sigma_1` and :math:`\sigma_2`) of the two samples:
 
@@ -339,9 +339,11 @@ center if the criterion exceeds the ``threshold`` parameter.
 Otherwise, the center is not changed. The new center is a whole-pixel
 position.
 
-The default threshold value is 0.1. This value and the sizes of the
-samples and the window were found by trial and error using a number of
-both artificial and real galaxy images. Very flattened galaxies (an
+The default threshold value is 1.0, as in the STSDAS task. With this
+value, the centerer does not detect an object in an image of pure
+noise. The threshold and the sizes of the samples and the window were
+found by trial and error using a number of both artificial and real
+galaxy images. Very flattened galaxies (an
 ellipticity of about 0.7) cannot be detected by such a simple
 algorithm. Increasing the threshold makes the object centerer
 stricter, in the sense that it will not detect faint objects. The
@@ -401,8 +403,8 @@ Each isophote has a ``stop_code`` that tells how its fit ended:
   fitting.
 
 * 5: No meaningful gradient could be measured or the ellipse diverged.
-  The isophote was extracted with the geometry of a previously fitted
-  isophote.
+  The isophote was extracted with the geometry of the adjacent
+  isophote that was fitted just before it.
 
 See the `~photutils.isophote.Isophote` documentation for the complete
 descriptions.
@@ -591,16 +593,16 @@ axis lengths from 10 to 90 pixels::
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
-    [6.  0.7]
-    >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.0)
+    [6.1 1.2]
+    >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.5)
     True True
 
 Without rejection, the star and the companion pull the fitted centers
-by up to 6 pixels, the ellipticity reaches 0.53, and the fit stops at
+by up to 6 pixels, the ellipticity reaches 0.55, and the fit stops at
 a semimajor axis length of about 92 pixels. Over this range of
 semimajor axis lengths, the mask and sigma clipping keep the centers
-within 1 pixel of the galaxy center and the ellipticity between 0.39
-and 0.41. The mask alone is not enough for this image, because the
+within about 1 pixel of the galaxy center and the ellipticity between
+0.39 and 0.41. The mask alone is not enough for this image, because the
 star still disturbs the fit. Sigma clipping alone removes most of the
 distortion and keeps the centers within 2 pixels. The mask removes
 the rest.
@@ -671,7 +673,14 @@ image, masked, nonfinite, or rejected by sigma clipping. If the
 fraction of valid points of an isophote is smaller than the
 ``min_valid_fraction`` keyword (the default is 0.7), its fit stops
 with a stop code of 1. A smaller value lets the fit continue through
-isophotes that cross large masked regions.
+isophotes that cross large masked regions, or that extend past the
+edge of the image.
+
+The ``fflag`` parameter of the STSDAS ``ellipse`` task is instead the
+largest acceptable fraction of flagged points. The equivalent value
+here is ``min_valid_fraction = 1 - fflag``. The STSDAS default of
+``fflag = 0.5`` corresponds to ``min_valid_fraction=0.5``, which
+accepts more flagged points than the default used here.
 
 Tests with artificial images showed that cosmic rays and defective
 pixels are removed very effectively by combining sigma clipping with
@@ -700,9 +709,11 @@ clearly defined shape. It should not be at the center of the galaxy
 or at its faint outskirts.
 
 By default, the semimajor axis length grows and shrinks by a factor of
-(1 + ``step``), where ``step`` defaults to 0.1. With
-``linear_growth=True``, ``step`` is instead an increment in pixels.
-The ``min_sma`` and ``max_sma`` keywords limit the range of the
+(1 + ``step``). With ``linear_growth=True``, ``step`` is instead an
+increment in pixels. If these keywords are not set, the ``step`` and
+``linear_growth`` attributes of the input
+`~photutils.isophote.EllipseGeometry` are used, which are 0.1 and
+`False` by default. The ``min_sma`` and ``max_sma`` keywords limit the range of the
 semimajor axis lengths. Both limits are inclusive, so an isophote
 whose semimajor axis length equals a limit is included::
 
@@ -753,7 +764,11 @@ The elliptical sectors of the ``'mean'`` and ``'median'`` modes are
 pieces of an elliptical annulus whose width is set by ``step``. These
 modes average more pixels for each sampled point, especially with a
 larger ``step``, which increases the signal-to-noise ratio in the
-outer regions of a galaxy.
+outer regions of a galaxy. As in the STSDAS ``ellipse`` task, they are
+used only where the annulus is at least 2 pixels wide, e.g., at
+semimajor axis lengths of at least 20 pixels with the default
+``step`` of 0.1. The ``'bilinear'`` mode is used for narrower
+annuli.
 
 The algorithm described in `Jedrzejewski (1987, MNRAS 226, 747)
 <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_
@@ -857,11 +872,14 @@ Deviations from Ellipses
 
 The isophotes of real galaxies are not perfect ellipses. After the
 ellipse of an isophote is fitted, the third and fourth harmonics of
-its sampled intensities are measured. The ``a3`` and ``b3`` attributes
-are the amplitudes of the :math:`\sin(3E)` and :math:`\cos(3E)` terms,
-and ``a4`` and ``b4`` are the amplitudes of the :math:`\sin(4E)` and
-:math:`\cos(4E)` terms, where :math:`E` is the angle from the
-semimajor axis. The amplitudes are divided by the semimajor axis
+its sampled intensities are measured. As in the STSDAS ``ellipse``
+task, each harmonic is fit to the residual intensities after the
+first and second harmonics, and then the third harmonic, are
+subtracted. The ``a3`` and ``b3`` attributes are the amplitudes of
+the :math:`\sin(3\phi)` and :math:`\cos(3\phi)` terms, and ``a4`` and
+``b4`` are the amplitudes of the :math:`\sin(4\phi)` and
+:math:`\cos(4\phi)` terms, where :math:`\phi` is the polar angle
+measured counterclockwise from the semimajor axis. The amplitudes are divided by the semimajor axis
 length and by the absolute value of the local radial intensity
 gradient, so they can be compared with each other and between
 isophotes. Their errors are in the ``a3_err``, ``b3_err``,
@@ -1171,9 +1189,12 @@ where :math:`{\delta}_{X0}` and :math:`{\delta}_{Y0}` are the center
 corrections along the major and minor axes of the ellipse,
 respectively, :math:`\epsilon` is the ellipticity, :math:`\Theta` is
 the orientation, :math:`A_i` and :math:`B_i` are the coefficients
-of :math:`\sin(iE)` and :math:`\cos(iE)` in the harmonic fit to the
-sampled intensities as a function of the angle :math:`E` from the
-major axis, and :math:`I'` is the derivative of the intensity along
+of :math:`\sin(i\phi)` and :math:`\cos(i\phi)` in the harmonic fit
+to the sampled intensities as a function of the polar angle
+:math:`\phi` measured from the major axis (Jedrzejewski 1987 writes
+these terms with the eccentric anomaly :math:`E`, but this
+implementation and the STSDAS ``ellipse`` task use the polar angle),
+and :math:`I'` is the derivative of the intensity along
 the major axis direction evaluated at a semimajor axis length of
 :math:`a_0`. The center corrections are then rotated by the
 orientation to give the corrections along the image x and y axes.
@@ -1275,6 +1296,11 @@ ellipse center, ellipticity, and orientation are computed by those
 formulae, but replacing the least-squares amplitudes by their errors.
 This is empirical and difficult to justify in terms of any theoretical
 error analysis, but it produces sensible error estimators in practice.
+The geometry errors are NaN for an isophote whose geometry was not
+fitted, e.g., with a stop code of 4 (beyond ``max_iterative_sma`` or
+from :meth:`~photutils.isophote.Ellipse.measure_isophotes`), or a
+failed isophote that was extracted again with the geometry of another
+isophote.
 
 Flux Accuracy
 ^^^^^^^^^^^^^

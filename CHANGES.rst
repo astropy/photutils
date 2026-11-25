@@ -440,6 +440,55 @@ Bug Fixes
     parameter is now halved, so fewer isophotes end at the maximum
     number of iterations. [#2571]
 
+  - Fixed ``Ellipse.fit_image`` extracting an inward isophote whose
+    fit diverged (stop code 5) with the geometry of the first fitted
+    isophote. It now uses the geometry of the adjacent isophote with
+    the next larger semimajor axis length, as for the outward
+    isophotes. [#2577]
+
+  - Fixed the third and fourth harmonics of the isophotes, which were
+    fit to the sampled intensities instead of the residuals of the
+    lower harmonic fits as in the STSDAS ``ellipse`` task. The
+    unfitted lower harmonics inflated the ``a3``, ``b3``, ``a4``, and
+    ``b4`` errors, especially for an ellipse that is offset from the
+    galaxy. [#2577]
+
+  - Fixed ``Ellipse.fit_image`` continuing to grow outward when the
+    second isophote had too many flagged data points (stop code 1).
+    [#2577]
+
+  - Fixed ``Ellipse.fit_image`` ending the inward fits at the first
+    isophote that could not be fit (stop code 3), e.g., inside a masked
+    ring, which dropped all of the smaller isophotes. As in the STSDAS
+    ``ellipse`` task, such an isophote is now skipped. [#2577]
+
+  - The ``'mean'`` and ``'median'`` integration modes now fall back to
+    the ``'bilinear'`` mode if the sampling annulus is narrower than 2
+    pixels, as in the STSDAS ``ellipse`` task, instead of if a sector
+    is smaller than 1 pixel. Previously, these modes were used down
+    to a semimajor axis length of about 11 pixels with the default
+    ``step``, where most sectors were too small and each gave a single
+    bilinear value, so the isophotes had fewer sampled points than
+    with the ``'bilinear'`` mode. [#2577]
+
+  - Fixed the isophote fitter returning a stop code of 0 for a fit
+    that converged in the same iteration in which too many of its data
+    points were flagged. It now returns a stop code of 1, as in the
+    STSDAS ``ellipse`` task. [#2577]
+
+  - Fixed the sampling of the isophotes, which continued past a polar
+    angle of 2 pi and sampled the start of the elliptical path twice.
+    As in the STSDAS ``ellipse`` task, the path now ends at 2 pi. This
+    changes the fitted isophotes slightly, and brings them closer to
+    the STSDAS results. [#2577]
+
+  - The ``rms``, ``intensity_err``, ``pixel_stddev``, and
+    ``gradient_err`` isophote values now use the sample standard
+    deviation (``ddof=1``) of the sampled intensities, as in the
+    STSDAS ``ellipse`` task, instead of the population standard
+    deviation. They increase by a factor of sqrt(N / (N - 1)) for N
+    data points. [#2577]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -758,6 +807,50 @@ API Changes
     or nonfinite semimajor axis length. Previously, ``fit_isophote``
     returned the central pixel isophote for a negative length, and a NaN
     length raised an unclear ``AttributeError``. [#2576]
+
+  - The default ``EllipseGeometry`` of ``Ellipse``, used when no
+    ``geometry`` is input, now has an orientation of 0 degrees
+    instead of 90 degrees. Its center is now the center of the image,
+    ``((nx - 1) / 2, (ny - 1) / 2)``, instead of ``(nx / 2, ny / 2)``,
+    which was half a pixel away. [#2577]
+
+  - The ``step`` keyword of ``Ellipse.fit_image`` and
+    ``Ellipse.fit_isophote`` now defaults to `None`, which uses the
+    ``step`` of the input ``EllipseGeometry``, like the
+    ``linear_growth`` keyword. Previously, the default of 0.1 always
+    replaced the ``step`` of the geometry. [#2577]
+
+  - The ``x0_err``, ``y0_err``, ``ellipticity_err``, and
+    ``orientation_err`` attributes of an ``Isophote`` are now NaN if
+    its geometry was not fitted, as in the STSDAS ``ellipse`` task, or
+    if they could not be computed. This includes the isophotes with a
+    stop code of 4 and the failed isophotes that ``Ellipse.fit_image``
+    extracts again with the geometry of another isophote. Previously,
+    they were computed from the fixed geometry, or set to 0. [#2577]
+
+  - The ``intensity_err``, geometry error, and higher-order harmonic
+    error values of the central pixel (``sma=0``) isophote are now NaN
+    instead of 0. Its gradient and higher-order harmonic amplitudes
+    are still 0, which model images need. [#2577]
+
+  - ``IsophoteList.make_model_image`` now sets the pixel nearest to
+    the center to the intensity of the central pixel isophote
+    (``sma=0``), as in the STSDAS ``bmodel`` task, instead of the
+    value interpolated from the smallest ellipses. [#2577]
+
+  - ``EllipseGeometry.find_center`` now samples the image along two
+    circles with radii of 4 and 8 pixels, as in the STSDAS ``ellipse``
+    task, instead of a disk and a ring, and its default ``threshold``
+    is now 1.0 instead of 0.1. The disk included the radial gradient of
+    the galaxy in its standard deviation, and with the previous
+    default, the centerer found an object in an image of pure noise.
+    [#2577]
+
+  - An isophote extracted without fitting now has a stop code of 1,
+    instead of 4, if fewer than ``min_valid_fraction`` of its data
+    points are valid, except in ``Ellipse.measure_isophotes``. Without
+    ``max_sma``, ``Ellipse.fit_image`` stops growing outward at such
+    an isophote. [#2577]
 
 - ``photutils.psf``
 
