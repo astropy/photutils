@@ -907,9 +907,9 @@ galaxy and fit the image::
     >>> print(np.round(np.median(isolist_disky.b4[idx]), 2))
     0.03
 
-Let's plot a few fitted ellipses over both galaxies, along with the
-actual isophotes of the images (contours at the intensities of the
-ellipses). The isophotes of the disky galaxy (dashed contours) are
+Let's plot a few fitted ellipses over both galaxies, along with their
+true isophotes (dashed contours of the noise-free models at the
+intensities of the ellipses). The isophotes of the disky galaxy are
 pointed along the major axis, while the fitted ellipses are not:
 
 .. plot::
@@ -940,17 +940,18 @@ pointed along the major axis, while the fitted ellipses are not:
     isolist = Ellipse(data, geometry=geometry).fit_image()
     isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
 
+    models = (galaxy(xx, yy), galaxy(xx, yy) + disk(xx, yy))
     fig, axes = plt.subplots(ncols=2, figsize=(10, 5))
-    for ax, image, iso_list, title in ((axes[0], data, isolist, 'Original'),
-                                       (axes[1], disky, isolist_disky,
-                                        'Disky')):
+    for ax, image, model, iso_list, title in (
+            (axes[0], data, models[0], isolist, 'Original'),
+            (axes[1], disky, models[1], isolist_disky, 'Disky')):
         norm = simple_norm(image, 'sqrt', percent=99.5)
         ax.imshow(image, origin='lower', norm=norm, cmap='Greys_r')
         for sma, color in ((20, 'C0'), (30, 'C1'), (45, 'C2')):
             isophote = iso_list.get_closest(sma)
             isophote.to_aperture().plot(ax=ax, color=color, linewidth=1.5)
-            ax.contour(image, levels=[isophote.intensity], colors='white',
-                       linewidths=1, linestyles='dashed')
+            ax.contour(model, levels=[isophote.intensity], colors='white',
+                       linewidths=1.2, linestyles='dashed')
         ax.set_xlim(90, 230)
         ax.set_ylim(70, 210)
         ax.set_title(title)
