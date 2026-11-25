@@ -405,8 +405,8 @@ class TestM51:
         fitter = _EllipseFitter(sample)
         isophote = fitter.fit()
 
-        assert isophote.n_data == 118
-        assert_allclose(isophote.intensity, 684.3, atol=0.1)
+        assert isophote.n_data == 119
+        assert_allclose(isophote.intensity, 685.5, atol=0.1)
 
         # Last sample taken by the original code, before turning
         # inwards. The original code ran this fit for the maximum

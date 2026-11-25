@@ -45,8 +45,11 @@ new `~photutils.background.make_morans_i_map` function.
 See :ref:`morans_i_mask` for more details.
 
 
-Isophote Fitting Improvements
-=============================
+Isophote Improvements
+=====================
+
+Fitting Improvements
+--------------------
 
 The elliptical isophote fits of `~photutils.isophote.Ellipse` are now
 about 5 times faster, and about 70 times faster for masked images with
@@ -95,8 +98,8 @@ now explains why. See :ref:`isophote-low-snr` for advice on fitting
 images with a low signal-to-noise ratio.
 
 
-Isophote Measurements on Fixed Ellipses
-=======================================
+Measurements on Fixed Ellipses
+------------------------------
 
 The new :meth:`~photutils.isophote.Ellipse.measure_isophotes` method
 measures an image along a given set of ellipses without fitting them,
@@ -117,8 +120,8 @@ the ellipses directly. See :ref:`isophote_fixed_ellipses` for more
 details.
 
 
-Limiting the Isophote Center Shift
-==================================
+Limiting the Center Shift
+-------------------------
 
 :meth:`~photutils.isophote.Ellipse.fit_image` and
 :meth:`~photutils.isophote.Ellipse.fit_isophote` have a
@@ -146,8 +149,8 @@ of the STSDAS ``ellipse`` task. See :ref:`isophote-center-limit` for
 more details.
 
 
-Isophote Tables and Model Images
-================================
+Tables and Model Images
+-----------------------
 
 The new :meth:`~photutils.isophote.IsophoteList.from_table` method
 creates an `~photutils.isophote.IsophoteList` from a table. It is
@@ -183,8 +186,8 @@ names of all the isophote properties, which are also the columns that
 details.
 
 
-Isophote Sigma Clipping
-=======================
+Sigma Clipping
+--------------
 
 :meth:`~photutils.isophote.Ellipse.fit_image`,
 :meth:`~photutils.isophote.Ellipse.fit_isophote`, and
@@ -208,8 +211,8 @@ The default is `None`, which means no sigma clipping, as before. The
 (see :ref:`whatsnew-3.2-isophote-sigma-clip`).
 
 
-Apertures From Isophote Ellipses
-================================
+Apertures From Ellipses
+-----------------------
 
 `~photutils.isophote.EllipseGeometry` and `~photutils.isophote.Isophote`
 have a new ``to_aperture`` method that returns the ellipse as an
@@ -225,6 +228,16 @@ initial ellipse or the fitted isophotes on an image::
     >>> isolist.get_closest(40.0).to_aperture().plot(color='white')
 
 See :doc:`../user_guide/isophote` for an example.
+
+
+Central Pixel Classes
+---------------------
+
+The ``CentralEllipseSample``, ``CentralEllipseFitter``, and
+``CentralPixel`` classes were removed. They were not part of the public
+API, so they have no deprecation period. The central pixel is now a
+regular `~photutils.isophote.Isophote` with an ``sma`` of zero, and
+``isophote.sma == 0`` replaces ``isinstance(isophote, CentralPixel)``.
 
 
 Source Tables as Input to ``extract_stars``
@@ -709,12 +722,3 @@ to::
     # New
     if isophote.stop_code == 5:
         ...
-
-Central Pixel Classes
-^^^^^^^^^^^^^^^^^^^^^
-
-The ``CentralEllipseSample``, ``CentralEllipseFitter``, and
-``CentralPixel`` classes were removed. They were not part of the public
-API, so they have no deprecation period. The central pixel is now a
-regular `~photutils.isophote.Isophote` with an ``sma`` of zero, and
-``isophote.sma == 0`` replaces ``isinstance(isophote, CentralPixel)``.

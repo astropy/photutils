@@ -98,11 +98,11 @@ class TestIsophote:
         assert orientation <= (0.62 + 0.05)
 
         # Fitted values
-        assert_allclose(iso.intensity, 684.6, atol=0.1)
-        assert_allclose(iso.rms, 83.85, atol=0.01)
-        assert_allclose(iso.intensity_err, 7.72, atol=0.01)
-        assert_allclose(iso.pixel_stddev, 118.6, atol=0.1)
-        assert_allclose(iso.gradient, -35.58, atol=0.1)
+        assert_allclose(iso.intensity, 686.0, atol=0.1)
+        assert_allclose(iso.rms, 83.31, atol=0.01)
+        assert_allclose(iso.intensity_err, 7.64, atol=0.01)
+        assert_allclose(iso.pixel_stddev, 117.8, atol=0.1)
+        assert_allclose(iso.gradient, -35.28, atol=0.1)
 
         # Integrals
         assert iso.total_flux_ellipse <= 1.20e6
@@ -818,6 +818,34 @@ def test_central_isophote_is_plain_isophote():
                  'orientation_err', 'a3_err', 'b3_err', 'a4_err',
                  'b4_err'):
         assert np.isnan(getattr(iso, name))
+
+
+def test_isophote_repr():
+    """
+    Test the repr of an Isophote and the repr and str of an
+    IsophoteList.
+    """
+    data = make_test_image(seed=0)
+    geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0 * u.deg)
+    isolist = Ellipse(data, geometry=geometry).fit_image(max_sma=30.0)
+
+    # The floats are rounded to 6 significant digits.
+    iso = isolist[3]
+    expected = (f'<Isophote(sma={iso.sma:.6g}, '
+                f'intensity={iso.intensity:.6g}, '
+                f'ellipticity={iso.ellipticity:.6g}, '
+                f'orientation={iso.orientation.value:.6g} deg, '
+                f'x0={iso.x0:.6g}, y0={iso.y0:.6g}, '
+                f'stop_code={iso.stop_code})>')
+    assert repr(iso) == expected
+    assert str(iso) == str(iso.to_table())
+
+    expected = (f'<IsophoteList(n_isophotes={len(isolist)}, min_sma=0.0, '
+                f'max_sma={isolist.sma[-1]:.6g})>')
+    assert repr(isolist) == expected
+    assert str(isolist) == str(isolist.to_table())
+
+    assert repr(IsophoteList([])) == '<IsophoteList(n_isophotes=0)>'
 
 
 def test_isophote_list_properties_match_definitions():

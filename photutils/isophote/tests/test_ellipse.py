@@ -1247,7 +1247,7 @@ FIT_IMAGE_RENAMES = [
 ]
 
 FIT_ISOPHOTE_RENAMES = [
-    ('conver', 'convergence', 0.001), ('minit', 'miniters', 5),
+    ('conver', 'convergence', 1.0e-4), ('minit', 'miniters', 5),
     ('maxit', 'maxiters', 5), ('fflag', 'min_valid_fraction', 0.5),
     ('integrmode', 'integration_mode', 'mean'),
     ('linear', 'linear_growth', True),
@@ -1308,10 +1308,15 @@ def test_fit_isophote_renamed_keywords(old, new, value):
     geometry = EllipseGeometry(256.0, 256.0, 10.0, 0.2, 0.0 * u.deg)
     ellipse = Ellipse(data, geometry=geometry)
     # The minimum valid fraction has an effect only when data points
-    # are flagged.
+    # are flagged. Linear growth with the default step narrows the
+    # sampling annulus. In the 'bilinear' mode, this only shifts the
+    # starting angle of the path slightly. The 'mean' mode falls back to
+    # the 'bilinear' mode for the narrow annulus, which changes the
+    # result clearly.
     sigma_clip = SigmaClip(sigma=1.0, maxiters=1, cenfunc='mean',
                            stdfunc='std')
-    extra = {'min_valid_fraction': {'sigma_clip': sigma_clip}}.get(new, {})
+    extra = {'min_valid_fraction': {'sigma_clip': sigma_clip},
+             'linear_growth': {'integration_mode': 'mean'}}.get(new, {})
     expected = ellipse.fit_isophote(40.0, **{new: value}, **extra)
     # The value must change the result, so that a shim that dropped
     # the keyword would fail.

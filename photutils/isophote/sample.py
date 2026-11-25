@@ -12,8 +12,9 @@ from astropy.stats import SigmaClip
 
 from photutils.isophote._polar_path import compute_polar_path
 from photutils.isophote.geometry import (EllipseGeometry,
-                                         _legacy_orientation_rad,
-                                         _orientation_argument, _validate_sma)
+                                         _legacy_orientation_rad, _make_repr,
+                                         _make_str, _orientation_argument,
+                                         _validate_sma)
 from photutils.isophote.integrator import _INTEGRATORS
 from photutils.utils._deprecation import (deprecated_attribute,
                                           deprecated_getattr,
@@ -376,8 +377,14 @@ class EllipseSample:
             Use ``sigma_clip`` instead.
 
     angles : 1D `~numpy.ndarray` or `None`
-        The angles of the valid sampled points. It is `None` until
-        :meth:`~photutils.isophote.EllipseSample.extract` is called.
+        The polar angles (radians) of the valid sampled points, measured
+        counterclockwise from the semimajor axis. The angles increase
+        along the path, which covers the ellipse once. A path sampled
+        with the ``'bilinear'`` or ``'nearest_neighbor'`` mode starts at
+        a small positive angle and ends less than one revolution later,
+        so its last angles can be slightly larger than 2 pi. It is
+        `None` until :meth:`~photutils.isophote.EllipseSample.extract`
+        is called.
 
     radii : 1D `~numpy.ndarray` or `None`
         The radii of the valid sampled points. It is `None` until
@@ -608,8 +615,12 @@ class EllipseSample:
     @property
     def angles(self):
         """
-        The angles of the valid sampled points, or `None` before
-        extraction.
+        The polar angles (radians) of the valid sampled points, or
+        `None` before extraction.
+
+        The angles are measured counterclockwise from the semimajor
+        axis. A path sampled with the ``'bilinear'`` or
+        ``'nearest_neighbor'`` mode can end slightly past 2 pi.
         """
         return None if self._values is None else self._values[0]
 
@@ -628,6 +639,25 @@ class EllipseSample:
         extraction.
         """
         return None if self._values is None else self._values[2]
+
+    def _repr_params(self):
+        """
+        Return the (name, value) pairs of the parameters that are shown
+        by the repr and str.
+        """
+        geometry = self.geometry
+        names = ('sma', 'x0', 'y0', 'ellipticity', 'orientation', 'step',
+                 'linear_growth')
+        params = [(name, getattr(geometry, name)) for name in names]
+        params.append(('integration_mode', self.integration_mode))
+        params.append(('sigma_clip', self.sigma_clip))
+        return params
+
+    def __repr__(self):
+        return _make_repr(self, self._repr_params())
+
+    def __str__(self):
+        return _make_str(self, self._repr_params())
 
     # Remove in 4.0
     def __getattr__(self, name):
@@ -722,11 +752,12 @@ class EllipseSample:
                     self.image, self.geometry, angles, radii, intensities)
 
         # Walk once along the elliptical path, integrating at specified
-        # places defined by polar vector. As in the STSDAS ellipse task,
-        # the walk ends at a polar angle of 2 pi, so that the start of
-        # the path is not sampled again.
-        phi_max = np.pi * 2.0
+        # places defined by polar vector.
         if integrator.is_area():
+            # As in the STSDAS ellipse task, the sectors end at a polar
+            # angle of 2 pi. The first sector starts at an angle of 0,
+            # so a later end would sample the start of the path again.
+            phi_max = np.pi * 2.0
             while phi <= phi_max:
                 # Do the integration at phi-radius position, and append
                 # results to the angles, radii, and intensities lists.
@@ -747,9 +778,13 @@ class EllipseSample:
             # The pixel integrators step along the path by about one
             # pixel (an angle step of 1 / radius, but at most 0.5
             # radians), so the path can be computed first and then
-            # sampled at once.
+            # sampled at once. As in the STSDAS ellipse task, the path
+            # starts at half of a sector width. It ends one revolution
+            # later (exclusive), so that it covers the full ellipse
+            # once. The STSDAS task ends it at 2 pi, which leaves out a
+            # small arc next to the semimajor axis.
             phis, path_radii = compute_polar_path(
-                phi, radius, phi_max, self.geometry.sma,
+                phi, radius, phi + np.pi * 2.0, self.geometry.sma,
                 self.geometry.ellipticity)
             angles, radii, intensities = integrator.integrate_path(
                 path_radii, phis)

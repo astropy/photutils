@@ -486,47 +486,46 @@ class Ellipse:
             fit. Whenever the current semimajor axis length is larger
             than ``max_iterative_sma``, the isophotes will be extracted
             using the current geometry, without being fitted. This
-            noniterative
-            mode may be useful for sampling regions of very low surface
-            brightness, where the algorithm may become unstable
-            and unable to recover reliable geometry information.
-            If ``max_sma`` is set, noniterative mode is also entered
-            when two consecutive isophotes fail to fit (e.g., the
-            ellipticity exceeds 0.95 or the center leaves the image),
-            when an isophote has too many flagged data points (see
-            ``min_valid_fraction``), or when the
+            noniterative mode may be useful for sampling regions of
+            very low surface brightness, where the algorithm may
+            become unstable and unable to recover reliable geometry
+            information. If ``max_sma`` is set, noniterative mode
+            is also entered when two consecutive isophotes fail to
+            fit (e.g., the ellipticity exceeds 0.95 or the center
+            leaves the image), when an isophote has too many flagged
+            data points (see ``min_valid_fraction``), or when the
             ``max_gradient_rel_err`` criterion is met. If `None`
             (default), then no maximum value is used.
 
         fix_center : bool, optional
-            Keep center of ellipse fixed during fit? The default is
-            False.
+            Whether to keep the center of the ellipse fixed during the
+            fit. The default is `False`.
 
         fix_orientation : bool, optional
-            Keep orientation of semimajor axis of ellipse fixed
-            during fit? The default is False.
+            Whether to keep the orientation of the semimajor axis of the
+            ellipse fixed during the fit. The default is `False`.
 
         fix_ellipticity : bool, optional
-            Keep ellipticity of ellipse fixed during fit? The default is
-            False.
+            Whether to keep the ellipticity of the ellipse fixed during
+            the fit. The default is `False`.
 
         max_center_shift : float or `None`, optional
-            The maximum distance (in pixels) that the center of any
-            fitted isophote may move from the center of the ``geometry``
-            input to `~photutils.isophote.Ellipse`. Unlike
-            ``fix_center``, this lets the center move freely within a
-            circle of this radius. If a fit would move the center
+            The maximum distance (in pixels) that the center of
+            any fitted isophote may move from the center of the
+            ``geometry`` input to `~photutils.isophote.Ellipse`. Unlike
+            ``fix_center``, this lets the center move freely within
+            a circle of this radius. If a fit would move the center
             outside the circle, the center of that isophote is placed
             on the circle and held fixed for the rest of its fit, while
-            ellipticity and orientation continue to be fitted. If
-            `None` (default), the center is not limited. This parameter
-            has no effect if ``fix_center`` is `True`.
+            ellipticity and orientation continue to be fitted. If `None`
+            (default), the center is not limited. This parameter has no
+            effect if ``fix_center`` is `True`.
 
         sigma_clip : `~astropy.stats.SigmaClip` or `None`, optional
             A `~astropy.stats.SigmaClip` object that defines the sigma
-            clipping of the intensities sampled along each ellipse.
-            The clipped data points are flagged and excluded from the
-            fit. If `None` (default), no sigma clipping is performed.
+            clipping of the intensities sampled along each ellipse. The
+            clipped data points are flagged and excluded from the fit.
+            If `None` (default), no sigma clipping is performed.
 
         nclip : int, optional
             The number of sigma-clip iterations.
@@ -713,8 +712,8 @@ class Ellipse:
                     break
             previous_exceeded = exceeded
 
-            # Update sma. If exceeded user-defined
-            # maximum, bail out from this loop.
+            # Update sma. If exceeded user-defined maximum, bail out
+            # from this loop.
             sma = isophote.sample.geometry._update_sma(step)
             if (max_sma is not None
                     and sma > max_sma * (1.0 + _SMA_LIMIT_RTOL)):
@@ -1065,11 +1064,10 @@ class Ellipse:
         Parameters
         ----------
         isophotes : `~photutils.isophote.IsophoteList` or iterable
-            The ellipses along which to measure the image. It can be an
-            `~photutils.isophote.IsophoteList` (e.g., the output of
-            :meth:`~photutils.isophote.Ellipse.fit_image`) or an
-            iterable of
-            `~photutils.isophote.Isophote` and
+            The ellipses along which to measure the image. It can
+            be an `~photutils.isophote.IsophoteList` (e.g., the
+            output of :meth:`~photutils.isophote.Ellipse.fit_image`)
+            or an iterable of `~photutils.isophote.Isophote` and
             `~photutils.isophote.EllipseGeometry` instances. The center,
             semimajor axis length, ellipticity, and orientation of
             each ellipse are used. The ``step`` and ``linear_growth``

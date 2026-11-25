@@ -37,11 +37,12 @@ The shape of an ellipse is described by its ellipticity, defined as
     \epsilon = 1 - \frac{b}{a}
 
 where :math:`a` and :math:`b` are the semimajor and semiminor axis
-lengths. The ellipticity is used instead of the eccentricity because
-it relates better to the visual flattening of an ellipse. A slightly
-flattened circle is easily seen to have an ellipticity of about 0.1.
-The same ellipse has an eccentricity of 0.44, which is not obvious
-from visual inspection. The two quantities are related by
+lengths. The ellipticity (:math:`\epsilon`) is used instead of the
+eccentricity (:math:`e`) because it relates better to the visual
+flattening of an ellipse. A slightly flattened circle is easily seen to
+have an ellipticity of about 0.1. The same ellipse has an eccentricity
+of 0.44, which is not obvious from visual inspection. The two quantities
+are related by
 
 .. math::
 
@@ -114,7 +115,7 @@ be plotted:
     >>> norm = simple_norm(data, 'sqrt', percent=99.0)
     >>> fig, ax = plt.subplots()
     >>> ax.imshow(data, origin='lower', norm=norm)
-    >>> aper.plot(color='white')
+    >>> aper.plot(color='red')
 
 .. plot::
 
@@ -140,7 +141,7 @@ be plotted:
     norm = simple_norm(data, 'sqrt', percent=99.0)
     fig, ax = plt.subplots()
     ax.imshow(data, origin='lower', norm=norm)
-    aper.plot(color='white')
+    aper.plot(color='red')
 
 Next, we create an instance of the `~photutils.isophote.Ellipse`
 class, inputting the image and the initial ellipse geometry::
@@ -171,22 +172,22 @@ pixels. They match the values of the simulated galaxy::
 The :meth:`~photutils.isophote.IsophoteList.to_table` method returns
 the isophote values as a table::
 
-    >>> print(isolist.to_table())  # doctest: +SKIP
-           sma              intensity      ... n_iter stop_code
-                                           ...
-    ------------------ ------------------- ... ------ ---------
-                   0.0  392.40301224103547 ...      0         0
-    0.5346972612827552   268.1139667720711 ...     12         0
-    0.5881669874110307  257.98012406008917 ...     10         0
-    0.6469836861521338  247.13824214053332 ...     10         0
-    0.7116820547673471  235.60801120562274 ...     10         0
-                   ...                 ... ...    ...       ...
-    101.08940569985889  0.4622304207494331 ...     14         0
-    111.19834626984479 0.29106071850491716 ...     10         0
-    122.31818089682928 0.19270314093489685 ...     26         0
-     134.5499989865122 0.17506574466746572 ...     17         0
-    148.00499888516345 0.08092386426151292 ...     12         0
-    Length = 61 rows
+    >>> iso_table = isolist.to_table()
+    >>> iso_table.pprint(max_lines=14, max_width=80)  # doctest: +SKIP
+           sma             intensity       ... n_iter stop_code
+                                            ...
+    ------------------ -------------------- ... ------ ---------
+                   0.0   392.40301224101654 ...      0         0
+    0.5346972612827552    268.1139667720631 ...     12         0
+    0.5881669874110307    257.9801240600906 ...     10         0
+    0.6469836861521338    247.1382421405329 ...     10         0
+                   ...                  ... ...    ...       ...
+    111.19834626984479  0.35398580550238423 ...     16         0
+    122.31818089682928  0.25174837704885095 ...     10         0
+     134.5499989865122  0.18514376415595932 ...     10         0
+    148.00499888516345  0.10696806162863258 ...     19         0
+     162.8054987736798 0.044716996571235665 ...     13         1
+    Length = 62 rows
 
 Let's plot the ellipticity, orientation, and the center x and y
 position as a function of the semimajor axis length:
@@ -214,7 +215,7 @@ position as a function of the semimajor axis length:
     isolist = ellipse.fit_image()
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2,
-                                                 figsize=(8, 8))
+                                                 figsize=(10, 8))
     fig.subplots_adjust(hspace=0.35, wspace=0.35)
 
     ax1.errorbar(isolist.sma, isolist.ellipticity,
@@ -449,8 +450,9 @@ required geometry value is not finite.
 
 The loaded isophotes have no sample, so ``loaded.sample`` holds `None`
 for each isophote. They can still be used to make a model image with
-:meth:`~photutils.isophote.IsophoteList.make_model_image`. To measure
-an image along them, pass the list to
+:meth:`IsophoteList.make_model_image
+<photutils.isophote.IsophoteList.make_model_image>`. To measure an
+image along them, pass the list to
 :meth:`~photutils.isophote.Ellipse.measure_isophotes`::
 
     >>> measured = ellipse.measure_isophotes(loaded)
@@ -473,7 +475,7 @@ returns the image coordinates of the sampled points.
 Let's plot a few isophotes over the image, along with their sampled
 intensities as a function of the angle. Each set of intensities is
 divided by the mean intensity of its isophote. For a good fit, the
-intensities show no systematic variation with the angle:
+intensities should show no systematic variation with the angle:
 
 .. plot::
 
@@ -504,7 +506,8 @@ intensities show no systematic variation with the angle:
     for sma in (10, 20, 40, 80):
         isophote = isolist.get_closest(sma)
         x, y = isophote.sampled_coordinates()
-        line, = ax1.plot(x, y)
+        # Repeat the first point to close the curve
+        line, = ax1.plot(np.append(x, x[0]), np.append(y, y[0]))
         sample = isophote.sample
         ax2.plot(np.rad2deg(sample.angles),
                  sample.intensities / isophote.intensity, '.',
@@ -593,19 +596,28 @@ axis lengths from 10 to 90 pixels::
     ...     shift = np.hypot(iso.x0[idx] - 160.0, iso.y0[idx] - 140.0)
     ...     max_shifts.append(shift.max())
     >>> print(np.round(max_shifts, 1))  # doctest: +SKIP
-    [6.1 1.2]
-    >>> print(max_shifts[0] > 5.0, max_shifts[1] < 1.5)
+    [5.6 1.5]
+
+..
+    The printed values above are not tested because they depend on
+    rounding in the noisy fits. This hidden check tests the text below.
+
+    >>> print(max_shifts[0] > 5.0, max_shifts[1] < 2.0)
     True True
 
-Without rejection, the star and the companion pull the fitted centers
-by up to 6 pixels, the ellipticity reaches 0.55, and the fit stops at
-a semimajor axis length of about 92 pixels. Over this range of
-semimajor axis lengths, the mask and sigma clipping keep the centers
-within about 1 pixel of the galaxy center and the ellipticity between
-0.39 and 0.41. The mask alone is not enough for this image, because the
-star still disturbs the fit. Sigma clipping alone removes most of the
-distortion and keeps the centers within 2 pixels. The mask removes
-the rest.
+Without rejection, the star pulls the fitted centers by up to 6 pixels
+and raises the ellipticity to 0.54, and the fit stops at a semimajor
+axis length of about 101 pixels. Over this range of semimajor axis
+lengths, the mask and sigma clipping keep the centers within about
+1.5 pixels of the galaxy center (about twice the center error of the
+faint outer isophotes) and the ellipticity between 0.39 and 0.41. The
+mask alone is not enough for this image, because the star still
+disturbs the fit. Sigma clipping alone gives nearly the same fits over
+this range, because it works well for small features such as stars.
+The mask is needed for the larger ellipses, which cross the companion.
+From semimajor axis lengths of 110 to 140 pixels, sigma clipping alone
+lets the ellipticity drop to about 0.32 and the centers move by up to
+7 pixels, compared with 0.37 and 4.5 pixels with the mask.
 
 Let's plot the image with the masked region, and the residuals of the
 model images of the two fits (see :ref:`isophote-model-image`):
@@ -733,7 +745,8 @@ extracted up to ``max_sma`` with a fixed geometry, without fitting.
 The ``max_iterative_sma`` keyword sets where this noniterative mode
 starts. Isophotes with larger semimajor axis lengths are extracted
 with the geometry of the last fitted isophote and have a stop code of
-4. This is useful for regions of very low surface brightness, where
+4 (or 1, if too many of their data points are flagged). This is
+useful for regions of very low surface brightness, where
 the fits are unstable::
 
     >>> isolist_fixed = ellipse.fit_image(max_iterative_sma=50.0,
@@ -781,10 +794,8 @@ on two arguments. It would be difficult to include partial pixels in a
 median, and the simpler scheme is faster.
 
 In the ``'mean'`` and ``'median'`` modes, a sector with 6 or fewer
-valid pixels is sampled with bilinear interpolation instead, and the
-whole ellipse is sampled with bilinear interpolation if its sectors
-are smaller than one pixel. Bilinear interpolation was found to give
-smoother samples in those cases.
+valid pixels is sampled with bilinear interpolation instead, which was
+found to give smoother samples.
 
 .. _isophote-center-limit:
 
@@ -879,35 +890,41 @@ subtracted. The ``a3`` and ``b3`` attributes are the amplitudes of
 the :math:`\sin(3\phi)` and :math:`\cos(3\phi)` terms, and ``a4`` and
 ``b4`` are the amplitudes of the :math:`\sin(4\phi)` and
 :math:`\cos(4\phi)` terms, where :math:`\phi` is the polar angle
-measured counterclockwise from the semimajor axis. The amplitudes are divided by the semimajor axis
-length and by the absolute value of the local radial intensity
-gradient, so they can be compared with each other and between
-isophotes. Their errors are in the ``a3_err``, ``b3_err``,
-``a4_err``, and ``b4_err`` attributes.
+measured counterclockwise from the semimajor axis. The amplitudes are
+divided by the semimajor axis length and by the absolute value of the
+local radial intensity gradient, so they can be compared with each
+other and between isophotes. Their errors are in the ``a3_err``,
+``b3_err``, ``a4_err``, and ``b4_err`` attributes.
 
 The ``b4`` amplitude is the most used. It is positive for disky
 (kite-like) isophotes and negative for boxy isophotes. To demonstrate,
-let's add a faint, thin disk along the major axis of the simulated
-galaxy and fit the image::
+let's simulate a galaxy with disky isophotes using the
+`~astropy.modeling.functional_models.GeneralSersic2D` model, whose
+``c`` parameter makes the isophotes disky (``c < 0``) or boxy
+(``c > 0``), and fit the image::
 
-    >>> disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
-    ...                   x_stddev=30.0, y_stddev=4.0,
-    ...                   theta=np.deg2rad(40.0))
-    >>> disky = data + disk(xx, yy)
+    >>> from astropy.modeling.models import GeneralSersic2D
+    >>> disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+    ...                                x_0=160.0, y_0=140.0, ellip=0.4,
+    ...                                theta=np.deg2rad(40.0), c=-0.5)
+    >>> disky = disky_galaxy(xx, yy) + noise
     >>> isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
     >>> idx = (isolist_disky.sma > 15) & (isolist_disky.sma < 50)
     >>> print(np.round(np.median(isolist_disky.b4[idx]), 2))
-    0.03
+    0.05
 
-Let's plot the four amplitudes of the disky galaxy, and those of the
-original galaxy for comparison:
+Let's plot a few fitted ellipses over both galaxies, along with their
+true isophotes (dashed contours of the noise-free models at the
+intensities of the ellipses). The isophotes of the disky galaxy are
+pointed along the major axis, while the fitted ellipses are not:
 
 .. plot::
 
     import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D, Sersic2D
+    from astropy.modeling.models import GeneralSersic2D, Sersic2D
+    from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.isophote import Ellipse, EllipseGeometry
 
@@ -919,17 +936,63 @@ original galaxy for comparison:
                              stddev=0.5, seed=0)
     data = galaxy(xx, yy) + noise
 
-    disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
-                      x_stddev=30.0, y_stddev=4.0,
-                      theta=np.deg2rad(40.0))
-    disky = data + disk(xx, yy)
+    disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+                                   x_0=160.0, y_0=140.0, ellip=0.4,
+                                   theta=np.deg2rad(40.0), c=-0.5)
+    disky = disky_galaxy(xx, yy) + noise
 
     geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
     isolist = Ellipse(data, geometry=geometry).fit_image()
     isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
 
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8),
+    models = (galaxy(xx, yy), disky_galaxy(xx, yy))
+    fig, axes = plt.subplots(ncols=2, figsize=(10, 5))
+    for ax, image, model, iso_list, title in (
+            (axes[0], data, models[0], isolist, 'Original'),
+            (axes[1], disky, models[1], isolist_disky, 'Disky')):
+        norm = simple_norm(image, 'sqrt', percent=99.5)
+        ax.imshow(image, origin='lower', norm=norm, cmap='Greys_r')
+        for sma, color in ((20, 'C0'), (30, 'C1'), (45, 'C2')):
+            isophote = iso_list.get_closest(sma)
+            isophote.to_aperture().plot(ax=ax, color=color, linewidth=1.5)
+            ax.contour(model, levels=[isophote.intensity], colors='white',
+                       linewidths=1.2, linestyles='dashed')
+        ax.set_xlim(90, 230)
+        ax.set_ylim(70, 210)
+        ax.set_title(title)
+
+Let's plot the four amplitudes of the disky galaxy, and those of the
+original galaxy for comparison:
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import GeneralSersic2D, Sersic2D
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    galaxy = Sersic2D(amplitude=10.0, r_eff=30.0, n=2.0, x_0=160.0,
+                      y_0=140.0, ellip=0.4, theta=np.deg2rad(40.0))
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    data = galaxy(xx, yy) + noise
+
+    disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+                                   x_0=160.0, y_0=140.0, ellip=0.4,
+                                   theta=np.deg2rad(40.0), c=-0.5)
+    disky = disky_galaxy(xx, yy) + noise
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    isolist = Ellipse(data, geometry=geometry).fit_image()
+    isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
+
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 8),
                              sharex=True, sharey=True)
     fig.subplots_adjust(hspace=0.15, wspace=0.1)
     for ax, name in zip(axes.ravel(), ('a3', 'b3', 'a4', 'b4')):
@@ -941,16 +1004,17 @@ original galaxy for comparison:
         ax.axhline(0.0, color='gray', linewidth=1)
         ax.set_title(name)
     axes[0, 0].legend()
-    axes[0, 0].set_ylim(-0.03, 0.06)
+    axes[0, 0].set_ylim(-0.04, 0.08)
     for ax in axes[1]:
         ax.set_xlabel('Semimajor Axis Length (pix)')
     for ax in axes[:, 0]:
         ax.set_ylabel('Amplitude')
 
-The ``b4`` amplitude of the disky galaxy peaks at about 0.04 near a
-semimajor axis length of 30 pixels, well above its error of about
-0.007. The other amplitudes, and all four amplitudes of the original
-galaxy, scatter around zero.
+The ``b4`` amplitude of the disky galaxy is about 0.05 at all
+semimajor axis lengths. Between semimajor axis lengths of 10 and 50
+pixels, it is about ten times its error. The other amplitudes, and
+all four amplitudes of the original galaxy, scatter around zero. A
+boxy galaxy (``c > 0``) gives a negative ``b4`` amplitude.
 
 
 .. _isophote-model-image:
@@ -1017,11 +1081,66 @@ pixel.
 Pixels that are outside of the largest isophote have no model value
 and are set to the ``fill_value`` keyword, which defaults to 0. For an
 image that is not background subtracted, set it to the background
-level of the image. With ``high_harmonics=True``, the third and fourth
-harmonics (see :ref:`isophote-harmonics`) are added to the model, so
-that it follows the deviations of the isophotes from ellipses. The
-``sma_interval`` keyword is the spacing of the grid of semimajor axis
-lengths. Larger values are faster but can leave gaps in the model.
+level of the image. The ``sma_interval`` keyword is the spacing of the
+grid of semimajor axis lengths. Larger values are faster but can leave
+gaps in the model.
+
+With ``high_harmonics=True``, the third and fourth harmonics (see
+:ref:`isophote-harmonics`) are added to the model, so that it follows
+the deviations of the isophotes from ellipses. Let's compare the
+residuals of the two models of the disky galaxy::
+
+    >>> residual_ellipse = disky - isolist_disky.make_model_image(
+    ...     disky.shape)
+    >>> residual_harmonics = disky - isolist_disky.make_model_image(
+    ...     disky.shape, high_harmonics=True)
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import GeneralSersic2D
+    from astropy.visualization import simple_norm
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+                                   x_0=160.0, y_0=140.0, ellip=0.4,
+                                   theta=np.deg2rad(40.0), c=-0.5)
+    disky = disky_galaxy(xx, yy) + noise
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
+
+    residual_ellipse = disky - isolist_disky.make_model_image(disky.shape)
+    residual_harmonics = disky - isolist_disky.make_model_image(
+        disky.shape, high_harmonics=True)
+
+    norm = simple_norm(disky, 'sqrt', percent=99.0)
+    fig, axes = plt.subplots(ncols=3, figsize=(14, 5))
+    fig.subplots_adjust(left=0.04, right=0.98, bottom=0.02, top=0.98)
+    axes[0].imshow(disky, origin='lower', norm=norm)
+    axes[0].set_title('Disky Galaxy')
+    axes[1].imshow(residual_ellipse, origin='lower', vmin=-2, vmax=2)
+    axes[1].set_title('Residual of the Ellipse Model')
+    axes[2].imshow(residual_harmonics, origin='lower', vmin=-2, vmax=2)
+    axes[2].set_title('Residual with the Higher Harmonics')
+    for ax in axes:
+        ax.set_xlim(90, 230)
+        ax.set_ylim(70, 210)
+
+The residual of the ellipse model shows the X-shaped pattern of the
+disky isophotes, and the higher harmonics remove most of it. Between 5
+and 30 pixels from the center, the rms of the residuals decreases from
+1.09 to 0.67, compared to a noise level of 0.5. Only the third and fourth
+harmonics are fit, so sharper deviations from an ellipse, such as
+those of a thin disk, are only partly modeled.
 
 
 .. _isophote_fixed_ellipses:

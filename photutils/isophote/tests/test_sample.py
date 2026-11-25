@@ -89,17 +89,63 @@ def test_area_integration_annulus_width(integration_mode, sma, step,
         assert_array_equal(values, bilinear_values)
 
 
-@pytest.mark.parametrize('integration_mode', ['bilinear', 'mean'])
-def test_path_samples_once(integration_mode):
+@pytest.mark.parametrize('integration_mode', ['bilinear', 'nearest_neighbor'])
+def test_path_full_circle(integration_mode):
     """
-    Test that the elliptical path is sampled once, without sampling the
-    start of the path again past a polar angle of 2 pi.
+    Test that the sampling path of the pixel integration modes covers
+    the full ellipse once.
+
+    The path starts at half of a sector width, as in the STSDAS ellipse
+    task, and ends one revolution later, so that no part of the ellipse
+    is sampled twice or left out.
     """
     sample = EllipseSample(DATA, 100.0, integration_mode=integration_mode)
+    angles, radii, _ = sample.extract()
+    assert angles[0] == sample.geometry._initial_polar_angle
+    assert np.all(np.diff(angles) > 0)
+    last_step = min(1.0 / radii[-1], 0.5)
+    phi_max = angles[0] + 2.0 * np.pi
+    assert angles[-1] < phi_max <= angles[-1] + last_step
+
+
+def test_path_samples_once():
+    """
+    Test that the sectors of the area integration modes end at a polar
+    angle of 2 pi, as in the STSDAS ellipse task, without sampling the
+    start of the path again.
+    """
+    sample = EllipseSample(DATA, 100.0, integration_mode='mean')
     angles = sample.extract()[0]
     assert np.all(angles >= 0)
     assert np.all(angles < 2.0 * np.pi)
     assert np.all(np.diff(angles) > 0)
+
+
+def test_repr_str():
+    """
+    Test the repr and str of an EllipseSample.
+    """
+    sigma_clip = SigmaClip(sigma=3.0, maxiters=2)
+    sample = EllipseSample(DATA, 40.0, x0=256.0, y0=255.5, ellipticity=0.25,
+                           orientation=40.0 * u.deg,
+                           integration_mode='median', sigma_clip=sigma_clip)
+    expected = ('<EllipseSample(sma=40.0, x0=256.0, y0=255.5, '
+                'ellipticity=0.25, orientation=40.0 deg, step=0.1, '
+                "linear_growth=False, integration_mode='median', "
+                f'sigma_clip={sigma_clip!r})>')
+    assert repr(sample) == expected
+
+    expected = ('<photutils.isophote.sample.EllipseSample>\n'
+                'sma: 40.0\n'
+                'x0: 256.0\n'
+                'y0: 255.5\n'
+                'ellipticity: 0.25\n'
+                'orientation: 40.0 deg\n'
+                'step: 0.1\n'
+                'linear_growth: False\n'
+                "integration_mode: 'median'\n"
+                f'sigma_clip: {sigma_clip!r}')
+    assert str(sample) == expected
 
 
 def test_coordinates():
@@ -420,7 +466,7 @@ def test_update_repeated():
                          [('rising', 0.0, None),
                           ('shallow', 0.0, -1.478),
                           ('shallow', 1.0, None),
-                          ('similar', 1.0, -10.79)])
+                          ('similar', 1.0, -10.93)])
 def test_meaningful_gradient(profile, modulation, expected):
     """
     Test which measured gradients are meaningful with respect to the
@@ -515,8 +561,8 @@ def test_sampling_path(sma):
     assert_allclose(radii, sample.geometry.radius(angles))
     steps = np.minimum(1.0 / radii, 0.5)
     assert_allclose(np.diff(angles), steps[:-1])
-    phi_max = 2.0 * np.pi
-    assert angles[-1] <= phi_max < angles[-1] + steps[-1]
+    phi_max = angles[0] + 2.0 * np.pi
+    assert angles[-1] < phi_max <= angles[-1] + steps[-1]
 
 
 def test_sample_sma_zero():

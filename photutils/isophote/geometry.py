@@ -5,6 +5,7 @@ Tools for storing parameters for the geometry of an ellipse.
 
 import inspect
 import math
+import numbers
 import warnings
 from functools import wraps
 
@@ -20,6 +21,59 @@ from photutils.utils._deprecation import (deprecated, deprecated_attribute,
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['EllipseGeometry']
+
+
+def _format_float(value):
+    """
+    Format a float with 6 significant digits.
+
+    A whole number keeps its decimal point (e.g., ``256.0``), so that it
+    is distinguished from an integer.
+    """
+    text = f'{value:.6g}'
+    if np.isfinite(value) and not any(char in text for char in '.e'):
+        text += '.0'
+    return text
+
+
+def _format_repr_value(value):
+    """
+    Format a parameter value for a repr or str.
+
+    Floats, including the value of a quantity, are rounded to 6
+    significant digits, so that, e.g., an angle is shown as ``40.0
+    deg``. Integers, booleans, and `None` use their str. Other values
+    (e.g., strings) use their repr.
+    """
+    if isinstance(value, u.Quantity):
+        return f'{_format_float(value.value)} {value.unit}'
+    if isinstance(value, (bool, np.bool_, numbers.Integral)):
+        return str(value)
+    if isinstance(value, numbers.Real):
+        return _format_float(value)
+    if value is None:
+        return 'None'
+    return repr(value)
+
+
+def _make_repr(instance, params):
+    """
+    Make the repr of an instance from (name, value) pairs.
+    """
+    params = ', '.join(f'{name}={_format_repr_value(value)}'
+                       for name, value in params)
+    return f'<{instance.__class__.__name__}({params})>'
+
+
+def _make_str(instance, params):
+    """
+    Make the str of an instance from (name, value) pairs, with one
+    parameter per line.
+    """
+    cls_name = f'{instance.__class__.__module__}.{instance.__class__.__name__}'
+    params = '\n'.join(f'{name}: {_format_repr_value(value)}'
+                       for name, value in params)
+    return f'<{cls_name}>\n{params}'
 
 
 # The first and second harmonic coefficients of the isophote fit, in
@@ -288,20 +342,20 @@ class EllipseGeometry:
         ``fit_isophote`` methods is set.
 
     fix_center : bool, optional
-        Keep center of ellipse fixed during fit? The default is
-        `False`.
+        Whether to keep the center of the ellipse fixed during the fit.
+        The default is `False`.
 
     fix_orientation : bool, optional
-        Keep the orientation of the semimajor axis of the ellipse fixed
-        during the fit? The default is `False`.
+        Whether to keep the orientation of the semimajor axis of the
+        ellipse fixed during the fit. The default is `False`.
 
         .. deprecated:: 3.2
             The ``fix_pa`` keyword is deprecated. Use
             ``fix_orientation`` instead.
 
     fix_ellipticity : bool, optional
-        Keep ellipticity of ellipse fixed during fit? The default is
-        `False`.
+        Whether to keep the ellipticity of the ellipse fixed during the
+        fit. The default is `False`.
 
         .. deprecated:: 3.2
             The ``fix_eps`` keyword is deprecated. Use
@@ -395,6 +449,22 @@ class EllipseGeometry:
                          linear_growth=linear_growth, fix_center=fix_center,
                          fix_orientation=fix_orientation,
                          fix_ellipticity=fix_ellipticity)
+
+    def _repr_params(self):
+        """
+        Return the (name, value) pairs of the parameters that are shown
+        by the repr and str.
+        """
+        names = ('x0', 'y0', 'sma', 'ellipticity', 'orientation', 'step',
+                 'linear_growth', 'fix_center', 'fix_orientation',
+                 'fix_ellipticity')
+        return [(name, getattr(self, name)) for name in names]
+
+    def __repr__(self):
+        return _make_repr(self, self._repr_params())
+
+    def __str__(self):
+        return _make_str(self, self._repr_params())
 
     @classmethod
     def _from_radians(cls, x0, y0, sma, ellipticity, orientation,

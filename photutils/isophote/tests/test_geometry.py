@@ -18,7 +18,7 @@ from scipy.integrate import quad
 
 from photutils.aperture import EllipticalAperture
 from photutils.datasets import make_noise_image
-from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.geometry import EllipseGeometry, _format_repr_value
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -40,6 +40,57 @@ def test_geometry(astep, linear_growth):
     assert_allclose(geometry.sector_area, 63.83, atol=0.01)
     assert_allclose(vertex_x, [215.4, 206.6, 213.5, 204.3], atol=0.1)
     assert_allclose(vertex_y, [316.1, 329.7, 312.5, 325.3], atol=0.1)
+
+
+@pytest.mark.parametrize(('value', 'expected'), [
+    (256.0, '256.0'),
+    (np.float64(0.25405541098942225), '0.254055'),
+    (29.282000000000007, '29.282'),
+    (-1.0e-10, '-1e-10'),
+    (123456789.0, '1.23457e+08'),
+    (np.nan, 'nan'),
+    (np.inf, 'inf'),
+    (np.int64(44), '44'),
+    (True, 'True'),
+    (np.False_, 'False'),
+    (None, 'None'),
+    (40.0 * u.deg, '40.0 deg'),
+    (179.16365970229916 * u.deg, '179.164 deg'),
+    ('bilinear', "'bilinear'"),
+])
+def test_format_repr_value(value, expected):
+    """
+    Test that the repr and str values round floats to 6 significant
+    digits and keep a decimal point for whole numbers.
+    """
+    assert _format_repr_value(value) == expected
+
+
+def test_repr_str():
+    """
+    Test the repr and str of an EllipseGeometry.
+    """
+    geometry = EllipseGeometry(np.float64(256.0), 255.5, 20.0,
+                               0.25405541098942225, 40.0 * u.deg, step=0.2,
+                               fix_center=True)
+    expected = ('<EllipseGeometry(x0=256.0, y0=255.5, sma=20.0, '
+                'ellipticity=0.254055, orientation=40.0 deg, step=0.2, '
+                'linear_growth=False, fix_center=True, '
+                'fix_orientation=False, fix_ellipticity=False)>')
+    assert repr(geometry) == expected
+
+    expected = ('<photutils.isophote.geometry.EllipseGeometry>\n'
+                'x0: 256.0\n'
+                'y0: 255.5\n'
+                'sma: 20.0\n'
+                'ellipticity: 0.254055\n'
+                'orientation: 40.0 deg\n'
+                'step: 0.2\n'
+                'linear_growth: False\n'
+                'fix_center: True\n'
+                'fix_orientation: False\n'
+                'fix_ellipticity: False')
+    assert str(geometry) == expected
 
 
 def test_to_polar_integer_input():
