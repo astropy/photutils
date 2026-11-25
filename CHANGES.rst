@@ -823,8 +823,13 @@ API Changes
     its geometry was not fitted, as in the STSDAS ``ellipse`` task, or
     if they could not be computed. This includes the isophotes with a
     stop code of 4 and the failed isophotes that ``Ellipse.fit_image``
-    extracts again with the geometry of another isophote. Previously, they were computed from the fixed
-    geometry, or set to 0. [#2577]
+    extracts again with the geometry of another isophote. Previously,
+    they were computed from the fixed geometry, or set to 0. [#2577]
+
+  - The ``intensity_err``, geometry error, and higher-order harmonic
+    error values of the central pixel (``sma=0``) isophote are now NaN
+    instead of 0. Its gradient and higher-order harmonic amplitudes
+    are still 0, which model images need. [#2577]
 
   - An isophote extracted without fitting now has a stop code of 1,
     instead of 4, if fewer than ``min_valid_fraction`` of its data

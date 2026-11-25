@@ -167,9 +167,9 @@ class Isophote:
         ``ellipticity_err``, and ``orientation_err``) are NaN for an
         isophote whose geometry was not fitted. This is an isophote
         with a stop code of 4, one with a stop code of 1 that was
-        extracted without fitting, and one with a stop code of 1 or 5
-        that :meth:`~photutils.isophote.Ellipse.fit_image` extracted
-        again with the geometry of another isophote.
+        extracted without fitting, one with a stop code of 1 or 5 that
+        :meth:`~photutils.isophote.Ellipse.fit_image` extracted again
+        with the geometry of another isophote, and the central pixel.
 
     Attributes
     ----------
@@ -192,7 +192,8 @@ class Isophote:
         data points.
 
     intensity_err : float
-        The error of the mean (rms / sqrt(# data points)).
+        The error of the mean (rms / sqrt(# data points)). It is NaN for
+        the central pixel.
 
     int_err : float
         .. deprecated:: 3.2
@@ -251,7 +252,8 @@ class Isophote:
             Use ``pixel_stddev`` instead.
 
     gradient : float
-        The local radial intensity gradient.
+        The local radial intensity gradient. It is zero for the central
+        pixel.
 
     grad : float
         .. deprecated:: 3.2
@@ -344,13 +346,14 @@ class Isophote:
         gradient and the semimajor axis length, so they can directly be
         compared with each other. The ``b4`` parameter is positive for
         galaxies with disky (kite-like) isophotes and negative for
-        galaxies with boxy isophotes. They are NaN if they could not
-        be computed.
+        galaxies with boxy isophotes. They are zero for the central
+        pixel, so that it can be used to build model images. They are
+        NaN if they could not be computed.
 
     a3_err, b3_err, a4_err, b4_err : float
         The errors associated with the ``a3``, ``b3``, ``a4``, and
-        ``b4`` attributes. They are NaN if they could not be
-        computed.
+        ``b4`` attributes. They are NaN for the central pixel or if they
+        could not be computed.
 
     Raises
     ------
@@ -455,12 +458,13 @@ class Isophote:
         return isophote
 
     def _set_central_values(self, sample):
-        # The central pixel holds a single intensity value. Some values
-        # are set to zero to ease certain tasks such as model building
-        # and plotting magnitude errors.
+        # The central pixel holds a single intensity value, so its
+        # errors are not defined and are NaN. The gradient and the
+        # harmonic amplitudes are zero so that the central pixel can be
+        # used to build model images.
         self.intensity = sample.intensity
         self.rms = np.nan
-        self.intensity_err = 0.0
+        self.intensity_err = np.nan
         self.pixel_stddev = np.nan
         self.gradient = 0.0
         self.gradient_err = np.nan
@@ -474,13 +478,9 @@ class Isophote:
 
         self.a3 = self.b3 = 0.0
         self.a4 = self.b4 = 0.0
-        self.a3_err = self.b3_err = 0.0
-        self.a4_err = self.b4_err = 0.0
-
-        self.ellipticity_err = 0.0
-        self._orientation_err_rad = 0.0
-        self.x0_err = 0.0
-        self.y0_err = 0.0
+        self.a3_err = self.b3_err = np.nan
+        self.a4_err = self.b4_err = np.nan
+        self._clear_geometry_errors()
 
     # Remove in 4.0
     @property

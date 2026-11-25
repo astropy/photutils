@@ -812,7 +812,12 @@ def test_central_isophote_is_plain_isophote():
     assert iso.geometry.orientation == 0.0 * u.deg
     assert iso.gradient == 0.0
     assert iso.a3 == 0.0
-    assert iso.x0_err == 0.0
+
+    # The errors are not defined for a single pixel.
+    for name in ('intensity_err', 'x0_err', 'y0_err', 'ellipticity_err',
+                 'orientation_err', 'a3_err', 'b3_err', 'a4_err',
+                 'b4_err'):
+        assert np.isnan(getattr(iso, name))
 
 
 def test_isophote_list_properties_match_definitions():
