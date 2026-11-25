@@ -42,6 +42,18 @@ _GRADIENT_RADIUS_RETRY = 0.2
 _MAX_GRADIENT_REL_ERR = 0.2
 
 
+def _sample_std(values):
+    """
+    Return the sample standard deviation (``ddof=1``) of the values.
+
+    As in the STSDAS ellipse task, it is NaN if there are fewer than two
+    values.
+    """
+    if len(values) < 2:
+        return np.nan
+    return np.std(values, ddof=1)
+
+
 def _copy_sigma_clip(sigma_clip):
     """
     Validate the input sigma clipping and return a copy of it.
@@ -1007,8 +1019,8 @@ class EllipseSample:
         gradient = (mean_g - self.intensity) / self.geometry.sma / radius
 
         s = self.extract()
-        sigma = np.std(s[2])
-        sigma_g = np.std(sg[2])
+        sigma = _sample_std(s[2])
+        sigma_g = _sample_std(sg[2])
 
         gradient_err = (np.sqrt(sigma**2 / len(s[2])
                                 + sigma_g**2 / len(sg[2]))

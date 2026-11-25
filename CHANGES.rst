@@ -468,6 +468,13 @@ Bug Fixes
     changes the fitted isophotes slightly, and brings them closer to
     the STSDAS results. [#2577]
 
+  - The ``rms``, ``intensity_err``, ``pixel_stddev``, and
+    ``gradient_err`` isophote values now use the sample standard
+    deviation (``ddof=1``) of the sampled intensities, as in the
+    STSDAS ``ellipse`` task, instead of the population standard
+    deviation. They increase by a factor of sqrt(N / (N - 1)) for N
+    data points. [#2577]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,

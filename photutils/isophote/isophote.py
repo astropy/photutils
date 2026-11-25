@@ -14,6 +14,7 @@ from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
                                           _fit_first_and_second_harmonics,
                                           _fit_upper_harmonic)
 from photutils.isophote.model import _make_model_image
+from photutils.isophote.sample import _sample_std
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_attribute,
                                           deprecated_getattr,
@@ -177,8 +178,10 @@ class Isophote:
             Use ``intensity`` instead.
 
     rms : float
-        The root-mean-square scatter (standard deviation) of the
-        intensity values about their mean along the elliptical path.
+        The root-mean-square scatter (sample standard deviation with
+        ``ddof=1``) of the intensity values about their mean along the
+        elliptical path. It is NaN if there are fewer than two valid
+        data points.
 
     intensity_err : float
         The error of the mean (rms / sqrt(# data points)).
@@ -368,7 +371,7 @@ class Isophote:
 
     def _set_measured_values(self, sample):
         self.intensity = sample.intensity
-        self.rms = np.std(sample.intensities)
+        self.rms = _sample_std(sample.intensities)
         self.intensity_err = self.rms / np.sqrt(sample.n_valid)
         self.pixel_stddev = self.rms * np.sqrt(sample.sector_area)
         self.gradient = sample.gradient

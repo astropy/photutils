@@ -99,9 +99,9 @@ class TestIsophote:
 
         # Fitted values
         assert_allclose(iso.intensity, 684.6, atol=0.1)
-        assert_allclose(iso.rms, 83.50, atol=0.01)
-        assert_allclose(iso.intensity_err, 7.69, atol=0.01)
-        assert_allclose(iso.pixel_stddev, 118.1, atol=0.1)
+        assert_allclose(iso.rms, 83.85, atol=0.01)
+        assert_allclose(iso.intensity_err, 7.72, atol=0.01)
+        assert_allclose(iso.pixel_stddev, 118.6, atol=0.1)
         assert_allclose(iso.gradient, -35.58, atol=0.1)
 
         # Integrals
@@ -628,6 +628,51 @@ class TestIsophoteList:
         assert len(rec) == 1
         assert tbl2.colnames == ['gradient_rel_err']
         assert_equal(tbl2['gradient_rel_err'], isolist.gradient_rel_err)
+
+
+def test_sample_standard_deviations():
+    """
+    Test that the rms and the errors derived from it use the sample
+    standard deviation (ddof=1), as in the STSDAS ellipse task.
+    """
+    data = make_test_image(noise=1.0, seed=0)
+    sample = EllipseSample(data, 40.0)
+    sample.update()
+    isophote = Isophote(sample, 1, valid=True, stop_code=0)
+
+    intensities = sample.extract()[2]
+    rms = np.std(intensities, ddof=1)
+    assert_allclose(isophote.rms, rms)
+    assert_allclose(isophote.intensity_err, rms / np.sqrt(len(intensities)))
+    assert_allclose(isophote.pixel_stddev, rms * np.sqrt(sample.sector_area))
+
+    # The first gradient sample is taken at a 10% larger semimajor axis
+    # length.
+    outer = EllipseSample(data, 44.0).extract()[2]
+    gradient_err = (np.sqrt(rms**2 / len(intensities)
+                            + np.std(outer, ddof=1)**2 / len(outer))
+                    / 40.0 / 0.1)
+    assert_allclose(isophote.gradient_err, gradient_err)
+
+
+def test_single_point_standard_deviation():
+    """
+    Test that the rms of an isophote with a single valid data point is
+    NaN, without warnings.
+    """
+    data = make_test_image(seed=0)
+    yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+    angle = np.arctan2(yy - 256, xx - 256)
+    mask = ~((angle > 0.0) & (angle < 0.13))
+    sample = EllipseSample(np.ma.masked_array(data, mask=mask), 20.0)
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        sample._update(fixed_parameters=DEFAULT_FIX)
+        isophote = Isophote(sample, 1, valid=False, stop_code=3)
+    assert isophote.n_data == 1
+    assert np.isnan(isophote.rms)
+    assert np.isnan(isophote.intensity_err)
+    assert np.isnan(isophote.pixel_stddev)
 
 
 @pytest.mark.parametrize(('width', 'n_data'),
