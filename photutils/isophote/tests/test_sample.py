@@ -59,6 +59,36 @@ def test_scatter(integrmode, amin, amax):
     assert iso.pixel_stddev > amin
 
 
+@pytest.mark.parametrize('integration_mode', ['mean', 'median'])
+@pytest.mark.parametrize(('sma', 'step', 'linear_growth', 'is_area'),
+                         [(15.0, 0.1, False, False),
+                          (25.0, 0.1, False, True),
+                          (100.0, 1.0, True, False),
+                          (100.0, 2.0, True, True)])
+def test_area_integration_annulus_width(integration_mode, sma, step,
+                                        linear_growth, is_area):
+    """
+    Test that the area integration modes are used only if the sampling
+    annulus is at least 2 pixels wide, as in the STSDAS ellipse task.
+
+    Otherwise, the sample is the same as with the bilinear mode.
+    """
+    data = make_test_image(noise=1.0, seed=0)
+    kwargs = {'step': step, 'linear_growth': linear_growth}
+    sample = EllipseSample(data, sma, integration_mode=integration_mode,
+                           **kwargs)
+    values = sample.extract()
+    bilinear = EllipseSample(data, sma, integration_mode='bilinear',
+                             **kwargs)
+    bilinear_values = bilinear.extract()
+    if is_area:
+        assert sample.sector_area > 2.0
+        assert values.shape[1] < bilinear_values.shape[1]
+    else:
+        assert sample.sector_area == bilinear.sector_area
+        assert_array_equal(values, bilinear_values)
+
+
 @pytest.mark.parametrize('integration_mode', ['bilinear', 'mean'])
 def test_path_samples_once(integration_mode):
     """

@@ -462,6 +462,15 @@ Bug Fixes
     ring, which dropped all of the smaller isophotes. As in the STSDAS
     ``ellipse`` task, such an isophote is now skipped. [#2577]
 
+  - The ``'mean'`` and ``'median'`` integration modes now fall back to
+    the ``'bilinear'`` mode if the sampling annulus is narrower than 2
+    pixels, as in the STSDAS ``ellipse`` task, instead of if a sector
+    is smaller than 1 pixel. Previously, these modes were used down
+    to a semimajor axis length of about 11 pixels with the default
+    ``step``, where most sectors were too small and each gave a single
+    bilinear value, so the isophotes had fewer sampled points than
+    with the ``'bilinear'`` mode. [#2577]
+
   - Fixed the isophote fitter returning a stop code of 0 for a fit
     that converged in the same iteration in which too many of its data
     points were flagged. It now returns a stop code of 1, as in the

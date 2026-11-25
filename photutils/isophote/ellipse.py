@@ -455,9 +455,11 @@ class Ellipse:
         integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
                 'median'}, optional
             The integration mode. The 'mean' and 'median' modes
-            integrate over elliptical sectors and fall back to
-            'bilinear' for sectors smaller than 1 pixel. The default is
-            'bilinear'.
+            integrate over elliptical sectors. As in the STSDAS
+            ``ellipse`` task, they fall back to 'bilinear' if the
+            sampling annulus is narrower than 2 pixels (below a
+            semimajor axis length of 20 pixels with the default
+            ``step``). The default is 'bilinear'.
 
         linear_growth : bool or `None`, optional
             The semimajor axis growing/shrinking mode. If `False`,
@@ -874,9 +876,11 @@ class Ellipse:
         integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
                 'median'}, optional
             The integration mode. The 'mean' and 'median' modes
-            integrate over elliptical sectors and fall back to
-            'bilinear' for sectors smaller than 1 pixel. The default is
-            'bilinear'.
+            integrate over elliptical sectors. As in the STSDAS
+            ``ellipse`` task, they fall back to 'bilinear' if the
+            sampling annulus is narrower than 2 pixels (below a
+            semimajor axis length of 20 pixels with the default
+            ``step``). The default is 'bilinear'.
 
         linear_growth : bool or `None`, optional
             The semimajor axis growing/shrinking mode. When fitting
@@ -1082,9 +1086,11 @@ class Ellipse:
         integration_mode : {'bilinear', 'nearest_neighbor', 'mean', \
                 'median'}, optional
             The integration mode. The 'mean' and 'median' modes
-            integrate over elliptical sectors and fall back to
-            'bilinear' for sectors smaller than 1 pixel. The default is
-            'bilinear'.
+            integrate over elliptical sectors. As in the STSDAS
+            ``ellipse`` task, they fall back to 'bilinear' if the
+            sampling annulus is narrower than 2 pixels (below a
+            semimajor axis length of 20 pixels with the default
+            ``step``). The default is 'bilinear'.
 
         Returns
         -------

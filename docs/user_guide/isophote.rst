@@ -762,7 +762,11 @@ The elliptical sectors of the ``'mean'`` and ``'median'`` modes are
 pieces of an elliptical annulus whose width is set by ``step``. These
 modes average more pixels for each sampled point, especially with a
 larger ``step``, which increases the signal-to-noise ratio in the
-outer regions of a galaxy.
+outer regions of a galaxy. As in the STSDAS ``ellipse`` task, they are
+used only where the annulus is at least 2 pixels wide, e.g., at
+semimajor axis lengths of at least 20 pixels with the default
+``step`` of 0.1. The ``'bilinear'`` mode is used for narrower
+annuli.
 
 The algorithm described in `Jedrzejewski (1987, MNRAS 226, 747)
 <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_
