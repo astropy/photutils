@@ -323,10 +323,10 @@ center is about 7 pixels from the galaxy center::
     160.0 140.0
 
 The object centerer scans an 11x11 pixel window centered on the
-input coordinates. At each position, it extracts two concentric,
-roughly circular samples, an inner disk with a radius of about 3.5
-pixels and an outer ring with a radius of about 8 pixels. It then
-computes a signal-to-noise-like criterion from the mean intensities
+input coordinates. As in the STSDAS ``ellipse`` task, at each position
+it samples the image with bilinear interpolation along two concentric
+circles, with radii of 4 and 8 pixels. It then computes a
+signal-to-noise-like criterion from the mean intensities
 (:math:`f_1` and :math:`f_2`) and the standard deviations
 (:math:`\sigma_1` and :math:`\sigma_2`) of the two samples:
 
@@ -339,9 +339,11 @@ center if the criterion exceeds the ``threshold`` parameter.
 Otherwise, the center is not changed. The new center is a whole-pixel
 position.
 
-The default threshold value is 0.1. This value and the sizes of the
-samples and the window were found by trial and error using a number of
-both artificial and real galaxy images. Very flattened galaxies (an
+The default threshold value is 1.0, as in the STSDAS task. With this
+value, the centerer does not detect an object in an image of pure
+noise. The threshold and the sizes of the samples and the window were
+found by trial and error using a number of both artificial and real
+galaxy images. Very flattened galaxies (an
 ellipticity of about 0.7) cannot be detected by such a simple
 algorithm. Increasing the threshold makes the object centerer
 stricter, in the sense that it will not detect faint objects. The

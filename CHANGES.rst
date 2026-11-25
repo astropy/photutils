@@ -838,6 +838,14 @@ API Changes
     (``sma=0``), as in the STSDAS ``bmodel`` task, instead of the
     value interpolated from the smallest ellipses. [#2577]
 
+  - ``EllipseGeometry.find_center`` now samples the image along two
+    circles with radii of 4 and 8 pixels, as in the STSDAS ``ellipse``
+    task, instead of a disk and a ring, and its default ``threshold``
+    is now 1.0 instead of 0.1. The disk included the radial gradient of
+    the galaxy in its standard deviation, and with the previous
+    default, the centerer found an object in an image of pure noise.
+    [#2577]
+
   - An isophote extracted without fitting now has a stop code of 1,
     instead of 4, if fewer than ``min_valid_fraction`` of its data
     points are valid, except in ``Ellipse.measure_isophotes``. Without

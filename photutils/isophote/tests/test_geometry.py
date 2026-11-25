@@ -18,7 +18,7 @@ from scipy.integrate import quad
 
 from photutils.aperture import EllipticalAperture
 from photutils.datasets import make_noise_image
-from photutils.isophote.geometry import IN_MASK, OUT_MASK, EllipseGeometry
+from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.tests.make_test_data import make_test_image
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -241,13 +241,13 @@ def test_find_center_masked():
     geometry = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1 * u.rad)
     geometry.find_center(data, verbose=False)
 
-    data[49:52, 49:52] = 1.0e9
+    data[46:49, 54:57] = 1.0e4
     geometry_bad = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1 * u.rad)
     geometry_bad.find_center(data, verbose=False)
     assert (geometry_bad.x0, geometry_bad.y0) != (geometry.x0, geometry.y0)
 
     mask = np.zeros(data.shape, dtype=bool)
-    mask[49:52, 49:52] = True
+    mask[46:49, 54:57] = True
     geometry_masked = EllipseGeometry(52.0, 48.0, 10.0, 0.2, 0.1 * u.rad)
     geometry_masked.find_center(np.ma.masked_array(data, mask=mask),
                                 verbose=False)
@@ -337,23 +337,19 @@ def test_find_center_nearest_pixel(x0, y0):
     assert geometry.y0 == round(y0)
 
 
-def test_centerer_masks():
+def test_find_center_noise():
     """
-    Test that the centerer masks select a disk and a ring that are
-    centered on the central pixel of the box.
+    Test that the centerer does not find an object in an image of pure
+    noise with the default threshold, as in the STSDAS ellipse task.
     """
-    assert IN_MASK.shape == (17, 17)
-    assert OUT_MASK.shape == (17, 17)
-    yy, xx = np.mgrid[-8:9, -8:9]
-    radius = np.hypot(xx, yy)
-    assert np.count_nonzero(~IN_MASK) == 37
-    assert np.max(radius[~IN_MASK]) <= 3.5
-    assert np.count_nonzero(~OUT_MASK) == 48
-    assert np.min(radius[~OUT_MASK]) >= 7.5
-    assert np.max(radius[~OUT_MASK]) < 8.5
-    for mask in (IN_MASK, OUT_MASK):
-        assert_array_equal(mask, mask[::-1, ::-1])
-        assert_array_equal(mask, mask.T)
+    data = make_noise_image((101, 101), distribution='gaussian', mean=0.0,
+                            stddev=1.0, seed=0)
+    geometry = EllipseGeometry(50.0, 50.0, 10.0, 0.2, 0.1 * u.rad)
+    with log.log_to_list() as log_list:
+        geometry.find_center(data)
+    assert geometry.x0 == 50.0
+    assert geometry.y0 == 50.0
+    assert 'below the threshold' in log_list[0].msg
 
 
 def test_find_center_flipped():
@@ -361,8 +357,9 @@ def test_find_center_flipped():
     Test that find_center has no preferred direction.
 
     The center found in an image that is flipped along both axes must
-    be the flipped center. The noise makes the figure of merit depend
-    on every pixel of the centerer masks.
+    be the flipped center, to within 1 pixel. The circular samples
+    start at a fixed polar angle, so they are not symmetric under the
+    flip, and the noise changes the figure of merit slightly.
     """
     yy, xx = np.mgrid[0:101, 0:101]
     data = Gaussian2D(100.0, 50.0, 50.0, 6.0, 5.0, theta=0.4)(xx, yy)
@@ -375,8 +372,8 @@ def test_find_center_flipped():
 
     geometry_flipped = EllipseGeometry(50.0, 50.0, 10.0, 0.2, 0.1 * u.rad)
     geometry_flipped.find_center(data[::-1, ::-1], verbose=False)
-    assert geometry_flipped.x0 == 100 - geometry.x0
-    assert geometry_flipped.y0 == 100 - geometry.y0
+    assert abs(geometry_flipped.x0 - (100 - geometry.x0)) <= 1
+    assert abs(geometry_flipped.y0 - (100 - geometry.y0)) <= 1
 
 
 def test_find_center_flat_image():

@@ -71,6 +71,11 @@ keyword of :meth:`~photutils.isophote.Ellipse.fit_image` and
 :meth:`~photutils.isophote.Ellipse.fit_isophote` now defaults to the
 ``step`` of the input `~photutils.isophote.EllipseGeometry`, like the
 ``linear_growth`` keyword, instead of always replacing it with 0.1.
+The object centerer of
+:meth:`~photutils.isophote.EllipseGeometry.find_center` now samples
+two circles, as in the STSDAS task, and its default ``threshold`` is
+1.0 instead of 0.1, so that it no longer finds an object in an image
+of pure noise.
 
 The fits are also less sensitive to the starting ellipse. Previously,
 a starting ellipticity of about half of the galaxy ellipticity,
