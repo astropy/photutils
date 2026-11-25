@@ -12,8 +12,9 @@ from astropy.stats import SigmaClip
 
 from photutils.isophote._polar_path import compute_polar_path
 from photutils.isophote.geometry import (EllipseGeometry,
-                                         _legacy_orientation_rad,
-                                         _orientation_argument, _validate_sma)
+                                         _legacy_orientation_rad, _make_repr,
+                                         _make_str, _orientation_argument,
+                                         _validate_sma)
 from photutils.isophote.integrator import _INTEGRATORS
 from photutils.utils._deprecation import (deprecated_attribute,
                                           deprecated_getattr,
@@ -630,6 +631,25 @@ class EllipseSample:
         return None if self._values is None else self._values[2]
 
     # Remove in 4.0
+    def _repr_params(self):
+        """
+        Return the (name, value) pairs of the parameters that are shown
+        by the repr and str.
+        """
+        geometry = self.geometry
+        names = ('sma', 'x0', 'y0', 'ellipticity', 'orientation', 'step',
+                 'linear_growth')
+        params = [(name, getattr(geometry, name)) for name in names]
+        params.append(('integration_mode', self.integration_mode))
+        params.append(('sigma_clip', self.sigma_clip))
+        return params
+
+    def __repr__(self):
+        return _make_repr(self, self._repr_params())
+
+    def __str__(self):
+        return _make_str(self, self._repr_params())
+
     def __getattr__(self, name):
         return deprecated_getattr(self, name,
                                   _DEPRECATED_SAMPLE_ATTRIBUTES,

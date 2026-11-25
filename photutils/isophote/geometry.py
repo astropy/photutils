@@ -5,6 +5,7 @@ Tools for storing parameters for the geometry of an ellipse.
 
 import inspect
 import math
+import numbers
 import warnings
 from functools import wraps
 
@@ -20,6 +21,40 @@ from photutils.utils._deprecation import (deprecated, deprecated_attribute,
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['EllipseGeometry']
+
+
+def _format_repr_value(value):
+    """
+    Format a parameter value for a repr or str.
+
+    Numbers, booleans, `None`, and quantities use their str, so that,
+    e.g., a NumPy float is shown as ``1.0`` and an angle as ``40.0
+    deg``. Other values (e.g., strings) use their repr.
+    """
+    if value is None or isinstance(value, (numbers.Number, np.number,
+                                           np.bool_, u.Quantity)):
+        return str(value)
+    return repr(value)
+
+
+def _make_repr(instance, params):
+    """
+    Make the repr of an instance from (name, value) pairs.
+    """
+    params = ', '.join(f'{name}={_format_repr_value(value)}'
+                       for name, value in params)
+    return f'<{instance.__class__.__name__}({params})>'
+
+
+def _make_str(instance, params):
+    """
+    Make the str of an instance from (name, value) pairs, with one
+    parameter per line.
+    """
+    cls_name = f'{instance.__class__.__module__}.{instance.__class__.__name__}'
+    params = '\n'.join(f'{name}: {_format_repr_value(value)}'
+                       for name, value in params)
+    return f'<{cls_name}>\n{params}'
 
 
 # The first and second harmonic coefficients of the isophote fit, in
@@ -407,15 +442,10 @@ class EllipseGeometry:
         return [(name, getattr(self, name)) for name in names]
 
     def __repr__(self):
-        params = ', '.join(f'{name}={value}'
-                           for name, value in self._repr_params())
-        return f'<{self.__class__.__name__}({params})>'
+        return _make_repr(self, self._repr_params())
 
     def __str__(self):
-        cls_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
-        params = '\n'.join(f'{name}: {value}'
-                           for name, value in self._repr_params())
-        return f'<{cls_name}>\n{params}'
+        return _make_str(self, self._repr_params())
 
     @classmethod
     def _from_radians(cls, x0, y0, sma, ellipticity, orientation,

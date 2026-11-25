@@ -9,7 +9,7 @@ import astropy.units as u
 import numpy as np
 from astropy.table import Table
 
-from photutils.isophote.geometry import EllipseGeometry
+from photutils.isophote.geometry import EllipseGeometry, _make_repr
 from photutils.isophote.harmonics import (_first_and_second_harmonic_function,
                                           _fit_first_and_second_harmonics,
                                           _fit_upper_harmonic)
@@ -576,6 +576,12 @@ class Isophote:
         except AttributeError:
             return NotImplemented
 
+    def __repr__(self):
+        names = ('sma', 'intensity', 'ellipticity', 'orientation', 'x0',
+                 'y0', 'stop_code')
+        return _make_repr(self, [(name, getattr(self, name))
+                                 for name in names])
+
     def __str__(self):
         return str(self.to_table())
 
@@ -957,6 +963,16 @@ class IsophoteList:
             return self._collect_as_array(_DEPRECATED_RADIANS[name])
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since=_DEPRECATED_SINCE, until='4.0')
+
+    def __repr__(self):
+        params = [('n_isophotes', len(self))]
+        if self._list:
+            sma = [isophote.sma for isophote in self._list]
+            params.extend([('min_sma', min(sma)), ('max_sma', max(sma))])
+        return _make_repr(self, params)
+
+    def __str__(self):
+        return str(self.to_table())
 
     def __len__(self):
         return len(self._list)

@@ -102,6 +102,33 @@ def test_path_samples_once(integration_mode):
     assert np.all(np.diff(angles) > 0)
 
 
+def test_repr_str():
+    """
+    Test the repr and str of an EllipseSample.
+    """
+    sigma_clip = SigmaClip(sigma=3.0, maxiters=2)
+    sample = EllipseSample(DATA, 40.0, x0=256.0, y0=255.5, ellipticity=0.25,
+                           orientation=40.0 * u.deg,
+                           integration_mode='median', sigma_clip=sigma_clip)
+    expected = ('<EllipseSample(sma=40.0, x0=256.0, y0=255.5, '
+                'ellipticity=0.25, orientation=40.0 deg, step=0.1, '
+                "linear_growth=False, integration_mode='median', "
+                f'sigma_clip={sigma_clip!r})>')
+    assert repr(sample) == expected
+
+    expected = ('<photutils.isophote.sample.EllipseSample>\n'
+                'sma: 40.0\n'
+                'x0: 256.0\n'
+                'y0: 255.5\n'
+                'ellipticity: 0.25\n'
+                'orientation: 40.0 deg\n'
+                'step: 0.1\n'
+                'linear_growth: False\n'
+                "integration_mode: 'median'\n"
+                f'sigma_clip: {sigma_clip!r}')
+    assert str(sample) == expected
+
+
 def test_coordinates():
     sample = EllipseSample(DATA, 50.0)
     sample._update(fixed_parameters=DEFAULT_FIX)

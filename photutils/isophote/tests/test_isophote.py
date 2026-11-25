@@ -820,6 +820,32 @@ def test_central_isophote_is_plain_isophote():
         assert np.isnan(getattr(iso, name))
 
 
+def test_isophote_repr():
+    """
+    Test the repr of an Isophote and the repr and str of an
+    IsophoteList.
+    """
+    data = make_test_image(seed=0)
+    geometry = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0 * u.deg)
+    isolist = Ellipse(data, geometry=geometry).fit_image(max_sma=30.0)
+
+    iso = isolist[3]
+    expected = (f'<Isophote(sma={iso.sma}, intensity={iso.intensity}, '
+                f'ellipticity={iso.ellipticity}, '
+                f'orientation={iso.orientation}, x0={iso.x0}, '
+                f'y0={iso.y0}, stop_code={iso.stop_code})>')
+    assert repr(iso) == expected
+    assert 'deg,' in repr(iso)
+    assert str(iso) == str(iso.to_table())
+
+    expected = (f'<IsophoteList(n_isophotes={len(isolist)}, '
+                f'min_sma={isolist.sma[0]}, max_sma={isolist.sma[-1]})>')
+    assert repr(isolist) == expected
+    assert str(isolist) == str(isolist.to_table())
+
+    assert repr(IsophoteList([])) == '<IsophoteList(n_isophotes=0)>'
+
+
 def test_isophote_list_properties_match_definitions():
     data = make_test_image(seed=0)
     isolist = Ellipse(data).fit_image()
