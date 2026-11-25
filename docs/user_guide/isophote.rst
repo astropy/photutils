@@ -735,7 +735,8 @@ extracted up to ``max_sma`` with a fixed geometry, without fitting.
 The ``max_iterative_sma`` keyword sets where this noniterative mode
 starts. Isophotes with larger semimajor axis lengths are extracted
 with the geometry of the last fitted isophote and have a stop code of
-4. This is useful for regions of very low surface brightness, where
+4 (or 1, if too many of their data points are flagged). This is
+useful for regions of very low surface brightness, where
 the fits are unstable::
 
     >>> isolist_fixed = ellipse.fit_image(max_iterative_sma=50.0,
@@ -783,10 +784,8 @@ on two arguments. It would be difficult to include partial pixels in a
 median, and the simpler scheme is faster.
 
 In the ``'mean'`` and ``'median'`` modes, a sector with 6 or fewer
-valid pixels is sampled with bilinear interpolation instead, and the
-whole ellipse is sampled with bilinear interpolation if its sectors
-are smaller than one pixel. Bilinear interpolation was found to give
-smoother samples in those cases.
+valid pixels is sampled with bilinear interpolation instead, which was
+found to give smoother samples.
 
 .. _isophote-center-limit:
 
