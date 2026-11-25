@@ -342,20 +342,20 @@ class EllipseGeometry:
         ``fit_isophote`` methods is set.
 
     fix_center : bool, optional
-        Keep center of ellipse fixed during fit? The default is
-        `False`.
+        Whether to keep the center of the ellipse fixed during the fit.
+        The default is `False`.
 
     fix_orientation : bool, optional
-        Keep the orientation of the semimajor axis of the ellipse fixed
-        during the fit? The default is `False`.
+        Whether to keep the orientation of the semimajor axis of the
+        ellipse fixed during the fit. The default is `False`.
 
         .. deprecated:: 3.2
             The ``fix_pa`` keyword is deprecated. Use
             ``fix_orientation`` instead.
 
     fix_ellipticity : bool, optional
-        Keep ellipticity of ellipse fixed during fit? The default is
-        `False`.
+        Whether to keep the ellipticity of the ellipse fixed during the
+        fit. The default is `False`.
 
         .. deprecated:: 3.2
             The ``fix_eps`` keyword is deprecated. Use
