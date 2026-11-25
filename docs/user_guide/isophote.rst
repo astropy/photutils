@@ -895,17 +895,20 @@ other and between isophotes. Their errors are in the ``a3_err``, ``b3_err``,
 
 The ``b4`` amplitude is the most used. It is positive for disky
 (kite-like) isophotes and negative for boxy isophotes. To demonstrate,
-let's add a faint, thin disk along the major axis of the simulated
-galaxy and fit the image::
+let's simulate a galaxy with disky isophotes using the
+`~astropy.modeling.functional_models.GeneralSersic2D` model, whose
+``c`` parameter makes the isophotes disky (``c < 0``) or boxy
+(``c > 0``), and fit the image::
 
-    >>> disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
-    ...                   x_stddev=30.0, y_stddev=4.0,
-    ...                   theta=np.deg2rad(40.0))
-    >>> disky = data + disk(xx, yy)
+    >>> from astropy.modeling.models import GeneralSersic2D
+    >>> disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+    ...                                x_0=160.0, y_0=140.0, ellip=0.4,
+    ...                                theta=np.deg2rad(40.0), c=-0.5)
+    >>> disky = disky_galaxy(xx, yy) + noise
     >>> isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
     >>> idx = (isolist_disky.sma > 15) & (isolist_disky.sma < 50)
     >>> print(np.round(np.median(isolist_disky.b4[idx]), 2))
-    0.03
+    0.05
 
 Let's plot a few fitted ellipses over both galaxies, along with their
 true isophotes (dashed contours of the noise-free models at the
@@ -917,7 +920,7 @@ pointed along the major axis, while the fitted ellipses are not:
     import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D, Sersic2D
+    from astropy.modeling.models import GeneralSersic2D, Sersic2D
     from astropy.visualization import simple_norm
     from photutils.datasets import make_noise_image
     from photutils.isophote import Ellipse, EllipseGeometry
@@ -930,17 +933,17 @@ pointed along the major axis, while the fitted ellipses are not:
                              stddev=0.5, seed=0)
     data = galaxy(xx, yy) + noise
 
-    disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
-                      x_stddev=30.0, y_stddev=4.0,
-                      theta=np.deg2rad(40.0))
-    disky = data + disk(xx, yy)
+    disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+                                   x_0=160.0, y_0=140.0, ellip=0.4,
+                                   theta=np.deg2rad(40.0), c=-0.5)
+    disky = disky_galaxy(xx, yy) + noise
 
     geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
     isolist = Ellipse(data, geometry=geometry).fit_image()
     isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
 
-    models = (galaxy(xx, yy), galaxy(xx, yy) + disk(xx, yy))
+    models = (galaxy(xx, yy), disky_galaxy(xx, yy))
     fig, axes = plt.subplots(ncols=2, figsize=(10, 5))
     for ax, image, model, iso_list, title in (
             (axes[0], data, models[0], isolist, 'Original'),
@@ -964,7 +967,7 @@ original galaxy for comparison:
     import astropy.units as u
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.modeling.models import Gaussian2D, Sersic2D
+    from astropy.modeling.models import GeneralSersic2D, Sersic2D
     from photutils.datasets import make_noise_image
     from photutils.isophote import Ellipse, EllipseGeometry
 
@@ -976,10 +979,10 @@ original galaxy for comparison:
                              stddev=0.5, seed=0)
     data = galaxy(xx, yy) + noise
 
-    disk = Gaussian2D(amplitude=10.0, x_mean=160.0, y_mean=140.0,
-                      x_stddev=30.0, y_stddev=4.0,
-                      theta=np.deg2rad(40.0))
-    disky = data + disk(xx, yy)
+    disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+                                   x_0=160.0, y_0=140.0, ellip=0.4,
+                                   theta=np.deg2rad(40.0), c=-0.5)
+    disky = disky_galaxy(xx, yy) + noise
 
     geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
                                orientation=20.0 * u.deg)
@@ -998,16 +1001,17 @@ original galaxy for comparison:
         ax.axhline(0.0, color='gray', linewidth=1)
         ax.set_title(name)
     axes[0, 0].legend()
-    axes[0, 0].set_ylim(-0.03, 0.06)
+    axes[0, 0].set_ylim(-0.04, 0.08)
     for ax in axes[1]:
         ax.set_xlabel('Semimajor Axis Length (pix)')
     for ax in axes[:, 0]:
         ax.set_ylabel('Amplitude')
 
-The ``b4`` amplitude of the disky galaxy peaks at about 0.04 near a
-semimajor axis length of 30 pixels, well above its error of about
-0.007. The other amplitudes, and all four amplitudes of the original
-galaxy, scatter around zero.
+The ``b4`` amplitude of the disky galaxy is about 0.05 at all
+semimajor axis lengths, about ten times its error. The other
+amplitudes, and all four amplitudes of the original galaxy, scatter
+around zero. A boxy galaxy (``c > 0``) gives a negative ``b4``
+amplitude.
 
 
 .. _isophote-model-image:
@@ -1074,11 +1078,66 @@ pixel.
 Pixels that are outside of the largest isophote have no model value
 and are set to the ``fill_value`` keyword, which defaults to 0. For an
 image that is not background subtracted, set it to the background
-level of the image. With ``high_harmonics=True``, the third and fourth
-harmonics (see :ref:`isophote-harmonics`) are added to the model, so
-that it follows the deviations of the isophotes from ellipses. The
-``sma_interval`` keyword is the spacing of the grid of semimajor axis
-lengths. Larger values are faster but can leave gaps in the model.
+level of the image. The ``sma_interval`` keyword is the spacing of the
+grid of semimajor axis lengths. Larger values are faster but can leave
+gaps in the model.
+
+With ``high_harmonics=True``, the third and fourth harmonics (see
+:ref:`isophote-harmonics`) are added to the model, so that it follows
+the deviations of the isophotes from ellipses. Let's compare the
+residuals of the two models of the disky galaxy::
+
+    >>> residual_ellipse = disky - isolist_disky.make_model_image(
+    ...     disky.shape)
+    >>> residual_harmonics = disky - isolist_disky.make_model_image(
+    ...     disky.shape, high_harmonics=True)
+
+.. plot::
+
+    import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from astropy.modeling.models import GeneralSersic2D
+    from astropy.visualization import simple_norm
+    from photutils.datasets import make_noise_image
+    from photutils.isophote import Ellipse, EllipseGeometry
+
+    shape = (300, 300)
+    yy, xx = np.mgrid[0:300, 0:300]
+    noise = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=0.5, seed=0)
+    disky_galaxy = GeneralSersic2D(amplitude=10.0, r_eff=30.0, n=2.0,
+                                   x_0=160.0, y_0=140.0, ellip=0.4,
+                                   theta=np.deg2rad(40.0), c=-0.5)
+    disky = disky_galaxy(xx, yy) + noise
+
+    geometry = EllipseGeometry(x0=160, y0=140, sma=20, ellipticity=0.3,
+                               orientation=20.0 * u.deg)
+    isolist_disky = Ellipse(disky, geometry=geometry).fit_image()
+
+    residual_ellipse = disky - isolist_disky.make_model_image(disky.shape)
+    residual_harmonics = disky - isolist_disky.make_model_image(
+        disky.shape, high_harmonics=True)
+
+    norm = simple_norm(disky, 'sqrt', percent=99.0)
+    fig, axes = plt.subplots(ncols=3, figsize=(14, 5))
+    fig.subplots_adjust(left=0.04, right=0.98, bottom=0.02, top=0.98)
+    axes[0].imshow(disky, origin='lower', norm=norm)
+    axes[0].set_title('Disky Galaxy')
+    axes[1].imshow(residual_ellipse, origin='lower', vmin=-2, vmax=2)
+    axes[1].set_title('Residual of the Ellipse Model')
+    axes[2].imshow(residual_harmonics, origin='lower', vmin=-2, vmax=2)
+    axes[2].set_title('Residual with the Higher Harmonics')
+    for ax in axes:
+        ax.set_xlim(90, 230)
+        ax.set_ylim(70, 210)
+
+The residual of the ellipse model shows the X-shaped pattern of the
+disky isophotes, and the higher harmonics remove most of it. Within 30
+pixels of the center, the rms of the residuals decreases from 1.09 to
+0.67, compared to a noise level of 0.5. Only the third and fourth
+harmonics are fit, so sharper deviations from an ellipse, such as
+those of a thin disk, are only partly modeled.
 
 
 .. _isophote_fixed_ellipses:
