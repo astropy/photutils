@@ -750,6 +750,17 @@ class TestEllipse:
         for iso in isophote_list:
             assert not np.any(iso.sample.intensities == 0)
 
+    def test_default_geometry(self):
+        """
+        Test the default geometry used when no geometry is input.
+        """
+        data = np.ones((50, 80))
+        isophote = Ellipse(data).fit_isophote(10.0, noniterate=True)
+        assert isophote.x0 == 40.0
+        assert isophote.y0 == 25.0
+        assert isophote.ellipticity == 0.2
+        assert isophote.orientation == 0.0 * u.deg
+
     def test_ellipse_shape(self):
         """
         Regression test for #670/673.

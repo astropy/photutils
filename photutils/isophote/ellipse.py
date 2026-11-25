@@ -71,7 +71,7 @@ class Ellipse:
         ellipse to be fitted. If `None`, a default
         `~photutils.isophote.EllipseGeometry` instance is created
         with a semimajor axis length of 10 pixels, an ellipticity of
-        0.2, and an orientation of 90 degrees. Its center is at
+        0.2, and an orientation of 0 degrees. Its center is at
         ``x0 = nx / 2`` and ``y0 = ny / 2``, where ``ny`` and ``nx``
         are the image dimensions.
 
@@ -241,7 +241,7 @@ class Ellipse:
             _x0 = image.shape[1] / 2
             _y0 = image.shape[0] / 2
             self._geometry = EllipseGeometry._from_radians(
-                _x0, _y0, 10.0, 0.2, np.pi / 2)
+                _x0, _y0, 10.0, 0.2, 0.0)
 
     @deprecated('3.2', alternative='EllipseGeometry.find_center',
                 until='4.0')

@@ -289,7 +289,7 @@ accurate, as shown above.
 If no geometry is input, `~photutils.isophote.Ellipse` uses a default
 `~photutils.isophote.EllipseGeometry` at the center of the image, with
 a semimajor axis length of 10 pixels, an ellipticity of 0.2, and an
-orientation of 90 degrees. This works only for a galaxy that is close
+orientation of 0 degrees. This works only for a galaxy that is close
 to the center of the image. The galaxy in this example is 14 pixels
 from the image center. The fit with the default geometry emits a
 "No meaningful fit was possible" warning and returns an empty list:

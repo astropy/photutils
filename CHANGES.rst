@@ -759,6 +759,10 @@ API Changes
     returned the central pixel isophote for a negative length, and a NaN
     length raised an unclear ``AttributeError``. [#2576]
 
+  - The default ``EllipseGeometry`` of ``Ellipse``, used when no
+    ``geometry`` is input, now has an orientation of 0 degrees
+    instead of 90 degrees. [#2577]
+
 - ``photutils.psf``
 
   - ``PSFPhotometry`` and ``IterativePSFPhotometry`` now require the

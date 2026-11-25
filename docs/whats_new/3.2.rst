@@ -63,6 +63,10 @@ versions. The fits of noisy images typically extend to larger
 semimajor axis lengths. See the :ref:`changelog` for the complete
 list of fixes.
 
+The default geometry of `~photutils.isophote.Ellipse`, used when no
+``geometry`` is input, now has an orientation of 0 degrees (the
+semimajor axis along the x axis) instead of 90 degrees.
+
 The fits are also less sensitive to the starting ellipse. Previously,
 a starting ellipticity of about half of the galaxy ellipticity,
 combined with a starting orientation that was off by more than about
