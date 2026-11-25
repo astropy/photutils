@@ -720,15 +720,18 @@ class Ellipse:
         first_isophote = isophote_list[0]
         sma, step = first_isophote.sample.geometry._reset_sma(step)
         geometry = first_isophote.sample.geometry
+        previous_isophote = first_isophote
 
         # Now, go from initial sma inwards towards center, until the
         # sma is smaller than the user-defined minimum or is too small.
         while sma >= max(min_sma, 0.5) * (1.0 - _SMA_LIMIT_RTOL):
             isophote = fit(geometry, sma, miniters=miniters)
 
-            # If abnormal condition, fix isophote but keep going.
+            # If abnormal condition, fix isophote but keep going. The
+            # failed isophote takes the geometry of the adjacent
+            # isophote with the next larger sma.
             if isophote.stop_code == 5:
-                self._fix_last_isophote(isophote_list, first_isophote)
+                self._fix_last_isophote(isophote_list, previous_isophote)
 
             # But if the harmonic fit failed, bail out immediately.
             # This usually happens at very small radii when the number
@@ -739,6 +742,7 @@ class Ellipse:
             # Reset variable from the actual list, since the last
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
+            previous_isophote = isophote
             geometry = isophote.sample.geometry
 
             # Figure out the next sma.

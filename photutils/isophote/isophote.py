@@ -150,10 +150,13 @@ class Isophote:
           returned by :meth:`~photutils.isophote.Ellipse.fit_isophote`
           has the best geometry found before that.
           :meth:`~photutils.isophote.Ellipse.fit_image` extracts such
-          an isophote again with the geometry of a previously fitted
-          isophote. After two consecutive isophotes with this code, the
-          outward growth stops or continues in noniterative mode. If it
-          is the first isophote, an empty list is returned instead.
+          an isophote again with the geometry of the adjacent isophote
+          fitted just before it, which has the next smaller semimajor
+          axis length when growing outward and the next larger one
+          when going inward. After two consecutive isophotes with this
+          code, the outward growth stops or continues in noniterative
+          mode. If it is the first isophote, an empty list is returned
+          instead.
 
     Attributes
     ----------

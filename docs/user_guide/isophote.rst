@@ -401,8 +401,8 @@ Each isophote has a ``stop_code`` that tells how its fit ended:
   fitting.
 
 * 5: No meaningful gradient could be measured or the ellipse diverged.
-  The isophote was extracted with the geometry of a previously fitted
-  isophote.
+  The isophote was extracted with the geometry of the adjacent
+  isophote that was fitted just before it.
 
 See the `~photutils.isophote.Isophote` documentation for the complete
 descriptions.

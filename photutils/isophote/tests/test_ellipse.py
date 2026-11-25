@@ -282,22 +282,22 @@ class TestEllipse:
     def test_failed_inward_isophote_geometry(self):
         """
         Test that the isophotes whose inward fits failed are extracted
-        with the geometry of the first fitted isophote.
+        with the geometry of the adjacent isophote with the next larger
+        semimajor axis length, not that of the first fitted isophote.
         """
         isolist = Ellipse(self.data).fit_image(max_sma=20.0)
         first = isolist.get_closest(10.0)
-        failed = [isophote for isophote in isolist
-                  if isophote.stop_code == 5]
+        failed = np.nonzero(isolist.stop_code == 5)[0]
         assert len(failed) > 0
-        for isophote in failed:
-            assert isophote.sma < first.sma
-            _assert_same_geometry(isophote, first)
+        for idx in failed:
+            assert isolist[idx].sma < first.sma
+            _assert_same_geometry(isolist[idx], isolist[idx + 1])
 
-        # The isophote next to the first one was fitted, so its geometry
-        # is not the same.
-        neighbor = isolist.get_closest(10.0 / 1.1)
-        assert neighbor.stop_code == 0
-        assert neighbor.ellipticity != first.ellipticity
+        # At least one failed isophote is next to a fitted isophote
+        # whose geometry differs from the first isophote.
+        assert any(isolist[idx + 1].stop_code == 0
+                   and isolist[idx + 1].ellipticity != first.ellipticity
+                   for idx in failed)
 
     def test_threshold_deprecated(self):
         geometry = EllipseGeometry(250.0, 260.0, 10.0, 0.2, PA * u.rad)

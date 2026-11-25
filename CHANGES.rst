@@ -440,6 +440,12 @@ Bug Fixes
     parameter is now halved, so fewer isophotes end at the maximum
     number of iterations. [#2571]
 
+  - Fixed ``Ellipse.fit_image`` extracting an inward isophote whose
+    fit diverged (stop code 5) with the geometry of the first fitted
+    isophote. It now uses the geometry of the adjacent isophote with
+    the next larger semimajor axis length, as for the outward
+    isophotes. [#2577]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
