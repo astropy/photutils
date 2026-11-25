@@ -184,9 +184,11 @@ class Ellipse:
     from the rms scatter of intensity data along the fitted
     ellipse. Ellipse geometry errors are obtained from the errors
     in the coefficients of the first and second simultaneous
-    harmonic fit. Third and fourth harmonic amplitudes and their
-    errors are obtained from a separate fit of each harmonic to the
-    sampled intensities. The amplitude errors are combined in
+    harmonic fit. They are NaN for an isophote whose geometry was not
+    fitted. Third and fourth harmonic amplitudes and their errors are
+    obtained from a fit of each harmonic to the residual intensities
+    after the lower harmonics are subtracted, as in the STSDAS
+    ``ellipse`` task. The amplitude errors are combined in
     quadrature with the relative error of the local gradient. For
     more details, see the error analysis in `Busko (1996, ASPC 101, 139)
     <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_.
@@ -1078,11 +1080,11 @@ class Ellipse:
         result : `~photutils.isophote.IsophoteList` instance
             The measured isophotes, sorted by semimajor axis length.
             There is one isophote for each input ellipse, each with
-            ``n_iter=0`` and ``stop_code=4``. An ellipse with a
-            semimajor axis length of zero gives the intensity at its
-            center, with ``stop_code=0``. An ellipse with no valid
-            sampled points (e.g., one that lies entirely outside the
-            image) has a NaN intensity and ``stop_code=3``.
+            ``n_iter=0``, ``stop_code=4``, and NaN geometry errors.
+            An ellipse with a semimajor axis length of zero gives the
+            intensity at its center, with ``stop_code=0``. An ellipse
+            with no valid sampled points (e.g., one that lies entirely
+            outside the image) has a NaN intensity and ``stop_code=3``.
 
         Raises
         ------

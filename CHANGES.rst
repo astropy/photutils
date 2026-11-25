@@ -446,6 +446,13 @@ Bug Fixes
     the next larger semimajor axis length, as for the outward
     isophotes. [#2577]
 
+  - Fixed the third and fourth harmonics of the isophotes, which were
+    fit to the sampled intensities instead of the residuals of the
+    lower harmonic fits as in the STSDAS ``ellipse`` task. The
+    unfitted lower harmonics inflated the ``a3``, ``b3``, ``a4``, and
+    ``b4`` errors, especially for an ellipse that is offset from the
+    galaxy. [#2577]
+
 - ``photutils.profiles``
 
   - Fixed a bug where ``copy.deepcopy`` of a ``RadialProfile``,
@@ -774,6 +781,12 @@ API Changes
     ``step`` of the input ``EllipseGeometry``, like the
     ``linear_growth`` keyword. Previously, the default of 0.1 always
     replaced the ``step`` of the geometry. [#2577]
+
+  - The ``x0_err``, ``y0_err``, ``ellipticity_err``, and
+    ``orientation_err`` attributes of an ``Isophote`` are now NaN if
+    its geometry was not fitted (stop code 4), as in the STSDAS
+    ``ellipse`` task, or if they could not be computed. Previously,
+    they were computed from the fixed geometry, or set to 0. [#2577]
 
 - ``photutils.psf``
 

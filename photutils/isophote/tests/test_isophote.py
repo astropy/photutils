@@ -652,18 +652,69 @@ def test_isophote_few_points_warnings(width, n_data):
     assert len(record) == 0
     assert isophote.n_data == n_data
 
-    # The third and fourth harmonic fits have 3 coefficients and the
-    # first and second harmonic fit has 5.
-    assert np.isnan(isophote.a3) == (n_data <= 3)
-    assert (isophote.x0_err == 0.0) == (n_data <= 5)
+    # The first and second harmonic fit has 5 coefficients. The third
+    # and fourth harmonics are fit to its residuals.
+    assert np.isnan(isophote.a3) == (n_data <= 5)
+    assert np.isnan(isophote.x0_err) == (n_data <= 5)
 
 
-@pytest.mark.parametrize(('width', 'has_deviations'),
-                         [(0.22, False), (0.3, True)])
-def test_isophote_few_points(width, has_deviations):
+def test_upper_harmonics_fit_to_residuals():
+    """
+    Test that the upper harmonics are fit to the residuals of the lower
+    harmonic fits.
+
+    An ellipse whose center is offset from the galaxy center has a
+    large first harmonic. It must not inflate the upper harmonic
+    errors, which it did by a factor of about 600 when they were fit
+    to the sampled intensities.
+    """
+    data = make_test_image(noise=1.0e-6, seed=0)
+    errors = []
+    for dx in (0.0, 3.0):
+        geometry = EllipseGeometry(256.0 + dx, 256.0, 40.0, 0.2,
+                                   0.0 * u.deg)
+        isophote = Ellipse(data, geometry=geometry).fit_isophote(
+            40.0, noniterate=True)
+        errors.append([isophote.a3_err, isophote.b3_err, isophote.a4_err,
+                       isophote.b4_err])
+    errors = np.array(errors)
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors[1] < 100 * errors[0])
+
+
+def test_unfitted_geometry_errors():
+    """
+    Test that the geometry errors are NaN for isophotes whose geometry
+    was not fitted (stop code 4), while the other errors are measured.
+    """
+    data = make_test_image(seed=0)
+    isolist = Ellipse(data).fit_image(max_iterative_sma=20.0, max_sma=40.0)
+    fitted = (isolist.stop_code == 0) & (isolist.sma > 0)
+    unfitted = isolist.stop_code == 4
+    assert np.any(fitted)
+    assert np.any(unfitted)
+
+    for name in ('x0_err', 'y0_err', 'ellipticity_err', 'orientation_err'):
+        values = getattr(isolist, name)
+        assert np.all(np.isfinite(values[fitted]))
+        assert np.all(np.isnan(values[unfitted]))
+    for name in ('intensity_err', 'a3_err', 'b4_err'):
+        assert np.all(np.isfinite(getattr(isolist, name)[unfitted]))
+
+    measured = Ellipse(data).measure_isophotes(
+        [iso for iso in isolist if iso.stop_code == 0 and iso.sma > 0])
+    assert np.all(measured.stop_code == 4)
+    assert np.all(np.isnan(measured.ellipticity_err))
+
+
+@pytest.mark.parametrize('width', [0.22, 0.3])
+def test_isophote_few_points(width):
     """
     Test an isophote with too few data points to estimate the residual
-    variance of the harmonic fits.
+    variance of the first and second harmonic fit.
+
+    The geometry errors and the upper harmonics, which are fit to the
+    residuals of that fit, are NaN.
     """
     data = make_test_image(seed=0)
     yy, xx = np.mgrid[0:data.shape[0], 0:data.shape[1]]
@@ -673,16 +724,10 @@ def test_isophote_few_points(width, has_deviations):
     sample._update(fixed_parameters=DEFAULT_FIX)
     isophote = Isophote(sample, 1, valid=False, stop_code=3)
     assert 0 < isophote.n_data <= 5
-    assert isophote.x0_err == 0.0
-    assert isophote.ellipticity_err == 0.0
-    if has_deviations:
-        assert isophote.n_data > 3
-        assert np.isfinite(isophote.a3)
-        assert np.isfinite(isophote.a3_err)
-    else:
-        assert isophote.n_data <= 3
-        assert np.isnan(isophote.a3)
-        assert np.isnan(isophote.a4_err)
+    assert np.isnan(isophote.x0_err)
+    assert np.isnan(isophote.ellipticity_err)
+    assert np.isnan(isophote.a3)
+    assert np.isnan(isophote.a4_err)
 
 
 def test_to_table_dtypes():

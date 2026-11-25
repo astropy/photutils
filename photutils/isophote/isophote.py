@@ -191,7 +191,8 @@ class Isophote:
             Use ``ellipticity`` instead.
 
     ellipticity_err : float
-        The ellipticity error.
+        The ellipticity error. It is NaN if the geometry was not fitted
+        (stop code 4) or the error could not be computed.
 
     ellip_err : float
         .. deprecated:: 3.2
@@ -207,7 +208,8 @@ class Isophote:
             orientation in radians.
 
     orientation_err : `~astropy.units.Quantity`
-        The orientation error in degrees.
+        The orientation error in degrees. It is NaN if the geometry was
+        not fitted (stop code 4) or the error could not be computed.
 
     pa_err : float
         .. deprecated:: 3.2
@@ -215,10 +217,14 @@ class Isophote:
             orientation error in radians.
 
     x0_err : float
-        The error associated with the center x coordinate.
+        The error associated with the center x coordinate. It is NaN if
+        the geometry was not fitted (stop code 4) or the error could not
+        be computed.
 
     y0_err : float
-        The error associated with the center y coordinate.
+        The error associated with the center y coordinate. It is NaN if
+        the geometry was not fitted (stop code 4) or the error could not
+        be computed.
 
     pixel_stddev : float
         The estimate of pixel standard deviation (rms * sqrt(average
@@ -372,13 +378,14 @@ class Isophote:
          self.n_pixels_ellipse,
          self.n_pixels_circle) = self._compute_fluxes()
 
-        self._compute_errors()
+        residual = self._compute_errors()
 
-        # Deviations from a perfect ellipse
-        (self.a3, self.b3, self.a3_err,
-         self.b3_err) = self._compute_deviations(sample, 3)
-        (self.a4, self.b4, self.a4_err,
-         self.b4_err) = self._compute_deviations(sample, 4)
+        # Deviations from a perfect ellipse. Each upper harmonic is fit
+        # to the residuals of the lower harmonic fits.
+        (self.a3, self.b3, self.a3_err, self.b3_err,
+         residual) = self._compute_deviations(sample, residual, 3)
+        (self.a4, self.b4, self.a4_err, self.b4_err,
+         _) = self._compute_deviations(sample, residual, 4)
 
     def _set_empty_values(self, sample):
         # No valid sampled points (e.g., a trial geometry that fell
@@ -398,8 +405,8 @@ class Isophote:
         self.n_flagged = sample.n_total - sample.n_valid
         self.total_flux_ellipse = self.total_flux_circle = 0.0
         self.n_pixels_ellipse = self.n_pixels_circle = 0
-        self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
-        self.ellipticity_err = 0.0
+        self.x0_err = self.y0_err = self._orientation_err_rad = np.nan
+        self.ellipticity_err = np.nan
         self.a3 = self.b3 = self.a3_err = self.b3_err = np.nan
         self.a4 = self.b4 = self.a4_err = self.b4_err = np.nan
 
@@ -655,34 +662,35 @@ class Isophote:
 
         return tflux_e, tflux_c, npix_e, npix_c
 
-    def _compute_deviations(self, sample, n):
+    def _compute_deviations(self, sample, residual, n):
         """
         Compute deviations from a perfect ellipse, based on the
         amplitudes and errors for harmonic "n".
 
-        The upper harmonic is fit to the sampled intensities together
-        with a constant term.
+        As in the STSDAS ellipse task, the upper harmonic is fit,
+        together with a constant term, to the residual intensities
+        after the lower harmonics were subtracted. The residuals after
+        this harmonic is also subtracted are returned for the fit of
+        the next harmonic. If ``residual`` is `None` (the lower harmonic
+        fit could not be done), all of the returned values are NaN or
+        `None`.
         """
-        # The residual variance needs more data points than fitted
-        # coefficients.
-        if sample.n_valid <= 3:
-            return np.nan, np.nan, np.nan, np.nan
+        if residual is None:
+            return np.nan, np.nan, np.nan, np.nan, None
 
         try:
             # Upper (third and fourth) harmonics
-            up_coeffs, up_inv_hessian = _fit_upper_harmonic(sample.angles,
-                                                            sample.intensities,
-                                                            n)
+            phi = sample.angles
+            up_coeffs, up_inv_hessian = _fit_upper_harmonic(phi, residual, n)
 
             scale = self.sma * abs(sample.gradient)
             a = up_coeffs[1] / scale
             b = up_coeffs[2] / scale
 
-            phi = sample.angles
             up_model = (up_coeffs[0] + up_coeffs[1] * np.sin(n * phi)
                         + up_coeffs[2] * np.cos(n * phi))
-            up_var_residual = np.std(up_model - sample.intensities,
-                                     ddof=len(up_coeffs))**2
+            residual = residual - up_model
+            up_var_residual = np.std(residual, ddof=len(up_coeffs))**2
             up_covariance = up_inv_hessian * up_var_residual
 
             ce = np.sqrt(np.diag(up_covariance))
@@ -705,30 +713,43 @@ class Isophote:
             b_err = np.sqrt((ce[2] / scale)**2 + (b * gre)**2)
 
         except Exception:  # we want to catch everything
-            a = b = a_err = b_err = np.nan
+            return np.nan, np.nan, np.nan, np.nan, None
 
-        return a, b, a_err, b_err
+        return a, b, a_err, b_err, residual
 
     def _compute_errors(self):
         """
         Compute parameter errors based on the diagonal of the covariance
         matrix of the four harmonic coefficients for harmonics n=1 and
         n=2.
+
+        The errors are NaN if the geometry was not fitted (stop code
+        4), as in the STSDAS ellipse task, or if they cannot be
+        computed. The residual intensities of the first and second
+        harmonic fit are returned for the upper harmonic fits, or
+        `None` if that fit could not be done.
         """
+        self.x0_err = self.y0_err = self._orientation_err_rad = np.nan
+        self.ellipticity_err = np.nan
+
         # The residual variance needs more data points than fitted
         # coefficients.
         if self.sample.n_valid <= 5:
-            self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
-            self.ellipticity_err = 0.0
-            return
+            return None
 
         try:
             coeffs, covariance = _fit_first_and_second_harmonics(
                 self.sample.angles, self.sample.intensities)
             model = _first_and_second_harmonic_function(self.sample.angles,
                                                         coeffs)
-            var_residual = np.std(self.sample.intensities - model,
-                                  ddof=len(coeffs)) ** 2
+            residual = self.sample.intensities - model
+
+            # The errors of a geometry that was not fitted are not
+            # measured.
+            if self.stop_code == 4:
+                return residual
+
+            var_residual = np.std(residual, ddof=len(coeffs)) ** 2
             errors = np.sqrt(np.diagonal(covariance * var_residual))
 
             eps = self.sample.geometry.ellipticity
@@ -753,8 +774,11 @@ class Isophote:
             else:
                 self._orientation_err_rad = 0.0
         except Exception:  # we want to catch everything
-            self.x0_err = self.y0_err = self._orientation_err_rad = 0.0
-            self.ellipticity_err = 0.0
+            self.x0_err = self.y0_err = self._orientation_err_rad = np.nan
+            self.ellipticity_err = np.nan
+            return None
+
+        return residual
 
     def _fix_geometry(self, isophote):
         """

@@ -179,7 +179,7 @@ class TestFitEllipseSamples:
         fitter = _EllipseFitter(sample)
         iso = fitter.fit(maxiters=400)
 
-        assert_allclose(iso.a3, 7.419e-7, atol=1.0e-8)
+        assert_allclose(iso.a3, 7.160e-7, atol=1.0e-8)
         assert_allclose(iso.b3, -1.68e-6, atol=1.0e-8)
         assert_allclose(iso.a4, 4.36e-6, atol=1.0e-8)
         assert_allclose(iso.b4, -4.73e-5, atol=1.0e-7)

@@ -643,8 +643,9 @@ Isophote Missing Values
 The `~photutils.isophote.Isophote` attributes that could not be
 computed are now NaN instead of `None`. This applies to the gradient
 errors, the higher-order harmonic amplitudes (``a3`` to ``b4``) and
-their errors, and the values that are not defined for the central
-pixel. The columns of the tables from
+their errors, the values that are not defined for the central
+pixel, and the geometry errors of isophotes whose geometry was not
+fitted (stop code 4) or that have too few data points. The columns of the tables from
 `~photutils.isophote.IsophoteList.to_table` always have a numerical
 data type. Code that tests these values with ``is None`` must use
 `numpy.isnan` instead::

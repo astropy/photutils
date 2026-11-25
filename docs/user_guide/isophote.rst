@@ -866,7 +866,10 @@ Deviations from Ellipses
 
 The isophotes of real galaxies are not perfect ellipses. After the
 ellipse of an isophote is fitted, the third and fourth harmonics of
-its sampled intensities are measured. The ``a3`` and ``b3`` attributes
+its sampled intensities are measured. As in the STSDAS ``ellipse``
+task, each harmonic is fit to the residual intensities after the
+first and second harmonics, and then the third harmonic, are
+subtracted. The ``a3`` and ``b3`` attributes
 are the amplitudes of the :math:`\sin(3E)` and :math:`\cos(3E)` terms,
 and ``a4`` and ``b4`` are the amplitudes of the :math:`\sin(4E)` and
 :math:`\cos(4E)` terms, where :math:`E` is the angle from the
@@ -1284,6 +1287,10 @@ ellipse center, ellipticity, and orientation are computed by those
 formulae, but replacing the least-squares amplitudes by their errors.
 This is empirical and difficult to justify in terms of any theoretical
 error analysis, but it produces sensible error estimators in practice.
+The geometry was not fitted for an isophote with a stop code of 4
+(e.g., beyond ``max_iterative_sma`` or from
+:meth:`~photutils.isophote.Ellipse.measure_isophotes`), so its
+geometry errors are NaN.
 
 Flux Accuracy
 ^^^^^^^^^^^^^
