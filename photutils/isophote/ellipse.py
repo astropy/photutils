@@ -293,10 +293,10 @@ class Ellipse:
                   fix_center=False, fix_orientation=False,
                   fix_ellipticity=False, *, max_center_shift=None,
                   sigma_clip=None, nclip=None):
-        # This parameter list is quite large and should in principle be
-        # simplified by redistributing these controls to somewhere else.
-        # We keep this design though because it better mimics the flat
-        # architecture used in the original STSDAS task `ellipse`.
+        # The fit controls are flat keyword arguments, each with a
+        # default, so a typical call sets only a few of them. The
+        # STSDAS ellipse task groups the same controls into its
+        # geompar, controlpar, and samplepar parameter sets.
         """
         Fit multiple isophotes to the image array.
 
