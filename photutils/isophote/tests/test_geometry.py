@@ -42,6 +42,32 @@ def test_geometry(astep, linear_growth):
     assert_allclose(vertex_y, [316.1, 329.7, 312.5, 325.3], atol=0.1)
 
 
+def test_repr_str():
+    """
+    Test the repr and str of an EllipseGeometry.
+    """
+    geometry = EllipseGeometry(np.float64(256.0), 255.5, 20.0, 0.25,
+                               40.0 * u.deg, step=0.2, fix_center=True)
+    expected = ('<EllipseGeometry(x0=256.0, y0=255.5, sma=20.0, '
+                'ellipticity=0.25, orientation=40.0 deg, step=0.2, '
+                'linear_growth=False, fix_center=True, '
+                'fix_orientation=False, fix_ellipticity=False)>')
+    assert repr(geometry) == expected
+
+    expected = ('<photutils.isophote.geometry.EllipseGeometry>\n'
+                'x0: 256.0\n'
+                'y0: 255.5\n'
+                'sma: 20.0\n'
+                'ellipticity: 0.25\n'
+                'orientation: 40.0 deg\n'
+                'step: 0.2\n'
+                'linear_growth: False\n'
+                'fix_center: True\n'
+                'fix_orientation: False\n'
+                'fix_ellipticity: False')
+    assert str(geometry) == expected
+
+
 def test_to_polar_integer_input():
     """
     Test that integer coordinates and centers do not truncate the

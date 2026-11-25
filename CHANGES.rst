@@ -83,6 +83,8 @@ New Features
     ``Isophote`` that return the ellipse as an ``EllipticalAperture``,
     which can be used to plot the ellipse. [#2575]
 
+  - Added a ``repr`` and ``str`` for ``EllipseGeometry``. [#2578]
+
 - ``photutils.psf``
 
   - The ``extract_stars`` function now recognizes common alternative

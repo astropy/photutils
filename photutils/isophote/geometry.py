@@ -396,6 +396,27 @@ class EllipseGeometry:
                          fix_orientation=fix_orientation,
                          fix_ellipticity=fix_ellipticity)
 
+    def _repr_params(self):
+        """
+        Return the (name, value) pairs of the parameters that are shown
+        by the repr and str.
+        """
+        names = ('x0', 'y0', 'sma', 'ellipticity', 'orientation', 'step',
+                 'linear_growth', 'fix_center', 'fix_orientation',
+                 'fix_ellipticity')
+        return [(name, getattr(self, name)) for name in names]
+
+    def __repr__(self):
+        params = ', '.join(f'{name}={value}'
+                           for name, value in self._repr_params())
+        return f'<{self.__class__.__name__}({params})>'
+
+    def __str__(self):
+        cls_name = f'{self.__class__.__module__}.{self.__class__.__name__}'
+        params = '\n'.join(f'{name}: {value}'
+                           for name, value in self._repr_params())
+        return f'<{cls_name}>\n{params}'
+
     @classmethod
     def _from_radians(cls, x0, y0, sma, ellipticity, orientation,
                       **kwargs):
