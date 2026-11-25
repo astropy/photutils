@@ -377,8 +377,14 @@ class EllipseSample:
             Use ``sigma_clip`` instead.
 
     angles : 1D `~numpy.ndarray` or `None`
-        The angles of the valid sampled points. It is `None` until
-        :meth:`~photutils.isophote.EllipseSample.extract` is called.
+        The polar angles (radians) of the valid sampled points, measured
+        counterclockwise from the semimajor axis. The angles increase
+        along the path, which covers the ellipse once. A path sampled
+        with the ``'bilinear'`` or ``'nearest_neighbor'`` mode starts at
+        a small positive angle and ends less than one revolution later,
+        so its last angles can be slightly larger than 2 pi. It is
+        `None` until :meth:`~photutils.isophote.EllipseSample.extract`
+        is called.
 
     radii : 1D `~numpy.ndarray` or `None`
         The radii of the valid sampled points. It is `None` until
@@ -609,8 +615,12 @@ class EllipseSample:
     @property
     def angles(self):
         """
-        The angles of the valid sampled points, or `None` before
-        extraction.
+        The polar angles (radians) of the valid sampled points, or
+        `None` before extraction.
+
+        The angles are measured counterclockwise from the semimajor
+        axis. A path sampled with the ``'bilinear'`` or
+        ``'nearest_neighbor'`` mode can end slightly past 2 pi.
         """
         return None if self._values is None else self._values[0]
 
@@ -630,7 +640,6 @@ class EllipseSample:
         """
         return None if self._values is None else self._values[2]
 
-    # Remove in 4.0
     def _repr_params(self):
         """
         Return the (name, value) pairs of the parameters that are shown
@@ -650,6 +659,7 @@ class EllipseSample:
     def __str__(self):
         return _make_str(self, self._repr_params())
 
+    # Remove in 4.0
     def __getattr__(self, name):
         return deprecated_getattr(self, name,
                                   _DEPRECATED_SAMPLE_ATTRIBUTES,
