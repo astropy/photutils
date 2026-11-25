@@ -173,8 +173,8 @@ The :meth:`~photutils.isophote.IsophoteList.to_table` method returns
 the isophote values as a table::
 
     >>> iso_table = isolist.to_table()
-    >>> iso_table.pprint(max_lines=14, max_width=80)
-           sma              intensity       ... n_iter stop_code
+    >>> iso_table.pprint(max_lines=14, max_width=80)  # doctest: +SKIP
+           sma             intensity       ... n_iter stop_code
                                             ...
     ------------------ -------------------- ... ------ ---------
                    0.0   392.40301224101654 ...      0         0
@@ -448,11 +448,11 @@ invalid row, if a ``sma`` value is negative, if an ``ellipticity``
 value is not in the range from 0 up to (but not including) 1, or if a
 required geometry value is not finite.
 
-The loaded isophotes have no sample, so ``loaded.sample`` holds
-`None` for each isophote. They can still be used to make a
-model image with :class:`~photutils.isophote.IsophoteList`'s
-:meth:`~photutils.isophote.IsophoteList.make_model_image`.
-To measure an image along them, pass the list to
+The loaded isophotes have no sample, so ``loaded.sample`` holds `None`
+for each isophote. They can still be used to make a model image with
+:meth:`IsophoteList.make_model_image
+<photutils.isophote.IsophoteList.make_model_image>`. To measure an
+image along them, pass the list to
 :meth:`~photutils.isophote.Ellipse.measure_isophotes`::
 
     >>> measured = ellipse.measure_isophotes(loaded)
@@ -605,16 +605,19 @@ axis lengths from 10 to 90 pixels::
     >>> print(max_shifts[0] > 5.0, max_shifts[1] < 2.0)
     True True
 
-Without rejection, the star and the companion pull the fitted centers
-by up to 6 pixels, the ellipticity reaches 0.54, and the fit stops at
-a semimajor axis length of about 101 pixels. Over this range of
-semimajor axis lengths, the mask and sigma clipping keep the centers
-within about 1.5 pixels of the galaxy center (about twice the center
-error of the faint outer isophotes) and the ellipticity between 0.39
-and 0.41. The mask alone is not enough for this image, because the
-star still disturbs the fit. Sigma clipping alone also removes most of
-the distortion, because it works well for small features such as
-stars.
+Without rejection, the star pulls the fitted centers by up to 6 pixels
+and raises the ellipticity to 0.54, and the fit stops at a semimajor
+axis length of about 101 pixels. Over this range of semimajor axis
+lengths, the mask and sigma clipping keep the centers within about
+1.5 pixels of the galaxy center (about twice the center error of the
+faint outer isophotes) and the ellipticity between 0.39 and 0.41. The
+mask alone is not enough for this image, because the star still
+disturbs the fit. Sigma clipping alone gives nearly the same fits over
+this range, because it works well for small features such as stars.
+The mask is needed for the larger ellipses, which cross the companion.
+From semimajor axis lengths of 110 to 140 pixels, sigma clipping alone
+lets the ellipticity drop to about 0.32 and the centers move by up to
+7 pixels, compared with 0.37 and 4.5 pixels with the mask.
 
 Let's plot the image with the masked region, and the residuals of the
 model images of the two fits (see :ref:`isophote-model-image`):
@@ -890,8 +893,8 @@ the :math:`\sin(3\phi)` and :math:`\cos(3\phi)` terms, and ``a4`` and
 measured counterclockwise from the semimajor axis. The amplitudes are
 divided by the semimajor axis length and by the absolute value of the
 local radial intensity gradient, so they can be compared with each
-other and between isophotes. Their errors are in the ``a3_err``, ``b3_err``,
-``a4_err``, and ``b4_err`` attributes.
+other and between isophotes. Their errors are in the ``a3_err``,
+``b3_err``, ``a4_err``, and ``b4_err`` attributes.
 
 The ``b4`` amplitude is the most used. It is positive for disky
 (kite-like) isophotes and negative for boxy isophotes. To demonstrate,
@@ -1008,10 +1011,10 @@ original galaxy for comparison:
         ax.set_ylabel('Amplitude')
 
 The ``b4`` amplitude of the disky galaxy is about 0.05 at all
-semimajor axis lengths, about ten times its error. The other
-amplitudes, and all four amplitudes of the original galaxy, scatter
-around zero. A boxy galaxy (``c > 0``) gives a negative ``b4``
-amplitude.
+semimajor axis lengths. Between semimajor axis lengths of 10 and 50
+pixels, it is about ten times its error. The other amplitudes, and
+all four amplitudes of the original galaxy, scatter around zero. A
+boxy galaxy (``c > 0``) gives a negative ``b4`` amplitude.
 
 
 .. _isophote-model-image:
@@ -1133,9 +1136,9 @@ residuals of the two models of the disky galaxy::
         ax.set_ylim(70, 210)
 
 The residual of the ellipse model shows the X-shaped pattern of the
-disky isophotes, and the higher harmonics remove most of it. Within 30
-pixels of the center, the rms of the residuals decreases from 1.09 to
-0.67, compared to a noise level of 0.5. Only the third and fourth
+disky isophotes, and the higher harmonics remove most of it. Between 5
+and 30 pixels from the center, the rms of the residuals decreases from
+1.09 to 0.67, compared to a noise level of 0.5. Only the third and fourth
 harmonics are fit, so sharper deviations from an ellipse, such as
 those of a thin disk, are only partly modeled.
 
