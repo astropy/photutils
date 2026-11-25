@@ -23,17 +23,36 @@ from photutils.utils.exceptions import PhotutilsDeprecationWarning
 __all__ = ['EllipseGeometry']
 
 
+def _format_float(value):
+    """
+    Format a float with 6 significant digits.
+
+    A whole number keeps its decimal point (e.g., ``256.0``), so that it
+    is distinguished from an integer.
+    """
+    text = f'{value:.6g}'
+    if np.isfinite(value) and not any(char in text for char in '.e'):
+        text += '.0'
+    return text
+
+
 def _format_repr_value(value):
     """
     Format a parameter value for a repr or str.
 
-    Numbers, booleans, `None`, and quantities use their str, so that,
-    e.g., a NumPy float is shown as ``1.0`` and an angle as ``40.0
-    deg``. Other values (e.g., strings) use their repr.
+    Floats, including the value of a quantity, are rounded to 6
+    significant digits, so that, e.g., an angle is shown as ``40.0
+    deg``. Integers, booleans, and `None` use their str. Other values
+    (e.g., strings) use their repr.
     """
-    if value is None or isinstance(value, (numbers.Number, np.number,
-                                           np.bool_, u.Quantity)):
+    if isinstance(value, u.Quantity):
+        return f'{_format_float(value.value)} {value.unit}'
+    if isinstance(value, (bool, np.bool_, numbers.Integral)):
         return str(value)
+    if isinstance(value, numbers.Real):
+        return _format_float(value)
+    if value is None:
+        return 'None'
     return repr(value)
 
 
